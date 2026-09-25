@@ -3,18 +3,18 @@
 //!
 //! # Facets
 //!
-//! - Behavior: `libs/raft-runtime/e2e/host_shutdown_deadline.rs:389-411`
-//!   and `libs/raft-runtime/e2e/host_shutdown_deadline.rs:510-558` assert the
+//! - Behavior: `crates/raft-runtime/e2e/host_shutdown_deadline.rs:389-411`
+//!   and `crates/raft-runtime/e2e/host_shutdown_deadline.rs:510-558` assert the
 //!   public durable commit, unadvanced apply head, and retry order. The declared
-//!   gate is `cargo test -p raft-runtime` at `libs/raft-runtime/README.md:29-31`.
-//! - Security: the apply scheduling seam at `libs/raft-runtime/src/host.rs:536-608`
+//!   gate is `cargo test -p raft-runtime` at `crates/raft-runtime/README.md:29-31`.
+//! - Security: the apply scheduling seam at `crates/raft-runtime/src/host.rs:536-608`
 //!   consumes only committed `RaftNode` entries. It adds no request parser,
 //!   identity decision, file path, or secret boundary. Peer identity remains
 //!   covered by the existing `cargo test -p raft-runtime --test peer_mtls` gate
-//!   declared at `libs/raft-runtime/README.md:35-53`.
+//!   declared at `crates/raft-runtime/README.md:35-53`.
 //! - Performance: gap. `apps/lumen/src/raft_sm.rs:310` calls `propose`, and
 //!   `apps/lumen/src/bin/lumen.rs:3882` mounts the router. The shared-host
-//!   promise at `libs/raft-runtime/README.md:22-33` gives no current numerical
+//!   promise at `crates/raft-runtime/README.md:22-33` gives no current numerical
 //!   budget for an apply-blocked proposal or status request. The bounded test
 //!   waits below are test cleanup limits, not a product performance promise.
 

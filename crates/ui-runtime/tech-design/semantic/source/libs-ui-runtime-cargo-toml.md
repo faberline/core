@@ -1,6 +1,6 @@
 ---
 id: libs-ui-runtime-cargo-toml
-summary: Lossless text-source-unit coverage for `libs/ui-runtime/Cargo.toml`.
+summary: Lossless text-source-unit coverage for `crates/ui-runtime/Cargo.toml`.
 capability_refs:
   - id: renderer-neutral-component-runtime
     role: primary
@@ -10,12 +10,12 @@ capability_refs:
 fill_sections: [overview, source, changes]
 ---
 
-# Standardized libs/ui-runtime/Cargo.toml
+# Standardized crates/ui-runtime/Cargo.toml
 
 ## Overview
 <!-- type: overview lang: markdown -->
 
-Lossless text-source-unit coverage for `libs/ui-runtime/Cargo.toml` captured during libs codegen standardization.
+Lossless text-source-unit coverage for `crates/ui-runtime/Cargo.toml` captured during libs codegen standardization.
 
 
 ## Source
@@ -23,19 +23,19 @@ Lossless text-source-unit coverage for `libs/ui-runtime/Cargo.toml` captured dur
 
 ````bash
 [package]
-name = "cclab-ui-runtime"
+name = "ui-runtime"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Renderer-neutral component runtime: hooks, fiber storage, mount, flush, and update scheduling over cclab-surface elements"
+description = "Renderer-neutral component runtime: hooks, fiber storage, mount, flush, and update scheduling over surface elements"
 
 [features]
 default = []
 debug = ["serde_json"]
 
 [dependencies]
-cclab-surface = { path = "../surface" }
+surface = { path = "../surface" }
 serde_json = { version = "1", optional = true }
 ````
 
@@ -45,10 +45,10 @@ serde_json = { version = "1", optional = true }
 ```yaml
 coverage_kind: semantic
 changes:
-  - path: "libs/ui-runtime/Cargo.toml"
+  - path: "crates/ui-runtime/Cargo.toml"
     action: modify
     section: text-source-unit
     impl_mode: codegen
     description: |
-      text-source-unit (td_ast) source for `libs/ui-runtime/Cargo.toml` captured during libs codegen standardization.
+      text-source-unit (td_ast) source for `crates/ui-runtime/Cargo.toml` captured during libs codegen standardization.
 ```

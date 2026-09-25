@@ -25,5 +25,5 @@ GitHub issue, self-update, or LLM orientation logic.
 - Gate — behavior: `cargo test -p cli-std` - shared CLI command contract
   coverage
 - Gate: `cargo test -p cli-std`
-- Source: `libs/cli-std/src/lib.rs`
-- Evidence: `cargo test -p cli-std`; libs/cli-std/src/lib.rs
+- Source: `crates/cli-std/src/lib.rs`
+- Evidence: `cargo test -p cli-std`; crates/cli-std/src/lib.rs

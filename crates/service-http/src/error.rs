@@ -4,7 +4,7 @@
 //! first (a `StorageError` → status/kind classification over a
 //! `{"error", "message"}` body); this module is the one place it lives so
 //! `keep`/`relay`/`loom` converge on the same JSON instead of hand-rolling a
-//! coincidentally-similar one. `libs/service-auth`'s own rejection
+//! coincidentally-similar one. `crates/service-auth`'s own rejection
 //! rendering predates this module and is a later convergence — untouched
 //! here.
 //!

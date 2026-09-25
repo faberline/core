@@ -56,5 +56,5 @@ No items.
 ### Generated client emission
 
 - ID: `generated-client-emission`
-- Reason: `libs/openapi-codegen` owns generated client APIs and request-time
+- Reason: `crates/openapi-codegen` owns generated client APIs and request-time
   header providers. This library owns token-source behavior and conformance.

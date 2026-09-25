@@ -3,7 +3,7 @@
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
-source libs/service-observability/scripts/soak-metrics.sh
+source crates/service-observability/scripts/soak-metrics.sh
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/soak-metrics-test.XXXXXX")"
 cleanup() {
@@ -199,7 +199,7 @@ subshell_lifecycle_rejected() {
   child_pid=$!
   assert_nonzero "subshell start" \
     bash -c 'set -euo pipefail; source "$1"; (service_soak_rss_sampler_start "$2" 1 1)' \
-      bash libs/service-observability/scripts/soak-metrics.sh "${child_pid}"
+      bash crates/service-observability/scripts/soak-metrics.sh "${child_pid}"
   kill "${child_pid}" 2>/dev/null || true
   wait "${child_pid}" 2>/dev/null || true
 }

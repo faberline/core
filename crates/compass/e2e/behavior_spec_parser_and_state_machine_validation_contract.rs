@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/compass/external-contracts/behavior/spec-parser-and-state-machine-validation-contract.md#spec-parser-and-state-machine-validation-contract
+// SPEC-MANAGED: crates/compass/external-contracts/behavior/spec-parser-and-state-machine-validation-contract.md#spec-parser-and-state-machine-validation-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec spec-parser-and-state-machine-validation-contract
@@ -7,7 +7,7 @@
 // @contract spec-parser-and-state-machine-validation-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-compass
+// @command cargo test -p compass
 // AW-EC-END
 
 // Contract: Spec parser and state-machine validation contract remains covered by the configured Compass library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn spec_parser_and_state_machine_validation_contract() {
-    let command = "cargo test -p cclab-compass";
+    let command = "cargo test -p compass";
     let id = "spec-parser-and-state-machine-validation-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

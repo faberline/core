@@ -58,7 +58,7 @@
 //! # Why a configuration takes effect on apply here
 //!
 //! `adopt_conf` is reached from exactly one place, `take_committed`
-//! (`libs/raft-core/src/lib.rs:542`), so a node adopts a configuration when it
+//! (`crates/raft-core/src/lib.rs:542`), so a node adopts a configuration when it
 //! *applies* the entry, not when it appends it. Two consequences the rows depend
 //! on:
 //!

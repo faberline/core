@@ -1,15 +1,15 @@
 //! # Facets
 //!
 //! - Behavior: `all_workspace_implementors_are_registered` at
-//!   `libs/raft-runtime/e2e/implementor_build_coverage.rs:615` rejects an
+//!   `crates/raft-runtime/e2e/implementor_build_coverage.rs:615` rejects an
 //!   unregistered `(path, implementor)`, and
 //!   `registry_and_script_commands_match` at
-//!   `libs/raft-runtime/e2e/implementor_build_coverage.rs:628` rejects a
+//!   `crates/raft-runtime/e2e/implementor_build_coverage.rs:628` rejects a
 //!   missing or changed compile command.
 //! - Security: `GatedSm` at `apps/lumen/src/raft_sm.rs:607` is inside the
 //!   private test module at `apps/lumen/src/raft_sm.rs:349`; `AdmissionSm` at
-//!   `libs/raft-runtime/src/host.rs:2658` is inside the one at
-//!   `libs/raft-runtime/src/host.rs:2641`. Registering them changes no input,
+//!   `crates/raft-runtime/src/host.rs:2658` is inside the one at
+//!   `crates/raft-runtime/src/host.rs:2641`. Registering them changes no input,
 //!   authorization, file, socket, or secret boundary.
 //! - Performance: those same private test helpers reach only test compilation.
 //!   The `rg -n -g '*.rs' '\braft_runtime\b' apps/*/src libs/*/src` call-site
@@ -131,62 +131,62 @@ const SITES: [Site; 21] = [
         gate: Gate::Sift,
     },
     Site {
-        path: "libs/raft-runtime/src/lib.rs",
+        path: "crates/raft-runtime/src/lib.rs",
         implementor: "CounterSm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/src/conformance.rs",
+        path: "crates/raft-runtime/src/conformance.rs",
         implementor: "CountingSm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/src/host.rs",
+        path: "crates/raft-runtime/src/host.rs",
         implementor: "AdmissionSm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/src/host.rs",
+        path: "crates/raft-runtime/src/host.rs",
         implementor: "PermitPreflightSm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/e2e/adversarial_recovery.rs",
+        path: "crates/raft-runtime/e2e/adversarial_recovery.rs",
         implementor: "Sm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/e2e/group_registry.rs",
+        path: "crates/raft-runtime/e2e/group_registry.rs",
         implementor: "SequenceSm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/e2e/support/cluster.rs",
+        path: "crates/raft-runtime/e2e/support/cluster.rs",
         implementor: "TestSm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/e2e/group_membership_isolation.rs",
+        path: "crates/raft-runtime/e2e/group_membership_isolation.rs",
         implementor: "NullSm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/e2e/snapshot_peak_memory.rs",
+        path: "crates/raft-runtime/e2e/snapshot_peak_memory.rs",
         implementor: "MemoryTestSm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/e2e/host_shutdown_deadline.rs",
+        path: "crates/raft-runtime/e2e/host_shutdown_deadline.rs",
         implementor: "BlockingApplySm",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/e2e/snapshot_at_index.rs",
+        path: "crates/raft-runtime/e2e/snapshot_at_index.rs",
         implementor: "IndexedSnapshotStateMachine",
         gate: Gate::RaftRuntimeTests,
     },
     Site {
-        path: "libs/raft-runtime/e2e/snapshot_preflight_release.rs",
+        path: "crates/raft-runtime/e2e/snapshot_preflight_release.rs",
         implementor: "PreparedSnapshotStateMachine",
         gate: Gate::RaftRuntimeTests,
     },
@@ -218,18 +218,18 @@ fn required_gate(path: &str, implementor: &str) -> Result<Gate, String> {
         ("apps/relay/src/raft.rs", "RelayStateMachine") => Ok(Gate::Relay),
         ("apps/tape/src/raft.rs", "TapeStateMachine") => Ok(Gate::Tape),
         ("apps/sift/src/durability.rs", "SiftStateMachine") => Ok(Gate::Sift),
-        ("libs/raft-runtime/src/lib.rs", "CounterSm")
-        | ("libs/raft-runtime/src/conformance.rs", "CountingSm")
-        | ("libs/raft-runtime/src/host.rs", "AdmissionSm")
-        | ("libs/raft-runtime/src/host.rs", "PermitPreflightSm")
-        | ("libs/raft-runtime/e2e/adversarial_recovery.rs", "Sm")
-        | ("libs/raft-runtime/e2e/group_registry.rs", "SequenceSm")
-        | ("libs/raft-runtime/e2e/support/cluster.rs", "TestSm")
-        | ("libs/raft-runtime/e2e/group_membership_isolation.rs", "NullSm")
-        | ("libs/raft-runtime/e2e/snapshot_peak_memory.rs", "MemoryTestSm")
-        | ("libs/raft-runtime/e2e/host_shutdown_deadline.rs", "BlockingApplySm")
-        | ("libs/raft-runtime/e2e/snapshot_at_index.rs", "IndexedSnapshotStateMachine")
-        | ("libs/raft-runtime/e2e/snapshot_preflight_release.rs", "PreparedSnapshotStateMachine") => {
+        ("crates/raft-runtime/src/lib.rs", "CounterSm")
+        | ("crates/raft-runtime/src/conformance.rs", "CountingSm")
+        | ("crates/raft-runtime/src/host.rs", "AdmissionSm")
+        | ("crates/raft-runtime/src/host.rs", "PermitPreflightSm")
+        | ("crates/raft-runtime/e2e/adversarial_recovery.rs", "Sm")
+        | ("crates/raft-runtime/e2e/group_registry.rs", "SequenceSm")
+        | ("crates/raft-runtime/e2e/support/cluster.rs", "TestSm")
+        | ("crates/raft-runtime/e2e/group_membership_isolation.rs", "NullSm")
+        | ("crates/raft-runtime/e2e/snapshot_peak_memory.rs", "MemoryTestSm")
+        | ("crates/raft-runtime/e2e/host_shutdown_deadline.rs", "BlockingApplySm")
+        | ("crates/raft-runtime/e2e/snapshot_at_index.rs", "IndexedSnapshotStateMachine")
+        | ("crates/raft-runtime/e2e/snapshot_preflight_release.rs", "PreparedSnapshotStateMachine") => {
             Ok(Gate::RaftRuntimeTests)
         }
         _ => Err(format!(

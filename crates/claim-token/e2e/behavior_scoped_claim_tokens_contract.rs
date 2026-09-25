@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/claim-token/external-contracts/behavior/scoped-claim-tokens-contract.md#scoped-claim-tokens-contract
+// SPEC-MANAGED: crates/claim-token/external-contracts/behavior/scoped-claim-tokens-contract.md#scoped-claim-tokens-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec scoped-claim-tokens-contract

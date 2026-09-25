@@ -21,9 +21,9 @@ Renderers can run reusable component logic over surface elements without
 coupling to a browser or native UI backend.
 
 - Root WI: none; this capability predates the tracker.
-- Surfaces: Rust API: `cclab_ui_runtime`.
-- Gate — behavior: `cargo test -p cclab-ui-runtime` - runtime hook and
+- Surfaces: Rust API: `ui_runtime`.
+- Gate — behavior: `cargo test -p ui-runtime` - runtime hook and
   scheduling coverage
-- Gate: `cargo test -p cclab-ui-runtime`
-- Source: `libs/ui-runtime/src/lib.rs`
-- Evidence: `cargo test -p cclab-ui-runtime`; libs/ui-runtime/src/lib.rs
+- Gate: `cargo test -p ui-runtime`
+- Source: `crates/ui-runtime/src/lib.rs`
+- Evidence: `cargo test -p ui-runtime`; crates/ui-runtime/src/lib.rs

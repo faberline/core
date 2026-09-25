@@ -72,10 +72,10 @@ are future shared outcomes.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p service-k8s --no-deps` |
-| Crate surface | `libs/service-k8s/src/lib.rs` |
-| Managed service contract | `libs/service-k8s/src/service.rs` |
-| Controller order and failure behavior | `libs/service-k8s/src/controller.rs` |
-| Workload render inputs | `libs/service-k8s/src/render.rs` and its submodules |
+| Crate surface | `crates/service-k8s/src/lib.rs` |
+| Managed service contract | `crates/service-k8s/src/service.rs` |
+| Controller order and failure behavior | `crates/service-k8s/src/controller.rs` |
+| Workload render inputs | `crates/service-k8s/src/render.rs` and its submodules |
 | Executable behavior | `cargo test -p service-k8s` |
 | Planned trust, placement, and rollout mechanisms | [ROADMAP.md](ROADMAP.md) |
 
@@ -88,12 +88,12 @@ contribution.
 
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
-| Managed reconciliation | `managed-reconciliation` | Reconcile a namespaced service CR into owned Kubernetes children with leader failover and status. | `libs/service-k8s`, `external:kubernetes` |
-| Workload rendering | `workload-rendering` | Compose common Deployment and StatefulSet workload contracts without duplicating Kubernetes envelopes. | `libs/service-k8s`, `external:kubernetes` |
-| Identity and access rendering | `identity-access-rendering` | Render an audience-bound projected token and scoped RBAC object shapes from app-owned policy inputs. | `libs/service-k8s`, `external:kubernetes` |
-| Lifecycle and status projection | `lifecycle-status-projection` | Validate shutdown budgets and publish stable Kubernetes conditions from service facts. | `libs/service-k8s`, `external:kubernetes` |
-| Stateful planning and PVC growth | `stateful-planning-pvc-growth` | Plan shard or replica changes and grow eligible PVC objects without hiding unsupported shrink. | `libs/service-k8s`, `external:kubernetes` |
-| Certificate lifecycle | `certificate-lifecycle` | Reconcile scoped certificate material, rotation, projection, and status through an injected issuer. | `libs/service-k8s`, `external:kubernetes`, `external:certificate-authority` |
+| Managed reconciliation | `managed-reconciliation` | Reconcile a namespaced service CR into owned Kubernetes children with leader failover and status. | `crates/service-k8s`, `external:kubernetes` |
+| Workload rendering | `workload-rendering` | Compose common Deployment and StatefulSet workload contracts without duplicating Kubernetes envelopes. | `crates/service-k8s`, `external:kubernetes` |
+| Identity and access rendering | `identity-access-rendering` | Render an audience-bound projected token and scoped RBAC object shapes from app-owned policy inputs. | `crates/service-k8s`, `external:kubernetes` |
+| Lifecycle and status projection | `lifecycle-status-projection` | Validate shutdown budgets and publish stable Kubernetes conditions from service facts. | `crates/service-k8s`, `external:kubernetes` |
+| Stateful planning and PVC growth | `stateful-planning-pvc-growth` | Plan shard or replica changes and grow eligible PVC objects without hiding unsupported shrink. | `crates/service-k8s`, `external:kubernetes` |
+| Certificate lifecycle | `certificate-lifecycle` | Reconcile scoped certificate material, rotation, projection, and status through an injected issuer. | `crates/service-k8s`, `external:kubernetes`, `external:certificate-authority` |
 
 The shared stateful-instance render adapter preserves service-owned identity,
 image, storage, and lifecycle. The library does not adopt a runtime or choose
@@ -106,7 +106,7 @@ the service's persistence policy.
   observe readiness, publish Events and metrics, and update status through one
   active leader.
 - Sources:
-  - [`libs/service-k8s`](./) provides `ManagedService`, the generic controller,
+  - [`crates/service-k8s`](./) provides `ManagedService`, the generic controller,
     dynamic server-side apply, ownership-checked prune, leader election,
     readiness observation, Events, and controller metrics.
   - `external:kubernetes` stores CRs and children, enforces RBAC and field
@@ -119,7 +119,7 @@ the service's persistence policy.
 - Promise: Render common workload, Service, identity, storage, security,
   disruption, and rollout envelopes from service-owned inputs.
 - Sources:
-  - [`libs/service-k8s`](./) provides workload-neutral helpers plus separate
+  - [`crates/service-k8s`](./) provides workload-neutral helpers plus separate
     Deployment and StatefulSet composition surfaces.
   - `external:kubernetes` defines and executes the rendered workload API.
 - Gate: `cargo test -p service-k8s`
@@ -130,7 +130,7 @@ the service's persistence policy.
 - Promise: Render a matching projected-token volume and mount plus explicit
   Role, RoleBinding, and ClusterRoleBinding object shapes from caller inputs.
 - Sources:
-  - [`libs/service-k8s`](./) provides one-value token projection, explicit
+  - [`crates/service-k8s`](./) provides one-value token projection, explicit
     ServiceAccount subjects, named RBAC rules, owner-safe object shapes, and
     wildcard detection.
   - `external:kubernetes` issues and rotates the projected token, stores the
@@ -143,7 +143,7 @@ the service's persistence policy.
 - Promise: Reject invalid termination budgets, render standard probes, and
   preserve condition transition times while observed state is unchanged.
 - Sources:
-  - [`libs/service-k8s`](./) provides lifecycle validation, probe rendering,
+  - [`crates/service-k8s`](./) provides lifecycle validation, probe rendering,
     clock-free condition facts, and deterministic condition projection.
   - `external:kubernetes` runs probes and stores the conventional condition
     fields consumed by `kubectl wait` and other controllers.
@@ -155,7 +155,7 @@ the service's persistence policy.
 - Promise: Return explicit shard and replica plans and grow only PVCs whose
   current StorageClass permits expansion.
 - Sources:
-  - [`libs/service-k8s`](./) provides pure planners, quantity parsing, grow,
+  - [`crates/service-k8s`](./) provides pure planners, quantity parsing, grow,
     no-op, shrink-refusal decisions, scoped listing, and PVC patching.
   - `external:kubernetes` supplies StatefulSet, PVC, and StorageClass semantics
     and enforces expansion support.
@@ -167,7 +167,7 @@ the service's persistence policy.
 - Promise: Reconcile certificate requests and rotation without coupling a
   service to one certificate authority implementation.
 - Sources:
-  - [`libs/service-k8s`](./) provides certificate profiles, state transition,
+  - [`crates/service-k8s`](./) provides certificate profiles, state transition,
     digest, rotation, projection, status, issuer interface, and Kubernetes
     storage adapter.
   - `external:kubernetes` stores projected certificate material and scoped

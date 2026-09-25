@@ -16,7 +16,7 @@ e2e_tests:
     claim_id: symbol-outline-and-propagated-type-query-contract
     contract_id: symbol-outline-and-propagated-type-query-contract
     category: behavior
-    command: "cargo test -p cclab-compass"
+    command: "cargo test -p compass"
     assertions:
       - "Symbol outline and propagated type query contract remains covered by the configured Compass library test suite."
       - "The library contract stays usable through its documented README capability surface."

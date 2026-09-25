@@ -29,8 +29,8 @@ duplicating peer transport and read consistency plumbing.
 - Gate — behavior: `cargo test -p raft-runtime` - host, config, store, and read
   consistency coverage
 - Gate: `cargo test -p raft-runtime`
-- Source: `libs/raft-runtime/src/lib.rs`
-- Evidence: `cargo test -p raft-runtime`; libs/raft-runtime/src/lib.rs
+- Source: `crates/raft-runtime/src/lib.rs`
+- Evidence: `cargo test -p raft-runtime`; crates/raft-runtime/src/lib.rs
 
 ### Shared Peer mTLS Transport
 
@@ -48,9 +48,9 @@ compatible.
   identity, trust, expiry, and reload coverage
 - Gate: `cargo test -p raft-runtime`
 - Gate: `cargo test -p raft-runtime --test peer_mtls`
-- Source: `libs/raft-runtime/src/peer_transport.rs`
+- Source: `crates/raft-runtime/src/peer_transport.rs`
 - Evidence: `cargo test -p raft-runtime --test peer_mtls`;
-  libs/raft-runtime/src/peer_transport.rs
+  crates/raft-runtime/src/peer_transport.rs
 
 ### Committed Executor Fencing
 
@@ -67,9 +67,9 @@ own assignment keys, domain commands, capacity policy, and external effects.
   rejection
 - Gate: `cargo test -p raft-runtime`
 - Gate: `cargo test -p raft-runtime --test fenced_assignment`
-- Source: `libs/raft-runtime/src/fenced_assignment.rs`
+- Source: `crates/raft-runtime/src/fenced_assignment.rs`
 - Evidence: `cargo test -p raft-runtime --test fenced_assignment`;
-  libs/raft-runtime/src/fenced_assignment.rs
+  crates/raft-runtime/src/fenced_assignment.rs
 
 ### Durable Commit Recovery
 
@@ -90,6 +90,6 @@ writes so idle ticks do not create avoidable fsync pressure.
 - Gate: `cargo test -p raft-core -p raft-runtime`
 - Gate: `cargo test -p raft-runtime --test snapshot_at_index`
 - Gate: `cargo test -p raft-runtime --test snapshot_install_safety`
-- Source: `libs/raft-runtime/src/store.rs`,
-  `libs/raft-runtime/src/applied_index_store.rs`
+- Source: `crates/raft-runtime/src/store.rs`,
+  `crates/raft-runtime/src/applied_index_store.rs`
 - Evidence: raft-core/runtime restart, seed, and store tests

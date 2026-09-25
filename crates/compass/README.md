@@ -34,16 +34,16 @@ formats.
 - Surfaces: Rust API: `check_paths`, `check_paths_with_propagation`,
   `LintConfig`, `FileResult`, `CheckerRegistry`, `Checker`, `Diagnostic`,
   `Reporter`; Modules: `syntax`, `lint`, `format`, `output`
-- Gate — behavior: `cargo test -p cclab-compass` - configured parser, checker,
+- Gate — behavior: `cargo test -p compass` - configured parser, checker,
   diagnostic, and output smoke gate
-- Gate: `cargo test -p cclab-compass`
-- Source: `libs/compass/src/checker.rs`, `libs/compass/src/lint/mod.rs`,
-  `libs/compass/src/syntax/mod.rs`, `libs/compass/src/output/agent.rs`
+- Gate: `cargo test -p compass`
+- Source: `crates/compass/src/checker.rs`, `crates/compass/src/lint/mod.rs`,
+  `crates/compass/src/syntax/mod.rs`, `crates/compass/src/output/agent.rs`
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
-| Multi-language parser and checker dispatch contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/checker.rs; libs/compass/src/lint/mod.rs |
-| Agent diagnostic output contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/output/agent.rs; libs/compass/src/output/reporter.rs |
+| Multi-language parser and checker dispatch contract | epic | - | `cargo test -p compass`; crates/compass/src/checker.rs; crates/compass/src/lint/mod.rs |
+| Agent diagnostic output contract | epic | - | `cargo test -p compass`; crates/compass/src/output/agent.rs; crates/compass/src/output/reporter.rs |
 
 ### Semantic Navigation Search And Refactoring
 
@@ -56,18 +56,18 @@ PDG-style impact analysis, and structured refactoring operations.
   `SearchEngine`, `RefactoringRegistry`, `DeepTypeInferencer`,
   `PropagationPipeline`; Modules: `semantic`, `graph`, `search`,
   `type_inference`, `refactoring`, `outline`
-- Gate — behavior: `cargo test -p cclab-compass` - configured semantic, type
+- Gate — behavior: `cargo test -p compass` - configured semantic, type
   inference, search, and refactoring smoke gate
-- Gate: `cargo test -p cclab-compass`
-- Source: `libs/compass/src/check_pipeline.rs`,
-  `libs/compass/src/search/mod.rs`, `libs/compass/src/refactoring/mod.rs`,
-  `libs/compass/src/semantic/mod.rs`, `libs/compass/src/type_inference/mod.rs`
+- Gate: `cargo test -p compass`
+- Source: `crates/compass/src/check_pipeline.rs`,
+  `crates/compass/src/search/mod.rs`, `crates/compass/src/refactoring/mod.rs`,
+  `crates/compass/src/semantic/mod.rs`, `crates/compass/src/type_inference/mod.rs`
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
-| Symbol outline and propagated type query contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/check_pipeline.rs; libs/compass/src/outline.rs |
-| Semantic search and graph query contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/search/mod.rs; libs/compass/src/semantic/pdg/mod.rs |
-| Structured refactoring contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/refactoring/mod.rs; libs/compass/src/type_inference/refactoring.rs |
+| Symbol outline and propagated type query contract | epic | - | `cargo test -p compass`; crates/compass/src/check_pipeline.rs; crates/compass/src/outline.rs |
+| Semantic search and graph query contract | epic | - | `cargo test -p compass`; crates/compass/src/search/mod.rs; crates/compass/src/semantic/pdg/mod.rs |
+| Structured refactoring contract | epic | - | `cargo test -p compass`; crates/compass/src/refactoring/mod.rs; crates/compass/src/type_inference/refactoring.rs |
 
 ### Spec Parsing And Code Generation
 
@@ -79,16 +79,16 @@ traits and registry-backed generators for Python and Rust code targets.
 - Surfaces: Rust API: `GeneratorRegistry`, `CodeGenerator`, `GenContext`,
   `GeneratedCode`, `TechStack`, `StateMachineValidator`,
   `MermaidPlusGenerator`; Modules: `spec`, `gen`
-- Gate — behavior: `cargo test -p cclab-compass` - configured spec parser and
+- Gate — behavior: `cargo test -p compass` - configured spec parser and
   generator smoke gate
-- Gate: `cargo test -p cclab-compass`
-- Source: `libs/compass/src/spec/mod.rs`, `libs/compass/src/gen/mod.rs`,
-  `libs/compass/src/gen/registry.rs`
+- Gate: `cargo test -p compass`
+- Source: `crates/compass/src/spec/mod.rs`, `crates/compass/src/gen/mod.rs`,
+  `crates/compass/src/gen/registry.rs`
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
-| Spec parser and state-machine validation contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/spec/mod.rs; libs/compass/src/spec/statemachine/mod.rs |
-| Python and Rust generator registry contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/gen/mod.rs; libs/compass/src/gen/registry.rs |
+| Spec parser and state-machine validation contract | epic | - | `cargo test -p compass`; crates/compass/src/spec/mod.rs; crates/compass/src/spec/statemachine/mod.rs |
+| Python and Rust generator registry contract | epic | - | `cargo test -p compass`; crates/compass/src/gen/mod.rs; crates/compass/src/gen/registry.rs |
 
 ### Daemon Watch And Incremental Analysis
 
@@ -101,14 +101,14 @@ incremental analysis, and serve JSON-RPC code-intelligence requests.
   `RequestHandler`, `FileWatcher`, `WatchConfig`, `WatchEvent`,
   `IncrementalUpdateManager`, `DirtyFileTracker`, `DependencyGraph`,
   `WatchBridge`; Protocol: JSON-RPC over Unix socket
-- Gate — behavior: `cargo test -p cclab-compass` - configured daemon, watch,
+- Gate — behavior: `cargo test -p compass` - configured daemon, watch,
   and incremental update smoke gate
-- Gate: `cargo test -p cclab-compass`
-- Source: `libs/compass/src/server/mod.rs`,
-  `libs/compass/src/server/incremental.rs`,
-  `libs/compass/src/server/watch_bridge.rs`, `libs/compass/src/watch.rs`
+- Gate: `cargo test -p compass`
+- Source: `crates/compass/src/server/mod.rs`,
+  `crates/compass/src/server/incremental.rs`,
+  `crates/compass/src/server/watch_bridge.rs`, `crates/compass/src/watch.rs`
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
-| Argus daemon protocol and request handling contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/server/mod.rs; libs/compass/src/server/protocol.rs |
-| Watch bridge and incremental dirty-file contract | epic | - | `cargo test -p cclab-compass`; libs/compass/src/server/incremental.rs; libs/compass/src/server/watch_bridge.rs; libs/compass/src/watch.rs |
+| Argus daemon protocol and request handling contract | epic | - | `cargo test -p compass`; crates/compass/src/server/mod.rs; crates/compass/src/server/protocol.rs |
+| Watch bridge and incremental dirty-file contract | epic | - | `cargo test -p compass`; crates/compass/src/server/incremental.rs; crates/compass/src/server/watch_bridge.rs; crates/compass/src/watch.rs |

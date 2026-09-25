@@ -3,8 +3,8 @@
 //! # Why the first row spends zero ticks
 //!
 //! The item exists so a node can be drained without the group waiting out an
-//! election timeout. `libs/raft-core/src/lib.rs:45` sets `ELECTION_MIN` to 50
-//! ticks and `libs/raft-core/src/lib.rs:263` gives each node
+//! election timeout. `crates/raft-core/src/lib.rs:45` sets `ELECTION_MIN` to 50
+//! ticks and `crates/raft-core/src/lib.rs:263` gives each node
 //! `ELECTION_MIN + id`, so "faster than the timeout" is anything under 50. That
 //! bound is satisfiable by an implementation that merely shortens the target's
 //! timeout and waits — which is the behaviour the group already has, reached by
@@ -25,7 +25,7 @@
 //!
 //! # Why the refusal rows read the target's own log
 //!
-//! `learner_matched` (`libs/raft-core/src/lib.rs:579`) answers `None` for a
+//! `learner_matched` (`crates/raft-core/src/lib.rs:579`) answers `None` for a
 //! voter, so a row has no public accessor for a leader's `match_index` of a
 //! voter and cannot pin the refused index against the leader's own bookkeeping.
 //! It can pin it against the target: a peer that was reachable through `settle`

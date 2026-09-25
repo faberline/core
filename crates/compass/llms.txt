@@ -6,7 +6,7 @@
 ## Tech Design
 
 - [Tech Design](tech-design): implementation source of truth.
-- Validate: `aw td check libs/compass/tech-design`.
+- Validate: `aw td check crates/compass/tech-design`.
 
 ## Capability Map
 
@@ -20,7 +20,7 @@
 
 ## Commands
 
-- Test: `cargo test -p cclab-compass`.
+- Test: `cargo test -p compass`.
 
 ## Root Artifacts
 

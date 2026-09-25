@@ -21,9 +21,9 @@ UI runtimes and renderers can exchange deterministic renderer-neutral surface
 trees without depending on a specific frontend backend.
 
 - Root WI: none; this capability predates the tracker.
-- Surfaces: Rust API: `cclab_surface`.
-- Gate — behavior: `cargo test -p cclab-surface` - surface model and snapshot
+- Surfaces: Rust API: `surface`.
+- Gate — behavior: `cargo test -p surface` - surface model and snapshot
   coverage
-- Gate: `cargo test -p cclab-surface`
-- Source: `libs/surface/src/lib.rs`
-- Evidence: `cargo test -p cclab-surface`; libs/surface/src/lib.rs
+- Gate: `cargo test -p surface`
+- Source: `crates/surface/src/lib.rs`
+- Evidence: `cargo test -p surface`; crates/surface/src/lib.rs

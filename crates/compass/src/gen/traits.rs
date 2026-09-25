@@ -303,7 +303,7 @@ impl GeneratedCode {
 /// unified SpecIR-based `generate` / `can_generate` interface.
 ///
 /// The SpecIR-aware methods accept `serde_json::Value` to avoid a circular
-/// dependency between cclab-compass and sdd (the generate module now lives
+/// dependency between compass and sdd (the generate module now lives
 /// in sdd). Typed SpecIR dispatch is provided by `sdd::generate::generators`.
 pub trait CodeGenerator {
     /// Generator name for display and routing.

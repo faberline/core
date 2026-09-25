@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/compass/external-contracts/behavior/argus-daemon-protocol-and-request-handling-contract.md#argus-daemon-protocol-and-request-handling-contract
+// SPEC-MANAGED: crates/compass/external-contracts/behavior/argus-daemon-protocol-and-request-handling-contract.md#argus-daemon-protocol-and-request-handling-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec argus-daemon-protocol-and-request-handling-contract
@@ -7,7 +7,7 @@
 // @contract argus-daemon-protocol-and-request-handling-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-compass
+// @command cargo test -p compass
 // AW-EC-END
 
 // Contract: Argus daemon protocol and request handling contract remains covered by the configured Compass library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn argus_daemon_protocol_and_request_handling_contract() {
-    let command = "cargo test -p cclab-compass";
+    let command = "cargo test -p compass";
     let id = "argus-daemon-protocol-and-request-handling-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

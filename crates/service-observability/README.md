@@ -275,7 +275,7 @@ EC Dimensions:
 | Exact CPU-time parsing | change | - | implemented | verified | smoke | `cargo test -p service-observability --lib`; the two-field, three-field, and day-prefixed shapes all convert to exact seconds, so a long-running soak reports real CPU rather than a shape the parser happened to accept |
 | Errors instead of zero samples | change | - | implemented | verified | smoke | `cargo test -p service-observability --lib`; a missing, non-numeric, or unrecognized field is an error, so a failed sample cannot be read as an idle process and quietly pass a resource budget |
 | Saturating unit conversion | change | - | implemented | verified | smoke | `cargo test -p service-observability --lib`; the KiB-to-byte multiplication saturates, so an implausible reading clamps at the maximum instead of wrapping to a small number |
-| Soak runner parses | change | - | implemented | verified | smoke | `bash -n libs/service-observability/scripts/soak-metrics.sh`; the shared soak runner that consumes these samples is syntax-checked, so a broken runner fails here rather than part-way through a long soak |
+| Soak runner parses | change | - | implemented | verified | smoke | `bash -n crates/service-observability/scripts/soak-metrics.sh`; the shared soak runner that consumes these samples is syntax-checked, so a broken runner fails here rather than part-way through a long soak |
 
 #### Physical Filesystem Usage
 

@@ -6,7 +6,7 @@
 ## Tech Design
 
 - [Tech Design](tech-design): implementation source of truth.
-- Validate: `aw td check libs/claim-token/tech-design`.
+- Validate: `aw td check crates/claim-token/tech-design`.
 
 ## Capability Map
 

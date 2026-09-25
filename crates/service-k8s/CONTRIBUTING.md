@@ -2,7 +2,7 @@
 
 ## Brief
 
-Use this guide to change `libs/service-k8s`. The [README](README.md) owns the
+Use this guide to change `crates/service-k8s`. The [README](README.md) owns the
 library promises. The root [CONTRIBUTING.md](../../CONTRIBUTING.md) owns
 repository-wide authoring rules.
 
@@ -14,10 +14,10 @@ Read these sources in order for the part you change:
    gates.
 2. [STATUS.md](STATUS.md) for current support and limits.
 3. [ROADMAP.md](ROADMAP.md) for shared future outcomes and non-goals.
-4. `libs/service-k8s/src/lib.rs` for the exported Rust surface.
-5. The owning semantic module under `libs/service-k8s/src/` and its colocated
+4. `crates/service-k8s/src/lib.rs` for the exported Rust surface.
+5. The owning semantic module under `crates/service-k8s/src/` and its colocated
    tests.
-6. `libs/service-k8s/e2e/` and `Cargo.toml` for external behavior and the test
+6. `crates/service-k8s/e2e/` and `Cargo.toml` for external behavior and the test
    target inventory.
 
 For identity work, read `render/projected_token.rs` and `render/rbac.rs`
@@ -27,7 +27,7 @@ RBAC object shape, not an app's permission meaning.
 ## Local Workflow
 
 This library has no app phase ladder. Make one bounded library change with its
-test. Put externally observable behavior in `libs/service-k8s/e2e/` and declare
+test. Put externally observable behavior in `crates/service-k8s/e2e/` and declare
 the target in `Cargo.toml`. Keep internal rules in colocated unit tests.
 
 Keep shared mechanisms service-neutral. A caller supplies its CRD schema,
@@ -51,7 +51,7 @@ the deterministic check.
 ```bash
 python3 scripts/meta/test_readme_contract.py
 python3 scripts/meta/test_project_docs_contract.py
-python3 scripts/meta/project_docs_contract.py check libs/service-k8s --format json
+python3 scripts/meta/project_docs_contract.py check crates/service-k8s --format json
 ```
 
 ### Library behavior

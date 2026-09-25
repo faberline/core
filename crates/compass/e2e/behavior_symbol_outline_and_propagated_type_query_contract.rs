@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/compass/external-contracts/behavior/symbol-outline-and-propagated-type-query-contract.md#symbol-outline-and-propagated-type-query-contract
+// SPEC-MANAGED: crates/compass/external-contracts/behavior/symbol-outline-and-propagated-type-query-contract.md#symbol-outline-and-propagated-type-query-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec symbol-outline-and-propagated-type-query-contract
@@ -7,7 +7,7 @@
 // @contract symbol-outline-and-propagated-type-query-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-compass
+// @command cargo test -p compass
 // AW-EC-END
 
 // Contract: Symbol outline and propagated type query contract remains covered by the configured Compass library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn symbol_outline_and_propagated_type_query_contract() {
-    let command = "cargo test -p cclab-compass";
+    let command = "cargo test -p compass";
     let id = "symbol-outline-and-propagated-type-query-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

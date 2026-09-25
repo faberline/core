@@ -18,11 +18,11 @@ fill_sections: [schema, changes]
 ```yaml
 semantic_domain:
   key: "ui-runtime"
-  source_group: "libs/ui-runtime"
+  source_group: "crates/ui-runtime"
   coverage_kind: semantic
   evidence:
     source_units:
-- path: "libs/ui-runtime/Cargo.toml"
+- path: "crates/ui-runtime/Cargo.toml"
   language: "toml"
   ownership_state: "handwrite"
   generator_primitives: ["source_unit"]
@@ -31,8 +31,8 @@ semantic_domain:
     ecosystem: "toml"
     role: "manifest"
     section_type: "schema"
-    domain: "libs/ui-runtime"
-- path: "libs/ui-runtime/src/lib.rs"
+    domain: "crates/ui-runtime"
+- path: "crates/ui-runtime/src/lib.rs"
   language: "rust"
   ownership_state: "handwrite"
   generator_primitives: ["source_unit"]
@@ -41,8 +41,8 @@ semantic_domain:
     ecosystem: "rust"
     role: "source"
     section_type: "schema"
-    domain: "libs/ui-runtime"
-- path: "libs/ui-runtime/llms.txt"
+    domain: "crates/ui-runtime"
+- path: "crates/ui-runtime/llms.txt"
   language: "llms"
   ownership_state: "codegen"
   generator_primitives: ["project_root_llms"]
@@ -51,7 +51,7 @@ semantic_domain:
     ecosystem: "llms"
     role: "source"
     section_type: "schema"
-    domain: "libs/ui-runtime"
+    domain: "crates/ui-runtime"
 ```
 
 ## Changes
@@ -60,7 +60,7 @@ semantic_domain:
 ```yaml
 coverage_kind: semantic
 changes:
-- path: "libs/ui-runtime/Cargo.toml"
+- path: "crates/ui-runtime/Cargo.toml"
   action: modify
   section: schema
   description: |
@@ -68,7 +68,7 @@ changes:
   impl_mode: hand-written
   replaces:
     - "<handwrite-tracker:libs-ui-runtime-cargo-toml>"
-- path: "libs/ui-runtime/src/lib.rs"
+- path: "crates/ui-runtime/src/lib.rs"
   action: modify
   section: schema
   description: |
@@ -76,7 +76,7 @@ changes:
   impl_mode: hand-written
   replaces:
     - "<handwrite-tracker:libs-ui-runtime-src-lib-rs>"
-- path: "libs/ui-runtime/llms.txt"
+- path: "crates/ui-runtime/llms.txt"
   action: modify
   section: schema
   description: |

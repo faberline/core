@@ -1,6 +1,6 @@
-// SPEC-MANAGED: libs/surface/tech-design/semantic/source/libs-surface-tests-snapshot-rs.md#rust-source-unit
+// SPEC-MANAGED: crates/surface/tech-design/semantic/source/libs-surface-tests-snapshot-rs.md#rust-source-unit
 // CODEGEN-BEGIN
-use cclab_surface::{Element, Props, SurfaceRect};
+use surface::{Element, Props, SurfaceRect};
 
 #[test]
 fn snapshot_serializes_stable_structural_tree() {

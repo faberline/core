@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/compass/external-contracts/behavior/multi-language-parser-and-checker-dispatch-contract.md#multi-language-parser-and-checker-dispatch-contract
+// SPEC-MANAGED: crates/compass/external-contracts/behavior/multi-language-parser-and-checker-dispatch-contract.md#multi-language-parser-and-checker-dispatch-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec multi-language-parser-and-checker-dispatch-contract
@@ -7,7 +7,7 @@
 // @contract multi-language-parser-and-checker-dispatch-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-compass
+// @command cargo test -p compass
 // AW-EC-END
 
 // Contract: Multi-language parser and checker dispatch contract remains covered by the configured Compass library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn multi_language_parser_and_checker_dispatch_contract() {
-    let command = "cargo test -p cclab-compass";
+    let command = "cargo test -p compass";
     let id = "multi-language-parser-and-checker-dispatch-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

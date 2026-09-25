@@ -1,6 +1,6 @@
 //! Source ownership and specification header integrity (#3592).
 //!
-//! Verifies that every `SPEC-MANAGED` header in `libs/raft-core` points to a
+//! Verifies that every `SPEC-MANAGED` header in `crates/raft-core` points to a
 //! path that actually exists in the repository. A dangling header pointing to a
 //! non-existent path fails the test and reports the file and line number.
 
@@ -11,7 +11,7 @@ fn repository_root() -> PathBuf {
     let repo_root = manifest_dir.parent().and_then(|p| p.parent()).expect(
         "CARGO_MANIFEST_DIR must have at least two parent directories to reach repository root",
     );
-    let check_path = repo_root.join("libs/raft-core/Cargo.toml");
+    let check_path = repo_root.join("crates/raft-core/Cargo.toml");
     assert!(
         check_path.is_file(),
         "Failed to resolve repository root from CARGO_MANIFEST_DIR ({}): expected {} to exist",
@@ -78,7 +78,7 @@ fn spec_managed_headers_name_existing_paths() {
 
     if !dangling.is_empty() {
         let mut message = format!(
-            "Found {} dangling SPEC-MANAGED header(s) in libs/raft-core:\n",
+            "Found {} dangling SPEC-MANAGED header(s) in crates/raft-core:\n",
             dangling.len()
         );
         for (file, line, target) in &dangling {

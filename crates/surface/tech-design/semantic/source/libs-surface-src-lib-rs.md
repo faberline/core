@@ -1,6 +1,6 @@
 ---
 id: libs-surface-src-lib-rs
-summary: Lossless rust-source-unit coverage for `libs/surface/src/lib.rs`.
+summary: Lossless rust-source-unit coverage for `crates/surface/src/lib.rs`.
 capability_refs:
   - id: renderer-neutral-ui-surface-model
     role: primary
@@ -10,41 +10,41 @@ capability_refs:
 fill_sections: [overview, source, changes]
 ---
 
-# Standardized libs/surface/src/lib.rs
+# Standardized crates/surface/src/lib.rs
 
 ## Overview
 <!-- type: overview lang: markdown -->
 
-Public API manifest for `libs/surface/src/lib.rs` captured during libs codegen standardization.
+Public API manifest for `crates/surface/src/lib.rs` captured during libs codegen standardization.
 
 ### Symbols
 
 | Name | Target | Kind | Visibility | Line | Signature |
 |------|--------|------|------------|------|-----------|
-| `Element` | libs/surface/src/lib.rs | enum | pub | 14 | pub enum Element { |
-| `intrinsic` | libs/surface/src/lib.rs | function | pub | 32 | pub fn intrinsic(tag: &'static str, props: Props, children: Vec<Element>) -> Self { |
-| `text` | libs/surface/src/lib.rs | function | pub | 40 | pub fn text(s: impl Into<String>) -> Self { |
-| `from_number` | libs/surface/src/lib.rs | function | pub | 44 | pub fn from_number<N: std::fmt::Display>(n: N) -> Self { |
-| `find_on_click` | libs/surface/src/lib.rs | function | pub | 49 | pub fn find_on_click(&self, target_id: &str) -> Option<Callback<()>> { |
-| `text_content` | libs/surface/src/lib.rs | function | pub | 65 | pub fn text_content(&self) -> String { |
-| `surface_snapshot` | libs/surface/src/lib.rs | function | pub | 76 | pub fn surface_snapshot(&self) -> SurfaceSnapshot { |
-| `Component` | libs/surface/src/lib.rs | struct | pub | 83 | pub struct Component { |
-| `ComponentFn` | libs/surface/src/lib.rs | type | pub | 89 | pub type ComponentFn = fn(&Rc<dyn std::any::Any>) -> Element; |
-| `Props` | libs/surface/src/lib.rs | struct | pub | 93 | pub struct Props { |
-| `Callback` | libs/surface/src/lib.rs | struct | pub | 111 | pub struct Callback<P: Clone>(Rc<dyn Fn(P)>); |
-| `new` | libs/surface/src/lib.rs | function | pub | 120 | pub fn new<F: Fn(P) + 'static>(f: F) -> Self { |
-| `call` | libs/surface/src/lib.rs | function | pub | 124 | pub fn call(&self, payload: P) { |
-| `SurfaceSnapshot` | libs/surface/src/lib.rs | struct | pub | 131 | pub struct SurfaceSnapshot { |
-| `SCHEMA_VERSION` | libs/surface/src/lib.rs | const | pub | 137 | pub const SCHEMA_VERSION: u32 = 1; |
-| `from_element` | libs/surface/src/lib.rs | function | pub | 139 | pub fn from_element(root: &Element) -> Self { |
-| `get` | libs/surface/src/lib.rs | function | pub | 148 | pub fn get(&self, node_id: &str) -> Option<&SurfaceNode> { |
-| `find_by_semantic_id` | libs/surface/src/lib.rs | function | pub | 152 | pub fn find_by_semantic_id(&self, semantic_id: &str) -> Option<&SurfaceNode> { |
-| `find_by_role` | libs/surface/src/lib.rs | function | pub | 158 | pub fn find_by_role<'a>(&'a self, role: &str) -> Vec<&'a SurfaceNode> { |
-| `set_bounds` | libs/surface/src/lib.rs | function | pub | 172 | pub fn set_bounds(&mut self, node_id: &str, bounds: SurfaceRect) -> bool { |
-| `SurfaceNode` | libs/surface/src/lib.rs | struct | pub | 182 | pub struct SurfaceNode { |
-| `SurfaceNodeKind` | libs/surface/src/lib.rs | enum | pub | 201 | pub enum SurfaceNodeKind { |
-| `SurfaceProps` | libs/surface/src/lib.rs | struct | pub | 208 | pub struct SurfaceProps { |
-| `SurfaceRect` | libs/surface/src/lib.rs | struct | pub | 245 | pub struct SurfaceRect { |
+| `Element` | crates/surface/src/lib.rs | enum | pub | 14 | pub enum Element { |
+| `intrinsic` | crates/surface/src/lib.rs | function | pub | 32 | pub fn intrinsic(tag: &'static str, props: Props, children: Vec<Element>) -> Self { |
+| `text` | crates/surface/src/lib.rs | function | pub | 40 | pub fn text(s: impl Into<String>) -> Self { |
+| `from_number` | crates/surface/src/lib.rs | function | pub | 44 | pub fn from_number<N: std::fmt::Display>(n: N) -> Self { |
+| `find_on_click` | crates/surface/src/lib.rs | function | pub | 49 | pub fn find_on_click(&self, target_id: &str) -> Option<Callback<()>> { |
+| `text_content` | crates/surface/src/lib.rs | function | pub | 65 | pub fn text_content(&self) -> String { |
+| `surface_snapshot` | crates/surface/src/lib.rs | function | pub | 76 | pub fn surface_snapshot(&self) -> SurfaceSnapshot { |
+| `Component` | crates/surface/src/lib.rs | struct | pub | 83 | pub struct Component { |
+| `ComponentFn` | crates/surface/src/lib.rs | type | pub | 89 | pub type ComponentFn = fn(&Rc<dyn std::any::Any>) -> Element; |
+| `Props` | crates/surface/src/lib.rs | struct | pub | 93 | pub struct Props { |
+| `Callback` | crates/surface/src/lib.rs | struct | pub | 111 | pub struct Callback<P: Clone>(Rc<dyn Fn(P)>); |
+| `new` | crates/surface/src/lib.rs | function | pub | 120 | pub fn new<F: Fn(P) + 'static>(f: F) -> Self { |
+| `call` | crates/surface/src/lib.rs | function | pub | 124 | pub fn call(&self, payload: P) { |
+| `SurfaceSnapshot` | crates/surface/src/lib.rs | struct | pub | 131 | pub struct SurfaceSnapshot { |
+| `SCHEMA_VERSION` | crates/surface/src/lib.rs | const | pub | 137 | pub const SCHEMA_VERSION: u32 = 1; |
+| `from_element` | crates/surface/src/lib.rs | function | pub | 139 | pub fn from_element(root: &Element) -> Self { |
+| `get` | crates/surface/src/lib.rs | function | pub | 148 | pub fn get(&self, node_id: &str) -> Option<&SurfaceNode> { |
+| `find_by_semantic_id` | crates/surface/src/lib.rs | function | pub | 152 | pub fn find_by_semantic_id(&self, semantic_id: &str) -> Option<&SurfaceNode> { |
+| `find_by_role` | crates/surface/src/lib.rs | function | pub | 158 | pub fn find_by_role<'a>(&'a self, role: &str) -> Vec<&'a SurfaceNode> { |
+| `set_bounds` | crates/surface/src/lib.rs | function | pub | 172 | pub fn set_bounds(&mut self, node_id: &str, bounds: SurfaceRect) -> bool { |
+| `SurfaceNode` | crates/surface/src/lib.rs | struct | pub | 182 | pub struct SurfaceNode { |
+| `SurfaceNodeKind` | crates/surface/src/lib.rs | enum | pub | 201 | pub enum SurfaceNodeKind { |
+| `SurfaceProps` | crates/surface/src/lib.rs | struct | pub | 208 | pub struct SurfaceProps { |
+| `SurfaceRect` | crates/surface/src/lib.rs | struct | pub | 245 | pub struct SurfaceRect { |
 
 
 ## Source
@@ -53,7 +53,7 @@ Public API manifest for `libs/surface/src/lib.rs` captured during libs codegen s
 ````rust
 //! Renderer-neutral UI surface primitives.
 //!
-//! `cclab-surface` is deliberately below any renderer or framework runtime. It
+//! `surface` is deliberately below any renderer or framework runtime. It
 //! owns the UI element tree shape that Jet WASM TSX/Vue/etc. adapters produce,
 //! plus a serializable snapshot form that native desktop readers, renderers, tests,
 //! and parity comparators can inspect without a browser or toolkit-private tree.
@@ -466,10 +466,10 @@ mod tests {
 ```yaml
 coverage_kind: semantic
 changes:
-  - path: "libs/surface/src/lib.rs"
+  - path: "crates/surface/src/lib.rs"
     action: modify
     section: rust-source-unit
     impl_mode: codegen
     description: |
-      rust-source-unit (td_ast) source for `libs/surface/src/lib.rs` captured during libs codegen standardization.
+      rust-source-unit (td_ast) source for `crates/surface/src/lib.rs` captured during libs codegen standardization.
 ```

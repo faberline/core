@@ -79,12 +79,12 @@ Event, or log.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p service-auth --no-deps` |
-| HTTP middleware and verifier traits | `libs/service-auth/src/middleware.rs`, `async_verifier.rs`, and `verifier.rs` |
-| Kubernetes delegated auth | `libs/service-auth/src/k8s/delegated.rs`, `review.rs`, and `kube_backend.rs` |
-| Projected token behavior | `libs/service-auth/src/k8s/projected.rs` |
+| HTTP middleware and verifier traits | `crates/service-auth/src/middleware.rs`, `async_verifier.rs`, and `verifier.rs` |
+| Kubernetes delegated auth | `crates/service-auth/src/k8s/delegated.rs`, `review.rs`, and `kube_backend.rs` |
+| Projected token behavior | `crates/service-auth/src/k8s/projected.rs` |
 | Planned portable opaque-token contract | [ROADMAP.md](ROADMAP.md#portable-projected-token-contract) |
-| TokenRequest and developer proxy | `libs/service-auth/src/k8s/token_request.rs` and `loopback_proxy.rs` |
-| Redaction and reload behavior | `libs/service-auth/src/reload.rs` |
+| TokenRequest and developer proxy | `crates/service-auth/src/k8s/token_request.rs` and `loopback_proxy.rs` |
+| Redaction and reload behavior | `crates/service-auth/src/reload.rs` |
 | Executable behavior | `cargo test -p service-auth` |
 
 ## Capabilities
@@ -96,11 +96,11 @@ contribution.
 
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
-| HTTP request authentication | `http-request-authentication` | Apply one reusable bearer-auth middleware while the app keeps its domain policy. | `libs/service-auth` |
-| Kubernetes delegated authorization | `kubernetes-delegated-authorization` | Validate a ServiceAccount identity and ask Kubernetes whether it may use an app-owned resource. | `libs/service-auth`, `external:kubernetes` |
-| Projected workload token reading | `projected-workload-token-reading` | Read a rotated audience-bound token from a file without leaking the credential. | `libs/service-auth`, `external:kubernetes` |
-| TokenRequest and loopback access | `tokenrequest-loopback-access` | Mint and refresh a short-lived ServiceAccount token for a caller that Kubernetes RBAC allows. | `libs/service-auth`, `external:kubernetes` |
-| Credential reload and redacted audit | `credential-reload-redacted-audit` | Replace validated static credentials and report auth decisions without recording bearer material. | `libs/service-auth` |
+| HTTP request authentication | `http-request-authentication` | Apply one reusable bearer-auth middleware while the app keeps its domain policy. | `crates/service-auth` |
+| Kubernetes delegated authorization | `kubernetes-delegated-authorization` | Validate a ServiceAccount identity and ask Kubernetes whether it may use an app-owned resource. | `crates/service-auth`, `external:kubernetes` |
+| Projected workload token reading | `projected-workload-token-reading` | Read a rotated audience-bound token from a file without leaking the credential. | `crates/service-auth`, `external:kubernetes` |
+| TokenRequest and loopback access | `tokenrequest-loopback-access` | Mint and refresh a short-lived ServiceAccount token for a caller that Kubernetes RBAC allows. | `crates/service-auth`, `external:kubernetes` |
+| Credential reload and redacted audit | `credential-reload-redacted-audit` | Replace validated static credentials and report auth decisions without recording bearer material. | `crates/service-auth` |
 
 ### HTTP request authentication
 
@@ -108,7 +108,7 @@ contribution.
 - Promise: Extract a bearer credential, call an injected verifier, reject a
   failed decision, and attach the accepted principal to the request.
 - Sources:
-  - [`libs/service-auth`](./) provides bearer parsing, synchronous and
+  - [`crates/service-auth`](./) provides bearer parsing, synchronous and
     asynchronous verifier contracts, middleware, roles, and stable errors.
 - Gate: `cargo test -p service-auth`
 
@@ -119,7 +119,7 @@ contribution.
   service-audience or Kubernetes-default profile, and require an explicit
   SubjectAccessReview allowance for app-supplied resource attributes.
 - Sources:
-  - [`libs/service-auth`](./) provides TokenReview and SubjectAccessReview
+  - [`crates/service-auth`](./) provides TokenReview and SubjectAccessReview
     clients, strict ServiceAccount principal parsing, caches, metrics, and
     fail-closed response validation.
   - `external:kubernetes` validates the token, resolves the ServiceAccount
@@ -132,7 +132,7 @@ contribution.
 - Promise: Read the current projected token for each call and reject an
   unreadable, expired, wrong-audience, or malformed credential.
 - Sources:
-  - [`libs/service-auth`](./) provides the file reader, expiration and audience
+  - [`crates/service-auth`](./) provides the file reader, expiration and audience
     checks, typed errors, and credential-free formatting.
   - `external:kubernetes` issues and rotates the projected ServiceAccount token
     through the kubelet.
@@ -144,7 +144,7 @@ contribution.
 - Promise: Use kubeconfig identity to request and refresh a short-lived,
   audience-bound ServiceAccount token and present it through a local proxy.
 - Sources:
-  - [`libs/service-auth`](./) provides the target validation, Kubernetes
+  - [`crates/service-auth`](./) provides the target validation, Kubernetes
     TokenRequest client, refresh clock, token source, and loopback proxy.
   - `external:kubernetes` authenticates the human caller, authorizes the
     TokenRequest, and issues the ServiceAccount token.
@@ -156,7 +156,7 @@ contribution.
 - Promise: Adopt only a validated replacement registry and emit decision events
   that never contain raw credentials.
 - Sources:
-  - [`libs/service-auth`](./) provides atomic last-known-good replacement,
+  - [`crates/service-auth`](./) provides atomic last-known-good replacement,
     redacted event types, event sinks, and refusal tests.
 - Gate: `cargo test -p service-auth`
 

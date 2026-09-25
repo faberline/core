@@ -28,9 +28,9 @@ validated conversion to obtain the tagged runtime `BackupPolicy`.
 - Gate — behavior: `cargo test -p service-backup` - backup policy, sink,
   source, and runner coverage
 - Gate: `cargo test -p service-backup`
-- Source: `libs/service-backup/src/lib.rs`
+- Source: `crates/service-backup/src/lib.rs`
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
-| shared-service-backup-contract | epic | - | `cargo test -p service-backup`; libs/service-backup/src/lib.rs |
+| shared-service-backup-contract | epic | - | `cargo test -p service-backup`; crates/service-backup/src/lib.rs |
 | crd-safe-scheduled-backup-policy | change | #1778 | `cargo test -p service-backup`; operator schema/render suites for Lumen, Keep, and Relay |

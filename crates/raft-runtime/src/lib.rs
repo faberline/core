@@ -1,7 +1,7 @@
 // CODEGEN-BEGIN
 //! `raft-runtime` — the ecosystem's shared raft driver.
 //!
-//! `libs/raft-core` is the step-driven consensus core; this crate is the **host**
+//! `crates/raft-core` is the step-driven consensus core; this crate is the **host**
 //! that drives it for a [`RaftStateMachine`]: a tick/pump loop, the h2c peer
 //! transport (Vote / Append / InstallSnapshot), the single apply loop, snapshot
 //! plus log compaction, a read-your-write [`RaftHost::propose`], and a peer

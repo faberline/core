@@ -16,7 +16,7 @@ e2e_tests:
     claim_id: renderer-neutral-component-runtime-contract
     contract_id: renderer-neutral-component-runtime-contract
     category: behavior
-    command: "cargo test -p cclab-ui-runtime"
+    command: "cargo test -p ui-runtime"
     assertions:
       - "Renderer-Neutral Component Runtime public Rust API behavior remains covered by the configured library test suite."
       - "The library contract stays usable through its documented README capability surface."

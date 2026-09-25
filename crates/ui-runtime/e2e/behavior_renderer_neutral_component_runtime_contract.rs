@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/ui-runtime/external-contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract
+// SPEC-MANAGED: crates/ui-runtime/external-contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec renderer-neutral-component-runtime-contract
@@ -7,7 +7,7 @@
 // @contract renderer-neutral-component-runtime-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-ui-runtime
+// @command cargo test -p ui-runtime
 // AW-EC-END
 
 // Contract: Renderer-Neutral Component Runtime public Rust API behavior remains covered by the configured library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn renderer_neutral_component_runtime_contract() {
-    let command = "cargo test -p cclab-ui-runtime";
+    let command = "cargo test -p ui-runtime";
     let id = "renderer-neutral-component-runtime-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

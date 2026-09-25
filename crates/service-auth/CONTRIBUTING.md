@@ -2,7 +2,7 @@
 
 ## Brief
 
-Use this guide to change `libs/service-auth`. The [README](README.md) owns the
+Use this guide to change `crates/service-auth`. The [README](README.md) owns the
 library promises. The root [CONTRIBUTING.md](../../CONTRIBUTING.md) owns
 repository-wide authoring rules.
 
@@ -14,8 +14,8 @@ Read these sources in order for the part you change:
    gates.
 2. [STATUS.md](STATUS.md) for current support and limits.
 3. [ROADMAP.md](ROADMAP.md) for future outcomes and non-goals.
-4. `libs/service-auth/src/lib.rs` and the owning module under
-   `libs/service-auth/src/` for the Rust contract.
+4. `crates/service-auth/src/lib.rs` and the owning module under
+   `crates/service-auth/src/` for the Rust contract.
 5. Colocated tests for review, failure, rotation, and redaction behavior.
 
 ## Local Workflow
@@ -42,7 +42,7 @@ the deterministic check.
 ```bash
 python3 scripts/meta/test_readme_contract.py
 python3 scripts/meta/test_project_docs_contract.py
-python3 scripts/meta/project_docs_contract.py check libs/service-auth --format json
+python3 scripts/meta/project_docs_contract.py check crates/service-auth --format json
 ```
 
 ### Library behavior

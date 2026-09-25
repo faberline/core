@@ -1,0 +1,57 @@
+[workspace]
+resolver = "2"
+members = ["crates/*"]
+exclude = ["vendor/jieba-rs"]
+
+[workspace.package]
+version = "0.4.13"
+authors = ["Chris Cheng <chris.cheng.c4@gmail.com>"]
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/faberline/core"
+
+[workspace.dependencies]
+tokio = { version = "1.40", features = ["full"] }
+futures = "0.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+serde_yaml = "0.9"
+anyhow = "1.0"
+thiserror = "2.0"
+reqwest = { version = "0.12", default-features = false, features = ["charset", "http2", "system-proxy", "rustls-tls-native-roots", "json", "cookies", "gzip", "brotli", "multipart", "stream"] }
+http = "1.2"
+url = "2.5"
+bytes = "1.9"
+axum = { version = "0.8", features = ["ws"] }
+tower = "0.5"
+tower-http = { version = "0.5", features = ["cors", "compression-gzip", "trace"] }
+utoipa = "4"
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+regex = "1.11"
+rayon = "1.10"
+walkdir = "2.5"
+semver = "1.0"
+jwalk = "0.8"
+base64 = "0.22"
+jsonwebtoken = "9"
+urlencoding = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+# Keep workspace code at opt-level 0 for fast incremental builds, but compile
+# dependencies optimized.
+[profile.dev.package."*"]
+opt-level = 2
+
+# Preserve jieba-rs 0.7.4 cuts while allowing Lumen to store the no-HMM route on disk.
+# Consumers that depend on index-text must carry the same [patch] in their own
+# top-level workspace; Cargo only applies patches from the root workspace.
+[patch.crates-io]
+jieba-rs = { path = "vendor/jieba-rs" }

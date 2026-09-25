@@ -583,16 +583,16 @@ A service is not "done" until it satisfies every row:
 | Dimension | Requirement | Reference / gotcha |
 |-----------|-------------|--------------------|
 | **Shape** | Workspace member that is **both `lib` and `bin`** — embeddable as a crate, runnable as a server. Metadata via `version/edition/authors/license = .workspace`. | every service `Cargo.toml` |
-| **Transport** | HTTP/2 cleartext (**h2c**) **+** HTTP/1.1 on **one port**, with an OpenAPI surface (`utoipa`). | Compose **`libs/service-http`** and **`libs/transport-h2c`** — built on `hyper-util` `auto::Builder`, **not `axum::serve`** (HTTP/1-only). The same crate's client side (`h2c_client`/`H2cPool`) is the in-tree client. |
-| **Standard endpoints** | The same operational surface on the one port: **`/healthz`** (liveness), **`/readyz`** (readiness), **`/metrics`** (Prometheus), **`/openapi.json`** (machine OpenAPI), **`/docs`** (Swagger UI). Probes + scrape **depend** on these, so they stay auth-exempt and always-on. | Prefer **`libs/service-http`** standard probe/admin route helpers. `lumen` is the reference for the full surface. The contract is reachable three ways — **`<cli> spec`** (offline) ≡ **`/openapi.json`** (served) ≡ **`/docs`** (browsable) — one OpenAPI, three access paths. |
-| **Observability / trace context** | Every request is traced and correlatable with zero extra infrastructure: the shared trace layer **accepts W3C version-00 `traceparent`** (strictly validated — invalid input is treated as absent) and **generates a fresh local root context when none arrives**; every request span carries `trace_id`/`span_id`/`parent_span_id`/`trace_flags`, and those fields flow into the structured stdout schema (`axiom.service.log.v1`) that the sift collector ingests, so cross-service log correlation works even without a trace exporter. The `otlp` feature upgrades the same context to full OpenTelemetry export. Per-op request counters/latency are served on `/metrics`. | Compose **`libs/service-http`** `trace_layer()` (`CorrelatingMakeSpan` + `request_trace_context`) — never a hand-rolled span/correlation layer. Planned at the same seam: response `Server-Timing` (#2490) and outbound `traceparent` injection for service-to-service clients. A capability a service gets from this shell belongs in that service's Observability capability row — undocumented shared behavior is undiscoverable behavior. |
-| **Auth** | Every service uses the same bearer-token shape: server env `<SVC>_AUTH=off|required` plus `<SVC>_TOKEN_REGISTRY_FILE=/var/run/secrets/<svc>/token-registry.json`; clients use `<SVC>_URL` + `<SVC>_TOKEN` and send `Authorization: Bearer <token>`. | Compose **`libs/service-auth`** for middleware and **`libs/claim-token`** for signed-token verification when needed. In k8s/cloud, the registry file is mounted from a Kubernetes Secret, CSI Secret Store, or cloud Secret Manager sync. Do not add one-off auth headers, per-service token env names, or inline server token lists as the production path. |
-| **OpenAPI client codegen** | Generate typed clients from the service's **own** OpenAPI via **`libs/openapi-codegen`** (`openapi-codegen`) — **never** hand-rolled or an external tool. Expose it on the CLI: `<cli> spec gen --lang ts\|py\|rust --out <dir>`. Adopters get a typed client with **no external codegen step**. | `lumen spec gen` is the reference; the polyglot core (ts/py/rust) was extracted so any CLI composes it. |
-| **Durability / ack boundary** | **Mandatory for the StatefulSet profile:** an accepted mutation to service-owned state is durable before success. A Deployment-profile proxy may own no durable mutation at all; durability remains with its downstream system. | Stateful services compose **`libs/storage-durable`** plus a service-owned durable log/state store and `raft-core`/`raft-runtime` when replicated. Deployment proxies document downstream durability and prove drain/reconnect behavior instead of inventing local persistence. |
-| **HA / consensus** | **Mandatory for any stateful service:** sharded, strongly-consistent state replicated with **`libs/raft-core`** driven by **`libs/raft-runtime`** — the replication path **wired** (a `RaftStateMachine` impl), not a DTO-only / "later slice" stub. Follower tails the leader over h2c; snapshot/compaction comes from the host. | Use `raft-core`+`raft-runtime`, **not `openraft`** and **not** a hand-rolled driver. The raft path may be a Cargo feature (`keep`); `lumen` is the reference adopter (`EngineSm`). |
-| **Backup / restore** | Stateful services expose consistent snapshot/restore from their state machine and use **`libs/service-backup`** for destination/policy/sink/runner shape. A production instance must configure a scheduled object-storage snapshot job; manual/local snapshots are break-glass or local-dev paths, not the service-archetype baseline. | `raft-runtime` owns snapshot install + log compaction. The service admin/CLI produces snapshot bytes; the backup runner uploads to `file://`, `s3://`, or `gs://` destinations (the GCS adapter is unconditional in `service-backup`, authenticates via workload-identity ADC in-cluster, and is GKE-proven); the operator schedules, wires secrets/IAM, reports status, and never serializes service data itself. |
+| **Transport** | HTTP/2 cleartext (**h2c**) **+** HTTP/1.1 on **one port**, with an OpenAPI surface (`utoipa`). | Compose **`crates/service-http`** and **`crates/transport-h2c`** — built on `hyper-util` `auto::Builder`, **not `axum::serve`** (HTTP/1-only). The same crate's client side (`h2c_client`/`H2cPool`) is the in-tree client. |
+| **Standard endpoints** | The same operational surface on the one port: **`/healthz`** (liveness), **`/readyz`** (readiness), **`/metrics`** (Prometheus), **`/openapi.json`** (machine OpenAPI), **`/docs`** (Swagger UI). Probes + scrape **depend** on these, so they stay auth-exempt and always-on. | Prefer **`crates/service-http`** standard probe/admin route helpers. `lumen` is the reference for the full surface. The contract is reachable three ways — **`<cli> spec`** (offline) ≡ **`/openapi.json`** (served) ≡ **`/docs`** (browsable) — one OpenAPI, three access paths. |
+| **Observability / trace context** | Every request is traced and correlatable with zero extra infrastructure: the shared trace layer **accepts W3C version-00 `traceparent`** (strictly validated — invalid input is treated as absent) and **generates a fresh local root context when none arrives**; every request span carries `trace_id`/`span_id`/`parent_span_id`/`trace_flags`, and those fields flow into the structured stdout schema (`axiom.service.log.v1`) that the sift collector ingests, so cross-service log correlation works even without a trace exporter. The `otlp` feature upgrades the same context to full OpenTelemetry export. Per-op request counters/latency are served on `/metrics`. | Compose **`crates/service-http`** `trace_layer()` (`CorrelatingMakeSpan` + `request_trace_context`) — never a hand-rolled span/correlation layer. Planned at the same seam: response `Server-Timing` (#2490) and outbound `traceparent` injection for service-to-service clients. A capability a service gets from this shell belongs in that service's Observability capability row — undocumented shared behavior is undiscoverable behavior. |
+| **Auth** | Every service uses the same bearer-token shape: server env `<SVC>_AUTH=off|required` plus `<SVC>_TOKEN_REGISTRY_FILE=/var/run/secrets/<svc>/token-registry.json`; clients use `<SVC>_URL` + `<SVC>_TOKEN` and send `Authorization: Bearer <token>`. | Compose **`crates/service-auth`** for middleware and **`crates/claim-token`** for signed-token verification when needed. In k8s/cloud, the registry file is mounted from a Kubernetes Secret, CSI Secret Store, or cloud Secret Manager sync. Do not add one-off auth headers, per-service token env names, or inline server token lists as the production path. |
+| **OpenAPI client codegen** | Generate typed clients from the service's **own** OpenAPI via **`crates/openapi-codegen`** (`openapi-codegen`) — **never** hand-rolled or an external tool. Expose it on the CLI: `<cli> spec gen --lang ts\|py\|rust --out <dir>`. Adopters get a typed client with **no external codegen step**. | `lumen spec gen` is the reference; the polyglot core (ts/py/rust) was extracted so any CLI composes it. |
+| **Durability / ack boundary** | **Mandatory for the StatefulSet profile:** an accepted mutation to service-owned state is durable before success. A Deployment-profile proxy may own no durable mutation at all; durability remains with its downstream system. | Stateful services compose **`crates/storage-durable`** plus a service-owned durable log/state store and `raft-core`/`raft-runtime` when replicated. Deployment proxies document downstream durability and prove drain/reconnect behavior instead of inventing local persistence. |
+| **HA / consensus** | **Mandatory for any stateful service:** sharded, strongly-consistent state replicated with **`crates/raft-core`** driven by **`crates/raft-runtime`** — the replication path **wired** (a `RaftStateMachine` impl), not a DTO-only / "later slice" stub. Follower tails the leader over h2c; snapshot/compaction comes from the host. | Use `raft-core`+`raft-runtime`, **not `openraft`** and **not** a hand-rolled driver. The raft path may be a Cargo feature (`keep`); `lumen` is the reference adopter (`EngineSm`). |
+| **Backup / restore** | Stateful services expose consistent snapshot/restore from their state machine and use **`crates/service-backup`** for destination/policy/sink/runner shape. A production instance must configure a scheduled object-storage snapshot job; manual/local snapshots are break-glass or local-dev paths, not the service-archetype baseline. | `raft-runtime` owns snapshot install + log compaction. The service admin/CLI produces snapshot bytes; the backup runner uploads to `file://`, `s3://`, or `gs://` destinations (the GCS adapter is unconditional in `service-backup`, authenticates via workload-identity ADC in-cluster, and is GKE-proven); the operator schedules, wires secrets/IAM, reports status, and never serializes service data itself. |
 | **Core neutrality** | Keep domain/payload knowledge **out of the transport core** where feasible, so the core is reusable. | `relay` carries an opaque JSON body and "knows nothing about workflows" (#120). |
-| **Deploy** | `Dockerfile` (+ `.release` / `.bench` variants); `<cli> dockerfile render`; **k8s-native** kustomize tree (`k8s/base` + `k8s/overlays`); `<cli> k8s crd/operator/instance`; exactly one primary workload profile. StatefulSet identity/peers come from the downward API; Deployment Pods use ordinary identity plus drain-aware rollout. | Use **`libs/service-k8s`** for CR/operator/render shape. `keep/k8s`, `lumen k8s` (+ `operator` feature), `relay/k8s`, and `loom/deploy` are adoption surfaces; when they differ, converge them toward the shared kit instead of copying local YAML. Shared multi-tenant backends are optional platform work, not the default service archetype. |
+| **Deploy** | `Dockerfile` (+ `.release` / `.bench` variants); `<cli> dockerfile render`; **k8s-native** kustomize tree (`k8s/base` + `k8s/overlays`); `<cli> k8s crd/operator/instance`; exactly one primary workload profile. StatefulSet identity/peers come from the downward API; Deployment Pods use ordinary identity plus drain-aware rollout. | Use **`crates/service-k8s`** for CR/operator/render shape. `keep/k8s`, `lumen k8s` (+ `operator` feature), `relay/k8s`, and `loom/deploy` are adoption surfaces; when they differ, converge them toward the shared kit instead of copying local YAML. Shared multi-tenant backends are optional platform work, not the default service archetype. |
 | **Operations** | Alert rules with runbooks, control-plane self-observability, `status.conditions[]`, network isolation, and verifiable release artifacts. A service that emits signal but cannot notice its own breach is not production-ready. | see *Operations baseline* below. Instrumentation (the Observability row) is the raw signal; this is what makes the signal act. |
 | **Authoring ladder** | `aw.toml` names the project; changes are authored one phase at a time through `e2e` → `impl`, red first. | see the write-order table in `CLAUDE.md`. Any `tech-design/` tree and any `SPEC-MANAGED` / `HANDWRITE` marker still in source is residue — the producer that owned them is deleted, and the `.rs` is the authoring surface. |
 | **EC gates** | Evidence-contract gates wired below. | see *EC gates* under *Conformance* below. |
@@ -601,12 +601,12 @@ A service is not "done" until it satisfies every row:
 ### Control plane and data plane responsibilities
 
 *(policy-only — judgment, not trait-enforced; the split is a repository service
-archetype rule until `libs/service-k8s` can validate it mechanically.)*
+archetype rule until `crates/service-k8s` can validate it mechanically.)*
 
 Every Kubernetes-native service composes a shared **control plane** and a
 per-instance **data plane**. The control plane is the CRD, Operator, reconcile
 loop, status, finalizers, and lifecycle resources. Its common mechanics belong
-in `libs/service-k8s`; each service supplies only its domain schema, policy,
+in `crates/service-k8s`; each service supplies only its domain schema, policy,
 and operator defaults. The Operator normally runs in `<svc>-system`.
 
 The data plane is the workload rendered for one service instance and the
@@ -621,7 +621,7 @@ service-specific capability.
 When a reconcile's rendered shape stops including a resource it rendered
 previously — a conditional HPA, a per-mode Service, or any other
 conditionally-rendered child — the service operator must explicitly delete
-that child. The shared `libs/service-k8s` reconcile loop renders desired state;
+that child. The shared `crates/service-k8s` reconcile loop renders desired state;
 it does not garbage-collect a resource that an earlier render produced and
 the current render no longer wants. The deletion must be idempotent, scoped
 to the names/labels the operator itself stamps (never a foreign or
@@ -677,7 +677,7 @@ implements the wider Kubernetes integration is `service-k8s`.
 A rename is atomic across all three identities:
 
 ```text
-libs/server-http/       # semantic directory
+crates/server-http/       # semantic directory
 package = server-http   # Cargo package
 crate = server_http     # Rust identifier
 ```
@@ -702,24 +702,24 @@ operator defaults.
 
 | Lib | Role |
 |-----|------|
-| **`libs/raft-core`** | the step-driven raft **consensus core** (serde-only; replaced openraft). |
-| **`libs/raft-runtime`** | the raft **host**: h2c peer transport, the single apply loop, snapshot/log compaction, read-your-write `propose`, and k8s topology + auto-mode. Services provide a `RaftStateMachine` and receive HA, backup, read-consistency, and bounded outcomes. |
-| **`libs/service-k8s`** | the **k8s operator scaffold + render toolkit**: `ManagedService`, `ClusterSpec`, resources, owner refs, Services/PDB/CronJobs, StatefulSet primitives, and PVC resize. It owns common operator mechanics; apps supply domain policy and defaults. |
-| **`libs/server-lifecycle`** | bind configuration, shutdown/drain, readiness signals, connection budgets, and metrics hooks shared by servers. |
-| **`libs/server-tcp`** | accept loop, per-connection supervision, admission budgeting, and drain-aware shutdown for raw protocols and poolers. |
-| **`libs/server-http`** | the **listener-level HTTP runtime**: the sole HTTP accept owner, composing `server-tcp` admission, connection metrics, supervision, and bounded drain with `transport-h2c` per-connection HTTP/1.1+h2c handling. |
-| **`libs/transport-h2c`** | the **HTTP/2 wire transport/client**: h2c client helpers (`h2c_client`/`H2cPool`) plus an optional per-connection HTTP/1.1+h2c handler; it never binds or owns a listener. |
-| **`libs/service-observability`** | the **protocol-neutral observability integration**: typed logging configuration, stable service identity, optional OTLP exporter + W3C propagation primitives, the `MetricsProvider` contract, and lifecycle connection counters backed by `metrics-prometheus`. It owns no HTTP routes or request middleware. |
-| **`libs/service-http`** | the **HTTP service policy shell**: standard probe/admin routes, lifecycle readiness/signal adapters, HTTP request-context propagation, runtime delegation, and the shared **HTTP error envelope** (`ErrorEnvelope` + the `ApiErr` status/kind builder). Existing observability names are compatibility re-exports from `service-observability`; it owns no protocol-neutral observability state, listener, or drain state. |
-| **`libs/service-auth`** | the **request-auth shell**: shared `Authorization: Bearer` extraction, reject/inject middleware, the `Verifier` trait every service implements, and **`role_map`** — the standard token-registry verifier (`Role` hierarchy, `TokenClaims` with wildcard grants, registry-file loader, `StaticRoleMapVerifier`) implementing the archetype's `<SVC>_TOKEN_REGISTRY_FILE` contract. Token crypto belongs in **`libs/claim-token`** when signed tokens are needed; resource-policy *decisions* stay in the service handlers (`role_map` supplies the mechanism). |
-| **`libs/claim-token`** | the **scoped claim-check token primitive**: HMAC signing and verification over bounded key scopes shared by issuers and storage services. |
-| **`libs/storage-durable`** | the **durable local storage primitive layer**: shared `FsyncPolicy`, temp-file atomic replace with file + parent-dir sync, CRC-framed append logs with torn-tail recovery/compaction, and sequence-named local snapshot stores. Services supply domain codecs and state-machine semantics; they do not hand-roll fsync/rename/frame parsing. |
-| **`libs/service-backup`** | the **backup contract**: tagged runtime destination/policy schema, the flat CRD-safe `ScheduledBackupPolicy` (`schedule`/`destination`/`retentionSecs`) with validated runtime conversion, `BackupSink`, local + S3-compatible object-store sinks (feature `s3`; GCS destinations parse/round-trip but runners fail loudly until a real GCS adapter lands), and a runner primitive. Services produce consistent snapshot bytes; runners upload them; operators add only app-specific auth/secret fields around the shared schedule policy. |
-| **`libs/peer-tls`** | **peer mTLS material loading**: `PeerTlsConfig::from_env(<PREFIX>)`, PEM cert/key/CA loaders, rustls server/client config builders, and the Once-guarded default-crypto-provider install. (h2c stays cleartext by design; this covers the mutually-authenticated peer/replication port.) |
-| **`libs/metrics-prometheus`** | the **Prometheus metric primitives**: dep-free counter/gauge primitives + the text-format encoder — the standard implementation behind `service-observability`'s `MetricsProvider` implementations and HTTP `/metrics` adapters. |
-| **`libs/openapi-codegen`** | the **typed client generator**: one OpenAPI IR with TypeScript, Python, and Rust emitters consumed by each service's `spec gen` command. |
-| **`libs/cli-std`** | the **standard CLI** commands (`llm` / `upgrade` / `issue`). |
-| **`libs/build-stamp`** | the **build stamp** (a `[build-dependencies]` crate): `stamp("<PREFIX>")` emits the `<PREFIX>_GIT_SHA` / `<PREFIX>_BUILT_AT` / `<PREFIX>_TARGET` rustc-env lines that feed `cli-std`'s `ToolInfo` — one implementation instead of a per-service `build.rs` copy. |
+| **`crates/raft-core`** | the step-driven raft **consensus core** (serde-only; replaced openraft). |
+| **`crates/raft-runtime`** | the raft **host**: h2c peer transport, the single apply loop, snapshot/log compaction, read-your-write `propose`, and k8s topology + auto-mode. Services provide a `RaftStateMachine` and receive HA, backup, read-consistency, and bounded outcomes. |
+| **`crates/service-k8s`** | the **k8s operator scaffold + render toolkit**: `ManagedService`, `ClusterSpec`, resources, owner refs, Services/PDB/CronJobs, StatefulSet primitives, and PVC resize. It owns common operator mechanics; apps supply domain policy and defaults. |
+| **`crates/server-lifecycle`** | bind configuration, shutdown/drain, readiness signals, connection budgets, and metrics hooks shared by servers. |
+| **`crates/server-tcp`** | accept loop, per-connection supervision, admission budgeting, and drain-aware shutdown for raw protocols and poolers. |
+| **`crates/server-http`** | the **listener-level HTTP runtime**: the sole HTTP accept owner, composing `server-tcp` admission, connection metrics, supervision, and bounded drain with `transport-h2c` per-connection HTTP/1.1+h2c handling. |
+| **`crates/transport-h2c`** | the **HTTP/2 wire transport/client**: h2c client helpers (`h2c_client`/`H2cPool`) plus an optional per-connection HTTP/1.1+h2c handler; it never binds or owns a listener. |
+| **`crates/service-observability`** | the **protocol-neutral observability integration**: typed logging configuration, stable service identity, optional OTLP exporter + W3C propagation primitives, the `MetricsProvider` contract, and lifecycle connection counters backed by `metrics-prometheus`. It owns no HTTP routes or request middleware. |
+| **`crates/service-http`** | the **HTTP service policy shell**: standard probe/admin routes, lifecycle readiness/signal adapters, HTTP request-context propagation, runtime delegation, and the shared **HTTP error envelope** (`ErrorEnvelope` + the `ApiErr` status/kind builder). Existing observability names are compatibility re-exports from `service-observability`; it owns no protocol-neutral observability state, listener, or drain state. |
+| **`crates/service-auth`** | the **request-auth shell**: shared `Authorization: Bearer` extraction, reject/inject middleware, the `Verifier` trait every service implements, and **`role_map`** — the standard token-registry verifier (`Role` hierarchy, `TokenClaims` with wildcard grants, registry-file loader, `StaticRoleMapVerifier`) implementing the archetype's `<SVC>_TOKEN_REGISTRY_FILE` contract. Token crypto belongs in **`crates/claim-token`** when signed tokens are needed; resource-policy *decisions* stay in the service handlers (`role_map` supplies the mechanism). |
+| **`crates/claim-token`** | the **scoped claim-check token primitive**: HMAC signing and verification over bounded key scopes shared by issuers and storage services. |
+| **`crates/storage-durable`** | the **durable local storage primitive layer**: shared `FsyncPolicy`, temp-file atomic replace with file + parent-dir sync, CRC-framed append logs with torn-tail recovery/compaction, and sequence-named local snapshot stores. Services supply domain codecs and state-machine semantics; they do not hand-roll fsync/rename/frame parsing. |
+| **`crates/service-backup`** | the **backup contract**: tagged runtime destination/policy schema, the flat CRD-safe `ScheduledBackupPolicy` (`schedule`/`destination`/`retentionSecs`) with validated runtime conversion, `BackupSink`, local + S3-compatible object-store sinks (feature `s3`; GCS destinations parse/round-trip but runners fail loudly until a real GCS adapter lands), and a runner primitive. Services produce consistent snapshot bytes; runners upload them; operators add only app-specific auth/secret fields around the shared schedule policy. |
+| **`crates/peer-tls`** | **peer mTLS material loading**: `PeerTlsConfig::from_env(<PREFIX>)`, PEM cert/key/CA loaders, rustls server/client config builders, and the Once-guarded default-crypto-provider install. (h2c stays cleartext by design; this covers the mutually-authenticated peer/replication port.) |
+| **`crates/metrics-prometheus`** | the **Prometheus metric primitives**: dep-free counter/gauge primitives + the text-format encoder — the standard implementation behind `service-observability`'s `MetricsProvider` implementations and HTTP `/metrics` adapters. |
+| **`crates/openapi-codegen`** | the **typed client generator**: one OpenAPI IR with TypeScript, Python, and Rust emitters consumed by each service's `spec gen` command. |
+| **`crates/cli-std`** | the **standard CLI** commands (`llm` / `upgrade` / `issue`). |
+| **`crates/build-stamp`** | the **build stamp** (a `[build-dependencies]` crate): `stamp("<PREFIX>")` emits the `<PREFIX>_GIT_SHA` / `<PREFIX>_BUILT_AT` / `<PREFIX>_TARGET` rustc-env lines that feed `cli-std`'s `ToolInfo` — one implementation instead of a per-service `build.rs` copy. |
 
 **k8s-native auto-mode + discovery.** A StatefulSet-profile service defaults to
 single-node and turns on raft **only when the StatefulSet scales out** — `raft_runtime::cluster::
@@ -734,11 +734,11 @@ hand-roll the pod-ordinal or peer-DNS math.
 auto-mode is also shared. A service CR should flatten or mirror
 `service_k8s::ClusterSpec`/`ResourceSpec` unless it has a concrete product reason
 not to, implement `service_k8s::ManagedService`, and render shared shapes with
-`libs/service-k8s::render` helpers. For the StatefulSet profile, identity,
+`crates/service-k8s::render` helpers. For the StatefulSet profile, identity,
 `SHARD_COUNT`, `REPLICAS_PER_SHARD`, `VOTER_COUNT`, headless-service env,
 labels/selectors, owner refs, PDB/client/headless Service shapes, and
 maintenance CronJobs are library contracts. Do not duplicate that YAML/JSON
-construction in `lumen`, `keep`, `relay`, or `loom`; extend `libs/service-k8s`
+construction in `lumen`, `keep`, `relay`, or `loom`; extend `crates/service-k8s`
 when the helper is incomplete.
 
 ### Service source layout — the same kit produces the same shape
@@ -808,7 +808,7 @@ Each row names what the app is allowed to keep after the move.
 
 Three names are settled here because the drift above is otherwise unresolvable:
 
-- **The HTTP surface is `api/`.** Not `server` — `libs/server-http` is the
+- **The HTTP surface is `api/`.** Not `server` — `crates/server-http` is the
   listener owner and an app no longer binds anything, so the name misdescribes
   the layer. Not `http` — a bare protocol is not a responsibility, per the
   naming grammar above.
@@ -843,7 +843,7 @@ requires the service's own OpenAPI surface to exist)*
 
 Because the OpenAPI doc is the source of truth, the typed clients adopters use
 are **generated from it**, never hand-written and never produced by an external
-tool. The shared `libs/openapi-codegen` (`openapi-codegen`) is the polyglot
+tool. The shared `crates/openapi-codegen` (`openapi-codegen`) is the polyglot
 core — a language-neutral IR feeding per-language emitters (TypeScript: types +
 fetch/axios client + TanStack Query hooks; Python: pydantic + generated
 sync/async HTTP/2 runtime that speaks h2c for `http://` and ALPN h2 for
@@ -895,16 +895,16 @@ CLI ships, services and non-services alike. `lumen` is the reference for all of 
 ### Service auth — one Bearer-token contract
 
 *(policy-only — judgment, not trait-enforced; candidate for a future
-`service_auth` trait once `libs/service-auth` adoption is mechanically
+`service_auth` trait once `crates/service-auth` adoption is mechanically
 checkable)*
 
 Service auth is shared infrastructure, not a per-project design space. Every
-long-running service uses `libs/service-auth` for request authentication:
+long-running service uses `crates/service-auth` for request authentication:
 extract `Authorization: Bearer <token>`, verify it through a service-supplied
 `Verifier`, reject with the shared JSON error shape, and inject the authenticated
 principal into handlers. Services use the shared registry verifier
 (`service_auth::role_map::StaticRoleMapVerifier` — role hierarchy, wildcard
-grants, registry-file loader) or signed tokens through `libs/claim-token`, but
+grants, registry-file loader) or signed tokens through `crates/claim-token`, but
 the HTTP contract and middleware shape stay the same.
 
 Production server config follows one env pattern:
@@ -940,7 +940,7 @@ top-level value carries a `subject` field. Without the second clause a flat
 registry whose one secret is literally spelled `tokens` is read as a section
 and silently loses its only credential. Any second decoder — a CLI resolving a
 dev token, a migration tool — must replicate both clauses and pin the copy with
-a test; `libs/cli-std`'s `connect::bearer_secrets` is the reference, duplicated
+a test; `crates/cli-std`'s `connect::bearer_secrets` is the reference, duplicated
 rather than shared because `service-auth` depends on `cli-std` and not the
 reverse.
 
@@ -963,7 +963,7 @@ free-string auth field is worse still: `auth: requred` is accepted and read as
 (`#[serde(rename = "disabled")]`) — structural schemas represent those fine;
 it is only enums with divergent per-variant schemas they cannot express.
 
-Keep the boundary explicit: `libs/service-auth` authenticates callers;
+Keep the boundary explicit: `crates/service-auth` authenticates callers;
 service handlers authorize per resource, tenant, collection, queue, workflow, or
 admin action. Standard probe/spec/scrape endpoints stay auth-exempt according to
 the standard-endpoint contract above.
@@ -976,7 +976,7 @@ path actually wired does **not** satisfy the HA row; the service is not
 production-ready until writes are ordered and replicated through `raft-core`.
 
 State is **sharded** and **strongly consistent**, replicated by the shared
-`libs/raft-core` engine (serde-only; it replaced `openraft` across the
+`crates/raft-core` engine (serde-only; it replaced `openraft` across the
 ecosystem). The leader owns writes; followers tail it over h2c. Node identity
 and the peer set come from the Kubernetes **downward API** on a StatefulSet —
 nothing is hand-configured per replica. Gate consensus behind a Cargo feature
@@ -1071,7 +1071,7 @@ Use this default decision rule:
 ## Operations baseline — notice the breach, watch the watcher, answer "converged?"
 
 *(policy-only — judgment, not trait-enforced; promote to a capability trait once
-`libs/service-k8s` can render and validate these mechanically.)*
+`crates/service-k8s` can render and validate these mechanically.)*
 
 **Instrumentation is not operations.** The *Observability / trace context* row
 above buys per-request spans, correlation, and counters — the raw signal. A
@@ -1093,24 +1093,24 @@ lumen → tape → defer → relay → keep → sift → (remaining services)
 endpoints, HA, and `prometheus_rule`, and because it is the service with live
 integrators — the only one where a row gets exercised against real traffic
 rather than an acceptance harness. A row is proven in `lumen`, lands its
-mechanism in `libs/service-k8s`, and only then moves down the order. **Do not
+mechanism in `crates/service-k8s`, and only then moves down the order. **Do not
 open the same row in several services in parallel**: the second adopter's job is
 to compose the shared mechanism, not to re-derive it. When a row needs a
-mechanism, **extend `libs/service-k8s` so every adopter gets it once** — never
+mechanism, **extend `crates/service-k8s` so every adopter gets it once** — never
 fork the pattern into one project.
 
 Leading the order does not mean inventing every row. Some rows already shipped
 in a service further down it before `lumen` reached them — the `network-policy`
 component originated in `defer`, `relay`, and `tape`, and `replicas: 2` in
 `defer`'s operator. Where that is true, `lumen`'s job is to **adopt the existing
-pattern and pull it into `libs/service-k8s`**, not to write a second one. Check
+pattern and pull it into `crates/service-k8s`**, not to write a second one. Check
 the other services for the row before authoring it.
 
 As of 2026-07-27, `lumen` has closed four rows and pulled each mechanism into
 the shared layer: **control-plane observability** (#2620/#2621),
 **`status.conditions[]`** (#2601), **network isolation** (#2603), and **operator
 HA** (#2602). For the next adopter those four are no longer authoring work —
-`libs/service-k8s` renders them and the job is composition plus a cluster proof.
+`crates/service-k8s` renders them and the job is composition plus a cluster proof.
 Rows still open everywhere: **SLO-shaped latency alerting**, **both scaling
 axes**, and **verifiable release artifacts**.
 
@@ -1118,7 +1118,7 @@ axes**, and **verifiable release artifacts**.
 structural reason, not a priority one. Like `lumen` it is something other
 services integrate *with*, but the coupling is a **one-way versioned schema** —
 emitters write `axiom.service.log.v1` to stdout
-(`libs/service-observability/contracts/axiom.service.log.v1.schema.json`) and
+(`crates/service-observability/contracts/axiom.service.log.v1.schema.json`) and
 the sift collector ingests it; nobody calls sift on the request path. So
 `sift`'s own operations rollout blocks no emitter, and no emitter's rollout
 blocks `sift` — it can move out of order whenever it is convenient. One row is
@@ -1131,10 +1131,10 @@ hides every other service's failure.
 | **Alert rules** | The operator renders a **`PrometheusRule`** beside its `ServiceMonitor`, behind the same `spec.observability` switch. Baseline for a stateful service: no ready replicas, pod crash-looping, PVC near full, scheduled backup job failing, storage degraded. Every alert carries a **`runbook` annotation naming the first command to run**. | `lumen`'s `operator/render.rs` `prometheus_rule` is the reference. **An alert on a series nothing publishes is worse than no alert** — if the signal lives in the CR's `status`, it needs a `customresourcestate` config or a driver-side gauge before the alert means anything (see `LumenReshardWorkflowStalled`, which can only read a fence gauge and misses `PrepareSplit`/`Splitting` stalls entirely). |
 | **Early warning before the wall** | Any resource with a hard limit (disk, quota, connection budget) pairs its **degraded** alert with an **approaching** alert that fires earlier. | A degraded alert alone only tells you the outage already started. `LumenPvcNearFull` (10% free, 10m) is the early warning `LumenStorageDegraded`'s own runbook cross-references. |
 | **SLO-shaped latency alerting** | Where a latency **histogram** exists, alert on quantiles or error-budget burn rate — not on a static-threshold counter. | A histogram referenced only from a runbook *string* is instrumentation nobody automated: `lumen_search_latency_seconds_bucket` ships, yet the only latency alert is `rate(lumen_slow_queries_total[5m]) > 0.1`. |
-| **Control-plane observability** | The operator exposes its **own `/metrics`** (reconcile attempts/failures/duration, leader-election state), ships its own `ServiceMonitor` in `<svc>-system`, emits Kubernetes **`Event`s** for reconcile decisions and failures, and owns at least two alerts: **operator absent** and **reconcile error rate non-zero**. | Shipped in `libs/service-k8s`'s shared controller, not per app: `metrics::ControllerMetrics` + `metrics::serve` (listener address from `OPERATOR_METRICS_ADDR`, default `0.0.0.0:9090`) and a `kube::runtime::events::Recorder` wired into `controller::run`. `lumen` is the reference adopter (#2620/#2621) — the per-app work is the `ServiceMonitor` and the two alerts, not the mechanism. **Data-plane alerts cannot see a control plane that stopped reconciling** — every data-plane alert reading green is exactly what a wedged operator looks like, and `kubectl describe <cr>` with no Events cannot tell a deployer why nothing happened. Note the Recorder's **6-minute dedup window**: a tight reconcile-fail loop emits one Event, so the failure *counter* is the alerting signal and the Event is the explanation. |
+| **Control-plane observability** | The operator exposes its **own `/metrics`** (reconcile attempts/failures/duration, leader-election state), ships its own `ServiceMonitor` in `<svc>-system`, emits Kubernetes **`Event`s** for reconcile decisions and failures, and owns at least two alerts: **operator absent** and **reconcile error rate non-zero**. | Shipped in `crates/service-k8s`'s shared controller, not per app: `metrics::ControllerMetrics` + `metrics::serve` (listener address from `OPERATOR_METRICS_ADDR`, default `0.0.0.0:9090`) and a `kube::runtime::events::Recorder` wired into `controller::run`. `lumen` is the reference adopter (#2620/#2621) — the per-app work is the `ServiceMonitor` and the two alerts, not the mechanism. **Data-plane alerts cannot see a control plane that stopped reconciling** — every data-plane alert reading green is exactly what a wedged operator looks like, and `kubectl describe <cr>` with no Events cannot tell a deployer why nothing happened. Note the Recorder's **6-minute dedup window**: a tight reconcile-fail loop emits one Event, so the failure *counter* is the alerting signal and the Event is the explanation. |
 | **Status is the convergence API** | `status` carries `observedGeneration`, `additionalPrinterColumns` for the fields a human greps, and a standard **`conditions[]`** array (`metav1.Condition` shape: `type`/`status`/`reason`/`message`/`lastTransitionTime`/`observedGeneration`) with at least `Ready` and `Progressing`. | Without `conditions[]`, **`kubectl wait --for=condition=Ready` has nothing to read** and Argo/Flux cannot assess health without a bespoke Lua hook. A custom `phase` string is for humans; `conditions[]` is for automation. Both are needed — they are not substitutes. The shared shape is `service_k8s::service::{Condition, ConditionFact, ConditionStatus}`; `lumen` is the reference adopter (#2601), emitting `Ready`, `Progressing`, and a domain condition. **`status_patch` is a pure function by contract, so it must not read a clock** — a service returns clock-free `ConditionFact`s and the controller stamps `lastTransitionTime`, carrying the prior value forward when `status` is unchanged. Get that backwards and every reconcile rewrites the timestamp, making a stuck condition look freshly flipped. Note also that a merge patch **replaces the whole array**, so the projection must re-emit conditions it did not change. |
 | **Network isolation ships with the instance** | Every service ships a **`k8s/components/network-policy`** kustomize component: default-deny ingress plus explicit allows for client traffic, peer/consensus traffic, and metrics scrape. | `defer`, `relay`, and `tape` are the original hand-written components; the shared renderer is now `service_k8s::render::common::network_policy`, adopted by `lumen` (#2603) for the operator-rendered path a CR user gets without kustomize. It is a **component, not a base resource** — a cluster whose CNI does not enforce NetworkPolicy opts out by not composing it, instead of silently believing it is isolated. Two traps: the controller's `plural_for()` fallback pluralizes to `networkpolicys`, so the kind needs an explicit `"NetworkPolicy" => "networkpolicies"` arm; and **kind's default `kindnet` CNI does not enforce NetworkPolicy at all**, so a kind run proves the object renders and applies, never that traffic is blocked. |
-| **Operator HA is on by default** | A leader-elected operator's rendered Deployment defaults to **`replicas: 2`**. | Shipping the lease (`libs/service-k8s::lease`) and then `replicas: 1` means a node drain stops reconciliation until a fresh Pod schedules — the failover machinery is built and switched off. `defer` and `lumen` (#2602) both ship it. **`replicas: 2` without a `PodDisruptionBudget` is still one drain away from zero** — the pair needs a PDB keeping one Pod up (`maxUnavailable: 1`, or the equivalent `minAvailable: 1` at two replicas), or the node-drain case the second replica exists for evicts both at once. |
+| **Operator HA is on by default** | A leader-elected operator's rendered Deployment defaults to **`replicas: 2`**. | Shipping the lease (`crates/service-k8s::lease`) and then `replicas: 1` means a node drain stops reconciliation until a fresh Pod schedules — the failover machinery is built and switched off. `defer` and `lumen` (#2602) both ship it. **`replicas: 2` without a `PodDisruptionBudget` is still one drain away from zero** — the pair needs a PDB keeping one Pod up (`maxUnavailable: 1`, or the equivalent `minAvailable: 1` at two replicas), or the node-drain case the second replica exists for evicts both at once. |
 | **Both scaling axes stay autonomous** | See *HA* above: storage grows by disk-driven shard split, compute by CPU-driven replica scaling, neither gated on a human. | **A CRD field that still advertises autoscaling bounds while the renderer has stopped emitting the autoscaler is a defect in both directions** — either wire the replacement policy or remove the field. An inert knob whose doc comment promises elasticity is worse than an honest absence. |
 | **Release artifacts are verifiable** | Published container images carry a **cosign signature, an SBOM, and build provenance**; the release workflow produces them and the deploy handoff names the verification command. | A sha256 on the release tarball proves the tarball — it says nothing about the image a cluster actually pulls. Without attestation, no admission policy can enforce "only run images we built". |
 
@@ -1166,7 +1166,7 @@ Two rules make the tree honest:
   runs is a reviewable list in `Cargo.toml`, not whatever happens to be sitting
   in the directory. An undeclared file is not built at all, so adding or
   renaming a case has to show up in the diff to take effect.
-  `libs/service-http` is the reference shape: eight `e2e/*.rs`, eight
+  `crates/service-http` is the reference shape: eight `e2e/*.rs`, eight
   `[[test]]` stanzas, `autotests = false`.
 - **Write the case first.** The `e2e/*.rs` case lands before the `src/**`
   change it judges, and must be observed failing for the stated reason before
@@ -1208,8 +1208,8 @@ no exit code, and no signal of any kind. Do not cite one as a gate in a
 | `negative-assertion:tape:raft-or-primary-replica-signal` | `negative-assertion` | StatefulSet/ReplicatedLog profile carries raft-dependency or primary/replica-role source markers |
 | `negative-assertion:relay-defer:passive-replica-signal` | `negative-assertion` | StatefulSet/RaftConsensus profile carries a primary_replicas trait or primary/replica-role source markers |
 | `negative-assertion:lumen:raft-leader-ingest-signal` | `negative-assertion` | StatefulSet/PrimaryReplica profile carries a raft dependency plus leader-ingest source markers |
-| `obs:structured-logging-metrics-adoption` | `obs` | service surface has not adopted libs/service-observability for structured logging/metrics/correlation |
-| `obs:w3c-context-propagation-adoption` | `obs` | service surface has not adopted libs/service-http or libs/transport-h2c for W3C trace-context (traceparent) propagation |
+| `obs:structured-logging-metrics-adoption` | `obs` | service surface has not adopted crates/service-observability for structured logging/metrics/correlation |
+| `obs:w3c-context-propagation-adoption` | `obs` | service surface has not adopted crates/service-http or crates/transport-h2c for W3C trace-context (traceparent) propagation |
 | `raft:proposal-routing-telemetry-gap` | `raft` | raft leader-ingest surface has no proposal-routing telemetry (local-vs-forwarded proposal counts, forward duration, or forwarded bytes) |
 | `raft:leader-route-and-replication-lag-telemetry-gap` | `raft` | raft leader-ingest surface has no leader-route or replication-lag telemetry (leader-route retries/changes, commit/applied lag, or peer RPC visibility) |
 | `raft:high-cardinality-label-antipattern` | `raft` | a metric-emission site carries a high-cardinality label key (queue/topic/message_id/message) in the same file as a raft telemetry metric |
@@ -1289,7 +1289,7 @@ advice:
   ServiceAccounts, Services, StatefulSets/Deployments, PDBs, CronJobs, Secrets,
   status, and finalizers. It does not serialize service data. Snapshot bytes are
   produced by the service state machine/admin surface; `raft-host` installs
-  snapshots and compacts logs; `libs/service-backup` runners upload/prune them.
+  snapshots and compacts logs; `crates/service-backup` runners upload/prune them.
 - **Scheduled object snapshots are baseline.** A production stateful service CR
   must render or reference a periodic backup job that writes consistent
   snapshots to object storage. Local filesystem sinks are for development,
@@ -1378,9 +1378,9 @@ patch that introduces it.
 
 Internal libraries may contribute agent-facing `llm` fragments, but they do not
 become standalone user-facing CLIs just to publish docs. A reusable lib with an
-operational contract agents need to understand (for example `libs/service-k8s`,
-`libs/raft-runtime`, `libs/service-backup`, `libs/service-auth`, `libs/transport-h2c`, or
-`libs/openapi-codegen`) should expose a small `cli_std::llm::Topic` provider or
+operational contract agents need to understand (for example `crates/service-k8s`,
+`crates/raft-runtime`, `crates/service-backup`, `crates/service-auth`, `crates/transport-h2c`, or
+`crates/openapi-codegen`) should expose a small `cli_std::llm::Topic` provider or
 constructor from its Rust API. The consuming project decides whether that topic
 belongs in its own `llm` registry, may wrap or prefix the id to fit the
 project's vocabulary, and may omit irrelevant library topics. This keeps the
@@ -1397,12 +1397,12 @@ test if that project exposes the contract.
 
 Implementation notes not obvious from the signature:
 
-The logic for all three lives in the shared **`libs/cli-std`** crate (`cli_std`),
+The logic for all three lives in the shared **`crates/cli-std`** crate (`cli_std`),
 which is **clap-agnostic**: each CLI keeps its own clap registration — so it owns
 the convention's flag shape (`--topic`, not a positional) — and delegates the
 behavior to the crate, parameterized by a `cli_std::ToolInfo` it fills from its
 own `build.rs` stamps (project, repo, target triple, version, git sha — emit
-them with `libs/build-stamp`'s `stamp("<PREFIX>")`, not a hand-rolled
+them with `crates/build-stamp`'s `stamp("<PREFIX>")`, not a hand-rolled
 `build.rs`). A tool
 provides only its clap surface, that `ToolInfo`, and (for `llm`) its topic list;
 the crate does the rest. The network paths (`upgrade` install, `issue`
@@ -1433,7 +1433,7 @@ operator, instance* above for the `kubernetes_native` project baseline):
 `kubectl port-forward` for the duration of a wrapped command and tears it down
 (kill + wait) on exit regardless of the wrapped command's status, resolving a
 bearer token from a token-registry Secret when one is in play. Its
-implementation home is `cli_std::connect` (`libs/cli-std/src/connect.rs`,
+implementation home is `cli_std::connect` (`crates/cli-std/src/connect.rs`,
 behind the `k8s` feature): the port-forward process lifecycle (`ChildGuard`,
 `free_local_port`, `wait_for_local_port_ready`) and the token-registry Secret
 resolution chain (`kubectl_get_json`, `cr_tokens_secret`,
@@ -1596,7 +1596,7 @@ was its own META-doc until 2026-08-17, when all 62 of them were deleted and the
 five that carried content merged into their project's `README.md`. The doc type
 failed on its own evidence: 57 of the 62 were the identical empty template with
 a zero-row Capability Index, the two largest (`apps/relay`, `apps/mamba`)
-had bypassed the template entirely, and `libs/service-http/CAPABILITIES.md`
+had bypassed the template entirely, and `crates/service-http/CAPABILITIES.md`
 stated in its own prose that the real contract lived in the README. Nothing
 mechanical had ever read one — a repo-wide grep of `plugins/`, `.claude/`, and
 `scripts/` found two hits, both example strings inside help text. Product

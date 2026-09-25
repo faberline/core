@@ -1,7 +1,7 @@
-# SPEC-MANAGED: libs/surface/tech-design/semantic/source/libs-surface-cargo-toml.md#text-source-unit
+# SPEC-MANAGED: crates/surface/tech-design/semantic/source/libs-surface-cargo-toml.md#text-source-unit
 # CODEGEN-BEGIN
 [package]
-name = "cclab-surface"
+name = "surface"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -10,7 +10,7 @@ description = "Renderer-neutral UI element model shared by Jet WASM, native desk
 autotests = false
 
 [lib]
-name = "cclab_surface"
+name = "surface"
 path = "src/lib.rs"
 
 [dependencies]

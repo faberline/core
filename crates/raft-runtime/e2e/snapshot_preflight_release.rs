@@ -7,14 +7,14 @@
 //!
 //! # Facets
 //!
-//! - Behavior: preflight asserts at `libs/raft-runtime/e2e/snapshot_preflight_release.rs:471`, `:490`, `:495`,
+//! - Behavior: preflight asserts at `crates/raft-runtime/e2e/snapshot_preflight_release.rs:471`, `:490`, `:495`,
 //!   `:511`, `:517`, `:527`, and `:528`; periodic capture asserts at `:557`, `:584`, `:588`, `:601`, `:605`, and `:609`.
 //!   Bounded capture and export assert at `:650`, `:655`, `:659`, `:679`, `:690`, `:721`, `:726`, `:752`, `:756`, `:760`, and `:764`.
-//! - Security: `libs/raft-runtime/e2e/snapshot_preflight_release.rs:819`, `:823`, `:833`, and `:837` assert callback failures; errors from the
+//! - Security: `crates/raft-runtime/e2e/snapshot_preflight_release.rs:819`, `:823`, `:833`, and `:837` assert callback failures; errors from the
 //!   public `RaftStateMachine::preflight_snapshot`, `SnapshotPreparation`, and `PreparedSnapshot`
 //!   boundary must refuse output, avoid mutation, and retain the old Raft prefix.
-//! - Performance: gap — `libs/raft-runtime/src/host.rs:1923-1928` and `:2066-2129` reach
-//!   `apps/lumen/src/bin/lumen.rs:3879`, but `libs/raft-runtime/README.md:74-95` has no budget.
+//! - Performance: gap — `crates/raft-runtime/src/host.rs:1923-1928` and `:2066-2129` reach
+//!   `apps/lumen/src/bin/lumen.rs:3879`, but `crates/raft-runtime/README.md:74-95` has no budget.
 //!
 //! Declared gate: `cargo test -p raft-runtime`.
 

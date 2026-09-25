@@ -123,11 +123,11 @@ cross-language execution gate that fails when a selected toolchain is missing.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p openapi-codegen --no-deps` |
-| OpenAPI parser and operation model | `libs/openapi-codegen/src/ir/` |
-| TypeScript emitter | `libs/openapi-codegen/src/emit/ts/` |
-| Python emitter | `libs/openapi-codegen/src/emit/py/` |
-| Rust emitter | `libs/openapi-codegen/src/emit/rust/` |
-| Target profiles and output manifest | `libs/openapi-codegen/src/target.rs` and `lib.rs` |
+| OpenAPI parser and operation model | `crates/openapi-codegen/src/ir/` |
+| TypeScript emitter | `crates/openapi-codegen/src/emit/ts/` |
+| Python emitter | `crates/openapi-codegen/src/emit/py/` |
+| Rust emitter | `crates/openapi-codegen/src/emit/rust/` |
+| Target profiles and output manifest | `crates/openapi-codegen/src/target.rs` and `lib.rs` |
 | Executable behavior | `cargo test -p openapi-codegen` |
 
 ## Capabilities
@@ -139,12 +139,12 @@ contribution.
 
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
-| Multi-language client generation | `multi-language-client-generation` | Generate typed TypeScript, Python, and Rust clients from one OpenAPI document. | `libs/openapi-codegen` |
-| Versioned target profiles | `versioned-target-profiles` | Pin generated syntax and runtime requirements to a declared language target. | `libs/openapi-codegen` |
-| QUERY and POST-twin dispatch | `query-post-twin-dispatch` | Call OpenAPI `query` operations directly or through their documented POST twin. | `libs/openapi-codegen` |
-| Transport and private trust | `transport-private-trust` | Generate bounded transports that can replace public trust with one private CA. | `libs/openapi-codegen` |
-| Static request credentials | `static-request-credentials` | Supply fixed request headers in TypeScript and fixed token or header values in Python. | `libs/openapi-codegen` |
-| Dynamic per-request auth provider | `dynamic-per-request-auth-provider` | Optionally read a current file bearer value immediately before an eligible request. | `libs/openapi-codegen` |
+| Multi-language client generation | `multi-language-client-generation` | Generate typed TypeScript, Python, and Rust clients from one OpenAPI document. | `crates/openapi-codegen` |
+| Versioned target profiles | `versioned-target-profiles` | Pin generated syntax and runtime requirements to a declared language target. | `crates/openapi-codegen` |
+| QUERY and POST-twin dispatch | `query-post-twin-dispatch` | Call OpenAPI `query` operations directly or through their documented POST twin. | `crates/openapi-codegen` |
+| Transport and private trust | `transport-private-trust` | Generate bounded transports that can replace public trust with one private CA. | `crates/openapi-codegen` |
+| Static request credentials | `static-request-credentials` | Supply fixed request headers in TypeScript and fixed token or header values in Python. | `crates/openapi-codegen` |
+| Dynamic per-request auth provider | `dynamic-per-request-auth-provider` | Optionally read a current file bearer value immediately before an eligible request. | `crates/openapi-codegen` |
 
 ### Multi-language client generation
 
@@ -152,7 +152,7 @@ contribution.
 - Promise: Parse one OpenAPI contract and emit typed models and operation
   methods for TypeScript, Python, and Rust.
 - Sources:
-  - [`libs/openapi-codegen`](./) provides the parser, language-neutral model,
+  - [`crates/openapi-codegen`](./) provides the parser, language-neutral model,
     name mapping, language emitters, and deterministic output writer.
 - Gate: `cargo test -p openapi-codegen`
 
@@ -162,7 +162,7 @@ contribution.
 - Promise: Record and apply a selected Python, TypeScript, or Rust target
   without changing legacy output when no profile is selected.
 - Sources:
-  - [`libs/openapi-codegen`](./) provides target enums, version-aware syntax,
+  - [`crates/openapi-codegen`](./) provides target enums, version-aware syntax,
     requirements, project config loading, and the output manifest.
 - Gate: `cargo test -p openapi-codegen`
 
@@ -172,7 +172,7 @@ contribution.
 - Promise: Generate `QUERY` methods and let the caller select their POST twin
   at runtime without changing request or response types.
 - Sources:
-  - [`libs/openapi-codegen`](./) provides OpenAPI 3.2 query parsing, twin
+  - [`crates/openapi-codegen`](./) provides OpenAPI 3.2 query parsing, twin
     resolution, language emission, and runtime fallback controls.
 - Gate: `cargo test -p openapi-codegen`
 
@@ -182,7 +182,7 @@ contribution.
 - Promise: Apply bounded connection behavior and verify a service against an
   explicit private CA and matching server name.
 - Sources:
-  - [`libs/openapi-codegen`](./) provides generated transport policy, private
+  - [`crates/openapi-codegen`](./) provides generated transport policy, private
     trust types, name checks, root replacement, and refusal behavior.
 - Gate: `cargo test -p openapi-codegen`
 
@@ -192,7 +192,7 @@ contribution.
 - Promise: Let TypeScript and Python callers attach a fixed bearer value or
   fixed headers without claiming token discovery or rotation.
 - Sources:
-  - [`libs/openapi-codegen`](./) provides TypeScript default headers and Python
+  - [`crates/openapi-codegen`](./) provides TypeScript default headers and Python
     construction-time token and header inputs.
 - Gate: `cargo test -p openapi-codegen`
 
@@ -202,7 +202,7 @@ contribution.
 - Promise: Optionally read a current file bearer value immediately before an
   eligible request.
 - Sources:
-  - [`libs/openapi-codegen`](./) provides the generic extension. Applications
+  - [`crates/openapi-codegen`](./) provides the generic extension. Applications
     choose the file, URL suffix, and schemes.
 - Gate: `cargo test -p openapi-codegen --locked`
 

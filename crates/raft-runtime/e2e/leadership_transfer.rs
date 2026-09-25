@@ -3,7 +3,7 @@
 //! # What was missing
 //!
 //! `raft_core::RaftNode::transfer_leadership` has been correct since #3571, and
-//! `libs/raft-core/e2e/leadership_transfer.rs` measures it thoroughly — on an
+//! `crates/raft-core/e2e/leadership_transfer.rs` measures it thoroughly — on an
 //! in-process bus, against a node the row holds directly. Nothing that runs a
 //! real host could reach it: `RaftHost` exposes no transfer entry point and
 //! hands out no accessor for the locked node, so the operation existed and was

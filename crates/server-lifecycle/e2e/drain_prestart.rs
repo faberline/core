@@ -1,4 +1,4 @@
-// <HANDWRITE gap="missing-generator:unit-test:e1b34274" tracker="#1884" reason="scaffold for libs/server-lifecycle/tests/drain_prestart.rs — fill in by hand and update tracker when codegen is ready">
+// <HANDWRITE gap="missing-generator:unit-test:e1b34274" tracker="#1884" reason="scaffold for crates/server-lifecycle/tests/drain_prestart.rs — fill in by hand and update tracker when codegen is ready">
 use std::time::Duration;
 
 use server_lifecycle::DrainController;

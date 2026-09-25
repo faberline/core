@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/compass/external-contracts/behavior/semantic-search-and-graph-query-contract.md#semantic-search-and-graph-query-contract
+// SPEC-MANAGED: crates/compass/external-contracts/behavior/semantic-search-and-graph-query-contract.md#semantic-search-and-graph-query-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec semantic-search-and-graph-query-contract
@@ -7,7 +7,7 @@
 // @contract semantic-search-and-graph-query-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-compass
+// @command cargo test -p compass
 // AW-EC-END
 
 // Contract: Semantic search and graph query contract remains covered by the configured Compass library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn semantic_search_and_graph_query_contract() {
-    let command = "cargo test -p cclab-compass";
+    let command = "cargo test -p compass";
     let id = "semantic-search-and-graph-query-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

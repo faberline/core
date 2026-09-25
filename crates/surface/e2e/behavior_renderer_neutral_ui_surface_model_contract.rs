@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/surface/external-contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract
+// SPEC-MANAGED: crates/surface/external-contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec renderer-neutral-ui-surface-model-contract
@@ -7,7 +7,7 @@
 // @contract renderer-neutral-ui-surface-model-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-surface
+// @command cargo test -p surface
 // AW-EC-END
 
 // Contract: Renderer-Neutral UI Surface Model public Rust API behavior remains covered by the configured library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn renderer_neutral_ui_surface_model_contract() {
-    let command = "cargo test -p cclab-surface";
+    let command = "cargo test -p surface";
     let id = "renderer-neutral-ui-surface-model-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

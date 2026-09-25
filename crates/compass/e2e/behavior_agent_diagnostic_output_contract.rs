@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/compass/external-contracts/behavior/agent-diagnostic-output-contract.md#agent-diagnostic-output-contract
+// SPEC-MANAGED: crates/compass/external-contracts/behavior/agent-diagnostic-output-contract.md#agent-diagnostic-output-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec agent-diagnostic-output-contract
@@ -7,7 +7,7 @@
 // @contract agent-diagnostic-output-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-compass
+// @command cargo test -p compass
 // AW-EC-END
 
 // Contract: Agent diagnostic output contract remains covered by the configured Compass library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn agent_diagnostic_output_contract() {
-    let command = "cargo test -p cclab-compass";
+    let command = "cargo test -p compass";
     let id = "agent-diagnostic-output-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

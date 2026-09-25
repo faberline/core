@@ -1,4 +1,4 @@
-<!-- SPEC-MANAGED: libs/surface/tech-design/semantic/surface-libs-surface.md#schema -->
+<!-- SPEC-MANAGED: crates/surface/tech-design/semantic/surface-libs-surface.md#schema -->
 <!-- CODEGEN-BEGIN -->
 # surface Agent Context
 
@@ -7,7 +7,7 @@
 ## Tech Design
 
 - [Tech Design](tech-design): implementation source of truth.
-- Validate: `aw td check libs/surface/tech-design`.
+- Validate: `aw td check crates/surface/tech-design`.
 
 ## Capability Map
 
@@ -21,7 +21,7 @@
 
 ## Commands
 
-- Test: `cargo test -p cclab-surface`.
+- Test: `cargo test -p surface`.
 
 ## Root Artifacts
 

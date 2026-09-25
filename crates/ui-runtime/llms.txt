@@ -1,4 +1,4 @@
-<!-- SPEC-MANAGED: libs/ui-runtime/tech-design/semantic/ui-runtime-libs-ui-runtime.md#schema -->
+<!-- SPEC-MANAGED: crates/ui-runtime/tech-design/semantic/ui-runtime-libs-ui-runtime.md#schema -->
 <!-- CODEGEN-BEGIN -->
 # Ui Runtime Agent Context
 
@@ -7,7 +7,7 @@
 ## Tech Design
 
 - [Tech Design](tech-design): implementation source of truth.
-- Validate: `aw td check libs/ui-runtime/tech-design`.
+- Validate: `aw td check crates/ui-runtime/tech-design`.
 
 ## Capability Map
 
@@ -21,7 +21,7 @@
 
 ## Commands
 
-- Test: `cargo test -p cclab-ui-runtime`.
+- Test: `cargo test -p ui-runtime`.
 
 ## Root Artifacts
 

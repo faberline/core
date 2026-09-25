@@ -2,7 +2,7 @@
 
 ## Brief
 
-How to change `libs/peer-tls`. What it promises and the work roots it owns live
+How to change `crates/peer-tls`. What it promises and the work roots it owns live
 in [README.md](README.md); repository-wide authoring and verification rules
 live in the root [CONTRIBUTING.md](../../CONTRIBUTING.md).
 

@@ -1,8 +1,8 @@
-// SPEC-MANAGED: libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#rust-source-unit
+// SPEC-MANAGED: crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#rust-source-unit
 // CODEGEN-BEGIN
 //! Renderer-neutral UI surface primitives.
 //!
-//! `cclab-surface` is deliberately below any renderer or framework runtime. It
+//! `surface` is deliberately below any renderer or framework runtime. It
 //! owns the UI element tree shape that Jet WASM TSX/Vue/etc. adapters produce,
 //! plus a serializable snapshot form that native desktop readers, renderers, tests,
 //! and parity comparators can inspect without a browser or toolkit-private tree.
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 /// A rendered element tree shared by framework runtimes.
 #[derive(Clone)]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub enum Element {
     /// An intrinsic renderer-neutral node: kind/tag + props + children.
     Intrinsic {
@@ -31,7 +31,7 @@ pub enum Element {
     Fragment(Vec<Element>),
 }
 
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 impl Element {
     pub fn intrinsic(tag: &'static str, props: Props, children: Vec<Element>) -> Self {
         Self::Intrinsic {
@@ -84,19 +84,19 @@ impl Element {
 
 /// Component = render function + typed props erased behind `Any`.
 #[derive(Clone)]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub struct Component {
     pub name: &'static str,
     pub render: ComponentFn,
     pub props: Rc<dyn std::any::Any>,
 }
 
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub type ComponentFn = fn(&Rc<dyn std::any::Any>) -> Element;
 
 /// Host props shared by framework runtimes and renderers.
 #[derive(Clone, Default, Debug)]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub struct Props {
     pub class_name: Option<String>,
     pub style: Option<String>,
@@ -115,7 +115,7 @@ pub struct Props {
 
 /// Event callback typed by payload.
 #[derive(Clone)]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub struct Callback<P: Clone>(Rc<dyn Fn(P)>);
 
 impl<P: Clone> std::fmt::Debug for Callback<P> {
@@ -136,13 +136,13 @@ impl<P: Clone> Callback<P> {
 
 /// Serializable snapshot of a rendered surface tree.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub struct SurfaceSnapshot {
     pub schema_version: u32,
     pub nodes: Vec<SurfaceNode>,
 }
 
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 impl SurfaceSnapshot {
     pub const SCHEMA_VERSION: u32 = 1;
 
@@ -189,7 +189,7 @@ impl SurfaceSnapshot {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub struct SurfaceNode {
     /// Stable structural path inside the rendered tree.
     pub node_id: String,
@@ -209,7 +209,7 @@ pub struct SurfaceNode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub enum SurfaceNodeKind {
     Element,
     Text,
@@ -217,7 +217,7 @@ pub enum SurfaceNodeKind {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub struct SurfaceProps {
     pub id: Option<String>,
     pub class_name: Option<String>,
@@ -234,7 +234,7 @@ pub struct SurfaceProps {
     pub has_on_checked_change: bool,
 }
 
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 impl From<&Props> for SurfaceProps {
     fn from(props: &Props) -> Self {
         Self {
@@ -256,7 +256,7 @@ impl From<&Props> for SurfaceProps {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-/// @spec libs/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
+/// @spec crates/surface/tech-design/semantic/source/libs-surface-src-lib-rs.md#source
 pub struct SurfaceRect {
     pub x: f32,
     pub y: f32,

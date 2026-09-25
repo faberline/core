@@ -50,10 +50,10 @@ aggregates those per-connection facts.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p transport-h2c --no-deps` |
-| Simple client, fixed pool, and sizing | `libs/transport-h2c/src/lib.rs` |
-| Managed connection pool | `libs/transport-h2c/src/manager.rs` and `conn.rs` |
-| Error and ambiguity contract | `libs/transport-h2c/src/error.rs` |
-| Optional per-connection server | `libs/transport-h2c/src/server.rs` |
+| Simple client, fixed pool, and sizing | `crates/transport-h2c/src/lib.rs` |
+| Managed connection pool | `crates/transport-h2c/src/manager.rs` and `conn.rs` |
+| Error and ambiguity contract | `crates/transport-h2c/src/error.rs` |
+| Optional per-connection server | `crates/transport-h2c/src/server.rs` |
 | Executable behavior | `cargo test -p transport-h2c` |
 
 ## Capabilities
@@ -65,11 +65,11 @@ contribution.
 
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
-| h2c client helpers | `h2c-client-helpers` | Build a prior-knowledge h2c client or a fixed round-robin pool. | `libs/transport-h2c` |
-| Connection sizing | `connection-sizing` | Select a bounded connection count from target concurrency and CPU parallelism. | `libs/transport-h2c` |
-| Managed h2c pool | `managed-h2c-pool` | Bound, observe, grow, shrink, and repair frame-level h2c connections. | `libs/transport-h2c` |
-| Per-connection HTTP serving | `per-connection-http-serving` | Serve one accepted stream as HTTP/1.1 or h2c without taking listener ownership. | `libs/transport-h2c`, `libs/server-lifecycle` |
-| Graceful connection drain | `graceful-connection-drain` | Stop admission and report completed, refused, timed-out, and ambiguous work during drain. | `libs/transport-h2c`, `libs/server-lifecycle` |
+| h2c client helpers | `h2c-client-helpers` | Build a prior-knowledge h2c client or a fixed round-robin pool. | `crates/transport-h2c` |
+| Connection sizing | `connection-sizing` | Select a bounded connection count from target concurrency and CPU parallelism. | `crates/transport-h2c` |
+| Managed h2c pool | `managed-h2c-pool` | Bound, observe, grow, shrink, and repair frame-level h2c connections. | `crates/transport-h2c` |
+| Per-connection HTTP serving | `per-connection-http-serving` | Serve one accepted stream as HTTP/1.1 or h2c without taking listener ownership. | `crates/transport-h2c`, `crates/server-lifecycle` |
+| Graceful connection drain | `graceful-connection-drain` | Stop admission and report completed, refused, timed-out, and ambiguous work during drain. | `crates/transport-h2c`, `crates/server-lifecycle` |
 
 ### h2c client helpers
 
@@ -77,7 +77,7 @@ contribution.
 - Promise: Build one HTTP/2 cleartext prior-knowledge client or distribute calls
   over a fixed round-robin pool.
 - Sources:
-  - [`libs/transport-h2c`](./) provides client construction, optional timeout
+  - [`crates/transport-h2c`](./) provides client construction, optional timeout
     and user agent, fixed pool creation, and GET and POST helpers.
 - Gate: `cargo test -p transport-h2c`
 
@@ -87,7 +87,7 @@ contribution.
 - Promise: Return a deterministic logarithmic connection count bounded by one
   and caller-selected or available CPU parallelism.
 - Sources:
-  - [`libs/transport-h2c`](./) provides the sizing formula, explicit-parallelism
+  - [`crates/transport-h2c`](./) provides the sizing formula, explicit-parallelism
     form, CPU lookup, and boundary tests.
 - Gate: `cargo test -p transport-h2c`
 
@@ -97,7 +97,7 @@ contribution.
 - Promise: Dispatch through healthy least-loaded connections, cap in-flight
   work, adapt pool size, replace dead connections, and expose pool statistics.
 - Sources:
-  - [`libs/transport-h2c`](./) provides the frame-level connection driver,
+  - [`crates/transport-h2c`](./) provides the frame-level connection driver,
     manager, health checks, sizing, timeouts, GOAWAY handling, and safe retry.
 - Gate: `cargo test -p transport-h2c --test manager`
 
@@ -107,9 +107,9 @@ contribution.
 - Promise: With the `server` feature, serve one caller-accepted stream as
   HTTP/1.1 or h2c and return its terminal report.
 - Sources:
-  - [`libs/transport-h2c`](./) provides protocol detection and per-connection
+  - [`crates/transport-h2c`](./) provides protocol detection and per-connection
     Hyper serving.
-  - [`libs/server-lifecycle`](../server-lifecycle/) supplies the lifecycle and
+  - [`crates/server-lifecycle`](../server-lifecycle/) supplies the lifecycle and
     shutdown deadline observed by lifecycle-aware forms.
 - Gate: `cargo test -p transport-h2c`
 
@@ -119,9 +119,9 @@ contribution.
 - Promise: Close admission during drain, give active work its supplied
   deadline, and distinguish refused, timed-out, and ambiguous mutations.
 - Sources:
-  - [`libs/transport-h2c`](./) provides request accounting, HTTP/2 shutdown,
+  - [`crates/transport-h2c`](./) provides request accounting, HTTP/2 shutdown,
     deadline handling, mutation classification, and `ConnectionReport`.
-  - [`libs/server-lifecycle`](../server-lifecycle/) supplies the lifecycle
+  - [`crates/server-lifecycle`](../server-lifecycle/) supplies the lifecycle
     observation and absolute deadline.
 - Gate: `cargo test -p transport-h2c --test graceful_drain`
 

@@ -2,7 +2,7 @@
 
 ## Brief
 
-How to change `libs/compass`. What it promises and the work roots it owns live
+How to change `crates/compass`. What it promises and the work roots it owns live
 in [README.md](README.md); repository-wide authoring and verification rules
 live in the root [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
@@ -14,4 +14,4 @@ rather than driven through `e2e -> impl`.
 
 | Gate | Command |
 |---|---|
-| unit + colocated tests | `cargo test -p cclab-compass` |
+| unit + colocated tests | `cargo test -p compass` |

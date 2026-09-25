@@ -28,5 +28,5 @@ recovery, or sequence-named snapshot retention locally.
 - Gate — behavior: `cargo test -p storage-durable` - durable file primitive
   coverage
 - Gate: `cargo test -p storage-durable`
-- Source: `libs/storage-durable/src/lib.rs`
-- Evidence: `cargo test -p storage-durable`; libs/storage-durable/src/lib.rs
+- Source: `crates/storage-durable/src/lib.rs`
+- Evidence: `cargo test -p storage-durable`; crates/storage-durable/src/lib.rs

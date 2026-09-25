@@ -26,5 +26,5 @@ resource-wide credentials with workers.
 - Gate — behavior: `cargo test -p claim-token` - token signing, verification,
   and scope rejection coverage
 - Gate: `cargo test -p claim-token`
-- Source: `libs/claim-token/src/lib.rs`
-- Evidence: `cargo test -p claim-token`; libs/claim-token/src/lib.rs
+- Source: `crates/claim-token/src/lib.rs`
+- Evidence: `cargo test -p claim-token`; crates/claim-token/src/lib.rs

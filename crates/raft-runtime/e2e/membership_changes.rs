@@ -2,7 +2,7 @@
 //!
 //! # What was missing
 //!
-//! `libs/raft-core` contains promotion, demotion and removal logic, validated
+//! `crates/raft-core` contains promotion, demotion and removal logic, validated
 //! by in-process tests. However, `RaftHost` exposed no membership-mutation
 //! methods, and no accessor was provided for the locked node.
 //!

@@ -1,10 +1,10 @@
-// SPEC-MANAGED: libs/ui-runtime/tech-design/semantic/source/libs-ui-runtime-src-lib-rs.md#rust-source-unit
+// SPEC-MANAGED: crates/ui-runtime/tech-design/semantic/source/libs-ui-runtime-src-lib-rs.md#rust-source-unit
 // CODEGEN-BEGIN
 //! Renderer-neutral component runtime: fiber tree + hooks + mount/flush loop.
 //!
 //! The runtime owns React-like authoring semantics without depending on React
 //! DOM, a browser, WASM, AppKit, or any concrete renderer. Components render
-//! `cclab_surface::Element` trees; host adapters decide whether those trees are
+//! `surface::Element` trees; host adapters decide whether those trees are
 //! painted by Jet WASM WebGPU, a native desktop backend, or a test recorder.
 //!
 //! This is the middle layer between the UI element model and renderer backends:
@@ -13,7 +13,7 @@
 //! Component/hooks -> Element tree -> layout/paint/backend
 //! ```
 
-use cclab_surface::{Callback, Component, Element};
+use surface::{Callback, Component, Element};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -74,7 +74,7 @@ pub(crate) enum HookSlot {
 /// into `u64` at the call site so the slot doesn't need to carry
 /// arbitrary types. The transpiler emits `hash_dep(x)` for each
 /// dep the TSX source passes.
-/// @spec libs/ui-runtime/tech-design/semantic/source/libs-ui-runtime-src-lib-rs.md#source
+/// @spec crates/ui-runtime/tech-design/semantic/source/libs-ui-runtime-src-lib-rs.md#source
 pub type MemoDepHash = u64;
 
 // ── Thread-local scheduler / runtime ────────────────────────────────────────

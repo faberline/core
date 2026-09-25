@@ -1,6 +1,6 @@
 ---
 id: libs-ui-runtime-src-lib-rs
-summary: Lossless rust-source-unit coverage for `libs/ui-runtime/src/lib.rs`.
+summary: Lossless rust-source-unit coverage for `crates/ui-runtime/src/lib.rs`.
 capability_refs:
   - id: renderer-neutral-component-runtime
     role: primary
@@ -10,45 +10,45 @@ capability_refs:
 fill_sections: [overview, source, changes]
 ---
 
-# Standardized libs/ui-runtime/src/lib.rs
+# Standardized crates/ui-runtime/src/lib.rs
 
 ## Overview
 <!-- type: overview lang: markdown -->
 
-Public API manifest for `libs/ui-runtime/src/lib.rs` captured during libs codegen standardization.
+Public API manifest for `crates/ui-runtime/src/lib.rs` captured during libs codegen standardization.
 
 ### Symbols
 
 | Name | Target | Kind | Visibility | Line | Signature |
 |------|--------|------|------------|------|-----------|
-| `Fiber` | libs/ui-runtime/src/lib.rs | struct | pub | 26 | pub(crate) struct Fiber { |
-| `FiberId` | libs/ui-runtime/src/lib.rs | struct | pub | 39 | pub struct FiberId(pub u64); |
-| `HookSlot` | libs/ui-runtime/src/lib.rs | enum | pub | 49 | pub(crate) enum HookSlot { |
-| `MemoDepHash` | libs/ui-runtime/src/lib.rs | type | pub | 75 | pub type MemoDepHash = u64; |
-| `use_state` | libs/ui-runtime/src/lib.rs | function | pub | 151 | pub fn use_state<T: Clone + 'static>(initial: T) -> (T, StateSetter<T>) { |
-| `StateSetter` | libs/ui-runtime/src/lib.rs | struct | pub | 186 | pub struct StateSetter<T: Clone + 'static> { |
-| `set` | libs/ui-runtime/src/lib.rs | function | pub | 205 | pub fn set(&self, new_value: T) { |
-| `use_effect_once` | libs/ui-runtime/src/lib.rs | function | pub | 223 | pub fn use_effect_once<F: FnOnce() + 'static>(effect: F) { |
-| `DispatchHandle` | libs/ui-runtime/src/lib.rs | struct | pub | 258 | pub struct DispatchHandle<S: Clone + 'static, A: 'static> { |
-| `dispatch` | libs/ui-runtime/src/lib.rs | function | pub | 277 | pub fn dispatch(&self, action: A) { |
-| `set_update_scheduler` | libs/ui-runtime/src/lib.rs | function | pub | 302 | pub fn set_update_scheduler(scheduler: Option<Rc<dyn Fn()>>) { |
-| `use_reducer` | libs/ui-runtime/src/lib.rs | function | pub | 319 | pub fn use_reducer<S: Clone + 'static, A: 'static, F: Fn(&S, A) -> S + 'static>( |
-| `RefHandle` | libs/ui-runtime/src/lib.rs | struct | pub | 357 | pub struct RefHandle<T: 'static> { |
-| `current` | libs/ui-runtime/src/lib.rs | function | pub | 372 | pub fn current(&self) -> T { |
-| `with_mut` | libs/ui-runtime/src/lib.rs | function | pub | 386 | pub fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R { |
-| `use_ref` | libs/ui-runtime/src/lib.rs | function | pub | 397 | pub fn use_ref<T: 'static>(initial: T) -> RefHandle<T> { |
-| `use_memo` | libs/ui-runtime/src/lib.rs | function | pub | 428 | pub fn use_memo<T: Clone + 'static, F: FnOnce() -> T>(compute: F, deps: Vec<MemoDepHash>) -> T { |
-| `use_callback` | libs/ui-runtime/src/lib.rs | function | pub | 467 | pub fn use_callback<P: Clone + 'static, F: Fn(P) + 'static>( |
-| `hash_dep` | libs/ui-runtime/src/lib.rs | function | pub | 477 | pub fn hash_dep<H: std::hash::Hash + ?Sized>(v: &H) -> MemoDepHash { |
-| `mount` | libs/ui-runtime/src/lib.rs | function | pub | 490 | pub fn mount(component: Component) -> MountHandle { |
-| `MountHandle` | libs/ui-runtime/src/lib.rs | struct | pub | 503 | pub struct MountHandle { |
-| `snapshot` | libs/ui-runtime/src/lib.rs | function | pub | 512 | pub fn snapshot(&self) -> Element { |
-| `flush` | libs/ui-runtime/src/lib.rs | function | pub | 520 | pub fn flush(&self) -> bool { |
-| `mark_root_dirty` | libs/ui-runtime/src/lib.rs | function | pub | 543 | pub fn mark_root_dirty(&self) { |
-| `DebugFiberMeta` | libs/ui-runtime/src/lib.rs | struct | pub | 556 | pub struct DebugFiberMeta { |
-| `debug_snapshot_fibers` | libs/ui-runtime/src/lib.rs | function | pub | 564 | pub fn debug_snapshot_fibers() -> Vec<DebugFiberMeta> { |
-| `DebugHookSummary` | libs/ui-runtime/src/lib.rs | struct | pub | 583 | pub struct DebugHookSummary { |
-| `debug_snapshot_hooks` | libs/ui-runtime/src/lib.rs | function | pub | 595 | pub fn debug_snapshot_hooks(fiber_id: u64) -> Vec<DebugHookSummary> { |
+| `Fiber` | crates/ui-runtime/src/lib.rs | struct | pub | 26 | pub(crate) struct Fiber { |
+| `FiberId` | crates/ui-runtime/src/lib.rs | struct | pub | 39 | pub struct FiberId(pub u64); |
+| `HookSlot` | crates/ui-runtime/src/lib.rs | enum | pub | 49 | pub(crate) enum HookSlot { |
+| `MemoDepHash` | crates/ui-runtime/src/lib.rs | type | pub | 75 | pub type MemoDepHash = u64; |
+| `use_state` | crates/ui-runtime/src/lib.rs | function | pub | 151 | pub fn use_state<T: Clone + 'static>(initial: T) -> (T, StateSetter<T>) { |
+| `StateSetter` | crates/ui-runtime/src/lib.rs | struct | pub | 186 | pub struct StateSetter<T: Clone + 'static> { |
+| `set` | crates/ui-runtime/src/lib.rs | function | pub | 205 | pub fn set(&self, new_value: T) { |
+| `use_effect_once` | crates/ui-runtime/src/lib.rs | function | pub | 223 | pub fn use_effect_once<F: FnOnce() + 'static>(effect: F) { |
+| `DispatchHandle` | crates/ui-runtime/src/lib.rs | struct | pub | 258 | pub struct DispatchHandle<S: Clone + 'static, A: 'static> { |
+| `dispatch` | crates/ui-runtime/src/lib.rs | function | pub | 277 | pub fn dispatch(&self, action: A) { |
+| `set_update_scheduler` | crates/ui-runtime/src/lib.rs | function | pub | 302 | pub fn set_update_scheduler(scheduler: Option<Rc<dyn Fn()>>) { |
+| `use_reducer` | crates/ui-runtime/src/lib.rs | function | pub | 319 | pub fn use_reducer<S: Clone + 'static, A: 'static, F: Fn(&S, A) -> S + 'static>( |
+| `RefHandle` | crates/ui-runtime/src/lib.rs | struct | pub | 357 | pub struct RefHandle<T: 'static> { |
+| `current` | crates/ui-runtime/src/lib.rs | function | pub | 372 | pub fn current(&self) -> T { |
+| `with_mut` | crates/ui-runtime/src/lib.rs | function | pub | 386 | pub fn with_mut<R>(&self, f: impl FnOnce(&mut T) -> R) -> R { |
+| `use_ref` | crates/ui-runtime/src/lib.rs | function | pub | 397 | pub fn use_ref<T: 'static>(initial: T) -> RefHandle<T> { |
+| `use_memo` | crates/ui-runtime/src/lib.rs | function | pub | 428 | pub fn use_memo<T: Clone + 'static, F: FnOnce() -> T>(compute: F, deps: Vec<MemoDepHash>) -> T { |
+| `use_callback` | crates/ui-runtime/src/lib.rs | function | pub | 467 | pub fn use_callback<P: Clone + 'static, F: Fn(P) + 'static>( |
+| `hash_dep` | crates/ui-runtime/src/lib.rs | function | pub | 477 | pub fn hash_dep<H: std::hash::Hash + ?Sized>(v: &H) -> MemoDepHash { |
+| `mount` | crates/ui-runtime/src/lib.rs | function | pub | 490 | pub fn mount(component: Component) -> MountHandle { |
+| `MountHandle` | crates/ui-runtime/src/lib.rs | struct | pub | 503 | pub struct MountHandle { |
+| `snapshot` | crates/ui-runtime/src/lib.rs | function | pub | 512 | pub fn snapshot(&self) -> Element { |
+| `flush` | crates/ui-runtime/src/lib.rs | function | pub | 520 | pub fn flush(&self) -> bool { |
+| `mark_root_dirty` | crates/ui-runtime/src/lib.rs | function | pub | 543 | pub fn mark_root_dirty(&self) { |
+| `DebugFiberMeta` | crates/ui-runtime/src/lib.rs | struct | pub | 556 | pub struct DebugFiberMeta { |
+| `debug_snapshot_fibers` | crates/ui-runtime/src/lib.rs | function | pub | 564 | pub fn debug_snapshot_fibers() -> Vec<DebugFiberMeta> { |
+| `DebugHookSummary` | crates/ui-runtime/src/lib.rs | struct | pub | 583 | pub struct DebugHookSummary { |
+| `debug_snapshot_hooks` | crates/ui-runtime/src/lib.rs | function | pub | 595 | pub fn debug_snapshot_hooks(fiber_id: u64) -> Vec<DebugHookSummary> { |
 
 
 ## Source
@@ -59,7 +59,7 @@ Public API manifest for `libs/ui-runtime/src/lib.rs` captured during libs codege
 //!
 //! The runtime owns React-like authoring semantics without depending on React
 //! DOM, a browser, WASM, AppKit, or any concrete renderer. Components render
-//! `cclab_surface::Element` trees; host adapters decide whether those trees are
+//! `surface::Element` trees; host adapters decide whether those trees are
 //! painted by Jet WASM WebGPU, a native desktop backend, or a test recorder.
 //!
 //! This is the middle layer between the UI element model and renderer backends:
@@ -68,7 +68,7 @@ Public API manifest for `libs/ui-runtime/src/lib.rs` captured during libs codege
 //! Component/hooks -> Element tree -> layout/paint/backend
 //! ```
 
-use cclab_surface::{Callback, Component, Element};
+use surface::{Callback, Component, Element};
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -752,10 +752,10 @@ fn render_fiber(fiber_id: FiberId, component: Component) -> Element {
 ```yaml
 coverage_kind: semantic
 changes:
-  - path: "libs/ui-runtime/src/lib.rs"
+  - path: "crates/ui-runtime/src/lib.rs"
     action: modify
     section: rust-source-unit
     impl_mode: codegen
     description: |
-      rust-source-unit (td_ast) source for `libs/ui-runtime/src/lib.rs` captured during libs codegen standardization.
+      rust-source-unit (td_ast) source for `crates/ui-runtime/src/lib.rs` captured during libs codegen standardization.
 ```

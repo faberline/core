@@ -54,11 +54,11 @@ lifecycle-aware forms.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p service-http --no-deps` |
-| Standard operational routes | `libs/service-http/src/probes.rs` |
-| Error and request protection | `libs/service-http/src/error.rs`, `body_limit.rs`, and `admission.rs` |
-| Request trace and access logging | `libs/service-http/src/transport.rs` |
-| Server timing | `libs/service-http/src/server_timing.rs` |
-| Lifecycle adapters | `libs/service-http/src/transport.rs` and `signal.rs` |
+| Standard operational routes | `crates/service-http/src/probes.rs` |
+| Error and request protection | `crates/service-http/src/error.rs`, `body_limit.rs`, and `admission.rs` |
+| Request trace and access logging | `crates/service-http/src/transport.rs` |
+| Server timing | `crates/service-http/src/server_timing.rs` |
+| Lifecycle adapters | `crates/service-http/src/transport.rs` and `signal.rs` |
 | Executable behavior | `cargo test -p service-http` |
 
 ## Capabilities
@@ -70,11 +70,11 @@ contribution.
 
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
-| Standard operational routes | `standard-operational-routes` | Mount the common health, readiness, metrics, OpenAPI, and docs routes on an app router. | `libs/service-http`, `libs/service-observability` |
-| Structured HTTP errors | `structured-http-errors` | Render generic HTTP failures through one `{error,message}` JSON envelope. | `libs/service-http` |
-| Request protection | `request-protection` | Enforce a streaming body limit and caller-defined admission buckets with standard rejection responses. | `libs/service-http` |
-| Request observability | `request-observability` | Correlate inbound request traces and disclose bounded server timing. | `libs/service-http`, `libs/service-observability` |
-| Lifecycle HTTP adapters | `lifecycle-http-adapters` | Connect HTTP serving, probes, signals, and shutdown reporting to one lifecycle. | `libs/service-http`, `libs/server-http`, `libs/server-lifecycle` |
+| Standard operational routes | `standard-operational-routes` | Mount the common health, readiness, metrics, OpenAPI, and docs routes on an app router. | `crates/service-http`, `crates/service-observability` |
+| Structured HTTP errors | `structured-http-errors` | Render generic HTTP failures through one `{error,message}` JSON envelope. | `crates/service-http` |
+| Request protection | `request-protection` | Enforce a streaming body limit and caller-defined admission buckets with standard rejection responses. | `crates/service-http` |
+| Request observability | `request-observability` | Correlate inbound request traces and disclose bounded server timing. | `crates/service-http`, `crates/service-observability` |
+| Lifecycle HTTP adapters | `lifecycle-http-adapters` | Connect HTTP serving, probes, signals, and shutdown reporting to one lifecycle. | `crates/service-http`, `crates/server-http`, `crates/server-lifecycle` |
 
 ### Standard operational routes
 
@@ -82,9 +82,9 @@ contribution.
 - Promise: Mount the common probe, metrics, OpenAPI, and interactive docs
   routes from caller-supplied readiness, metrics, and API inputs.
 - Sources:
-  - [`libs/service-http`](./) provides the Axum route set and canonical JSON
+  - [`crates/service-http`](./) provides the Axum route set and canonical JSON
     variant.
-  - [`libs/service-observability`](../service-observability/) provides the
+  - [`crates/service-observability`](../service-observability/) provides the
     metric-provider contract re-exported by this crate.
 - Gate: `cargo test -p service-http`
 
@@ -94,7 +94,7 @@ contribution.
 - Promise: Pair a caller-selected HTTP status with the shared
   `{error,message}` response shape.
 - Sources:
-  - [`libs/service-http`](./) provides `ErrorEnvelope`, `ApiErr`, JSON rendering,
+  - [`crates/service-http`](./) provides `ErrorEnvelope`, `ApiErr`, JSON rendering,
     and the reusable OpenAPI schema type.
 - Gate: `cargo test -p service-http`
 
@@ -104,7 +104,7 @@ contribution.
 - Promise: Reject oversized request bodies with `413` and denied admission
   attempts with `429` plus `Retry-After` without retaining a raw caller key.
 - Sources:
-  - [`libs/service-http`](./) provides the streaming body layer, admission
+  - [`crates/service-http`](./) provides the streaming body layer, admission
     controller, redacted observation, and shared response envelopes.
 - Gate: `cargo test -p service-http`
 
@@ -114,9 +114,9 @@ contribution.
 - Promise: Accept or create an inbound trace context, correlate the request
   span, and attach a bounded `Server-Timing` response value.
 - Sources:
-  - [`libs/service-http`](./) provides W3C header parsing, request span fields,
+  - [`crates/service-http`](./) provides W3C header parsing, request span fields,
     access-log adapters, and server timing middleware.
-  - [`libs/service-observability`](../service-observability/) provides the
+  - [`crates/service-observability`](../service-observability/) provides the
     tracing and optional OTLP mechanisms used by the adapters.
 - Gate: `cargo test -p service-http`
 - Gate: `cargo test -p service-http --features otlp --test otlp_tracing`
@@ -127,10 +127,10 @@ contribution.
 - Promise: Use one lifecycle for readiness probes, signal handling, listener
   drain, and the terminal shutdown report.
 - Sources:
-  - [`libs/service-http`](./) provides the router and signal composition
+  - [`crates/service-http`](./) provides the router and signal composition
     adapters.
-  - [`libs/server-http`](../server-http/) owns the HTTP listener and its drain.
-  - [`libs/server-lifecycle`](../server-lifecycle/) owns lifecycle state and
+  - [`crates/server-http`](../server-http/) owns the HTTP listener and its drain.
+  - [`crates/server-lifecycle`](../server-lifecycle/) owns lifecycle state and
     terminal reporting.
 - Gate: `cargo test -p service-http`
 

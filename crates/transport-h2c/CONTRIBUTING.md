@@ -2,7 +2,7 @@
 
 ## Brief
 
-Use this guide to change `libs/transport-h2c`. The [README](README.md) owns the
+Use this guide to change `crates/transport-h2c`. The [README](README.md) owns the
 library promises. The root [CONTRIBUTING.md](../../CONTRIBUTING.md) owns
 repository-wide authoring rules.
 
@@ -14,7 +14,7 @@ Read these sources in order for the part you change:
    gates.
 2. [STATUS.md](STATUS.md) for current support and limits.
 3. [ROADMAP.md](ROADMAP.md) for explicit non-goals.
-4. `libs/transport-h2c/src/lib.rs` for the public client and pool surface.
+4. `crates/transport-h2c/src/lib.rs` for the public client and pool surface.
 5. `manager.rs`, `conn.rs`, and `error.rs` for managed connection behavior.
 6. `server.rs`, `e2e/`, and `Cargo.toml` for the optional server and test
    inventory.
@@ -38,7 +38,7 @@ the deterministic check.
 ```bash
 python3 scripts/meta/test_readme_contract.py
 python3 scripts/meta/test_project_docs_contract.py
-python3 scripts/meta/project_docs_contract.py check libs/transport-h2c --format json
+python3 scripts/meta/project_docs_contract.py check crates/transport-h2c --format json
 ```
 
 ### Library behavior

@@ -29,7 +29,7 @@ without cloning concurrency plumbing. The helper returns every result in
 completion order and enforces a non-zero concurrency ceiling. Durable ownership
 and permission to cause an external effect must be established by the caller
 before submitting work.
-Gate Inventory: `cargo test -p service-executor`; libs/service-executor/src/lib.rs
+Gate Inventory: `cargo test -p service-executor`; crates/service-executor/src/lib.rs
 
 | Work Root | Kind | WI | Impl | Verification | Maturity | Gate / Evidence |
 |---|---|---:|---|---|---|---|

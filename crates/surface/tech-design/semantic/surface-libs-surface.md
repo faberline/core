@@ -18,11 +18,11 @@ fill_sections: [schema, changes]
 ```yaml
 semantic_domain:
   key: "surface"
-  source_group: "libs/surface"
+  source_group: "crates/surface"
   coverage_kind: semantic
   evidence:
     source_units:
-- path: "libs/surface/Cargo.toml"
+- path: "crates/surface/Cargo.toml"
   language: "toml"
   ownership_state: "handwrite"
   generator_primitives: ["source_unit"]
@@ -31,8 +31,8 @@ semantic_domain:
     ecosystem: "toml"
     role: "manifest"
     section_type: "schema"
-    domain: "libs/surface"
-- path: "libs/surface/src/lib.rs"
+    domain: "crates/surface"
+- path: "crates/surface/src/lib.rs"
   language: "rust"
   ownership_state: "handwrite"
   generator_primitives: ["source_unit"]
@@ -41,8 +41,8 @@ semantic_domain:
     ecosystem: "rust"
     role: "source"
     section_type: "schema"
-    domain: "libs/surface"
-- path: "libs/surface/tests/snapshot.rs"
+    domain: "crates/surface"
+- path: "crates/surface/tests/snapshot.rs"
   language: "rust"
   ownership_state: "handwrite"
   generator_primitives: ["source_unit"]
@@ -51,8 +51,8 @@ semantic_domain:
     ecosystem: "rust"
     role: "test"
     section_type: "schema"
-    domain: "libs/surface"
-- path: "libs/surface/llms.txt"
+    domain: "crates/surface"
+- path: "crates/surface/llms.txt"
   language: "llms"
   ownership_state: "codegen"
   generator_primitives: ["project_root_llms"]
@@ -61,7 +61,7 @@ semantic_domain:
     ecosystem: "llms"
     role: "source"
     section_type: "schema"
-    domain: "libs/surface"
+    domain: "crates/surface"
 ```
 
 ## Changes
@@ -70,7 +70,7 @@ semantic_domain:
 ```yaml
 coverage_kind: semantic
 changes:
-- path: "libs/surface/Cargo.toml"
+- path: "crates/surface/Cargo.toml"
   action: modify
   section: schema
   description: |
@@ -78,7 +78,7 @@ changes:
   impl_mode: hand-written
   replaces:
     - "<handwrite-tracker:libs-surface-cargo-toml>"
-- path: "libs/surface/src/lib.rs"
+- path: "crates/surface/src/lib.rs"
   action: modify
   section: schema
   description: |
@@ -86,7 +86,7 @@ changes:
   impl_mode: hand-written
   replaces:
     - "<handwrite-tracker:libs-surface-src-lib-rs>"
-- path: "libs/surface/tests/snapshot.rs"
+- path: "crates/surface/tests/snapshot.rs"
   action: modify
   section: schema
   description: |
@@ -94,7 +94,7 @@ changes:
   impl_mode: hand-written
   replaces:
     - "<handwrite-tracker:libs-surface-tests-snapshot-rs>"
-- path: "libs/surface/llms.txt"
+- path: "crates/surface/llms.txt"
   action: modify
   section: schema
   description: |

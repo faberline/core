@@ -377,7 +377,7 @@ async fn row3_absent_group_id_refused() {
 /// guard also passes.
 ///
 /// This row measures the guard and the route, not the handoff. What the message
-/// does once it is past the guard is `libs/raft-core/e2e/leadership_transfer.rs`.
+/// does once it is past the guard is `crates/raft-core/e2e/leadership_transfer.rs`.
 #[tokio::test]
 async fn row5_timeout_now_refusal() {
     let dir = TempDir::new().unwrap();

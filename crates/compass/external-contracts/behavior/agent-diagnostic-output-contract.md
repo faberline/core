@@ -16,7 +16,7 @@ e2e_tests:
     claim_id: agent-diagnostic-output-contract
     contract_id: agent-diagnostic-output-contract
     category: behavior
-    command: "cargo test -p cclab-compass"
+    command: "cargo test -p compass"
     assertions:
       - "Agent diagnostic output contract remains covered by the configured Compass library test suite."
       - "The library contract stays usable through its documented README capability surface."

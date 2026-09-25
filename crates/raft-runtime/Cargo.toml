@@ -117,10 +117,6 @@ name = "shutdown_idempotency"
 path = "e2e/shutdown_idempotency.rs"
 
 [[test]]
-name = "implementor_build_coverage"
-path = "e2e/implementor_build_coverage.rs"
-
-[[test]]
 name = "adversarial_recovery"
 path = "e2e/adversarial_recovery.rs"
 

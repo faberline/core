@@ -1,5 +1,5 @@
 // CODEGEN-BEGIN
-//! # cclab-compass
+//! # compass
 //!
 //! Code intelligence arsenal for the cclab ecosystem. Compass gives developers
 //! and AI agents the ability to **navigate** a codebase — tree-sitter parsing,

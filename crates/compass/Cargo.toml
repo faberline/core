@@ -1,5 +1,5 @@
 [package]
-name = "cclab-compass"
+name = "compass"
 version.workspace = true
 edition.workspace = true
 authors.workspace = true
@@ -12,7 +12,7 @@ description = "Code intelligence arsenal — navigate, analyze, refactor, and wa
 autotests = false
 
 [lib]
-name = "cclab_compass"
+name = "compass"
 path = "src/lib.rs"
 
 [dependencies]

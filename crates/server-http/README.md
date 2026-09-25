@@ -55,11 +55,11 @@ an app chooses that implementation.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p server-http --no-deps` |
-| Listener options, lifecycle serving, and report | `libs/server-http/src/lib.rs` |
-| TLS serving and accept-time selection | `libs/server-http/src/tls.rs` |
-| TCP accept and supervision | `libs/server-tcp` |
-| Per-connection HTTP protocol | `libs/transport-h2c` |
-| Certificate parsing and identity policy | `libs/peer-tls` |
+| Listener options, lifecycle serving, and report | `crates/server-http/src/lib.rs` |
+| TLS serving and accept-time selection | `crates/server-http/src/tls.rs` |
+| TCP accept and supervision | `crates/server-tcp` |
+| Per-connection HTTP protocol | `crates/transport-h2c` |
+| Certificate parsing and identity policy | `crates/peer-tls` |
 | Executable behavior | `cargo test -p server-http` |
 
 ## Capabilities
@@ -71,10 +71,10 @@ contribution.
 
 | Capability | ID | User promise | Sources |
 |---|---|---|---|
-| HTTP listener runtime | `http-listener-runtime` | Serve HTTP/1.1 and h2c through one caller-supplied TCP listener. | `libs/server-http`, `libs/server-tcp`, `libs/transport-h2c` |
-| Lifecycle drain and report | `lifecycle-drain-report` | Drain one HTTP listener under a caller lifecycle and return bounded terminal accounting. | `libs/server-http`, `libs/server-lifecycle`, `libs/server-tcp`, `libs/transport-h2c` |
-| TLS listener serving | `tls-listener-serving` | Terminate TLS without a cleartext fallback when no valid configuration is active. | `libs/server-http`, `libs/server-tcp`, `libs/transport-h2c` |
-| Accept-time TLS configuration | `accept-time-tls-configuration` | Select the active rustls configuration once for every newly accepted connection. | `libs/server-http` |
+| HTTP listener runtime | `http-listener-runtime` | Serve HTTP/1.1 and h2c through one caller-supplied TCP listener. | `crates/server-http`, `crates/server-tcp`, `crates/transport-h2c` |
+| Lifecycle drain and report | `lifecycle-drain-report` | Drain one HTTP listener under a caller lifecycle and return bounded terminal accounting. | `crates/server-http`, `crates/server-lifecycle`, `crates/server-tcp`, `crates/transport-h2c` |
+| TLS listener serving | `tls-listener-serving` | Terminate TLS without a cleartext fallback when no valid configuration is active. | `crates/server-http`, `crates/server-tcp`, `crates/transport-h2c` |
+| Accept-time TLS configuration | `accept-time-tls-configuration` | Select the active rustls configuration once for every newly accepted connection. | `crates/server-http` |
 
 ### HTTP listener runtime
 
@@ -82,11 +82,11 @@ contribution.
 - Promise: Serve one Axum router as HTTP/1.1 and prior-knowledge h2c through one
   supplied listener.
 - Sources:
-  - [`libs/server-http`](./) composes listener options with the router and
+  - [`crates/server-http`](./) composes listener options with the router and
     aggregates connection results.
-  - [`libs/server-tcp`](../server-tcp/) owns accept admission, socket options,
+  - [`crates/server-tcp`](../server-tcp/) owns accept admission, socket options,
     connection budgets, and task supervision.
-  - [`libs/transport-h2c`](../transport-h2c/) detects and serves the protocol on
+  - [`crates/transport-h2c`](../transport-h2c/) detects and serves the protocol on
     each accepted stream.
 - Gate: `cargo test -p server-http --test ownership`
 
@@ -96,13 +96,13 @@ contribution.
 - Promise: Close listener and stream admission under one lifecycle deadline and
   return explicit connection and request-stream terminal counts.
 - Sources:
-  - [`libs/server-http`](./) maps and aggregates TCP and HTTP connection facts
+  - [`crates/server-http`](./) maps and aggregates TCP and HTTP connection facts
     into `HttpServerReport`.
-  - [`libs/server-lifecycle`](../server-lifecycle/) owns lifecycle state and the
+  - [`crates/server-lifecycle`](../server-lifecycle/) owns lifecycle state and the
     absolute shutdown deadline.
-  - [`libs/server-tcp`](../server-tcp/) drains the accept loop and supervises
+  - [`crates/server-tcp`](../server-tcp/) drains the accept loop and supervises
     connection tasks.
-  - [`libs/transport-h2c`](../transport-h2c/) drains per-connection HTTP work and
+  - [`crates/transport-h2c`](../transport-h2c/) drains per-connection HTTP work and
     reports mutation ambiguity.
 - Gate: `cargo test -p server-http --test lifecycle_composition`
 
@@ -112,10 +112,10 @@ contribution.
 - Promise: Terminate TLS on the shared listener and refuse a connection when no
   valid configuration is active.
 - Sources:
-  - [`libs/server-http`](./) performs the rustls handshake, keeps bounded edge
+  - [`crates/server-http`](./) performs the rustls handshake, keeps bounded edge
     counters, and prevents cleartext fallback.
-  - [`libs/server-tcp`](../server-tcp/) owns listener admission and task drain.
-  - [`libs/transport-h2c`](../transport-h2c/) serves HTTP over the accepted TLS
+  - [`crates/server-tcp`](../server-tcp/) owns listener admission and task drain.
+  - [`crates/transport-h2c`](../transport-h2c/) serves HTTP over the accepted TLS
     stream.
 - Gate: `cargo test -p server-http --test tls_reload`
 
@@ -125,7 +125,7 @@ contribution.
 - Promise: Read the active rustls configuration once per accepted connection so
   new connections can use rotated material without rebinding the listener.
 - Sources:
-  - [`libs/server-http`](./) defines `ServerConfigSource`, selects it at accept,
+  - [`crates/server-http`](./) defines `ServerConfigSource`, selects it at accept,
     and leaves existing connections on their selected configuration.
 - Gate: `cargo test -p server-http --test tls_reload`
 

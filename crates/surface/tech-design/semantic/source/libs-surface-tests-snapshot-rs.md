@@ -1,6 +1,6 @@
 ---
 id: libs-surface-tests-snapshot-rs
-summary: Lossless rust-source-unit coverage for `libs/surface/tests/snapshot.rs`.
+summary: Lossless rust-source-unit coverage for `crates/surface/tests/snapshot.rs`.
 capability_refs:
   - id: renderer-neutral-ui-surface-model
     role: primary
@@ -10,12 +10,12 @@ capability_refs:
 fill_sections: [overview, source, changes]
 ---
 
-# Standardized libs/surface/tests/snapshot.rs
+# Standardized crates/surface/tests/snapshot.rs
 
 ## Overview
 <!-- type: overview lang: markdown -->
 
-Public API manifest for `libs/surface/tests/snapshot.rs` captured during libs codegen standardization.
+Public API manifest for `crates/surface/tests/snapshot.rs` captured during libs codegen standardization.
 
 No public Rust symbols detected by the source-unit capture pass.
 
@@ -24,7 +24,7 @@ No public Rust symbols detected by the source-unit capture pass.
 <!-- type: rust-source-unit lang: rust -->
 
 ````rust
-use cclab_surface::{Element, Props, SurfaceRect};
+use surface::{Element, Props, SurfaceRect};
 
 #[test]
 fn snapshot_serializes_stable_structural_tree() {
@@ -78,10 +78,10 @@ fn snapshot_serializes_stable_structural_tree() {
 ```yaml
 coverage_kind: semantic
 changes:
-  - path: "libs/surface/tests/snapshot.rs"
+  - path: "crates/surface/tests/snapshot.rs"
     action: modify
     section: rust-source-unit
     impl_mode: codegen
     description: |
-      rust-source-unit (td_ast) source for `libs/surface/tests/snapshot.rs` captured during libs codegen standardization.
+      rust-source-unit (td_ast) source for `crates/surface/tests/snapshot.rs` captured during libs codegen standardization.
 ```

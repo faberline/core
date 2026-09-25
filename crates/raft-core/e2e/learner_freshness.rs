@@ -20,7 +20,7 @@ use std::collections::{HashMap, HashSet};
 use raft_core::{Membership, NodeId, RaftNode, Role};
 
 /// Voters 0,1,2 with learner 3 present from construction: the shape
-/// `libs/raft-runtime/src/cluster.rs:280` builds, and the population in which
+/// `crates/raft-runtime/src/cluster.rs:280` builds, and the population in which
 /// the admission predicate is constant.
 fn three_voters_and_a_learner() -> Membership {
     Membership {

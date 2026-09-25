@@ -1,6 +1,6 @@
 [project]
 name = "surface"
-aliases = ["cclab-surface"]
+aliases = ["surface"]
 cap_path = "README.md"
 label = "lib:surface"
 
@@ -8,7 +8,7 @@ label = "lib:surface"
 name = "surface"
 paths = ["**"]
 target = "rust"
-test_cmd = "cargo test -p cclab-surface"
+test_cmd = "cargo test -p surface"
 verify_cold = true
 
 # AW-EC-BEGIN
@@ -23,9 +23,9 @@ capability_id = "renderer-neutral-ui-surface-model"
 claim_id = "renderer-neutral-ui-surface-model-contract"
 contract_id = "renderer-neutral-ui-surface-model-contract"
 category = "behavior"
-td_ref = "libs/surface/external-contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract"
-test_path = "libs/surface/tests/behavior_renderer_neutral_ui_surface_model_contract.rs"
-command = "cargo test -p cclab-surface"
+td_ref = "crates/surface/external-contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract"
+test_path = "crates/surface/tests/behavior_renderer_neutral_ui_surface_model_contract.rs"
+command = "cargo test -p surface"
 required_for_production = true
 assertions = [
     "Renderer-Neutral UI Surface Model public Rust API behavior remains covered by the configured library test suite.",

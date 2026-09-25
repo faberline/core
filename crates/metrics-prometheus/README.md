@@ -29,9 +29,9 @@ deterministically, and escape backslash, quote, and newline values.
   encoder coverage
 - Gate: `cargo test -p metrics-prometheus`
 - Gate: `cargo test -p pgpool --lib`
-- Source: `libs/metrics-prometheus/src/lib.rs`
+- Source: `crates/metrics-prometheus/src/lib.rs`
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
-| shared-prometheus-metric-primitives-contract | epic | - | `cargo test -p metrics-prometheus`; libs/metrics-prometheus/src/lib.rs |
+| shared-prometheus-metric-primitives-contract | epic | - | `cargo test -p metrics-prometheus`; crates/metrics-prometheus/src/lib.rs |
 | labeled-sample-encoder-adoption | change | #1765 | `cargo test -p metrics-prometheus`; `cargo test -p pgpool --lib` |

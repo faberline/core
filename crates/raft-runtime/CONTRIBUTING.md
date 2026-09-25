@@ -2,7 +2,7 @@
 
 ## Brief
 
-How to change `libs/raft-runtime`. What it promises and the work roots it owns
+How to change `crates/raft-runtime`. What it promises and the work roots it owns
 live in [README.md](README.md); repository-wide authoring and verification
 rules live in the root [CONTRIBUTING.md](../../CONTRIBUTING.md).
 
@@ -15,4 +15,3 @@ rather than driven through `e2e -> impl`.
 | Gate | Command |
 |---|---|
 | unit + colocated tests | `cargo test -p raft-runtime` |
-| implementor compile migration | `scripts/raft-implementor-build.sh` |

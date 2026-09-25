@@ -16,7 +16,7 @@ e2e_tests:
     claim_id: spec-parser-and-state-machine-validation-contract
     contract_id: spec-parser-and-state-machine-validation-contract
     category: behavior
-    command: "cargo test -p cclab-compass"
+    command: "cargo test -p compass"
     assertions:
       - "Spec parser and state-machine validation contract remains covered by the configured Compass library test suite."
       - "The library contract stays usable through its documented README capability surface."

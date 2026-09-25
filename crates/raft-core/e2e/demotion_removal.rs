@@ -3,7 +3,7 @@
 //! # Why the rows do not share one group size
 //!
 //! A group of `n` voters commits with `maj(n) = n / 2 + 1` acknowledgements —
-//! `libs/raft-core/src/lib.rs:1190` computes exactly that — so it survives
+//! `crates/raft-core/src/lib.rs:1190` computes exactly that — so it survives
 //! `n - maj(n)` failures:
 //!
 //! ```text
@@ -36,9 +36,9 @@
 //!
 //! # Why a removed member is observed through the leader's outbox
 //!
-//! `libs/raft-core/src/lib.rs:580` rebuilds `peers` from voters ∪ learners ∪
+//! `crates/raft-core/src/lib.rs:580` rebuilds `peers` from voters ∪ learners ∪
 //! outgoing on every adopted configuration, and `broadcast_append` at
-//! `libs/raft-core/src/lib.rs:864` iterates it, so replication to a removed
+//! `crates/raft-core/src/lib.rs:864` iterates it, so replication to a removed
 //! member should stop on its own once the final configuration commits. A row
 //! that reads the membership list back cannot tell that apart from an
 //! implementation that edited the list and kept replicating, which is why
@@ -46,8 +46,8 @@
 //!
 //! # Why the demotion row makes an election happen
 //!
-//! `libs/raft-core/src/lib.rs:754` gates campaigning on `is_voter`, recomputed
-//! from the adopted configuration at `libs/raft-core/src/lib.rs:582`. Asserting
+//! `crates/raft-core/src/lib.rs:754` gates campaigning on `is_voter`, recomputed
+//! from the adopted configuration at `crates/raft-core/src/lib.rs:582`. Asserting
 //! only that the demoted node did not become a candidate is satisfied by a
 //! wedged group, so the row also requires one of the remaining voters to win an
 //! election in the same window. Both halves are needed: the first alone passes

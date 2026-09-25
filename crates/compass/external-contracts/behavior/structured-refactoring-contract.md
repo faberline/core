@@ -16,7 +16,7 @@ e2e_tests:
     claim_id: structured-refactoring-contract
     contract_id: structured-refactoring-contract
     category: behavior
-    command: "cargo test -p cclab-compass"
+    command: "cargo test -p compass"
     assertions:
       - "Structured refactoring contract remains covered by the configured Compass library test suite."
       - "The library contract stays usable through its documented README capability surface."

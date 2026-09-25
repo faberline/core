@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/compass/external-contracts/behavior/structured-refactoring-contract.md#structured-refactoring-contract
+// SPEC-MANAGED: crates/compass/external-contracts/behavior/structured-refactoring-contract.md#structured-refactoring-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec structured-refactoring-contract
@@ -7,7 +7,7 @@
 // @contract structured-refactoring-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-compass
+// @command cargo test -p compass
 // AW-EC-END
 
 // Contract: Structured refactoring contract remains covered by the configured Compass library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn structured_refactoring_contract() {
-    let command = "cargo test -p cclab-compass";
+    let command = "cargo test -p compass";
     let id = "structured-refactoring-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

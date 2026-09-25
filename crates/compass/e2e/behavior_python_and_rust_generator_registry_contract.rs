@@ -1,4 +1,4 @@
-// SPEC-MANAGED: libs/compass/external-contracts/behavior/python-and-rust-generator-registry-contract.md#python-and-rust-generator-registry-contract
+// SPEC-MANAGED: crates/compass/external-contracts/behavior/python-and-rust-generator-registry-contract.md#python-and-rust-generator-registry-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec python-and-rust-generator-registry-contract
@@ -7,7 +7,7 @@
 // @contract python-and-rust-generator-registry-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p cclab-compass
+// @command cargo test -p compass
 // AW-EC-END
 
 // Contract: Python and Rust generator registry contract remains covered by the configured Compass library test suite.
@@ -15,7 +15,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn python_and_rust_generator_registry_contract() {
-    let command = "cargo test -p cclab-compass";
+    let command = "cargo test -p compass";
     let id = "python-and-rust-generator-registry-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

@@ -20,7 +20,7 @@ contract_id = "renderer-neutral-ui-surface-model-contract"
 dimension = "behavior"
 source_ref = "libs/surface/external-contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract"
 test_path = "libs/surface/tests/behavior_renderer_neutral_ui_surface_model_contract.rs"
-command = "cargo test -p cclab-surface"
+command = "cargo test -p surface"
 required_for_production = true
 assertions = [
     "Renderer-Neutral UI Surface Model public Rust API behavior remains covered by the configured library test suite.",

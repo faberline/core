@@ -1,6 +1,6 @@
 [project]
 name = "ui-runtime"
-aliases = ["cclab-ui-runtime"]
+aliases = ["ui-runtime"]
 cap_path = "README.md"
 label = "lib:ui-runtime"
 
@@ -8,7 +8,7 @@ label = "lib:ui-runtime"
 name = "ui-runtime"
 paths = ["**"]
 target = "rust"
-test_cmd = "cargo test -p cclab-ui-runtime"
+test_cmd = "cargo test -p ui-runtime"
 verify_cold = true
 
 # AW-EC-BEGIN
@@ -23,9 +23,9 @@ capability_id = "renderer-neutral-component-runtime"
 claim_id = "renderer-neutral-component-runtime-contract"
 contract_id = "renderer-neutral-component-runtime-contract"
 category = "behavior"
-td_ref = "libs/ui-runtime/external-contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract"
-test_path = "libs/ui-runtime/tests/behavior_renderer_neutral_component_runtime_contract.rs"
-command = "cargo test -p cclab-ui-runtime"
+td_ref = "crates/ui-runtime/external-contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract"
+test_path = "crates/ui-runtime/tests/behavior_renderer_neutral_component_runtime_contract.rs"
+command = "cargo test -p ui-runtime"
 required_for_production = true
 assertions = [
     "Renderer-Neutral Component Runtime public Rust API behavior remains covered by the configured library test suite.",

@@ -7,7 +7,7 @@
 //! crypto and not per-resource authorization:
 //!
 //! - **Token crypto is elsewhere, except the static role-map.** keep and loom
-//!   share scoped claim-check HMAC tokens via `libs/claim-token`; a service's
+//!   share scoped claim-check HMAC tokens via `crates/claim-token`; a service's
 //!   [`Verifier`] *composes* that (its `authenticate` calls
 //!   `claim_token::verify`). Services that instead want a static,
 //!   config-driven token→role registry (the archetype's
@@ -22,7 +22,7 @@
 //!   answers "who is this caller?" and injects that principal; "may they touch
 //!   *this* resource?" is the handler's call.
 //!
-//! It layers onto a router built with `libs/service-http`'s data-plane routes:
+//! It layers onto a router built with `crates/service-http`'s data-plane routes:
 //! attach [`auth_middleware`] with
 //! [`from_fn_with_state`](axum::middleware::from_fn_with_state), passing the
 //! service's `Arc<V>` verifier as state.

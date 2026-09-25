@@ -16,7 +16,7 @@ e2e_tests:
     claim_id: multi-language-parser-and-checker-dispatch-contract
     contract_id: multi-language-parser-and-checker-dispatch-contract
     category: behavior
-    command: "cargo test -p cclab-compass"
+    command: "cargo test -p compass"
     assertions:
       - "Multi-language parser and checker dispatch contract remains covered by the configured Compass library test suite."
       - "The library contract stays usable through its documented README capability surface."

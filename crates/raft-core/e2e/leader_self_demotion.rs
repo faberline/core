@@ -28,7 +28,7 @@
 //! With a self-refusal in place, `demote_voter` and `remove_member` can only
 //! empty the voter set when the leader is not in it — every other route ends at
 //! the leader refusing to name itself. That state is reachable through the
-//! public API and is not constructed by hand here: `libs/raft-core/src/lib.rs`
+//! public API and is not constructed by hand here: `crates/raft-core/src/lib.rs`
 //! `adopt_conf` recomputes `peers`, `is_voter` and the configuration from the
 //! adopted state and does *not* step a leader down, and `raft-runtime` calls it
 //! on every committed configuration entry. So the rows reach the state the way
