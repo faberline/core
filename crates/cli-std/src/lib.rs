@@ -27,6 +27,10 @@
 //! k8s-native service CLI's `<cli> connect` wants (extracted from `lumen
 //! connect`, #1321/#1376 — see `CONTRIBUTING.md` § "Deploy artifacts").
 //!
+//! [`registry`], behind the `registry` feature, is the one clap-typed piece:
+//! the link-time subcommand registry (`CliModule` + the `CLI_MODULES` linkme
+//! slice) a main binary dispatches through instead of a hand-kept table.
+//!
 //! **Courier proxy mode** (#1320). With `$AXIOM_COURIER_URL` set, [`issue`]'s
 //! four verbs route through courier's `/v1/issues/...` endpoints instead of
 //! calling `api.github.com` directly, authenticating with
@@ -40,6 +44,8 @@ pub mod chainable;
 pub mod connect;
 pub mod issue;
 pub mod llm;
+#[cfg(feature = "registry")]
+pub mod registry;
 /// Deprecated alias of [`issue`] — kept until keep/loom/lumen adopt `issue`.
 pub mod report_issue;
 pub mod upgrade;

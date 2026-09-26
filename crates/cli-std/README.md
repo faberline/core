@@ -14,6 +14,7 @@ A promise with no gate under it is not claimed.
 | Capability | Root WI | Notes |
 |---|---:|---|
 | Standard Agent CLI Commands | - | shared llm, upgrade, issue, and chainable output APIs |
+| CLI Module Auto Registration | - | link-time CLI subcommand registry behind the `registry` feature |
 
 ### Standard Agent CLI Commands
 
@@ -27,3 +28,20 @@ GitHub issue, self-update, or LLM orientation logic.
 - Gate: `cargo test -p cli-std`
 - Source: `crates/cli-std/src/lib.rs`
 - Evidence: `cargo test -p cli-std`; crates/cli-std/src/lib.rs
+
+### CLI Module Auto Registration
+
+Rust crates self-register CLI subcommands through a shared `CliModule` trait
+and `linkme` distributed slice, so the main CLI discovers command definitions
+and dispatches them without a hand-maintained central command table. It sits
+behind the `registry` feature because it is the only clap-typed API here.
+
+- Root WI: none; this capability predates the tracker (formerly the
+  monorepo's `cclab-cli-registry`).
+- Surfaces: Rust API: `cli_std::registry::{CliModule, CLI_MODULES,
+  find_module, registered_names}`.
+- Gate — behavior: `cargo test -p cli-std --features registry` - module
+  registry access and name inventory behavior
+- Gate: `cargo test -p cli-std --features registry`
+- Source: `crates/cli-std/src/registry.rs`
+- Evidence: `cargo test -p cli-std --features registry`; crates/cli-std/src/registry.rs
