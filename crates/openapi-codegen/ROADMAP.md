@@ -22,7 +22,7 @@ Stable IDs here let current limits point to one destination.
   upload plus an incremental response without buffering the complete stream.
   Tests cover media-type selection, bounded buffering, malformed records,
   cancellation, early disconnect, and a normal JSON operation in the same API.
-- Tracking: [#3807](https://github.com/chrischeng-c4/axiom/issues/3807) (`lumen@0.4.45`).
+- Tracking: [#3807](https://github.com/faberline/axiom/issues/3807) (`lumen@0.4.45`).
 
 ### Structured client errors
 
@@ -37,7 +37,7 @@ Stable IDs here let current limits point to one destination.
   `401`, `413`, `429`, and `500` JSON errors, retain `Retry-After`, preserve an
   unknown media type safely, and redact Authorization data from all display and
   debug paths.
-- Tracking: [#3807](https://github.com/chrischeng-c4/axiom/issues/3807) (`lumen@0.4.45`).
+- Tracking: [#3807](https://github.com/faberline/axiom/issues/3807) (`lumen@0.4.45`).
 
 ### Cross-language type parity
 
@@ -51,7 +51,7 @@ Stable IDs here let current limits point to one destination.
   string enums, nullable variants, round trips, invalid-value refusal, stable
   names, and equivalent wire JSON in all three languages. Rust no longer emits
   `serde_json::Value` for a supported union or `String` for a supported enum.
-- Tracking: [#3807](https://github.com/chrischeng-c4/axiom/issues/3807) (`lumen@0.4.45`).
+- Tracking: [#3807](https://github.com/faberline/axiom/issues/3807) (`lumen@0.4.45`).
 
 ### Complete target dependency manifest
 
@@ -68,7 +68,7 @@ Stable IDs here let current limits point to one destination.
   the emitted requirements, compile the generated source, and execute one JSON
   operation. A controlled test removes each required dependency and proves the
   clean build fails with that dependency named.
-- Tracking: [#3807](https://github.com/chrischeng-c4/axiom/issues/3807) (`lumen@0.4.45`).
+- Tracking: [#3807](https://github.com/faberline/axiom/issues/3807) (`lumen@0.4.45`).
 
 ### Dynamic request auth provider
 
@@ -85,7 +85,7 @@ Stable IDs here let current limits point to one destination.
   async behavior where applicable, cancellation, and credential-free error
   formatting. App integration tests own their optional or required credential
   modes, token-file semantics, and server authentication decisions.
-- Tracking: [#3799](https://github.com/chrischeng-c4/axiom/issues/3799) (`lumen@0.4.36`).
+- Tracking: [#3799](https://github.com/faberline/axiom/issues/3799) (`lumen@0.4.36`).
 
 The generic file-bearer provider is now available as a generation-time opt-in.
 Legacy generation remains default-off and does not read credentials. This is
@@ -109,7 +109,7 @@ separate outcome. Package publication remains a non-goal.
   without an app decision, safe read retry, keyed and unkeyed write decisions,
   provider failure before transport, redacted errors, and identical attempt
   counts across languages.
-- Tracking: [#3808](https://github.com/chrischeng-c4/axiom/issues/3808) (`lumen@0.4.46`).
+- Tracking: [#3808](https://github.com/faberline/axiom/issues/3808) (`lumen@0.4.46`).
 
 ### Strict cross-language generation gates
 
@@ -125,7 +125,7 @@ separate outcome. Package publication remains a non-goal.
   controlled negative case removes each interpreter, compiler, runtime, and
   dependency in turn and proves the required gate fails with that prerequisite
   named.
-- Tracking: [#3807](https://github.com/chrischeng-c4/axiom/issues/3807) (`lumen@0.4.45`).
+- Tracking: [#3807](https://github.com/faberline/axiom/issues/3807) (`lumen@0.4.45`).
 
 ## Later outcomes
 

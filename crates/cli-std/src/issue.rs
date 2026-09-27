@@ -933,15 +933,15 @@ mod courier_routing_tests {
     fn search_routes_through_courier_when_url_configured() {
         let url = courier_search_url(
             "https://courier.internal",
-            "chrischeng-c4",
-            "axiom",
+            "faberline",
+            "lumen",
             "open",
             "label:\"app:lumen\"",
             20,
         );
         assert_eq!(
             url,
-            "https://courier.internal/v1/issues/chrischeng-c4/axiom?state=open&q=label%3A%22app%3Alumen%22&limit=20"
+            "https://courier.internal/v1/issues/faberline/lumen?state=open&q=label%3A%22app%3Alumen%22&limit=20"
         );
         // trailing-slash courier URLs are normalized the same way.
         assert_eq!(
@@ -1036,7 +1036,7 @@ mod tests {
 
     const TOOL: ToolInfo = ToolInfo {
         project: "lumen",
-        repo: "chrischeng-c4/axiom",
+        repo: "faberline/lumen",
         target: "aarch64-apple-darwin",
         version: "0.4.3",
         git_sha: "abc1234",
@@ -1063,7 +1063,7 @@ mod tests {
         // Labels survive the no-token URL fallback (convention `app:<name>`).
         let ul = prefilled_url("o/n", "t", "b", &["app:jet".into(), "bug".into()]);
         assert!(ul.contains("&labels=app%3Ajet%2Cbug"));
-        assert_eq!(resolve_repo(&TOOL, None), "chrischeng-c4/axiom");
+        assert_eq!(resolve_repo(&TOOL, None), "faberline/lumen");
         assert_eq!(resolve_repo(&TOOL, Some("o/n")), "o/n");
 
         let p = issue_payload("t", "b", &["bug".into()]);
@@ -1162,10 +1162,10 @@ mod tests {
     #[test]
     fn representative_issue_outputs_are_chainable() {
         for output in [
-            "repo:  chrischeng-c4/axiom\ntitle: lumen: bug\n---\nbody\nnext: done\n",
-            "filed: https://github.com/chrischeng-c4/axiom/issues/42\nlabels: applied\nnext: done\n",
+            "repo:  faberline/lumen\ntitle: lumen: bug\n---\nbody\nnext: done\n",
+            "filed: https://github.com/faberline/lumen/issues/42\nlabels: applied\nnext: done\n",
             "#1142 [open] lumen: add lightweight chainable output\nnext: done\n",
-            "#1142 [open] lumen: add lightweight chainable output\nhttps://github.com/chrischeng-c4/axiom/issues/1142\n---\nbody\nnext: done\n",
+            "#1142 [open] lumen: add lightweight chainable output\nhttps://github.com/faberline/lumen/issues/1142\n---\nbody\nnext: done\n",
         ] {
             crate::chainable::assert_chainable(output)
                 .expect("shared issue outputs should satisfy the lightweight chainable contract");

@@ -345,7 +345,7 @@ mod tests {
 
     const TOOL: ToolInfo = ToolInfo {
         project: "lumen",
-        repo: "chrischeng-c4/axiom",
+        repo: "faberline/lumen",
         target: "aarch64-apple-darwin",
         version: "0.4.11",
         git_sha: "abc1234",

@@ -1893,7 +1893,7 @@ tag is never the first artifact. The required chain is `build-release
    pinned image, signature, provenance, SBOM attestations, final manifest).
 4. **verify**: the project's `verify-release-candidate.sh --mode full` re-proves
    the bundle independently of the workflow's own verdict.
-5. **GKE gate**: the candidate image `ghcr.io/chrischeng-c4/<project>@<digest>`
+5. **GKE gate**: the candidate image `ghcr.io/faberline/<project>@<digest>`
    is deployed and verified on GKE by the project's harness, and the evidence
    is bound into `<project>-gke-receipt.json` plus its `.sha256` sidecar.
 6. **promote**: `scripts/release/promote.sh` creates the one annotated

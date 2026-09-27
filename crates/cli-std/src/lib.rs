@@ -60,7 +60,7 @@ pub mod upgrade;
 /// ```
 /// const TOOL: cli_std::ToolInfo = cli_std::ToolInfo {
 ///     project: "lumen",                      // env-free; the tool name
-///     repo: "chrischeng-c4/axiom",
+///     repo: "faberline/lumen",
 ///     target: "aarch64-apple-darwin",        // env!("LUMEN_TARGET") in lumen
 ///     version: env!("CARGO_PKG_VERSION"),
 ///     git_sha: "unknown",                    // env!("LUMEN_GIT_SHA") in lumen
