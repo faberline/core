@@ -16,8 +16,8 @@ Read these sources in order for the part you change:
 3. [ROADMAP.md](ROADMAP.md) for future outcomes and non-goals.
 4. `crates/service-http/src/lib.rs` for the exported Rust surface.
 5. The owning module under `crates/service-http/src/` and its colocated tests.
-6. `crates/service-http/e2e/` and `Cargo.toml` for external behavior and the test
-   target inventory.
+6. `crates/service-http/tests/it/` for external behavior; its `main.rs` is the
+   case inventory.
 
 ## Local Workflow
 
@@ -46,7 +46,7 @@ python3 scripts/meta/project_docs_contract.py check crates/service-http --format
 
 ```bash
 cargo test -p service-http
-cargo test -p service-http --features otlp --test otlp_tracing
+cargo test -p service-http --features otlp --test it -- otlp_tracing::
 ```
 
 A docs-only change records only the document checks it ran.

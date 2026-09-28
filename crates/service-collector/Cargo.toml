@@ -3,7 +3,6 @@ name = "service-collector"
 version = "0.1.0"
 edition = "2021"
 description = "Reusable checkpointed collector runtime with quarantine and retry control."
-autotests = false
 
 [dependencies]
 anyhow.workspace = true
@@ -16,7 +15,3 @@ tokio.workspace = true
 
 [dev-dependencies]
 tempfile = "3"
-
-[[test]]
-name = "collector_runtime_contract"
-path = "e2e/collector_runtime_contract.rs"

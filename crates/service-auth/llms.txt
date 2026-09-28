@@ -11,11 +11,12 @@
 
 ## Behaviour
 
-- This crate has no `e2e/` tree. Everything it is judged on today is a colocated
-  unit test under its `src/**` owner: `cargo test -p service-auth --lib`.
-- A new externally observable case belongs in `e2e/*.rs`, declared in `Cargo.toml`
-  with `autotests = false` plus one `[[test]]` stanza per file, so the manifest
-  stays the inventory.
+- [tests/scoped_authorization.rs](tests/scoped_authorization.rs): the crate's one
+  externally observable case:
+  `cargo test -p service-auth --test scoped_authorization`. A second case moves
+  both into `tests/it/` as modules of one test binary.
+- Rules observable only inside the implementation stay as colocated unit tests
+  under their `src/**` owner: `cargo test -p service-auth --lib`.
 
 ## Commands
 

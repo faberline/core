@@ -99,7 +99,7 @@ contribution.
 - Sources:
   - [`crates/transport-h2c`](./) provides the frame-level connection driver,
     manager, health checks, sizing, timeouts, GOAWAY handling, and safe retry.
-- Gate: `cargo test -p transport-h2c --test manager`
+- Gate: `cargo test -p transport-h2c --test it -- manager::`
 
 ### Per-connection HTTP serving
 
@@ -123,7 +123,7 @@ contribution.
     deadline handling, mutation classification, and `ConnectionReport`.
   - [`crates/server-lifecycle`](../server-lifecycle/) supplies the lifecycle
     observation and absolute deadline.
-- Gate: `cargo test -p transport-h2c --test graceful_drain`
+- Gate: `cargo test -p transport-h2c --features server --test it -- graceful_drain::`
 
 ## Supporting documents
 

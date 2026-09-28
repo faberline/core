@@ -17,8 +17,8 @@ Read these sources in order for the part you change:
 4. `crates/service-k8s/src/lib.rs` for the exported Rust surface.
 5. The owning semantic module under `crates/service-k8s/src/` and its colocated
    tests.
-6. `crates/service-k8s/e2e/` and `Cargo.toml` for external behavior and the test
-   target inventory.
+6. `crates/service-k8s/tests/it/` for external behavior; its `main.rs` is the
+   case inventory.
 
 For identity work, read `render/projected_token.rs` and `render/rbac.rs`
 together. The first keeps token mount and read paths aligned. The second owns
@@ -27,8 +27,10 @@ RBAC object shape, not an app's permission meaning.
 ## Local Workflow
 
 This library has no app phase ladder. Make one bounded library change with its
-test. Put externally observable behavior in `crates/service-k8s/e2e/` and declare
-the target in `Cargo.toml`. Keep internal rules in colocated unit tests.
+test. Put externally observable behavior in a `crates/service-k8s/tests/it/`
+module and declare it in `tests/it/main.rs`; a case that needs the `certificate`
+or `controller` feature starts with `#![cfg(feature = "…")]`. Keep internal
+rules in colocated unit tests.
 
 Keep shared mechanisms service-neutral. A caller supplies its CRD schema,
 access resource mapping, domain topology, protected paths, health mapping, and

@@ -5,7 +5,6 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 description = "Bounded asynchronous execution primitives for Axiom services"
-autotests = false
 
 [dependencies]
 futures = { workspace = true }
@@ -14,11 +13,3 @@ tokio = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
-
-[[test]]
-name = "group_commit"
-path = "e2e/group_commit.rs"
-
-[[test]]
-name = "job_runner"
-path = "e2e/job_runner.rs"

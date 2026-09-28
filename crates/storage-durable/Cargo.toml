@@ -2,7 +2,6 @@
 name = "storage-durable"
 version = "0.1.0"
 edition = "2021"
-autotests = false
 description = "Shared durable local-storage primitives: fsync policy, atomic replacement, CRC-framed logs, and sequence-named snapshot file stores."
 
 [lib]
@@ -20,15 +19,3 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
-
-[[test]]
-name = "capacity_guard"
-path = "e2e/capacity_guard.rs"
-
-[[test]]
-name = "data_root"
-path = "e2e/data_root.rs"
-
-[[test]]
-name = "framed_log_streaming"
-path = "e2e/framed_log_streaming.rs"

@@ -3,7 +3,6 @@ name = "service-projection"
 version = "0.1.0"
 edition = "2021"
 description = "Typed projection registry, checkpoints, catch-up, rebuild, and flush runtime."
-autotests = false
 
 [lib]
 name = "service_projection"
@@ -23,7 +22,3 @@ utoipa = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
-
-[[test]]
-name = "typed_projection_runtime"
-path = "e2e/typed_projection_runtime.rs"

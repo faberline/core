@@ -119,7 +119,7 @@ contribution.
   - [`crates/service-observability`](../service-observability/) provides the
     tracing and optional OTLP mechanisms used by the adapters.
 - Gate: `cargo test -p service-http`
-- Gate: `cargo test -p service-http --features otlp --test otlp_tracing`
+- Gate: `cargo test -p service-http --features otlp --test it -- otlp_tracing::`
 
 ### Lifecycle HTTP adapters
 

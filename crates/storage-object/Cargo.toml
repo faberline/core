@@ -3,7 +3,6 @@ name = "storage-object"
 version = "0.1.0"
 edition = "2021"
 description = "Shared local and cloud object-store boundary with conditional writes and versioned metadata."
-autotests = false
 
 [lib]
 name = "storage_object"
@@ -34,12 +33,3 @@ walkdir = "2"
 tempfile = "3"
 wiremock = "0.6"
 tokio = { workspace = true }
-
-[[test]]
-name = "local_object_store"
-path = "e2e/local_object_store.rs"
-
-[[test]]
-name = "gcs_conditional_put"
-path = "e2e/gcs_conditional_put.rs"
-required-features = ["gcs"]

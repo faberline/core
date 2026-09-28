@@ -3,7 +3,6 @@ name = "index-text"
 version = "0.1.0"
 edition = "2021"
 description = "Rebuildable text-index base for Axiom products."
-autotests = false
 
 [lib]
 name = "index_text"
@@ -21,7 +20,3 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
-
-[[test]]
-name = "text_index_contract"
-path = "e2e/text_index_contract.rs"

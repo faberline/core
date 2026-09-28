@@ -44,12 +44,12 @@ compatible.
 - Surfaces: Rust API: `raft_runtime::PeerTransport`,
   `raft_runtime::RaftHost::spawn_with_peer_transport`,
   `raft_runtime::ClusterTopology::from_env_with_scheme`.
-- Gate — security: `cargo test -p raft-runtime --test peer_mtls` - mutual
+- Gate — security: `cargo test -p raft-runtime --test it -- peer_mtls::` - mutual
   identity, trust, expiry, and reload coverage
 - Gate: `cargo test -p raft-runtime`
-- Gate: `cargo test -p raft-runtime --test peer_mtls`
+- Gate: `cargo test -p raft-runtime --test it -- peer_mtls::`
 - Source: `crates/raft-runtime/src/peer_transport.rs`
-- Evidence: `cargo test -p raft-runtime --test peer_mtls`;
+- Evidence: `cargo test -p raft-runtime --test it -- peer_mtls::`;
   crates/raft-runtime/src/peer_transport.rs
 
 ### Committed Executor Fencing
@@ -62,13 +62,13 @@ own assignment keys, domain commands, capacity policy, and external effects.
 
 - Root WI: #1854
 - Surfaces: Rust API: `FencedAssignment`, `FenceToken`, `AssignmentError`.
-- Gate — behavior: `cargo test -p raft-runtime --test fenced_assignment` -
+- Gate — behavior: `cargo test -p raft-runtime --test it -- fenced_assignment::` -
   commit-before-effect, explicit expiry, reassignment, and stale-owner
   rejection
 - Gate: `cargo test -p raft-runtime`
-- Gate: `cargo test -p raft-runtime --test fenced_assignment`
+- Gate: `cargo test -p raft-runtime --test it -- fenced_assignment::`
 - Source: `crates/raft-runtime/src/fenced_assignment.rs`
-- Evidence: `cargo test -p raft-runtime --test fenced_assignment`;
+- Evidence: `cargo test -p raft-runtime --test it -- fenced_assignment::`;
   crates/raft-runtime/src/fenced_assignment.rs
 
 ### Durable Commit Recovery
@@ -88,8 +88,8 @@ writes so idle ticks do not create avoidable fsync pressure.
   entries replay before new proposals, snapshot seed refuses overwrite, and
   unchanged ticks do not rewrite hard state
 - Gate: `cargo test -p raft-core -p raft-runtime`
-- Gate: `cargo test -p raft-runtime --test snapshot_at_index`
-- Gate: `cargo test -p raft-runtime --test snapshot_install_safety`
+- Gate: `cargo test -p raft-runtime --test it -- snapshot_at_index::`
+- Gate: `cargo test -p raft-runtime --test it -- snapshot_install_safety::`
 - Source: `crates/raft-runtime/src/store.rs`,
   `crates/raft-runtime/src/applied_index_store.rs`
 - Evidence: raft-core/runtime restart, seed, and store tests

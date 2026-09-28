@@ -91,15 +91,15 @@ Surfaces:
 - Contract file: `contracts/axiom.service.log.v1.schema.json` - the published schema.
 Rust internal: the fallback chain that fills the event name and the message, and the omission of absent optional fields from the serialized line.
 EC Dimensions:
-- behavior: `cargo test -p service-observability --test service_log_jsonl` - a formatted event is one line of valid JSON whose schema tag, severity, service identity, event name, and message all hold the expected values, and an event with no explicit `event` or `message` field still produces non-empty ones.
-- security: `cargo test -p service-observability --test service_log_jsonl` - an absent correlation field is omitted from the line rather than serialized as null, the serialized envelope keys match the published schema exactly with no additional properties, and the pretty format is not reported as collector-compatible; identity refusal of a blank or whitespace-only name or version is covered by `cargo test -p service-observability --lib`.
+- behavior: `cargo test -p service-observability --test it -- service_log_jsonl::` - a formatted event is one line of valid JSON whose schema tag, severity, service identity, event name, and message all hold the expected values, and an event with no explicit `event` or `message` field still produces non-empty ones.
+- security: `cargo test -p service-observability --test it -- service_log_jsonl::` - an absent correlation field is omitted from the line rather than serialized as null, the serialized envelope keys match the published schema exactly with no additional properties, and the pretty format is not reported as collector-compatible; identity refusal of a blank or whitespace-only name or version is covered by `cargo test -p service-observability --lib`.
 
 | Work Root | Kind | WI | Impl | Verification | Maturity | Gate / Evidence |
 |---|---|---:|---|---|---|---|
-| Schema-tagged envelope | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; every line carries the `axiom.service.log.v1` tag and the fixed envelope fields, so a collector keys off the tag rather than guessing the producer's layout |
-| Non-empty event and message | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; the event name falls back to the tracing metadata name and the message falls back to the event name, so neither field is ever empty even when the caller supplied nothing |
+| Schema-tagged envelope | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; every line carries the `axiom.service.log.v1` tag and the fixed envelope fields, so a collector keys off the tag rather than guessing the producer's layout |
+| Non-empty event and message | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; the event name falls back to the tracing metadata name and the message falls back to the event name, so neither field is ever empty even when the caller supplied nothing |
 | Rejected blank identity | change | - | implemented | verified | smoke | `cargo test -p service-observability --lib`; a name or version that is empty or only whitespace fails identity construction, so a service cannot emit anonymous lines |
-| Format compatibility declaration | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; only the JSON format reports as collector-compatible, so a deployment that leaves the pretty format on can be detected rather than silently producing unparseable output |
+| Format compatibility declaration | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; only the JSON format reports as collector-compatible, so a deployment that leaves the pretty format on can be detected rather than silently producing unparseable output |
 
 #### Correlation Field Integrity
 
@@ -125,16 +125,16 @@ Surfaces:
 - Rust API: `service_observability::ServiceJsonFormatter` - performs the validation while formatting.
 Rust internal: the lower-hex validator with its exact-length and reject-all-zero rules, the event-before-span precedence, and the three-key request-id search order.
 EC Dimensions:
-- behavior: `cargo test -p service-observability --test service_log_jsonl` - a valid trace id, span id, parent span id, and trace flags reach the envelope unchanged; an event-level value wins over a span-level one; and each of the three request-id keys is honored in its documented order.
-- security: `cargo test -p service-observability --test service_log_jsonl` - an id of the wrong length, containing upper-case hex, containing a non-hex character, or consisting entirely of zeros is omitted; an all-zero `trace_flags` is kept, because zero flags are valid; and a request id that is empty, over-long, or contains a control character is omitted rather than sanitized.
+- behavior: `cargo test -p service-observability --test it -- service_log_jsonl::` - a valid trace id, span id, parent span id, and trace flags reach the envelope unchanged; an event-level value wins over a span-level one; and each of the three request-id keys is honored in its documented order.
+- security: `cargo test -p service-observability --test it -- service_log_jsonl::` - an id of the wrong length, containing upper-case hex, containing a non-hex character, or consisting entirely of zeros is omitted; an all-zero `trace_flags` is kept, because zero flags are valid; and a request id that is empty, over-long, or contains a control character is omitted rather than sanitized.
 
 | Work Root | Kind | WI | Impl | Verification | Maturity | Gate / Evidence |
 |---|---|---:|---|---|---|---|
-| Exact-form identifier validation | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; length, lower-case hex, and the all-zero rejection are all checked, so a malformed id is dropped rather than propagated into a trace backend that would treat it as real |
-| Zero-flag distinction | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; the all-zero rejection applies to the three ids and not to `trace_flags`, where `00` means "not sampled" and must survive |
-| Event-over-span precedence | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; a field recorded on the event outranks the same field inherited from an enclosing span, so the most specific correlation available is the one published |
-| Request-id key order | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; `request_id`, `request.id`, and `http.request.id` are searched in that order and the first valid value wins, so a service that names the field either way correlates identically |
-| Control-character rejection | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; a request id carrying a newline or other control character is omitted, so a caller-supplied value cannot inject structure into a downstream log pipeline |
+| Exact-form identifier validation | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; length, lower-case hex, and the all-zero rejection are all checked, so a malformed id is dropped rather than propagated into a trace backend that would treat it as real |
+| Zero-flag distinction | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; the all-zero rejection applies to the three ids and not to `trace_flags`, where `00` means "not sampled" and must survive |
+| Event-over-span precedence | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; a field recorded on the event outranks the same field inherited from an enclosing span, so the most specific correlation available is the one published |
+| Request-id key order | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; `request_id`, `request.id`, and `http.request.id` are searched in that order and the first valid value wins, so a service that names the field either way correlates identically |
+| Control-character rejection | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; a request id carrying a newline or other control character is omitted, so a caller-supplied value cannot inject structure into a downstream log pipeline |
 
 #### Attribute Containment
 
@@ -164,15 +164,15 @@ Surfaces:
 - Rust API: `service_observability::MAX_ATTRIBUTES` / `MAX_ATTRIBUTE_KEY_BYTES` / `MAX_ATTRIBUTE_VALUE_BYTES` / `MAX_EVENT_BYTES` / `MAX_REQUEST_ID_BYTES` - the published bounds.
 Rust internal: the reserved-key set, the sensitive-key normalization and suffix matching, the attribute-count cutoff, and the character-boundary walk in the truncator.
 EC Dimensions:
-- behavior: `cargo test -p service-observability --test service_log_jsonl` - ordinary caller fields reach `attributes` with their scalar types intact, the tracing target is recorded when the caller did not supply one, and a non-scalar value is rendered to a bounded string.
-- security: `cargo test -p service-observability --test service_log_jsonl` - a reserved key never appears under `attributes` and never overwrites its envelope field; every sensitive key is dropped in each of its spellings, including a prefixed one; more than 64 attributes are cut to 64; an over-long key or value is truncated to its exact byte bound; and truncating a multi-byte character yields valid UTF-8 rather than a split character.
+- behavior: `cargo test -p service-observability --test it -- service_log_jsonl::` - ordinary caller fields reach `attributes` with their scalar types intact, the tracing target is recorded when the caller did not supply one, and a non-scalar value is rendered to a bounded string.
+- security: `cargo test -p service-observability --test it -- service_log_jsonl::` - a reserved key never appears under `attributes` and never overwrites its envelope field; every sensitive key is dropped in each of its spellings, including a prefixed one; more than 64 attributes are cut to 64; an over-long key or value is truncated to its exact byte bound; and truncating a multi-byte character yields valid UTF-8 rather than a split character.
 
 | Work Root | Kind | WI | Impl | Verification | Maturity | Gate / Evidence |
 |---|---|---:|---|---|---|---|
-| Reserved-key shadowing refused | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; a caller field named after an envelope field is dropped instead of merged, so severity, service identity, and correlation cannot be forged from inside a log call |
-| Sensitive-key exclusion | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; the six credential-bearing names are matched case-insensitively, with `-` normalized to `_`, and as a trailing segment, so a header captured under a namespaced key is excluded as reliably as a bare one |
-| Bounded attribute count | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; at most 64 attributes survive, so a caller in a loop cannot make one line grow without limit |
-| UTF-8 safe truncation | change | - | implemented | verified | smoke | `cargo test -p service-observability --test service_log_jsonl`; the truncator steps back to a character boundary, so a key or value cut at its byte bound is still valid UTF-8 and the line is still parseable JSON |
+| Reserved-key shadowing refused | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; a caller field named after an envelope field is dropped instead of merged, so severity, service identity, and correlation cannot be forged from inside a log call |
+| Sensitive-key exclusion | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; the six credential-bearing names are matched case-insensitively, with `-` normalized to `_`, and as a trailing segment, so a header captured under a namespaced key is excluded as reliably as a bare one |
+| Bounded attribute count | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; at most 64 attributes survive, so a caller in a loop cannot make one line grow without limit |
+| UTF-8 safe truncation | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- service_log_jsonl::`; the truncator steps back to a character boundary, so a key or value cut at its byte bound is still valid UTF-8 and the line is still parseable JSON |
 
 ### Non-Core Features
 
@@ -298,13 +298,13 @@ Surfaces:
 - Rust API: `service_observability::filesystem_usage` - sample filesystem usage for a path.
 Rust internal: the conversion of kernel statvfs block counts and fragment size into byte counts with saturating arithmetic.
 EC Dimensions:
-- behavior: `cargo test -p service-observability --test filesystem_usage_is_physical` - total bytes matches independent filesystem accounting, and writing bytes to the sampled filesystem reduces available bytes by the written size.
-- security: `cargo test -p service-observability --test filesystem_usage_is_physical` - an unreadable or non-existent path produces an error rather than a zeroed sample.
+- behavior: `cargo test -p service-observability --test it -- filesystem_usage_is_physical::` - total bytes matches independent filesystem accounting, and writing bytes to the sampled filesystem reduces available bytes by the written size.
+- security: `cargo test -p service-observability --test it -- filesystem_usage_is_physical::` - an unreadable or non-existent path produces an error rather than a zeroed sample.
 
 | Work Root | Kind | WI | Impl | Verification | Maturity | Gate / Evidence |
 |---|---|---:|---|---|---|---|
-| Physical write tracking | change | - | implemented | verified | smoke | `cargo test -p service-observability --test filesystem_usage_is_physical`; writing bytes to the mounted filesystem reduces available bytes, proving the reading reflects physical storage |
-| Independent accounting agreement | change | - | implemented | verified | smoke | `cargo test -p service-observability --test filesystem_usage_is_physical`; total bytes matches independent df block accounting on the same path |
-| Errors instead of zeroed samples | change | - | implemented | verified | smoke | `cargo test -p service-observability --test filesystem_usage_is_physical`; a missing or unreadable path is an error, so a capacity controller cannot mistake a failure for a full volume |
+| Physical write tracking | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- filesystem_usage_is_physical::`; writing bytes to the mounted filesystem reduces available bytes, proving the reading reflects physical storage |
+| Independent accounting agreement | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- filesystem_usage_is_physical::`; total bytes matches independent df block accounting on the same path |
+| Errors instead of zeroed samples | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- filesystem_usage_is_physical::`; a missing or unreadable path is an error, so a capacity controller cannot mistake a failure for a full volume |
 
 <!-- HANDWRITE-END -->
