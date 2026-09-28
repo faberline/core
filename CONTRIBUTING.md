@@ -1156,7 +1156,7 @@ and Cargo discovers it: the manifest does not list test targets.
 | Where | What lives there | How it runs |
 |---|---|---|
 | `crates/<p>/tests/it/main.rs` + `tests/it/<case>.rs` | externally observable behavior, one module per case, all in one test binary | `cargo test -p <crate> --test it -- <case>::` |
-| `crates/<p>/tests/<name>.rs` | a case that needs its own process (below), or the crate's only case | `cargo test -p <crate> --test <name>` |
+| `crates/<p>/tests/<name>.rs` | a standalone binary, allowed only as **A standalone binary needs a reason** below says | `cargo test -p <crate> --test <name>` |
 | `crates/<p>/src/**` | rules observable only inside the implementation, colocated | `cargo test -p <crate> --lib` |
 
 These rules make the tree honest:
@@ -1171,16 +1171,36 @@ These rules make the tree honest:
   it into `tests/it/` when the second case lands. `crates/raft-runtime` is the
   reference shape: one `it` binary plus two separate binaries, each with its
   reason in its header.
-- **A separate binary needs a written reason.** The cases in `it` run
-  concurrently in one process, so they share its global state. A case gets its
-  own `tests/<name>.rs`, with a `//!` header saying why, only when (a) it
-  changes process-global state the other cases can see — `#[global_allocator]`,
-  `set_var` of an environment variable read by code other cases reach (child
-  processes inherit it too), `set_current_dir`, a global tracing subscriber or
-  metrics recorder, a signal to itself, `setrlimit` — or (b) its assertion or
-  gate evidence is a whole-process measurement: allocation counts, RSS,
-  `getrusage(RUSAGE_SELF)`, a process-global counter. Being slow or flaky is
-  not a reason.
+- **A standalone binary needs a reason.** A `tests/<name>.rs` file outside
+  `tests/it/` is allowed only when one of these holds:
+  1. It is the crate's only test file: no other `tests/<name>.rs` and no
+     `tests/it/`.
+  2. It contains one of the `test_isolation_markers` in the workspace
+     repository's `scripts/meta/rust_arch/policy.toml` (`set_var(`,
+     `remove_var(`, `#[global_allocator]`). These change process-global state,
+     so the file must not share a process with other cases.
+  3. Its leading `//!` block has a line `//! isolation: <reason>` with a
+     non-empty reason. The block runs from the top of the file to the first
+     line that is not blank, a `//!` line, or a `#![..]` attribute.
+
+  Every other test file moves into `tests/it/`.
+
+  The cases in `it` run concurrently in one process, so they share its global
+  state. A reason names that state: the case changes process-global state the
+  other cases can see — `#[global_allocator]`, `set_var` of an environment
+  variable read by code other cases reach (child processes inherit it too),
+  `set_current_dir`, a global tracing subscriber or metrics recorder, a signal
+  to itself, `setrlimit` — or its assertion or gate evidence is a
+  whole-process measurement: allocation counts, RSS, `getrusage(RUSAGE_SELF)`,
+  a process-global counter. Being slow or flaky is not a reason.
+- **Test data is not a test.** `.rs` files under `tests/fixtures/`,
+  `tests/compile_fail/`, and `tests/ui/` (the checker's `test_data_dirs`) are
+  inputs the cases read. The rules in this section do not apply to them.
+- **Proptest seeds move with the case.** proptest writes the failing seed of a
+  case in `tests/it/<module>.rs` to `tests/proptest-regressions/<module>.txt`.
+  The old seed file beside the source, `tests/<name>.proptest-regressions`, is
+  no longer replayed once the case moves, so move it to the new path in the
+  same commit.
 - **Feature gates live in the module.** A case that needs a feature starts with
   `#![cfg(feature = "…")]` right after its `//!` block, and a support module
   used only by gated cases carries the same gate. A separate binary keeps
