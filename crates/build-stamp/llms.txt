@@ -11,11 +11,11 @@
 
 ## Behaviour
 
-- This crate has no `e2e/` tree. Everything it is judged on today is a colocated
-  unit test under its `src/**` owner: `cargo test -p build-stamp --lib`.
-- A new externally observable case belongs in `e2e/*.rs`, declared in `Cargo.toml`
-  with `autotests = false` plus one `[[test]]` stanza per file, so the manifest
-  stays the inventory.
+- This crate has no integration tests. Everything it is judged on today is a
+  colocated unit test under its `src/**` owner: `cargo test -p build-stamp --lib`.
+- A new externally observable case belongs in `tests/<case>.rs`; once there is a
+  second, both become modules of the one `tests/it/` test binary, as the Test
+  layout section of the root `CONTRIBUTING.md` describes.
 
 ## Commands
 

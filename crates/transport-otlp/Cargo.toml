@@ -3,7 +3,6 @@ name = "transport-otlp"
 version = "0.1.0"
 edition = "2021"
 description = "Official OTLP HTTP and gRPC transport shell."
-autotests = false
 
 [lib]
 name = "transport_otlp"
@@ -20,7 +19,3 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { version = "0.1", features = ["net"] }
 tonic = { version = "0.14", features = ["gzip"] }
-
-[[test]]
-name = "otlp_transport"
-path = "e2e/otlp_transport.rs"

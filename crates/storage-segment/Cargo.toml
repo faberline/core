@@ -3,7 +3,6 @@ name = "storage-segment"
 version = "0.1.0"
 edition = "2021"
 description = "Immutable segment and manifest-last archive coordination."
-autotests = false
 
 [lib]
 name = "storage_segment"
@@ -18,11 +17,3 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
-
-[[test]]
-name = "archive_coordinator"
-path = "e2e/archive_coordinator.rs"
-
-[[test]]
-name = "paged_catalog"
-path = "e2e/paged_catalog.rs"

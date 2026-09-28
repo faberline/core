@@ -16,8 +16,8 @@ Read these sources in order for the part you change:
 3. [ROADMAP.md](ROADMAP.md) for explicit non-goals.
 4. `crates/transport-h2c/src/lib.rs` for the public client and pool surface.
 5. `manager.rs`, `conn.rs`, and `error.rs` for managed connection behavior.
-6. `server.rs`, `e2e/`, and `Cargo.toml` for the optional server and test
-   inventory.
+6. `server.rs`, `Cargo.toml`, and `tests/it/` for the optional server, its
+   `server` feature, and the test inventory.
 
 ## Local Workflow
 

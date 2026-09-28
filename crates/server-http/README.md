@@ -88,7 +88,7 @@ contribution.
     connection budgets, and task supervision.
   - [`crates/transport-h2c`](../transport-h2c/) detects and serves the protocol on
     each accepted stream.
-- Gate: `cargo test -p server-http --test ownership`
+- Gate: `cargo test -p server-http --test it -- ownership::`
 
 ### Lifecycle drain and report
 
@@ -104,7 +104,7 @@ contribution.
     connection tasks.
   - [`crates/transport-h2c`](../transport-h2c/) drains per-connection HTTP work and
     reports mutation ambiguity.
-- Gate: `cargo test -p server-http --test lifecycle_composition`
+- Gate: `cargo test -p server-http --test it -- lifecycle_composition::`
 
 ### TLS listener serving
 
@@ -117,7 +117,7 @@ contribution.
   - [`crates/server-tcp`](../server-tcp/) owns listener admission and task drain.
   - [`crates/transport-h2c`](../transport-h2c/) serves HTTP over the accepted TLS
     stream.
-- Gate: `cargo test -p server-http --test tls_reload`
+- Gate: `cargo test -p server-http --test it -- tls_reload::`
 
 ### Accept-time TLS configuration
 
@@ -127,7 +127,7 @@ contribution.
 - Sources:
   - [`crates/server-http`](./) defines `ServerConfigSource`, selects it at accept,
     and leaves existing connections on their selected configuration.
-- Gate: `cargo test -p server-http --test tls_reload`
+- Gate: `cargo test -p server-http --test it -- tls_reload::`
 
 ## Supporting documents
 

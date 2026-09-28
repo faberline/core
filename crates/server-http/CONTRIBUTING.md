@@ -16,8 +16,8 @@ Read these sources in order for the part you change:
 3. [ROADMAP.md](ROADMAP.md) for explicit non-goals.
 4. `crates/server-http/src/lib.rs` for listener composition and reporting.
 5. `crates/server-http/src/tls.rs` for TLS selection and refusal behavior.
-6. `crates/server-http/e2e/` and `Cargo.toml` for external behavior and the test
-   target inventory.
+6. `crates/server-http/tests/it/` for external behavior; its `main.rs` is the
+   case inventory.
 7. The public contracts of `server-tcp`, `server-lifecycle`, `transport-h2c`,
    `service-http`, and `peer-tls` for each composition boundary.
 

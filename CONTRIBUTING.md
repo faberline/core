@@ -52,7 +52,7 @@ agent can navigate cheaply and act on correctly:
   - [Deploy tenancy — dedicated first, shared only when justified](#deploy-tenancy-dedicated-first-shared-only-when-justified)
 - [Operations baseline — notice the breach, watch the watcher, answer "converged?"](#operations-baseline-notice-the-breach-watch-the-watcher-answer-converged)
 - [Conformance: what proves a service actually complies](#conformance-what-proves-a-service-actually-complies)
-  - [Test layout — `e2e/*.rs`, explicitly declared, no autodiscovery](#test-layout-e2ers-explicitly-declared-no-autodiscovery)
+  - [Test layout — `tests/it/`, one integration binary per crate](#test-layout-testsit-one-integration-binary-per-crate)
   - [Architecture/profile conformance checklist](#architectureprofile-conformance-checklist)
   - [EC gates — `vat`-driven, evidence under `external-contracts/`](#ec-gates-vat-driven-evidence-under-external-contracts)
   - [Service dogfood rules — keep the whole surface honest](#service-dogfood-rules-keep-the-whole-surface-honest)
@@ -1141,42 +1141,96 @@ hides every other service's failure.
 ## Conformance: what proves a service actually complies
 
 Every rule above is a claim until something fails on it. Three mechanisms
-do the failing: the `e2e/` suite for externally observable behavior, EC gates
+do the failing: the `tests/` suite for externally observable behavior, EC gates
 for evidence-backed behavior, and the dogfood rules for the surfaces a test
 suite never exercises. Architecture and profile shape is the fourth question,
 and nothing runs it any more — the catalogue below is a hand-applied checklist,
 not a gate.
 
-### Test layout — `e2e/*.rs`, explicitly declared, no autodiscovery
+### Test layout — `tests/it/`, one integration binary per crate
 
-Every `apps/<p>` and `libs/<p>` crate owes an `e2e/` tree. It is where
-externally observable behavior is judged, it is written in Rust, and it runs
-under plain `cargo test -p <crate>`.
+Every `crates/<p>` crate judges its externally observable behavior under
+`tests/`. It is written in Rust, it runs under plain `cargo test -p <crate>`,
+and Cargo discovers it: the manifest does not list test targets.
 
 | Where | What lives there | How it runs |
 |---|---|---|
-| `{apps,libs}/<p>/e2e/*.rs` | externally observable behavior, one file per case | `cargo test -p <crate>` |
-| `{apps,libs}/<p>/src/**` | rules observable only inside the implementation, colocated | `cargo test -p <crate> --lib` |
+| `crates/<p>/tests/it/main.rs` + `tests/it/<case>.rs` | externally observable behavior, one module per case, all in one test binary | `cargo test -p <crate> --test it -- <case>::` |
+| `crates/<p>/tests/<name>.rs` | a standalone binary, allowed only as **A standalone binary needs a reason** below says | `cargo test -p <crate> --test <name>` |
+| `crates/<p>/src/**` | rules observable only inside the implementation, colocated | `cargo test -p <crate> --lib` |
 
-Two rules make the tree honest:
+These rules make the tree honest:
 
-- **Declare every case.** Set `autotests = false` in the crate's `Cargo.toml`
-  and give each `e2e/*.rs` its own `[[test]]` stanza whose `path` is
-  `e2e/<name>.rs`. With autodiscovery off the manifest is the inventory: what
-  runs is a reviewable list in `Cargo.toml`, not whatever happens to be sitting
-  in the directory. An undeclared file is not built at all, so adding or
-  renaming a case has to show up in the diff to take effect.
-  `crates/service-http` is the reference shape: eight `e2e/*.rs`, eight
-  `[[test]]` stanzas, `autotests = false`.
-- **Write the case first.** The `e2e/*.rs` case lands before the `src/**`
-  change it judges, and must be observed failing for the stated reason before
-  the change makes it pass. A case written afterwards is fitted to the
-  implementation it was supposed to constrain.
+- **One binary per crate.** `tests/it/main.rs` is a plain list: `mod support;`
+  when the crate has shared helpers, then one `mod <case>;` per case in
+  alphabetical order, where the module name is the case's file name. That list
+  is the inventory. A file under `tests/it/` that `main.rs` does not declare is
+  never compiled, so a case starts or stops running only by a line in the diff.
+  One binary links the crate and its dependencies once instead of once per
+  case. A crate with a single case may keep it as `tests/<name>.rs`, and moves
+  it into `tests/it/` when the second case lands. `crates/raft-runtime` is the
+  reference shape: one `it` binary plus two separate binaries, each with its
+  reason in its header.
+- **A standalone binary needs a reason.** A `tests/<name>.rs` file outside
+  `tests/it/` is allowed only when one of these holds:
+  1. It is the crate's only test file: no other `tests/<name>.rs` and no
+     `tests/it/`.
+  2. It contains one of the `test_isolation_markers` in the workspace
+     repository's `scripts/meta/rust_arch/policy.toml` (`set_var(`,
+     `remove_var(`, `#[global_allocator]`). These change process-global state,
+     so the file must not share a process with other cases.
+  3. Its leading `//!` block has a line `//! isolation: <reason>` with a
+     non-empty reason. The block runs from the top of the file to the first
+     line that is not blank, a `//!` line, or a `#![..]` attribute.
 
-`{apps,libs}/<p>/tech-design/`, `{apps,libs}/<p>/external-contracts/`, and
-`{apps,libs}/<p>/tests/` are superseded: no authored source belongs in them.
-Do not create one, do not add a file to one, and migrate a surviving case into
-`e2e/` rather than editing it in place. The Python spec model and its
+  Every other test file moves into `tests/it/`.
+
+  The cases in `it` run concurrently in one process, so they share its global
+  state. A reason names that state: the case changes process-global state the
+  other cases can see — `#[global_allocator]`, `set_var` of an environment
+  variable read by code other cases reach (child processes inherit it too),
+  `set_current_dir`, a global tracing subscriber or metrics recorder, a signal
+  to itself, `setrlimit` — or its assertion or gate evidence is a
+  whole-process measurement: allocation counts, RSS, `getrusage(RUSAGE_SELF)`,
+  a process-global counter. Being slow or flaky is not a reason.
+- **Test data is not a test.** `.rs` files under `tests/fixtures/`,
+  `tests/compile_fail/`, and `tests/ui/` (the checker's `test_data_dirs`) are
+  inputs the cases read. The rules in this section do not apply to them.
+- **Proptest seeds move with the case.** proptest writes the failing seed of a
+  case in `tests/it/<module>.rs` to `tests/proptest-regressions/<module>.txt`.
+  The old seed file beside the source, `tests/<name>.proptest-regressions`, is
+  no longer replayed once the case moves, so move it to the new path in the
+  same commit.
+- **Feature gates live in the module.** A case that needs a feature starts with
+  `#![cfg(feature = "…")]` right after its `//!` block, and a support module
+  used only by gated cases carries the same gate. A separate binary keeps
+  `required-features` in a `[[test]]` stanza — the only stanza a manifest may
+  carry. Check a crate with `-p` alone and with each feature it gates on: under
+  `--workspace`, feature unification can enable a feature a case forgot to
+  require.
+- **Shared helpers are declared once.** They live in `tests/it/support.rs`,
+  with any submodules under `tests/it/support/` (no `mod.rs`), declared by
+  `main.rs` and reached as `crate::support::…`, so a `static` in them exists
+  once per process. A separate binary includes what it needs with
+  `#[path = "it/support/<x>.rs"] mod <x>;`. Non-Rust files the cases use sit at
+  the `tests/` root, not beside the modules.
+- **Filter by module.** Test names are `<case>::<fn>` and libtest filters by
+  substring, so `-- <case>::` runs one case and `--exact` needs the full
+  `<case>::<fn>`. No case name may be a suffix of another (`drain` beside
+  `graceful_drain` would make `drain::` match both). A case that re-runs its
+  own binary through `std::env::current_exe()` must pass `--exact
+  <case>::<fn>` to the child. With no filter the child runs every case in the
+  crate, and a bare `--exact <fn>` matches nothing, so the child passes
+  without running.
+- **Write the case first.** The case lands before the `src/**` change it
+  judges, and must be observed failing for the stated reason before the change
+  makes it pass. A case written afterwards is fitted to the implementation it
+  was supposed to constrain.
+
+`crates/<p>/tech-design/`, `crates/<p>/external-contracts/`, and
+`crates/<p>/e2e/` are superseded: no authored source belongs in them. Do not
+create one, do not add a file to one, and migrate a surviving case into
+`tests/` rather than editing it in place. The Python spec model and its
 `src/cases/*.py` verifiers are retired across the repository — never author a
 new one. The only thing that may still appear under `external-contracts/` is
 generated evidence written by an EC gate run, which is output, never contract.
@@ -1248,8 +1302,8 @@ These `vat.toml` / `meter*.toml` / `guard*.toml` gate files are runner
 configuration and they survive; what they write under `external-contracts/` is
 generated evidence. The Python EC *project* they used to point at —
 `pyproject.toml` as inventory plus `src/cases/*.py` verifiers — does not
-survive. Behavioral assertions live in `e2e/*.rs` per
-[Test layout](#test-layout-e2ers-explicitly-declared-no-autodiscovery). Never
+survive. Behavioral assertions live in `tests/` per
+[Test layout](#test-layout-testsit-one-integration-binary-per-crate). Never
 author a new Python EC case, in any project including Agentic Workflow itself.
 
 ### Service dogfood rules — keep the whole surface honest

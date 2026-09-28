@@ -4,11 +4,6 @@ version = "0.1.0"
 edition = "2021"
 description = "Shared Kubernetes integration for Axiom services: managed-service reconciliation, leader election, CRD and workload rendering, stateful capacity planning, and resize primitives."
 
-
-# e2e tests live in e2e/, not Cargo's autodiscovered tests/, so every one
-# of them has to be declared below. The list is this crate's e2e inventory.
-autotests = false
-
 [lib]
 name = "service_k8s"
 path = "src/lib.rs"
@@ -64,64 +59,3 @@ tower = { workspace = true }
 futures = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
-
-[[test]]
-name = "certificate_kubernetes_store"
-path = "e2e/certificate_kubernetes_store.rs"
-required-features = ["certificate"]
-
-[[test]]
-name = "certificate_lifecycle"
-path = "e2e/certificate_lifecycle.rs"
-required-features = ["certificate"]
-
-[[test]]
-name = "certificate_ownership"
-path = "e2e/certificate_ownership.rs"
-required-features = ["certificate"]
-
-[[test]]
-name = "certificate_rotation"
-path = "e2e/certificate_rotation.rs"
-required-features = ["certificate"]
-
-[[test]]
-name = "certificate_status"
-path = "e2e/certificate_status.rs"
-required-features = ["certificate"]
-
-[[test]]
-name = "lifecycle_render"
-path = "e2e/lifecycle_render.rs"
-
-[[test]]
-name = "stateful_instance_render"
-path = "e2e/stateful_instance_render.rs"
-
-[[test]]
-name = "stateful_adapter_equivalence"
-path = "e2e/stateful_adapter_equivalence.rs"
-
-[[test]]
-name = "workload_plan"
-path = "e2e/workload_plan.rs"
-
-[[test]]
-name = "prune_unserved_api_is_scoped"
-path = "e2e/prune_unserved_api_is_scoped.rs"
-required-features = ["controller"]
-
-[[test]]
-name = "status_conditions_survive_the_recovery_pass"
-path = "e2e/status_conditions_survive_the_recovery_pass.rs"
-required-features = ["controller"]
-
-[[test]]
-name = "reconcile_once_does_not_assume_leadership"
-path = "e2e/reconcile_once_does_not_assume_leadership.rs"
-required-features = ["controller"]
-
-[[test]]
-name = "certificate_rbac_least_privilege"
-path = "e2e/certificate_rbac_least_privilege.rs"
-required-features = ["certificate"]

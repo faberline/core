@@ -11,9 +11,17 @@
 
 ## Behaviour
 
-- [e2e/](e2e): one file per externally observable case, run by `cargo test -p raft-runtime`.
-  `Cargo.toml` is the inventory --- `autotests = false` plus one `[[test]]` stanza
-  per file, so nothing starts or stops running without showing up in a diff.
+- [tests/it/](tests/it): one module per externally observable case, all built into
+  the crate's one `it` test binary; `tests/it/main.rs` lists them, so a case
+  starts or stops running only by a line in that diff. Run one with
+  `cargo test -p raft-runtime --test it -- <case>::`.
+- [tests/resident_log_admission.rs](tests/resident_log_admission.rs): its own test
+  binary, because it sets `RAFT_RUNTIME_MAX_RESIDENT_LOG_BYTES`, which every
+  `RaftHost` spawned in the process reads:
+  `cargo test -p raft-runtime --test resident_log_admission`.
+- [tests/snapshot_peak_memory.rs](tests/snapshot_peak_memory.rs): its own test
+  binary, because it installs a counting `#[global_allocator]` and asserts on the
+  process-wide peak: `cargo test -p raft-runtime --test snapshot_peak_memory`.
 - Rules observable only inside the implementation stay as colocated unit tests
   under their `src/**` owner: `cargo test -p raft-runtime --lib`.
 

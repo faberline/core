@@ -11,10 +11,10 @@
 
 ## Behaviour
 
-- [e2e/](e2e): one file per externally observable case, run by `cargo test -p service-http`.
-  `Cargo.toml` is the inventory --- `autotests = false` plus one `[[test]]` stanza
-  per file (8 today), so nothing starts or stops running without showing up in a
-  diff.
+- [tests/it/](tests/it): one module per externally observable case, all built into
+  the crate's one `it` test binary; `tests/it/main.rs` lists them, so a case
+  starts or stops running only by a line in that diff. Run one with
+  `cargo test -p service-http --test it -- <case>::`.
 - Rules observable only inside the implementation stay as colocated unit tests
   under their `src/**` owner: `cargo test -p service-http --lib`.
 
