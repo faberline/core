@@ -289,7 +289,6 @@ depends_on = ["storage-durable"]
 domain = "crates/service-projection/src/domain"
 application = "crates/service-projection/src/application"
 infrastructure = "crates/service-projection/src/infrastructure"
-interfaces = "crates/service-projection/src/interfaces"
 
 [[contexts]]
 name = "storage-durable"
@@ -379,3 +378,38 @@ rule = "B4"
 subject = "storage-object.infrastructure"
 paths = ["crates/storage-segment/src/domain/archive.rs"]
 reason = "Moved as-is in P1: ArchivedObject.version is storage-object's ObjectVersion. P2: a domain-owned version type, or ObjectVersion moves into the shared kernel."
+
+[[exceptions]]
+rule = "B2"
+subject = "anyhow"
+paths = [
+  "crates/service-projection/src/domain/projection.rs",
+  "crates/service-projection/src/domain/source.rs",
+]
+reason = "Moved as-is in P1: the Projection, ProjectionSource and ProjectionReadSession ports return anyhow::Result, sift implements them, and validate_descriptor uses bail!. P2: the ports return a thiserror error (W3)."
+
+[[exceptions]]
+rule = "B2"
+subject = "utoipa"
+paths = [
+  "crates/service-projection/src/domain/checkpoint.rs",
+  "crates/service-projection/src/domain/lag.rs",
+  "crates/service-projection/src/domain/projection.rs",
+]
+reason = "Moved as-is in P1: ProjectionDescriptor, ProjectionCheckpoint and ProjectionLag derive utoipa::ToSchema, and sift's OpenAPI document uses these schema names. P2: the schemas move to interfaces body types that keep the schema names."
+
+[[exceptions]]
+rule = "B2"
+subject = "chrono::Utc::now"
+paths = ["crates/service-projection/src/domain/checkpoint.rs"]
+reason = "Moved as-is in P1: ProjectionCheckpoint::empty and the checkpoint builder stamp updated_at from the wall clock. P2: they take the time from a Clock port, which changes the empty() signature."
+
+[[exceptions]]
+rule = "B3"
+subject = "application->infrastructure"
+paths = [
+  "crates/service-projection/src/application/handle.rs",
+  "crates/service-projection/src/application/handle/locked.rs",
+  "crates/service-projection/src/application/registry.rs",
+]
+reason = "Moved as-is in P1: ProjectionHandle restores, persists and quarantines its state file, and ProjectionRegistry sets the state root's mode, through direct calls to the file-state functions. P2: a projection state store port in domain, implemented in infrastructure."
