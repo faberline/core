@@ -6,10 +6,9 @@ which rule breaks are allowed and why. The machine-checked form of everything
 here is [`ddd.toml`](../ddd.toml); the decisions behind it are in
 [ADR 0001](adr/0001-standard-layout-and-ddd.md).
 
-> **Migration status.** The layout below is being applied crate by crate on
-> the `refactor/ddd-p1` branch (phase P1). Until the last P1 commit sets
-> `[migration] enforce = true`, the checker reports findings without failing.
-> Phase P2 then removes the exceptions that have a planned fix. See
+> **Migration status.** Phase P1 applied the layout below to every crate and
+> set `[migration] enforce = true`, so any error-level finding fails the
+> checker. Phase P2 removes the exceptions that have a planned fix. See
 > [Phases](#phases).
 
 ## Context map

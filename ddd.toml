@@ -7,9 +7,9 @@
 schema = 1
 
 [migration]
-# P1 moves crates into this layout one commit at a time; its last commit
-# sets enforce = true.
-enforce = false
+# P1 moved every crate into this layout; its last commit set enforce = true,
+# so any error-level finding fails the check.
+enforce = true
 
 [policy]
 version = 1
