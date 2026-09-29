@@ -73,9 +73,9 @@ are future shared outcomes.
 |---|---|
 | Public Rust API | `cargo doc -p service-k8s --no-deps` |
 | Crate surface | `crates/service-k8s/src/lib.rs` |
-| Managed service contract | `crates/service-k8s/src/service.rs` |
-| Controller order and failure behavior | `crates/service-k8s/src/controller.rs` |
-| Workload render inputs | `crates/service-k8s/src/render.rs` and its submodules |
+| Managed service contract | `crates/service-k8s/src/interfaces/operator/managed_service.rs` |
+| Controller order and failure behavior | `crates/service-k8s/src/interfaces/operator.rs` and its submodules |
+| Workload render inputs | `crates/service-k8s/src/infrastructure/manifest.rs` and its submodules |
 | Executable behavior | `cargo test -p service-k8s` |
 | Planned trust, placement, and rollout mechanisms | [ROADMAP.md](ROADMAP.md) |
 

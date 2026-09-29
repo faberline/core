@@ -53,10 +53,28 @@ fn rust_files(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
+/// Every `.rs` file under each layer's `certificate` directory, except unit
+/// tests: those live in `tests.rs` and `tests/` next to the module they test.
+fn shared_files() -> Vec<PathBuf> {
+    let src = repo_root().join("crates/service-k8s/src");
+    let mut out = Vec::new();
+    for layer in ["domain", "application", "infrastructure", "interfaces"] {
+        let dir = src.join(layer).join("certificate");
+        for path in rust_files(&dir) {
+            let relative = path.strip_prefix(&dir).unwrap_or(&path);
+            let is_test = path.ends_with("tests.rs")
+                || relative.components().any(|c| c.as_os_str() == "tests");
+            if !is_test {
+                out.push(path);
+            }
+        }
+    }
+    out
+}
+
 #[test]
 fn the_generic_lifecycle_lives_in_the_shared_library() {
-    let shared = repo_root().join("crates/service-k8s/src/certificate");
-    let present: Vec<String> = rust_files(&shared)
+    let present: Vec<String> = shared_files()
         .iter()
         .filter_map(|path| {
             path.file_stem()
@@ -78,8 +96,8 @@ fn the_generic_lifecycle_lives_in_the_shared_library() {
     ] {
         assert!(
             present.iter().any(|name| name == expected),
-            "crates/service-k8s/src/certificate has no `{expected}` module; if it moved into a \
-             service, this library is no longer the shared lifecycle: {present:?}"
+            "crates/service-k8s/src/<layer>/certificate has no `{expected}` module; if it moved \
+             into a service, this library is no longer the shared lifecycle: {present:?}"
         );
     }
 }
@@ -89,9 +107,8 @@ fn the_shared_lifecycle_does_not_know_what_lumen_is() {
     // The direction of the dependency is the property. Shared code that special-
     // cases one service is shared in name only, and the next service to adopt it
     // inherits Lumen's assumptions without being told.
-    let shared = repo_root().join("crates/service-k8s/src/certificate");
     let mut offenders = Vec::new();
-    for path in rust_files(&shared) {
+    for path in shared_files() {
         let source = read(&path);
         for line in source.lines() {
             let trimmed = line.trim_start();

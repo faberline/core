@@ -129,6 +129,7 @@ modules = [
   "crates/service-auth/src/compat",
   "crates/service-backup/src/compat",
   "crates/service-http/src/compat",
+  "crates/service-k8s/src/compat",
 ]
 
 [[contexts]]
@@ -504,3 +505,55 @@ rule = "B4"
 subject = "service-auth.infrastructure"
 paths = ["crates/service-backup/src/infrastructure/admin_snapshot/transport.rs"]
 reason = "Moved as-is in P1: the admin snapshot transport authenticates with service_auth::k8s::ProjectedTokenFile, which reads a projected ServiceAccount token from disk and so sits in service-auth's infrastructure layer. P2: service-auth offers the projected token through an application-layer token source port, and service-backup depends on that."
+
+[[exceptions]]
+rule = "B2"
+subject = "futures"
+paths = [
+  "crates/service-k8s/src/domain/certificate/issuer.rs",
+  "crates/service-k8s/src/domain/certificate/secret_store.rs",
+]
+reason = "Moved as-is in P1: the Issuer and SecretStore ports return futures::future::BoxFuture so the reconciler can hold them as trait objects. P2: return Pin<Box<dyn Future<Output = T> + Send + 'a>> from std, the same type without the futures crate."
+
+[[exceptions]]
+rule = "B2"
+subject = "rcgen"
+paths = ["crates/service-k8s/src/domain/certificate/issuer.rs"]
+reason = "Moved as-is in P1: IssuanceRequest::build generates the keypair and CSR with rcgen (generate_key_and_csr), and issuer.rs moved whole (336 lines, D17) with the Issuer port and its request types. P2: move keypair and CSR generation behind a port implemented in infrastructure, so the domain carries only the CSR PEM."
+
+[[exceptions]]
+rule = "B3"
+subject = "application->infrastructure"
+paths = ["crates/service-k8s/src/application/certificate/reconcile.rs"]
+reason = "Moved as-is in P1: Reconciler reads and builds the Secret layout directly with infrastructure secret_layout::{read_state, material_secret, trust_bundle_secret}. P2: put the Secret layout behind a port (or the SecretStore port) that infrastructure implements."
+
+[[exceptions]]
+rule = "B2"
+subject = "schemars"
+paths = [
+  "crates/service-k8s/src/domain/capacity.rs",
+  "crates/service-k8s/src/domain/condition.rs",
+  "crates/service-k8s/src/domain/lifecycle.rs",
+]
+reason = "Moved as-is in P1: ReplicaLayerPolicy, ShardSplitPolicy, Condition, ProbeTiming and LifecyclePolicy derive JsonSchema because service CRD specs and statuses embed them directly. P2: keep these as plain domain values and give the CRD wire shapes their own JsonSchema types in interfaces, converting at the boundary."
+
+[[exceptions]]
+rule = "B2"
+subject = "chrono::Utc::now"
+paths = ["crates/service-k8s/src/domain/condition.rs"]
+reason = "Moved as-is in P1: now_rfc3339 reads the wall clock for the lastTransitionTime that project stamps; its only caller is the operator's reconcile, which already passes the result to project as `now`. P2: take the time from a Clock port (or move now_rfc3339 to the operator), so domain/condition.rs only receives `now`."
+
+[[exceptions]]
+rule = "B3"
+subject = "interfaces->domain"
+paths = [
+  "crates/service-k8s/src/interfaces/operator/managed_service.rs",
+  "crates/service-k8s/src/interfaces/operator/reconcile.rs",
+]
+reason = "Moved as-is in P1: the ManagedService trait hands back Condition and ConditionFact values, and the operator's reconcile builds ConditionFacts and projects them onto the CR status with project and now_rfc3339. P2: pull the reconcile sequence into an application use case behind the ports the mapping lists, so interfaces reaches the condition rules only through application."
+
+[[exceptions]]
+rule = "B3"
+subject = "interfaces->infrastructure"
+paths = ["crates/service-k8s/src/interfaces/operator.rs"]
+reason = "Moved as-is in P1: the operator entry points run and reconcile_once create the leader Election, spawn the Lease renewal loop and keep the Election in the reconcile context, all from infrastructure::lease. P2: move the leadership rule (Election, may_acquire) into domain and start the Lease renewal from an application use case through a port that infrastructure implements."
