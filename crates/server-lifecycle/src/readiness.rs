@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:bf3dae37" tracker="pending-tracker" reason="Own readiness and draining observation."
 //! Protocol-neutral readiness observation.
 
 use crate::drain::{DrainController, DrainSignal};
@@ -58,4 +57,3 @@ mod tests {
         assert_ready(&signal, true);
     }
 }
-// HANDWRITE-END
