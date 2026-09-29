@@ -352,3 +352,30 @@ rule = "B2"
 subject = "jieba_rs"
 paths = ["crates/index-text/src/domain/tokenize.rs"]
 reason = "The Jieba analyzer is a persisted schema choice (Analyzer::Jieba) and jieba-rs is its segmentation algorithm over an embedded dictionary, with no I/O; it sits behind the optional `jieba` feature. Long-term."
+
+[[exceptions]]
+rule = "B3"
+subject = "application->infrastructure"
+paths = [
+  "crates/storage-segment/src/application/paged_catalog/packing.rs",
+  "crates/storage-segment/src/application/paged_catalog/page_store.rs",
+]
+reason = "Moved as-is in P1: PagedCatalog packs and stores pages through the page codec and put_immutable directly. P2: a CatalogPageStore port implemented in infrastructure."
+
+[[exceptions]]
+rule = "B3"
+subject = "application->infrastructure"
+paths = ["crates/storage-segment/src/application/archive.rs"]
+reason = "Moved as-is in P1: ArchiveTransaction writes objects with put_immutable directly. P2: it writes through a port that infrastructure implements."
+
+[[exceptions]]
+rule = "B4"
+subject = "storage-object.infrastructure"
+paths = ["crates/storage-segment/src/domain/segment_error.rs"]
+reason = "Moved as-is in P1: SegmentError::ObjectStore wraps ObjectStoreError via #[from]. P2: a domain-owned error variant, converted at the infrastructure boundary."
+
+[[exceptions]]
+rule = "B4"
+subject = "storage-object.infrastructure"
+paths = ["crates/storage-segment/src/domain/archive.rs"]
+reason = "Moved as-is in P1: ArchivedObject.version is storage-object's ObjectVersion. P2: a domain-owned version type, or ObjectVersion moves into the shared kernel."
