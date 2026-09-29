@@ -1,12 +1,6 @@
 //! Bounded group commit with one timer, one batch execution, and result fan-out.
 
-use std::{
-    collections::VecDeque,
-    fmt,
-    future::Future,
-    sync::Arc,
-    time::Duration,
-};
+use std::{collections::VecDeque, fmt, future::Future, sync::Arc, time::Duration};
 
 use tokio::sync::{mpsc, oneshot};
 
@@ -129,9 +123,8 @@ impl<E: fmt::Display> fmt::Display for GroupCommitError<E> {
     }
 }
 
-impl<E> std::error::Error for GroupCommitError<E>
-where
-    E: fmt::Debug + fmt::Display + Send + Sync + 'static,
+impl<E> std::error::Error for GroupCommitError<E> where
+    E: fmt::Debug + fmt::Display + Send + Sync + 'static
 {
 }
 
