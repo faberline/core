@@ -125,6 +125,7 @@ path = "crates/surface/src"
 [assembly]
 modules = [
   "crates/cli-std/src/compat",
+  "crates/compass/src/compat",
   "crates/openapi-codegen/src/compat",
   "crates/raft-runtime/src/compat",
   "crates/service-auth/src/compat",
@@ -589,3 +590,190 @@ paths = [
   "crates/raft-runtime/src/interfaces/peer_http/registry.rs",
 ]
 reason = "Moved as-is in P1: the peer HTTP handlers and the group registry decode the same wire envelopes the outbound RPC client sends, and DeterministicHost::open takes a RaftStore. P2: the envelope DTOs move to a wire module shared by the peer_http interface and the RPC adapter, and the conformance host takes the store port."
+
+[[exceptions]]
+rule = "B2"
+subject = "anyhow"
+paths = ["crates/compass/src/domain/search/index.rs"]
+reason = "Moved as-is in P1: SearchIndex::to_bytes and from_bytes serialise the index with bincode and return anyhow::Result. P2: move the byte (de)serialisation into an infrastructure index store with its own error type."
+
+[[exceptions]]
+rule = "B2"
+subject = "bincode"
+paths = ["crates/compass/src/domain/search/index.rs"]
+reason = "Moved as-is in P1: SearchIndex::to_bytes and from_bytes serialise the index with bincode and return anyhow::Result. P2: move the byte (de)serialisation into an infrastructure index store with its own error type."
+
+[[exceptions]]
+rule = "B2"
+subject = "regex_lite"
+paths = [
+  "crates/compass/src/domain/checker_config/argus_config.rs",
+  "crates/compass/src/domain/import_graph/extract.rs",
+  "crates/compass/src/domain/lint/custom.rs",
+  "crates/compass/src/domain/ts_type_system/advanced.rs",
+]
+reason = "Moved as-is in P1: custom lint rules compile user-configured patterns, ArgusConfig's glob matcher, the per-language import extractors and TypeScript template-literal matching all build regex_lite patterns (compass E6). P2: switch them to regex, which the domain allowlist already has."
+
+[[exceptions]]
+rule = "B2"
+subject = "serde_yaml"
+paths = ["crates/compass/src/domain/spec/statemachine/mermaid_plus.rs"]
+reason = "Moved as-is in P1: MermaidPlusGenerator writes the YAML frontmatter with serde_yaml::to_string. P2: move the YAML serialisation behind an infrastructure adapter, or add serde_yaml to the domain allowlist."
+
+[[exceptions]]
+rule = "B2"
+subject = "std::time::Instant::now"
+paths = [
+  "crates/compass/src/domain/incremental/dirty_file_tracker.rs",
+  "crates/compass/src/domain/search/query/call_hierarchy.rs",
+  "crates/compass/src/domain/search/query/documentation.rs",
+  "crates/compass/src/domain/search/query/implementations.rs",
+  "crates/compass/src/domain/search/query/similar_code.rs",
+  "crates/compass/src/domain/search/query/type_signature.rs",
+  "crates/compass/src/domain/search/query/usages.rs",
+]
+reason = "Moved as-is in P1: DirtyFileTracker stamps changes with Instant::now and each search mode times itself for SearchStats. P2: a Clock port in domain, with application passing the clock or the timestamps in."
+
+[[exceptions]]
+rule = "B2"
+subject = "toml"
+paths = ["crates/compass/src/domain/lint/toml_checker.rs"]
+reason = "Moved as-is in P1: the TM001 checker parses the linted text as a toml::Value to report syntax errors and reads no files. P2: add toml to the domain allowlist as a parser, or run the parse in infrastructure and hand the checker the result."
+
+[[exceptions]]
+rule = "B2"
+subject = "tracing"
+paths = ["crates/compass/src/domain/lint/custom.rs"]
+reason = "Moved as-is in P1: CustomRuleChecker logs rules whose regex or tree-sitter query fails to compile with tracing. P2: return the rejected rules as data and log them in the infrastructure custom rules loader."
+
+[[exceptions]]
+rule = "B2"
+subject = "tree_sitter"
+paths = [
+  "crates/compass/src/domain/diagnostic/model.rs",
+  "crates/compass/src/domain/error/argus_error.rs",
+  "crates/compass/src/domain/lint/css_rules.rs",
+  "crates/compass/src/domain/lint/custom.rs",
+  "crates/compass/src/domain/lint/go/function_rules.rs",
+  "crates/compass/src/domain/lint/go/import_rules.rs",
+  "crates/compass/src/domain/lint/html.rs",
+  "crates/compass/src/domain/lint/html_rules.rs",
+  "crates/compass/src/domain/lint/python/import_rules.rs",
+  "crates/compass/src/domain/lint/python/inspection_rules.rs",
+  "crates/compass/src/domain/lint/python/pydantic_rules.rs",
+  "crates/compass/src/domain/lint/terraform.rs",
+  "crates/compass/src/domain/modules/import.rs",
+  "crates/compass/src/domain/narrowing/condition_parser.rs",
+  "crates/compass/src/domain/narrowing/match_pattern.rs",
+  "crates/compass/src/domain/python_inference/inferencer.rs",
+  "crates/compass/src/domain/python_inference/inferencer/classes.rs",
+  "crates/compass/src/domain/python_inference/inferencer/compound.rs",
+  "crates/compass/src/domain/python_inference/inferencer/expressions.rs",
+  "crates/compass/src/domain/python_inference/inferencer/functions.rs",
+  "crates/compass/src/domain/python_inference/inferencer/special_classes.rs",
+  "crates/compass/src/domain/python_inference/inferencer/type_vars.rs",
+  "crates/compass/src/domain/rust_type_system/infer.rs",
+  "crates/compass/src/domain/rust_type_system/infer/bound_syntax.rs",
+  "crates/compass/src/domain/rust_type_system/infer/compound_expr.rs",
+  "crates/compass/src/domain/rust_type_system/infer/expr.rs",
+  "crates/compass/src/domain/rust_type_system/infer/type_syntax.rs",
+  "crates/compass/src/domain/rust_type_system/symbols.rs",
+  "crates/compass/src/domain/rust_type_system/symbols/bounds.rs",
+  "crates/compass/src/domain/rust_type_system/symbols/fields.rs",
+  "crates/compass/src/domain/rust_type_system/symbols/helpers.rs",
+  "crates/compass/src/domain/rust_type_system/symbols/signature.rs",
+  "crates/compass/src/domain/semantic/pdg/cfg/builder.rs",
+  "crates/compass/src/domain/semantic/pdg/cfg/builder/branch.rs",
+  "crates/compass/src/domain/semantic/pdg/cfg/builder/loops.rs",
+  "crates/compass/src/domain/semantic/pdg/cfg/builder/try_except.rs",
+  "crates/compass/src/domain/semantic/scope/analyzer.rs",
+  "crates/compass/src/domain/semantic/scope/analyzer/visit.rs",
+  "crates/compass/src/domain/semantic/symbols/css.rs",
+  "crates/compass/src/domain/semantic/symbols/go.rs",
+  "crates/compass/src/domain/semantic/symbols/go/type_decls.rs",
+  "crates/compass/src/domain/semantic/symbols/html.rs",
+  "crates/compass/src/domain/semantic/symbols/kubernetes.rs",
+  "crates/compass/src/domain/semantic/symbols/python.rs",
+  "crates/compass/src/domain/semantic/symbols/rust.rs",
+  "crates/compass/src/domain/semantic/symbols/rust/type_defs.rs",
+  "crates/compass/src/domain/semantic/symbols/terraform.rs",
+  "crates/compass/src/domain/semantic/symbols/typescript.rs",
+  "crates/compass/src/domain/semantic/types/go.rs",
+  "crates/compass/src/domain/semantic/types/go/type_nodes.rs",
+  "crates/compass/src/domain/semantic_model/builder.rs",
+  "crates/compass/src/domain/semantic_model/builder/params.rs",
+  "crates/compass/src/domain/semantic_model/builder/visit.rs",
+  "crates/compass/src/domain/semantic_search/engine/call_graph.rs",
+  "crates/compass/src/domain/semantic_search/engine/docstrings.rs",
+  "crates/compass/src/domain/semantic_search/rust_provider.rs",
+  "crates/compass/src/domain/semantic_search/rust_provider/usages.rs",
+  "crates/compass/src/domain/syntax/parsed_file.rs",
+  "crates/compass/src/domain/ts_type_system/infer.rs",
+  "crates/compass/src/domain/ts_type_system/infer/compound_expr.rs",
+  "crates/compass/src/domain/ts_type_system/infer/expr.rs",
+  "crates/compass/src/domain/ts_type_system/infer/narrowing.rs",
+  "crates/compass/src/domain/ts_type_system/infer/type_annotation.rs",
+  "crates/compass/src/domain/ts_type_system/infer/type_operators.rs",
+  "crates/compass/src/domain/type_checking/checker.rs",
+  "crates/compass/src/domain/type_checking/checker/calls.rs",
+  "crates/compass/src/domain/type_checking/checker/control_flow.rs",
+  "crates/compass/src/domain/type_checking/checker/declarations.rs",
+  "crates/compass/src/domain/type_checking/checker/statements.rs",
+  "crates/compass/src/domain/type_checking/checker/variance.rs",
+  "crates/compass/src/domain/type_refactoring/engine/ast_cache.rs",
+  "crates/compass/src/domain/type_system/annotation.rs",
+]
+reason = "Moved as-is in P1: ParsedFile wraps a tree_sitter::Tree, Range::from_node and ArgusError's parser variant take tree-sitter types, and the lint checkers, semantic visitors, CFG builder, Python, Rust and TypeScript inference, type checker, semantic search and refactoring AST cache walk tree_sitter::Node directly (compass E1, about 20k lines on the hot path); domain/lint/css_rules.rs and html_rules.rs are undeclared files the build never compiles. P2: stays as the long-term E1 exception with the grammar crates kept in infrastructure/syntax, Range::from_node becomes an infrastructure extension trait (W7), and the two undeclared files are deleted (W1)."
+
+[[exceptions]]
+rule = "B3"
+subject = "application->infrastructure"
+paths = [
+  "crates/compass/src/application/analysis/file_cache.rs",
+  "crates/compass/src/application/analysis/request_handler.rs",
+  "crates/compass/src/application/check/check_paths.rs",
+  "crates/compass/src/application/codegen/registry.rs",
+  "crates/compass/src/application/daemon/background_analysis.rs",
+  "crates/compass/src/application/daemon/config.rs",
+  "crates/compass/src/application/outline/function_outline.rs",
+]
+reason = "Moved as-is in P1: RequestHandler owns the on-disk DiskCache and a StubLoader and resolves its cache directories, the file cache, check_paths, the function outline and the request handler build a MultiParser, check_paths calls the source walker, the background loop consumes watch-bridge events, DaemonConfig resolves its socket path through index storage, and GeneratorRegistry dispatches over the CodeGenerator trait that E5 puts in infrastructure. P2: parser, file-walker, cache, stub and path ports in application implemented by infrastructure and injected at construction, a watch event type owned by application, and CodeGenerator moved to application as a port."
+
+[[exceptions]]
+rule = "B3"
+subject = "domain->infrastructure"
+paths = [
+  "crates/compass/src/domain/python_inference/inferencer.rs",
+  "crates/compass/src/domain/semantic_search/engine/call_graph.rs",
+  "crates/compass/src/domain/semantic_search/engine/docstrings.rs",
+  "crates/compass/src/domain/type_refactoring/engine/ast_cache.rs",
+]
+reason = "Moved as-is in P1: TypeInferencer resolves imports through ImportResolver and StubLoader, and the semantic search call graph, docstring extraction and refactoring AST cache build a MultiParser to parse source text themselves. P2: application passes parsed files and resolved modules in, or domain declares parser and module-resolver ports that infrastructure implements."
+
+[[exceptions]]
+rule = "B3"
+subject = "infrastructure->application"
+paths = ["crates/compass/src/infrastructure/daemon/client.rs"]
+reason = "Moved as-is in P1: DaemonClient reads DaemonConfig for its socket path and speaks the Request and Response protocol types defined in application/daemon. P2: move the protocol and config types to a module both sides may use, such as domain or an interfaces wire module the client adapter shares."
+
+[[exceptions]]
+rule = "B3"
+subject = "interfaces->domain"
+paths = [
+  "crates/compass/src/interfaces/lsp/argus_server.rs",
+  "crates/compass/src/interfaces/lsp/code_actions.rs",
+  "crates/compass/src/interfaces/lsp/completion.rs",
+  "crates/compass/src/interfaces/lsp/language_server.rs",
+  "crates/compass/src/interfaces/output/agent.rs",
+  "crates/compass/src/interfaces/output/reporter.rs",
+]
+reason = "Moved as-is in P1: the LSP server builds symbol tables and calls the checker registry, semantic search and refactoring engines itself, its code actions, completion and language server convert Diagnostic, Language, Type and refactoring results to lsp_types, and the agent and text reporters render FileResult, Diagnostic, ImportGraph and SymbolTable. P2: the LSP server calls application use cases instead of domain services; reading Diagnostic, Range and FileResult, which are the agent and LSP wire format (compass E2), stays as a long-term reason."
+
+[[exceptions]]
+rule = "B3"
+subject = "interfaces->infrastructure"
+paths = [
+  "crates/compass/src/interfaces/daemon/argus_daemon.rs",
+  "crates/compass/src/interfaces/lsp/argus_server.rs",
+]
+reason = "Moved as-is in P1: ArgusDaemon starts the watch bridge and runs scope discovery itself, and the LSP server builds a MultiParser and a StubLoader for its documents. P2: move that wiring behind application services that take parser, stub and watch ports."

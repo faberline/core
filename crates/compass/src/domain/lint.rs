@@ -1,0 +1,33 @@
+//! Language lint checkers: the Checker trait, its registry and one checker per language.
+
+pub(crate) mod asyncapi;
+pub(crate) mod autofix;
+pub(crate) mod checker;
+pub(crate) mod css;
+pub(crate) mod custom;
+pub(crate) mod dockerfile;
+pub(crate) mod embedded_markdown;
+pub(crate) mod gitlab_ci;
+pub(crate) mod gitlab_ci_rules;
+pub(crate) mod go;
+pub(crate) mod graphql;
+pub(crate) mod html;
+pub(crate) mod javascript;
+pub(crate) mod kubernetes;
+pub(crate) mod kubernetes_rules;
+pub(crate) mod markdown;
+pub(crate) mod mdx;
+pub(crate) mod mermaid;
+pub(crate) mod openapi;
+pub(crate) mod openrpc;
+pub(crate) mod proto;
+pub(crate) mod python;
+pub(crate) mod python_security;
+pub(crate) mod registry;
+pub(crate) mod rust_checker;
+pub(crate) mod sql;
+pub(crate) mod terraform;
+pub(crate) mod terraform_rules;
+pub(crate) mod toml_checker;
+pub(crate) mod typescript;
+pub(crate) mod yaml_dispatch;

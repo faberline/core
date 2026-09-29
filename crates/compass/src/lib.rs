@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! # compass
 //!
 //! Code intelligence arsenal for the cclab ecosystem. Compass gives developers
@@ -19,40 +18,43 @@
 //! - `projects/conductor/` — cloud web
 //! - `sdd` — library crate re-exports compass for backward compat
 
-pub mod check_pipeline;
-pub mod checker;
-pub mod core;
+mod application;
+mod compat;
+mod domain;
+mod infrastructure;
+mod interfaces;
+
+pub use compat::{
+    check_pipeline, checker, core, diagnostic, format, gen, graph, lens_error, lint, lsp, outline,
+    output, refactoring, schemas, search, semantic, server, spec, storage, syntax, type_inference,
+    watch,
+};
 // generate/ module moved to sdd crate (consolidate-codegen)
-pub mod diagnostic;
-pub mod format;
-pub mod gen;
-pub mod graph;
-pub mod lens_error;
-pub mod lint;
-pub mod lsp;
-pub mod outline;
-pub mod output;
-pub mod refactoring;
-pub mod schemas;
-pub mod search;
-pub mod semantic;
-pub mod server;
-pub mod spec;
-pub mod storage;
-pub mod syntax;
-pub mod type_inference;
-pub mod watch;
 
 // Re-export commonly used types (matches the surface previously exposed by sdd)
-pub use checker::{check_paths, check_paths_with_propagation, FileResult, LintConfig};
-pub use core::{ArgusConfig, LanguageConfig};
-pub use diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range};
-pub use gen::{CodeGenerator, GenContext, GenError, GenResult, GeneratedCode, TechStack};
-pub use lens_error::ArgusError;
-pub use lint::{Checker, CheckerRegistry};
-pub use outline::{outline, outline_parsed, FunctionDef, FunctionKind};
-pub use output::reporter::{OutputFormat, Reporter};
-pub use server::{ArgusDaemon, DaemonClient, DaemonConfig, RequestHandler};
-pub use syntax::{Language, MultiParser, ParsedFile};
-pub use watch::{FileWatcher, WatchConfig, WatchEvent};
-// CODEGEN-END
+pub use application::analysis::request_handler::RequestHandler;
+pub use application::check::check_paths::{check_paths, check_paths_with_propagation};
+pub use application::daemon::config::DaemonConfig;
+pub use application::outline::function_outline::{
+    outline, outline_parsed, FunctionDef, FunctionKind,
+};
+pub use domain::check::file_result::FileResult;
+pub use domain::check::lint_config::LintConfig;
+pub use domain::config::argus_config::{ArgusConfig, LanguageConfig};
+pub use domain::diagnostic::model::{
+    Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range,
+};
+pub use domain::error::argus_error::ArgusError;
+pub use domain::lint::checker::Checker;
+pub use domain::lint::registry::CheckerRegistry;
+pub use domain::syntax::language::Language;
+pub use domain::syntax::parsed_file::ParsedFile;
+pub use infrastructure::codegen::traits::{
+    CodeGenerator, GenContext, GenError, GenResult, GeneratedCode, TechStack,
+};
+pub use infrastructure::daemon::client::DaemonClient;
+pub use infrastructure::syntax::multi_parser::MultiParser;
+pub use infrastructure::watch::file_watcher::{FileWatcher, WatchConfig, WatchEvent};
+pub use interfaces::daemon::argus_daemon::ArgusDaemon;
+pub use interfaces::output::output_format::OutputFormat;
+pub use interfaces::output::reporter::Reporter;

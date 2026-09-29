@@ -71,7 +71,7 @@ tracing.workspace = true
 # UUID
 uuid = { version = "1", features = ["v4", "serde"] }
 
-# JSON Schema (schemas/ module for K8s + GitLab CI validation)
+# JSON Schema (infrastructure/schema_validation/ for K8s + GitLab CI validation)
 jsonschema = "0.29"
 
 # Hashing (cache content addressing)
@@ -81,15 +81,15 @@ sha2 = "0.10"
 crossterm = "0.28"
 colored = "3"
 
-# Template engine (for code generators in gen/)
+# Template engine (for code generators in infrastructure/codegen/)
 tera = "1"
 heck = "0.5"
 indexmap = { version = "2", features = ["serde"] }
 
-# Markdown parsing (spec/)
+# Markdown parsing (domain/spec/)
 pulldown-cmark = "0.12"
 
-# HTTP client (type_inference/typeshed downloads + gen/rust/reqwest generator)
+# HTTP client (infrastructure/typeshed/ downloads + infrastructure/codegen/rust/reqwest.rs generator)
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
 
 # Date/time
