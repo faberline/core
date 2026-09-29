@@ -340,3 +340,9 @@ rule = "B1"
 subject = "ui-runtime"
 paths = ["crates/ui-runtime/Cargo.toml"]
 reason = "SPEC-MANAGED crate kept whole in P1 (ADR D18), so it is a whole-src domain crate without the split-crate name. P2: D8 splits it into src/domain."
+
+[[exceptions]]
+rule = "B2"
+subject = "base64"
+paths = ["crates/claim-token/src/domain/claim_token.rs"]
+reason = "base64url is the token's wire encoding, fixed by the format keep and loom already exchange; the crate is a pure encoder with no I/O. Long-term."

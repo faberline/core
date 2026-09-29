@@ -1,0 +1,8 @@
+//! The token model: a [`Scope`], and signing and verifying it.
+
+mod claim_token;
+mod hmac;
+mod scope;
+
+pub use claim_token::{sign, verify};
+pub use scope::Scope;
