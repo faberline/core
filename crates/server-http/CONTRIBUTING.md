@@ -14,7 +14,8 @@ Read these sources in order for the part you change:
    gates.
 2. [STATUS.md](STATUS.md) for current support and limits.
 3. [ROADMAP.md](ROADMAP.md) for explicit non-goals.
-4. `crates/server-http/src/lib.rs` for listener composition and reporting.
+4. `crates/server-http/src/options.rs` and `serve.rs` for listener composition
+   and reporting.
 5. `crates/server-http/src/tls.rs` for TLS selection and refusal behavior.
 6. `crates/server-http/tests/it/` for external behavior; its `main.rs` is the
    case inventory.

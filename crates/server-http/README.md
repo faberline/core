@@ -55,7 +55,7 @@ an app chooses that implementation.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p server-http --no-deps` |
-| Listener options, lifecycle serving, and report | `crates/server-http/src/lib.rs` |
+| Listener options, lifecycle serving, and report | `crates/server-http/src/options.rs` and `serve.rs` |
 | TLS serving and accept-time selection | `crates/server-http/src/tls.rs` |
 | TCP accept and supervision | `crates/server-tcp` |
 | Per-connection HTTP protocol | `crates/transport-h2c` |
