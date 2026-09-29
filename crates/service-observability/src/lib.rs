@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:37a91ad9" tracker="1868" reason="Export typed configuration, tracing, metric provider, and lifecycle metrics."
 //! Protocol-neutral service observability composition.
 //!
 //! This crate owns configuration, stable identity, structured logging,
@@ -28,4 +27,3 @@ pub use logging::{
 };
 pub use metrics::{LifecycleMetrics, LifecycleMetricsSnapshot, MetricsProvider};
 pub use process::{process_usage, ProcessUsage};
-// HANDWRITE-END

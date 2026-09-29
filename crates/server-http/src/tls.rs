@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:server-http-tls-listener" tracker="#3112" reason="Terminating TLS per connection against a configuration that may change between accepts is control flow over the existing accept loop; no generator primitive expresses it."
 //! Serving TLS on the shared listener (#3112 R1, R4, AC1, AC6).
 //!
 //! The whole design is one decision: the rustls configuration is fetched *per
@@ -174,4 +173,3 @@ pub async fn serve_tls(
     )
     .await;
 }
-// HANDWRITE-END

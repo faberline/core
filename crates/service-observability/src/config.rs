@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:16181194" tracker="pending-tracker" reason="Own LogFormat, ObservabilityConfig, and ServiceIdentity."
 //! Typed, protocol-neutral observability configuration.
 
 /// Log output format for the shared formatter.
@@ -84,4 +83,3 @@ mod tests {
         assert_eq!(config.otlp_endpoint.as_deref(), Some("http://otel:4317"));
     }
 }
-// HANDWRITE-END

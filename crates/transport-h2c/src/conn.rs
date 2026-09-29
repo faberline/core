@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! `ManagedConn` — one frame-level h2c connection and its live health/stats.
 //!
 //! Each connection owns a single TCP socket carrying an HTTP/2 cleartext
@@ -226,4 +225,3 @@ async fn send_body(stream: &mut SendStream<Bytes>, mut body: Bytes) -> Result<()
     }
     Ok(())
 }
-// CODEGEN-END

@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:549646b3" tracker="pending-tracker" reason="Own logging, OTLP resolution, subscriber installation, and W3C extraction."
 //! Structured logging and optional OTLP tracing without protocol ownership.
 
 use tracing_subscriber::prelude::*;
@@ -66,7 +65,6 @@ pub fn init_tracing(config: &ObservabilityConfig) -> anyhow::Result<()> {
     init_tracing_with_identity(config, &identity)
 }
 
-// <HANDWRITE gap="missing-generator:logic" tracker="1868" reason="logic section in logging.rs is hand-written pending codegen support">
 pub fn init_tracing_with_identity(
     config: &ObservabilityConfig,
     identity: &ServiceIdentity,
@@ -127,7 +125,6 @@ pub fn init_tracing_with_identity(
         TracingMode::Otel { .. } => unreachable!("OTLP mode requires the otlp feature"),
     }
 }
-// </HANDWRITE>
 
 #[cfg(feature = "otlp")]
 fn build_otel_tracer(
@@ -238,4 +235,3 @@ mod tests {
         );
     }
 }
-// HANDWRITE-END

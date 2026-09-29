@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! How much durability the caller is asking for -- and which of the four
 //! answers this crate acts on itself.
 //!
@@ -37,4 +36,3 @@ impl FsyncPolicy {
         matches!(self, Self::Always)
     }
 }
-// CODEGEN-END

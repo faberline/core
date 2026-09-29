@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:d8834b62" tracker="1868" reason="Define ServiceLogEventV1, stable schema constants, correlation validation, sensitive-key exclusion, bounded attributes, and the tracing-subscriber JSONL formatter."
 //! Versioned collector-compatible structured stdout.
 //!
 //! Every line carries [`SERVICE_LOG_SCHEMA_V1`] (`axiom.service.log.v1`) as its
@@ -393,5 +392,3 @@ fn truncate_utf8(value: &str, max_bytes: usize) -> String {
     }
     value[..end].to_string()
 }
-
-// HANDWRITE-END
