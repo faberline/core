@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! HTTP compatibility re-export for the protocol-neutral metrics seam.
 //!
 //! A service supplies a type that renders its Prometheus text-format body; the
@@ -7,4 +6,3 @@
 //! provider entirely (the probe router serves an empty body).
 
 pub use service_observability::MetricsProvider;
-// CODEGEN-END

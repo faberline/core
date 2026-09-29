@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Probe-facing name for the protocol-neutral lifecycle readiness contract.
 //!
 //! New production code should pass a [`server_lifecycle::LifecycleController`]
@@ -13,4 +12,3 @@
 //! `Arc`-shareable, `is_draining()`-reporting type works.
 
 pub use server_lifecycle::Readiness as ReadinessHook;
-// CODEGEN-END

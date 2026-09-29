@@ -1,11 +1,3 @@
-// CODEGEN-BEGIN
-//! HTTP-specific runtime knobs and observability-config projection.
-//!
-//! Each service binary already parses these (under its own `SERVICE_*`
-//! prefix via clap `env =`); this is the resolved, prefix-agnostic struct the
-//! shared HTTP scaffolding reads. Protocol-neutral logging/tracing types live
-//! in `service-observability` and are re-exported here for compatibility.
-
 pub use service_observability::{LogFormat, ServiceIdentity};
 
 /// Resolved HTTP-service configuration.
@@ -117,4 +109,3 @@ mod tests {
         assert_eq!(identity.version(), "0.1.0");
     }
 }
-// CODEGEN-END

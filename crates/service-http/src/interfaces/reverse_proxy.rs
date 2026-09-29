@@ -1,5 +1,3 @@
-//! Bounded reverse-proxy runtime with a service-owned upstream policy.
-
 use std::time::Duration;
 
 use axum::{

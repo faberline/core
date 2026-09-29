@@ -1,7 +1,4 @@
-// CODEGEN-BEGIN
-//! Compatibility adapter to protocol-neutral `service-observability`.
-
-use crate::config::HttpConfig;
+use super::config::HttpConfig;
 
 pub use service_observability::{OtelFallback, TracingMode};
 
@@ -28,4 +25,3 @@ pub fn init_tracing_with_identity(
 
 #[cfg(feature = "otlp")]
 pub use service_observability::extract_trace_context;
-// CODEGEN-END

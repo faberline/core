@@ -54,11 +54,11 @@ lifecycle-aware forms.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p service-http --no-deps` |
-| Standard operational routes | `crates/service-http/src/probes.rs` |
-| Error and request protection | `crates/service-http/src/error.rs`, `body_limit.rs`, and `admission.rs` |
-| Request trace and access logging | `crates/service-http/src/transport.rs` |
-| Server timing | `crates/service-http/src/server_timing.rs` |
-| Lifecycle adapters | `crates/service-http/src/transport.rs` and `signal.rs` |
+| Standard operational routes | `crates/service-http/src/interfaces/probes.rs` |
+| Error and request protection | `crates/service-http/src/interfaces/error.rs`, `interfaces/body_limit.rs`, `interfaces/admission_middleware.rs`, and `application/admission.rs` |
+| Request trace and access logging | `crates/service-http/src/interfaces/transport/trace_context.rs` and `access_log.rs` |
+| Server timing | `crates/service-http/src/interfaces/server_timing.rs` |
+| Lifecycle adapters | `crates/service-http/src/interfaces/transport/serve.rs` and `interfaces/signal.rs` |
 | Executable behavior | `cargo test -p service-http` |
 
 ## Capabilities

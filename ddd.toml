@@ -127,6 +127,7 @@ modules = [
   "crates/cli-std/src/compat",
   "crates/openapi-codegen/src/compat",
   "crates/service-backup/src/compat",
+  "crates/service-http/src/compat",
 ]
 
 [[contexts]]
@@ -260,7 +261,6 @@ infrastructure = "crates/service-executor/src"
 name = "service-http"
 depends_on = ["server-http", "server-lifecycle", "service-observability"]
 [contexts.layers]
-domain = "crates/service-http/src/domain"
 application = "crates/service-http/src/application"
 infrastructure = "crates/service-http/src/infrastructure"
 interfaces = "crates/service-http/src/interfaces"
