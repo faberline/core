@@ -11,6 +11,7 @@ each crate's `README.md` and `llms.txt`; contributor rules live in
 | [domain/](domain/) | One page per context: what it models, its ports, its invariants, and its recorded exceptions. |
 | [adr/](adr/) | Architecture decisions and the reasons behind them. |
 | [operations/](operations/README.md) | Releasing, how downstream repos pin core, and how to run the architecture checker. |
+| [migration/](migration/ddd-p1.md) | What each refactor phase changes for downstream repos, and where moved source files are now. |
 
 The architecture contract itself is [`ddd.toml`](../ddd.toml) at the repository
 root. It is checked by the workspace's rust-arch contract
