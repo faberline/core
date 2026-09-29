@@ -336,7 +336,7 @@ impl TestExtractor {
 
     fn find_matching_bracket(&self, s: &str, open: char, close: char) -> Option<usize> {
         let mut depth = 1;
-        for (i, c) in s.chars().enumerate() {
+        for (i, c) in s.char_indices() {
             if c == open {
                 depth += 1;
             } else if c == close {
@@ -394,7 +394,7 @@ impl TestExtractor {
 
     fn split_on_comma(&self, s: &str) -> Option<(String, String)> {
         let mut depth = 0;
-        for (i, c) in s.chars().enumerate() {
+        for (i, c) in s.char_indices() {
             match c {
                 '(' | '[' | '{' | '<' => depth += 1,
                 ')' | ']' | '}' | '>' => depth -= 1,
@@ -540,6 +540,13 @@ fn test_simple() {
         let extractor = make_extractor();
         let result = extractor.translate_assert_eq("assert_eq!(x, 1)");
         assert_eq!(result, "assert x == 1");
+    }
+
+    #[test]
+    fn test_translate_assert_eq_non_ascii() {
+        let extractor = make_extractor();
+        let result = extractor.translate_assert_eq(r#"assert_eq!("é", "ü")"#);
+        assert_eq!(result, r#"assert "é" == "ü""#);
     }
 
     #[test]
