@@ -80,7 +80,7 @@ returns requires client certificates; there is no permissive mode.
   against a config `PeerTlsConfig` returns, so the refusal of an anonymous or
   untrusted peer is claimed here and measured only on `ReloadableTls`, by
   `cargo test -p peer-tls --test it -- peer_rotation::`.
-- Source: `crates/peer-tls/src/lib.rs`
+- Source: `crates/peer-tls/src/config.rs`
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
