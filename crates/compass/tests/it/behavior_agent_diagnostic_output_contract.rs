@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/agent-diagnostic-output-contract.md#agent-diagnostic-output-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/agent-diagnostic-output-contract.md#agent-diagnostic-output-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec agent-diagnostic-output-contract

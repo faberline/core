@@ -1234,6 +1234,9 @@ create one, do not add a file to one, and migrate a surviving case into
 `src/cases/*.py` verifiers are retired across the repository — never author a
 new one. The only thing that may still appear under `external-contracts/` is
 generated evidence written by an EC gate run, which is output, never contract.
+The behavior contracts that existed before this rule now live, read-only, under
+`crates/<p>/docs/contracts/`; they record what the tests were written against
+and are not edited.
 
 ### Architecture/profile conformance checklist
 

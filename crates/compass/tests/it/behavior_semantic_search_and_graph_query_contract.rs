@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/semantic-search-and-graph-query-contract.md#semantic-search-and-graph-query-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/semantic-search-and-graph-query-contract.md#semantic-search-and-graph-query-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec semantic-search-and-graph-query-contract

@@ -1,15 +1,15 @@
 version = 1
 project = "ui-runtime"
 ir_kind = "ec"
-ec_path = "libs/ui-runtime/external-contracts"
-inventory_path = "libs/ui-runtime/aw.toml"
+ec_path = "crates/ui-runtime/docs/contracts"
+inventory_path = "crates/ui-runtime/aw.toml"
 generated_at = "2026-07-07T14:12:34.213551+00:00"
 ir_digest = "sha256:d471fc218899b60125e22c2fb37be46d53388a92844efdb0579162dc3a43263b"
 source_digest = "sha256:6af896d16177460c08634399a46e014ab2ff0e7ba7c926f212e1fe65e8109637"
 tool_contracts = []
 
 [[sources]]
-path = "libs/ui-runtime/external-contracts/behavior/renderer-neutral-component-runtime-contract.md"
+path = "crates/ui-runtime/docs/contracts/behavior/renderer-neutral-component-runtime-contract.md"
 digest = "sha256:34b0636e9e0916995261f998c783ba425fd8889227346db1c400f419ea6bf10c"
 
 [[cases]]
@@ -18,8 +18,8 @@ capability_id = "renderer-neutral-component-runtime"
 claim_id = "renderer-neutral-component-runtime-contract"
 contract_id = "renderer-neutral-component-runtime-contract"
 dimension = "behavior"
-source_ref = "libs/ui-runtime/external-contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract"
-test_path = "libs/ui-runtime/tests/behavior_renderer_neutral_component_runtime_contract.rs"
+source_ref = "crates/ui-runtime/docs/contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract"
+test_path = "crates/ui-runtime/tests/behavior_renderer_neutral_component_runtime_contract.rs"
 command = "cargo test -p ui-runtime"
 required_for_production = true
 assertions = [

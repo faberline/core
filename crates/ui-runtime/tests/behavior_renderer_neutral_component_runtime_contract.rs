@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/ui-runtime/external-contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract
+// SPEC-MANAGED: crates/ui-runtime/docs/contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec renderer-neutral-component-runtime-contract

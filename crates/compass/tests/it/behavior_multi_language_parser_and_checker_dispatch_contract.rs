@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/multi-language-parser-and-checker-dispatch-contract.md#multi-language-parser-and-checker-dispatch-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/multi-language-parser-and-checker-dispatch-contract.md#multi-language-parser-and-checker-dispatch-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec multi-language-parser-and-checker-dispatch-contract
