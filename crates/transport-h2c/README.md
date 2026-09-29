@@ -50,10 +50,10 @@ aggregates those per-connection facts.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p transport-h2c --no-deps` |
-| Simple client, fixed pool, and sizing | `crates/transport-h2c/src/lib.rs` |
-| Managed connection pool | `crates/transport-h2c/src/manager.rs` and `conn.rs` |
+| Simple client, fixed pool, and sizing | `crates/transport-h2c/src/client.rs`, `pool.rs`, and `sizing.rs` |
+| Managed connection pool | `crates/transport-h2c/src/manager.rs`, `manager/`, and `conn.rs` |
 | Error and ambiguity contract | `crates/transport-h2c/src/error.rs` |
-| Optional per-connection server | `crates/transport-h2c/src/server.rs` |
+| Optional per-connection server | `crates/transport-h2c/src/server.rs` and `server/` |
 | Executable behavior | `cargo test -p transport-h2c` |
 
 ## Capabilities

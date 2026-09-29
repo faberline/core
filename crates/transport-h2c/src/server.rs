@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Server-side h2c transport (behind the `server` feature): serve one accepted
 //! stream as **HTTP/1.1 or HTTP/2 cleartext (h2c, prior-knowledge)** via
 //! hyper-util's auto builder.
@@ -8,12 +7,14 @@
 //! on a single port. The client side of the same transport lives in this crate's
 //! `h2c_client` / `H2cPool` / `H2cManager`.
 
-use http::{Method, Request, Response, StatusCode, Version};
+mod accounting;
+
+use accounting::{observe_drain, Accounting};
+use http::{Request, Response, StatusCode, Version};
 use hyper::service::service_fn;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use hyper_util::server::conn::auto;
 use server_lifecycle::{LifecycleSubscription, ShutdownDeadline};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpStream;
@@ -53,164 +54,6 @@ pub struct ConnectionReport {
     pub ambiguous: usize,
     pub terminal: ConnectionTerminal,
     pub error: Option<String>,
-}
-
-struct Accounting {
-    admission: Mutex<AdmissionState>,
-    protocol: Mutex<ConnectionProtocol>,
-    admitted: AtomicUsize,
-    active: AtomicUsize,
-    active_at_drain: AtomicUsize,
-    completed: AtomicUsize,
-    refused: AtomicUsize,
-    timed_out: AtomicUsize,
-    ambiguous: AtomicUsize,
-}
-
-struct AdmissionState {
-    open: bool,
-    active: usize,
-    mutations: usize,
-}
-
-impl Accounting {
-    fn new() -> Self {
-        Self {
-            admission: Mutex::new(AdmissionState {
-                open: true,
-                active: 0,
-                mutations: 0,
-            }),
-            protocol: Mutex::new(ConnectionProtocol::Undetermined),
-            admitted: AtomicUsize::new(0),
-            active: AtomicUsize::new(0),
-            active_at_drain: AtomicUsize::new(0),
-            completed: AtomicUsize::new(0),
-            refused: AtomicUsize::new(0),
-            timed_out: AtomicUsize::new(0),
-            ambiguous: AtomicUsize::new(0),
-        }
-    }
-
-    fn protocol(&self, version: Version) {
-        let mut protocol = self.protocol.lock().unwrap();
-        *protocol = if version == Version::HTTP_2 {
-            ConnectionProtocol::Http2
-        } else {
-            ConnectionProtocol::Http1
-        };
-    }
-
-    fn begin_drain(&self) {
-        let mut admission = self.admission.lock().unwrap();
-        if admission.open {
-            admission.open = false;
-            self.active_at_drain
-                .store(admission.active, Ordering::Release);
-        }
-    }
-
-    fn drain_started(&self) -> bool {
-        !self.admission.lock().unwrap().open
-    }
-
-    fn admit(self: &Arc<Self>, version: Version, method: &Method) -> Option<RequestGuard> {
-        self.protocol(version);
-        let mutation = !is_safe_method(method);
-        let mut admission = self.admission.lock().unwrap();
-        if !admission.open {
-            self.refused.fetch_add(1, Ordering::Relaxed);
-            return None;
-        }
-        admission.active += 1;
-        if mutation {
-            admission.mutations += 1;
-        }
-        self.admitted.fetch_add(1, Ordering::Relaxed);
-        self.active.fetch_add(1, Ordering::AcqRel);
-        drop(admission);
-        Some(RequestGuard {
-            accounting: Arc::clone(self),
-            mutation,
-            done: false,
-        })
-    }
-
-    fn mark_deadline(&self) {
-        let admission = self.admission.lock().unwrap();
-        let active = admission.active;
-        self.timed_out.fetch_add(active, Ordering::Relaxed);
-    }
-
-    fn report(&self, terminal: ConnectionTerminal, error: Option<String>) -> ConnectionReport {
-        ConnectionReport {
-            protocol: *self.protocol.lock().unwrap(),
-            admitted: self.admitted.load(Ordering::Acquire),
-            active_at_drain: self.active_at_drain.load(Ordering::Acquire),
-            completed: self.completed.load(Ordering::Acquire),
-            refused: self.refused.load(Ordering::Acquire),
-            timed_out: self.timed_out.load(Ordering::Acquire),
-            ambiguous: self.ambiguous.load(Ordering::Acquire),
-            terminal,
-            error,
-        }
-    }
-}
-
-struct RequestGuard {
-    accounting: Arc<Accounting>,
-    mutation: bool,
-    done: bool,
-}
-impl RequestGuard {
-    fn complete(mut self) {
-        self.done = true;
-        let mut admission = self.accounting.admission.lock().unwrap();
-        admission.active = admission.active.saturating_sub(1);
-        if self.mutation {
-            admission.mutations = admission.mutations.saturating_sub(1);
-        }
-        drop(admission);
-        self.accounting.active.fetch_sub(1, Ordering::AcqRel);
-        self.accounting.completed.fetch_add(1, Ordering::Relaxed);
-    }
-}
-impl Drop for RequestGuard {
-    fn drop(&mut self) {
-        if !self.done {
-            let mut admission = self.accounting.admission.lock().unwrap();
-            admission.active = admission.active.saturating_sub(1);
-            if self.mutation {
-                admission.mutations = admission.mutations.saturating_sub(1);
-            }
-            drop(admission);
-            self.accounting.active.fetch_sub(1, Ordering::AcqRel);
-            if self.mutation {
-                self.accounting.ambiguous.fetch_add(1, Ordering::Relaxed);
-            }
-        }
-    }
-}
-
-fn is_safe_method(method: &Method) -> bool {
-    matches!(
-        *method,
-        Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE
-    )
-}
-
-fn observe_drain(accounting: &Accounting, lifecycle: &Mutex<LifecycleSubscription>) -> bool {
-    if lifecycle
-        .lock()
-        .unwrap()
-        .observation()
-        .phase
-        .is_draining_or_later()
-    {
-        accounting.begin_drain();
-        return true;
-    }
-    false
 }
 
 impl Default for ConnectionOptions {
@@ -404,4 +247,3 @@ where
     };
     accounting.report(terminal, error)
 }
-// CODEGEN-END

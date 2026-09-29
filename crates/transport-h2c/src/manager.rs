@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! `H2cManager` — a self-managing pool of frame-level h2c connections to one
 //! authority.
 //!
@@ -23,107 +22,23 @@
 //!
 //! Cheap to [`Clone`] (shares one `Arc` of state); clone freely across tasks.
 
+mod config;
+mod slots;
+mod supervisor;
+
+pub use config::{ManagerConfig, ManagerStats};
+
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
-use std::sync::{Arc, Weak};
-use std::time::Duration;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use http::{Method, Request, Response};
 use tokio::sync::{OwnedSemaphorePermit, RwLock, Semaphore};
-use tokio::time::MissedTickBehavior;
 
-use crate::conn::{ConnConfig, ManagedConn};
+use crate::conn::ManagedConn;
 use crate::error::{H2cError, Result};
-use crate::recommended_h2c_connections;
-
-/// Configuration for an [`H2cManager`].
-#[derive(Clone, Debug)]
-pub struct ManagerConfig {
-    /// Connections kept warm at all times (opened eagerly at connect).
-    pub min_connections: usize,
-    /// Hard ceiling on h2 connections (adaptive growth stops here).
-    pub max_connections: usize,
-    /// Idle h2 connections retained after bursts. HTTP/2 normally stays below
-    /// this because connection count is logarithmic in target concurrency.
-    pub max_keepalive_connections: usize,
-    /// Hard cap on requests admitted into this manager at once. Additional
-    /// callers queue until a slot is released or `pool_timeout` elapses.
-    pub max_in_flight_per_origin: usize,
-    /// Grow a new connection when the least-loaded healthy one has at least this
-    /// many in-flight streams (and we're under `max_connections`).
-    pub grow_threshold: usize,
-    /// Deadline for waiting on an admission slot.
-    pub pool_timeout: Duration,
-    /// Deadline for a single TCP connect + handshake.
-    pub connect_timeout: Duration,
-    /// Per-request deadline (`None` disables it).
-    pub request_timeout: Option<Duration>,
-    /// Supervisor cadence: liveness ping + prune/shrink/replenish sweep.
-    pub ping_interval: Duration,
-    /// Shrink a connection idle longer than this (above `min_connections`).
-    pub idle_timeout: Duration,
-    /// h2 per-stream receive window.
-    pub stream_window: u32,
-    /// h2 whole-connection receive window.
-    pub conn_window: u32,
-    /// h2 max frame size.
-    pub max_frame: u32,
-}
-
-impl Default for ManagerConfig {
-    fn default() -> Self {
-        Self {
-            min_connections: 1,
-            max_connections: recommended_h2c_connections(128).max(1),
-            max_keepalive_connections: 16,
-            max_in_flight_per_origin: 128,
-            grow_threshold: 32,
-            pool_timeout: Duration::from_secs(5),
-            connect_timeout: Duration::from_secs(5),
-            request_timeout: Some(Duration::from_secs(30)),
-            ping_interval: Duration::from_secs(15),
-            idle_timeout: Duration::from_secs(5),
-            stream_window: 1024 * 1024,   // 1 MiB
-            conn_window: 4 * 1024 * 1024, // 4 MiB
-            max_frame: 16 * 1024,         // 16 KiB
-        }
-    }
-}
-
-impl ManagerConfig {
-    /// Cap `max_connections` by the `ln(concurrency)`/cores heuristic for a
-    /// target peak concurrency, and use the same value as the request-admission
-    /// hard cap.
-    pub fn for_concurrency(concurrency: usize) -> Self {
-        let mut c = Self::default();
-        c.max_connections = recommended_h2c_connections(concurrency).max(c.min_connections);
-        c.max_in_flight_per_origin = concurrency.max(1);
-        c
-    }
-
-    fn conn_config(&self) -> ConnConfig {
-        ConnConfig {
-            stream_window: self.stream_window,
-            conn_window: self.conn_window,
-            max_frame: self.max_frame,
-        }
-    }
-}
-
-/// Aggregate snapshot of an [`H2cManager`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct ManagerStats {
-    /// Connections currently in the pool (healthy + not-yet-pruned dead).
-    pub connections: usize,
-    /// Of those, how many are healthy.
-    pub healthy: usize,
-    /// In-flight streams summed across connections.
-    pub in_flight: usize,
-    /// Lifetime requests started (including on since-evicted connections).
-    pub total_requests: u64,
-    /// Lifetime errors (including on since-evicted connections).
-    pub total_errors: u64,
-}
+use slots::connect_tracked;
+use supervisor::supervise;
 
 struct Inner {
     authority: String,
@@ -385,48 +300,6 @@ fn is_safe_method(method: &Method) -> bool {
     )
 }
 
-/// Open one connection and track it in the pool, enforcing `max_connections`
-/// via the `slots` reservation so no orphan (connected-but-untracked) socket is
-/// ever created. Shared by on-demand growth and supervisor replenishment.
-async fn connect_tracked(inner: &Arc<Inner>) -> Result<Arc<ManagedConn>> {
-    let cfg = &inner.cfg;
-    // Claim a slot up front; back out if it would breach the cap.
-    let prev = inner.slots.fetch_add(1, Ordering::AcqRel);
-    if prev >= cfg.max_connections {
-        inner.slots.fetch_sub(1, Ordering::AcqRel);
-        return Err(H2cError::NoConnection(format!(
-            "{} at max_connections ({})",
-            inner.authority, cfg.max_connections
-        )));
-    }
-    let id = inner.next_id.fetch_add(1, Ordering::Relaxed);
-    let connect = ManagedConn::connect(id, &inner.authority, cfg.conn_config());
-    let conn = match tokio::time::timeout(cfg.connect_timeout, connect).await {
-        Ok(Ok(c)) => c,
-        Ok(Err(e)) => {
-            inner.slots.fetch_sub(1, Ordering::AcqRel);
-            return Err(e);
-        }
-        Err(_) => {
-            inner.slots.fetch_sub(1, Ordering::AcqRel);
-            return Err(H2cError::Timeout(cfg.connect_timeout));
-        }
-    };
-    inner.conns.write().await.push(conn.clone());
-    Ok(conn)
-}
-
-/// Retire a connection's lifetime totals and free its slot (on evict / shrink).
-fn retire(inner: &Inner, c: &ManagedConn) {
-    inner
-        .retired_requests
-        .fetch_add(c.total(), Ordering::Relaxed);
-    inner
-        .retired_errors
-        .fetch_add(c.errors(), Ordering::Relaxed);
-    inner.slots.fetch_sub(1, Ordering::AcqRel);
-}
-
 /// An in-flight reservation on a connection. Holds the connection alive for the
 /// request and releases the reserved slot on drop (including on cancellation).
 struct Lease {
@@ -437,74 +310,6 @@ struct Lease {
 impl Drop for Lease {
     fn drop(&mut self) {
         self.conn.release();
-    }
-}
-
-/// Background supervisor: ping for liveness, evict dead, shrink idle, replenish
-/// to `min_connections`. Exits when the manager is fully dropped or shut down.
-async fn supervise(weak: Weak<Inner>) {
-    let interval = match weak.upgrade() {
-        Some(inner) => inner.cfg.ping_interval,
-        None => return,
-    };
-    let mut tick = tokio::time::interval(interval);
-    tick.set_missed_tick_behavior(MissedTickBehavior::Delay);
-    tick.tick().await; // consume the immediate first fire
-
-    loop {
-        tick.tick().await;
-        let Some(inner) = weak.upgrade() else { break };
-        if inner.shutdown.load(Ordering::Acquire) {
-            break;
-        }
-
-        // 1. Liveness-ping healthy connections; flag the dead ones.
-        let snapshot: Vec<Arc<ManagedConn>> = inner.conns.read().await.clone();
-        for c in &snapshot {
-            if c.is_healthy() {
-                if let Err(e) = c.ping().await {
-                    tracing::debug!(conn = c.id, error = %e, "liveness ping failed; evicting");
-                    c.mark_dead();
-                }
-            }
-        }
-
-        // 2. Evict dead + shrink one idle connection above the minimum.
-        {
-            let mut conns = inner.conns.write().await;
-            let min = inner.cfg.min_connections;
-            let max_idle = inner.cfg.max_keepalive_connections.max(min);
-            conns.retain(|c| {
-                let keep = c.is_healthy();
-                if !keep {
-                    retire(&inner, c);
-                }
-                keep
-            });
-            if conns.len() > min {
-                if let Some(pos) = conns.iter().position(|c| {
-                    c.in_flight() == 0
-                        && (conns.len() > max_idle || c.idle() >= inner.cfg.idle_timeout)
-                }) {
-                    let c = conns.remove(pos);
-                    retire(&inner, &c);
-                    tracing::debug!(conn = c.id, "shrinking idle h2c connection");
-                }
-            }
-        }
-
-        // 3. Replenish to the warm minimum.
-        let deficit = inner
-            .cfg
-            .min_connections
-            .saturating_sub(inner.conns.read().await.len());
-        for _ in 0..deficit {
-            if let Err(e) = connect_tracked(&inner).await {
-                tracing::debug!(error = %e, "replenish connect failed");
-                break;
-            }
-        }
-        // `inner` dropped here, before the next idle tick, so the Weak can die.
     }
 }
 
@@ -532,4 +337,3 @@ fn dup_request(req: &Request<Bytes>) -> Request<Bytes> {
         .body(req.body().clone())
         .expect("rebuilding a validated request cannot fail")
 }
-// CODEGEN-END
