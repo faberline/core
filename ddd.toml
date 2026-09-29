@@ -126,6 +126,7 @@ path = "crates/surface/src"
 modules = [
   "crates/cli-std/src/compat",
   "crates/openapi-codegen/src/compat",
+  "crates/service-auth/src/compat",
   "crates/service-backup/src/compat",
   "crates/service-http/src/compat",
 ]
@@ -481,3 +482,25 @@ paths = [
   "crates/cli-std/src/application/upgrade.rs",
 ]
 reason = "Moved as-is in P1: the connect, issue and upgrade use cases call the kubectl, GitHub, courier, terminal-prompt and self-install adapters directly. P2: define ports in domain that infrastructure implements, and inject them into the use cases."
+
+[[exceptions]]
+rule = "B2"
+subject = "anyhow"
+paths = ["crates/service-auth/src/domain/authorization/registry.rs"]
+reason = "Moved as-is in P1: the public Registry::parse and Registry::try_merge return anyhow::Result built with bail! and Context, and the registry loaders and ReloadableRoleMapVerifier pass those errors on unchanged. P2: a thiserror RegistryError in domain, converted to anyhow::Error at the loaders."
+
+[[exceptions]]
+rule = "B3"
+subject = "infrastructure->application"
+paths = [
+  "crates/service-auth/src/infrastructure/google/http.rs",
+  "crates/service-auth/src/infrastructure/k8s/kube_backend.rs",
+  "crates/service-auth/src/infrastructure/k8s/kube_token_minter.rs",
+]
+reason = "Moved as-is in P1: HttpJwksSource, HttpAccessTokenIntrospection, KubeReviewBackend and KubeTokenMinter implement the #[async_trait] ports JwksSource, AccessTokenIntrospection, ReviewBackend and TokenMinter, which B2 keeps out of domain, together with their request and outcome types; KubeTokenMinter also reads the k8s SystemClock, and GoogleVerifier::google() in http.rs wires the HTTP sources and a ReloadableRoleMapVerifier into a GoogleVerifier. P2: the ports and their value types move to domain as native async-fn traits, SystemClock becomes an infrastructure adapter behind the domain Clock port, and google() moves to an assembly constructor."
+
+[[exceptions]]
+rule = "B4"
+subject = "service-auth.infrastructure"
+paths = ["crates/service-backup/src/infrastructure/admin_snapshot/transport.rs"]
+reason = "Moved as-is in P1: the admin snapshot transport authenticates with service_auth::k8s::ProjectedTokenFile, which reads a projected ServiceAccount token from disk and so sits in service-auth's infrastructure layer. P2: service-auth offers the projected token through an application-layer token source port, and service-backup depends on that."
