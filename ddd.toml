@@ -346,3 +346,9 @@ rule = "B2"
 subject = "base64"
 paths = ["crates/claim-token/src/domain/claim_token.rs"]
 reason = "base64url is the token's wire encoding, fixed by the format keep and loom already exchange; the crate is a pure encoder with no I/O. Long-term."
+
+[[exceptions]]
+rule = "B2"
+subject = "jieba_rs"
+paths = ["crates/index-text/src/domain/tokenize.rs"]
+reason = "The Jieba analyzer is a persisted schema choice (Analyzer::Jieba) and jieba-rs is its segmentation algorithm over an embedded dictionary, with no I/O; it sits behind the optional `jieba` feature. Long-term."
