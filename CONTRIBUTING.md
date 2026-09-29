@@ -1490,8 +1490,9 @@ operator, instance* above for the `kubernetes_native` project baseline):
 `kubectl port-forward` for the duration of a wrapped command and tears it down
 (kill + wait) on exit regardless of the wrapped command's status, resolving a
 bearer token from a token-registry Secret when one is in play. Its
-implementation home is `cli_std::connect` (`crates/cli-std/src/connect.rs`,
-behind the `k8s` feature): the port-forward process lifecycle (`ChildGuard`,
+implementation home is `cli_std::connect`
+(`crates/cli-std/src/{domain,application,infrastructure}/connect.rs`, behind
+the `k8s` feature): the port-forward process lifecycle (`ChildGuard`,
 `free_local_port`, `wait_for_local_port_ready`) and the token-registry Secret
 resolution chain (`kubectl_get_json`, `cr_tokens_secret`,
 `resolve_cr_tokens_secret`, `secret_data_bytes`, `select_token`,

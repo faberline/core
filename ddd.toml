@@ -124,6 +124,7 @@ path = "crates/surface/src"
 # keep an old public module path working. Added crate by crate.
 [assembly]
 modules = [
+  "crates/cli-std/src/compat",
   "crates/openapi-codegen/src/compat",
   "crates/service-backup/src/compat",
 ]
@@ -467,3 +468,16 @@ rule = "B3"
 subject = "interfaces->domain"
 paths = ["crates/service-backup/src/interfaces/llm.rs"]
 reason = "Moved as-is in P1: the LLM topic lists the supported destination schemes straight from the domain SUPPORTED_SCHEMES table so the text cannot drift from the parser. P2: the topic reads the schemes through an application query."
+
+[[exceptions]]
+rule = "B3"
+subject = "application->infrastructure"
+paths = [
+  "crates/cli-std/src/application/connect.rs",
+  "crates/cli-std/src/application/issue/comment.rs",
+  "crates/cli-std/src/application/issue/create.rs",
+  "crates/cli-std/src/application/issue/search.rs",
+  "crates/cli-std/src/application/issue/view.rs",
+  "crates/cli-std/src/application/upgrade.rs",
+]
+reason = "Moved as-is in P1: the connect, issue and upgrade use cases call the kubectl, GitHub, courier, terminal-prompt and self-install adapters directly. P2: define ports in domain that infrastructure implements, and inject them into the use cases."

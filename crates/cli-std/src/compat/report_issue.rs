@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Deprecated compatibility alias of [`crate::issue`].
 //!
 //! The `<tool> report-issue` command is being replaced by the `<tool> issue
@@ -9,4 +8,3 @@
 //! [`crate::issue::create`]. Drop this module once those tools adopt `issue`.
 
 pub use crate::issue::{create as run, CreateOptions as Options};
-// CODEGEN-END

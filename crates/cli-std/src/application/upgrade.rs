@@ -1,11 +1,3 @@
-// CODEGEN-BEGIN
-//! `<tool> upgrade` — self-update the installed binary from the tool's own
-//! GitHub releases (`<project>@X.Y.Z` tags, `<project>-<target>.tar.gz` assets
-//! with a `.sha256` sidecar, inner layout `<project>-<target>/<project>`).
-//!
-//! Pure version/asset/checksum/extraction logic is unit-tested; the HTTPS
-//! download + atomic self-replacement live behind the `online` feature.
-
 use crate::ToolInfo;
 use anyhow::{bail, Context, Result};
 use semver::Version;
@@ -352,4 +344,3 @@ mod tests {
         built_at: "1700000000",
     };
 }
-// CODEGEN-END

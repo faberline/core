@@ -26,8 +26,8 @@ GitHub issue, self-update, or LLM orientation logic.
 - Gate — behavior: `cargo test -p cli-std` - shared CLI command contract
   coverage
 - Gate: `cargo test -p cli-std`
-- Source: `crates/cli-std/src/lib.rs`
-- Evidence: `cargo test -p cli-std`; crates/cli-std/src/lib.rs
+- Source: `crates/cli-std/src/application/{llm,upgrade,issue,chainable}.rs`
+- Evidence: `cargo test -p cli-std`; crates/cli-std/src/application/{llm,upgrade,issue,chainable}.rs
 
 ### CLI Module Auto Registration
 
@@ -43,5 +43,5 @@ behind the `registry` feature because it is the only clap-typed API here.
 - Gate — behavior: `cargo test -p cli-std --features registry` - module
   registry access and name inventory behavior
 - Gate: `cargo test -p cli-std --features registry`
-- Source: `crates/cli-std/src/registry.rs`
-- Evidence: `cargo test -p cli-std --features registry`; crates/cli-std/src/registry.rs
+- Source: `crates/cli-std/src/application/registry.rs`
+- Evidence: `cargo test -p cli-std --features registry`; crates/cli-std/src/application/registry.rs
