@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! One backup policy in two shapes, because a CRD cannot hold the runtime one.
 //!
 //! [`BackupPolicy`] nests the tagged
@@ -160,4 +159,3 @@ mod tests {
         assert!(invalid.to_runtime_policy().is_err());
     }
 }
-// CODEGEN-END

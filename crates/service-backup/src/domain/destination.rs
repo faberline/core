@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Where a backup goes, in the two spellings operators actually use.
 //!
 //! [`BackupDestination`] is an internally tagged enum
@@ -248,4 +247,3 @@ mod tests {
         assert!(by_scheme("gs://").unwrap().sink_available);
     }
 }
-// CODEGEN-END

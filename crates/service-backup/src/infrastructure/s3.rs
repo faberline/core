@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! S3 sink and object fetch, bridging a sync trait to an async SDK.
 //!
 //! `BackupSink` is sync and the AWS SDK is async, so every `put`, `prune` and
@@ -370,4 +369,3 @@ mod tests {
         })
     }
 }
-// CODEGEN-END

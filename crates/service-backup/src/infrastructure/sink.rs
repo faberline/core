@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! The sink trait, the local filesystem sink, and the sink that refuses.
 //!
 //! `sink_from_destination` is the only place a destination becomes a sink, which
@@ -36,7 +35,7 @@ use anyhow::{bail, Context, Result};
 use storage_durable::{atomic_write, FsyncPolicy};
 
 #[cfg(feature = "s3")]
-use crate::s3::S3Sink;
+use super::s3::S3Sink;
 use crate::{BackupDestination, GcsSink};
 
 /// Destination for snapshot bytes.
@@ -196,4 +195,3 @@ mod tests {
         assert!(err.contains("--features s3"));
     }
 }
-// CODEGEN-END

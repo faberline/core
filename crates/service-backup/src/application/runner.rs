@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! One backup run: put the bytes, then apply retention.
 //!
 //! Three things are deliberately outside this primitive, and each is what makes
@@ -96,4 +95,3 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
-// CODEGEN-END

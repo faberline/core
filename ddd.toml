@@ -123,7 +123,10 @@ path = "crates/surface/src"
 # Compatibility facades: src/compat/<old>.rs holds only `pub use` lines that
 # keep an old public module path working. Added crate by crate.
 [assembly]
-modules = ["crates/openapi-codegen/src/compat"]
+modules = [
+  "crates/openapi-codegen/src/compat",
+  "crates/service-backup/src/compat",
+]
 
 [[contexts]]
 name = "build-stamp"
@@ -431,3 +434,36 @@ rule = "B3"
 subject = "interfaces->domain"
 paths = ["crates/openapi-codegen/src/interfaces/cli.rs"]
 reason = "Moved as-is in P1: the CLI entry `run` builds GenOptions and prints the MANIFEST_FILE path, both domain items, around its call to application::generate. P2: let application take a CLI request (spec path, output dir, language, client name) and return the written paths, so interfaces uses application only."
+
+[[exceptions]]
+rule = "B2"
+subject = "anyhow"
+paths = [
+  "crates/service-backup/src/domain/destination.rs",
+  "crates/service-backup/src/domain/policy.rs",
+]
+reason = "Moved as-is in P1: BackupDestination::from_uri and ScheduledBackupPolicy::to_runtime_policy return anyhow::Result, and TryFrom<&ScheduledBackupPolicy> for BackupPolicy has Error = anyhow::Error, which downstream operators match on. P2: a thiserror destination/policy error (W3)."
+
+[[exceptions]]
+rule = "B2"
+subject = "schemars"
+paths = [
+  "crates/service-backup/src/domain/destination.rs",
+  "crates/service-backup/src/domain/policy.rs",
+]
+reason = "Moved as-is in P1: BackupDestination, ScheduledBackupPolicy and RetentionPolicy derive schemars::JsonSchema because downstream CRDs embed them and their generated schemas must not change. P2: the schema derive moves to interfaces CRD body types, or stays as a documented long-term exception."
+
+[[exceptions]]
+rule = "B3"
+subject = "application->infrastructure"
+paths = [
+  "crates/service-backup/src/application/admin_snapshot_backup.rs",
+  "crates/service-backup/src/application/runner.rs",
+]
+reason = "Moved as-is in P1: run_backup_once takes &dyn BackupSink and run_admin_snapshot_backup calls fetch_admin_snapshot and sink_from_destination, all defined in infrastructure. P2: the BackupSink port and a snapshot source port move to domain, and the lenient fetch_admin_snapshot is deleted (W1)."
+
+[[exceptions]]
+rule = "B3"
+subject = "interfaces->domain"
+paths = ["crates/service-backup/src/interfaces/llm.rs"]
+reason = "Moved as-is in P1: the LLM topic lists the supported destination schemes straight from the domain SUPPORTED_SCHEMES table so the text cannot drift from the parser. P2: the topic reads the schemes through an application query."

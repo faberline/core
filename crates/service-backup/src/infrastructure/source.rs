@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Fetch one exact backup object, for bootstrap and restore.
 //!
 //! This is narrower than [`BackupDestination`](crate::BackupDestination) on
@@ -22,10 +21,10 @@
 //! together.
 use anyhow::{bail, ensure, Context, Result};
 
-use crate::destination::SUPPORTED_SCHEMES;
-use crate::gcs;
+use super::gcs;
 #[cfg(feature = "s3")]
-use crate::s3;
+use super::s3;
+use crate::SUPPORTED_SCHEMES;
 
 /// Fetch an exact backup object URI.
 ///
@@ -118,4 +117,3 @@ mod tests {
         }
     }
 }
-// CODEGEN-END
