@@ -126,6 +126,7 @@ path = "crates/surface/src"
 modules = [
   "crates/cli-std/src/compat",
   "crates/openapi-codegen/src/compat",
+  "crates/raft-runtime/src/compat",
   "crates/service-auth/src/compat",
   "crates/service-backup/src/compat",
   "crates/service-http/src/compat",
@@ -557,3 +558,34 @@ rule = "B3"
 subject = "interfaces->infrastructure"
 paths = ["crates/service-k8s/src/interfaces/operator.rs"]
 reason = "Moved as-is in P1: the operator entry points run and reconcile_once create the leader Election, spawn the Lease renewal loop and keep the Election in the reconcile context, all from infrastructure::lease. P2: move the leadership rule (Election, may_acquire) into domain and start the Lease renewal from an application use case through a port that infrastructure implements."
+
+[[exceptions]]
+rule = "B3"
+subject = "application->infrastructure"
+paths = [
+  "crates/raft-runtime/src/application/host.rs",
+  "crates/raft-runtime/src/application/host/propose.rs",
+  "crates/raft-runtime/src/application/replica_host.rs",
+]
+reason = "Moved as-is in P1: RaftHost holds the concrete RaftStore and PeerTransport, propose forwards a PublishEnvelope to the leader, and ReplicaHostBuilder opens the RaftStore and builds the PeerTransport itself. P2: a raft log store port and a peer client port in application, implemented by infrastructure and injected at spawn."
+
+[[exceptions]]
+rule = "B3"
+subject = "infrastructure->application"
+paths = [
+  "crates/raft-runtime/src/infrastructure/peer_rpc.rs",
+  "crates/raft-runtime/src/infrastructure/store.rs",
+  "crates/raft-runtime/src/infrastructure/topology_env.rs",
+]
+reason = "Moved as-is in P1: the outbound peer RPC client is an impl block on the host's Shared state and decodes RaftStatus, RaftStore names its files by GroupId and LEGACY_GROUP_ID, and the env reader builds ClusterDims and ClusterTopology and calls peer_ordinal. P2: GroupId, RaftStatus and the topology value types move to a domain layer both sides use, and the RPC client becomes a peer client adapter that owns its own state."
+
+[[exceptions]]
+rule = "B3"
+subject = "interfaces->infrastructure"
+paths = [
+  "crates/raft-runtime/src/interfaces/conformance/deterministic_host.rs",
+  "crates/raft-runtime/src/interfaces/peer_http/handlers.rs",
+  "crates/raft-runtime/src/interfaces/peer_http/publish.rs",
+  "crates/raft-runtime/src/interfaces/peer_http/registry.rs",
+]
+reason = "Moved as-is in P1: the peer HTTP handlers and the group registry decode the same wire envelopes the outbound RPC client sends, and DeterministicHost::open takes a RaftStore. P2: the envelope DTOs move to a wire module shared by the peer_http interface and the RPC adapter, and the conformance host takes the store port."
