@@ -29,3 +29,6 @@ tempfile = "3"
 # Fixtures need to place a leaf's validity window deliberately; rcgen states it
 # in `time`'s types.
 time = { version = "0.3", default-features = false }
+
+[lints]
+workspace = true

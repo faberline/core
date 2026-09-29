@@ -12,3 +12,6 @@ path = "src/lib.rs"
 prost = "0.13"
 snap = "1"
 thiserror = { workspace = true }
+
+[lints]
+workspace = true

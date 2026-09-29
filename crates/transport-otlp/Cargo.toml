@@ -19,3 +19,6 @@ thiserror = { workspace = true }
 tokio = { workspace = true }
 tokio-stream = { version = "0.1", features = ["net"] }
 tonic = { version = "0.14", features = ["gzip"] }
+
+[lints]
+workspace = true
