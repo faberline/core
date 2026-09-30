@@ -96,16 +96,6 @@ impl TargetProfile {
         }
     }
 
-    /// The conservative default keeps existing callers source-compatible while
-    /// making the default Python client a modern Python 3.11 artifact.
-    pub const fn default_for(lang: Lang) -> Self {
-        match lang {
-            Lang::Py => Self::Python(PythonTarget::Py311),
-            Lang::Ts => Self::TypeScript(TypeScriptTarget::Ts50),
-            Lang::Rust => Self::Rust(RustTarget::Rust2021),
-        }
-    }
-
     /// Stable target identifier used in generated-output metadata.
     pub const fn id(self) -> &'static str {
         match self {
