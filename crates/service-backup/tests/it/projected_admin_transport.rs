@@ -25,12 +25,12 @@ fn token(audience: &str, key: &[u8]) -> String {
 }
 
 fn transport(max_diagnostic_bytes: usize) -> AdminSnapshotTransport {
-    AdminSnapshotTransport::with_config(AdminSnapshotTransportConfig {
-        operation_timeout: Duration::from_secs(2),
-        response_idle_timeout: Duration::from_secs(1),
-        max_diagnostic_bytes,
-        ..Default::default()
-    })
+    AdminSnapshotTransport::with_config(
+        AdminSnapshotTransportConfig::default()
+            .with_operation_timeout(Duration::from_secs(2))
+            .with_response_idle_timeout(Duration::from_secs(1))
+            .with_max_diagnostic_bytes(max_diagnostic_bytes),
+    )
     .unwrap()
 }
 
