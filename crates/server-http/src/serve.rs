@@ -3,23 +3,11 @@ use tokio::net::TcpListener;
 
 use crate::options::HttpServerOptions;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct HttpServerReport {
-    pub accepted: u64,
-    pub rejected: u64,
-    pub completed: u64,
-    pub failed: u64,
-    pub timed_out: u64,
-    pub unfinished: u64,
-    pub streams_completed: u64,
-    pub streams_admitted: u64,
-    pub streams_active_at_drain: u64,
-    pub streams_refused: u64,
-    pub streams_timed_out: u64,
-    pub streams_ambiguous: u64,
-    pub accept_errors: u64,
-    pub deadline_missing: bool,
-}
+/// Connection and request-stream totals of one lifecycle-driven HTTP run.
+///
+/// The HTTP listener reports exactly what server-tcp's accept loop counts, so
+/// this is the same type as [`server_tcp::TcpServerReport`].
+pub type HttpServerReport = server_tcp::TcpServerReport;
 
 /// Production HTTP composition. The supplied lifecycle owns listener drain,
 /// per-connection subscriptions, and the shutdown-time absolute deadline.
@@ -45,7 +33,7 @@ pub async fn serve_h2c_with_lifecycle(
     let connection_options = transport_h2c::ConnectionOptions {
         max_concurrent_streams: options.max_concurrent_streams,
     };
-    let report = server_tcp::serve_with_report(
+    server_tcp::serve_with_report(
         listener,
         tcp_config,
         move |stream, cx: server_tcp::ConnectionContext| {
@@ -83,23 +71,7 @@ pub async fn serve_h2c_with_lifecycle(
         },
         lifecycle,
     )
-    .await;
-    HttpServerReport {
-        accepted: report.accepted,
-        rejected: report.rejected,
-        completed: report.completed,
-        failed: report.failed,
-        timed_out: report.timed_out,
-        unfinished: report.unfinished,
-        streams_completed: report.streams_completed,
-        streams_admitted: report.streams_admitted,
-        streams_active_at_drain: report.streams_active_at_drain,
-        streams_refused: report.streams_refused,
-        streams_timed_out: report.streams_timed_out,
-        streams_ambiguous: report.streams_ambiguous,
-        accept_errors: report.accept_errors,
-        deadline_missing: report.deadline_missing,
-    }
+    .await
 }
 
 /// Serve HTTP/1.1 + h2c on one listener.

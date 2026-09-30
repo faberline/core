@@ -60,5 +60,4 @@ Its entry points are `bind`, `serve`, `serve_arc` and `serve_with_report`.
 - **Checker exceptions (P1):** None.
 - **Tracked for P2:** `anyhow` in the `TcpHandler` port (ADR D4). Public fields
   built with struct literals: `TcpServerConfig` in pgpool, and
-  `TcpConnectionResult` in server-http. `TcpServerReport` is duplicated as
-  server-http's `HttpServerReport` (ADR D7).
+  `TcpConnectionResult` in server-http.

@@ -17,7 +17,7 @@ downstream, pgpool serves its admin port with it.
   a drain timeout (5 s), an optional `ConnectionBudget`, a `DrainController`,
   `TcpSocketOptions` and a `ConnectionMetrics` sink.
 - **HTTP server report** — `HttpServerReport`: the connection and stream totals
-  of one lifecycle-driven run, field for field the same as server-tcp's
+  of one lifecycle-driven run. It is a type alias of server-tcp's
   `TcpServerReport`.
 - **Server config source** — `ServerConfigSource`: a type alias for a shared
   closure that returns the rustls `ServerConfig` active right now, or `None`
@@ -59,6 +59,5 @@ The crate root also re-exports server-lifecycle as `core` and server-tcp as
 ## Exceptions and debts
 
 - **Checker exceptions (P1):** None.
-- **Tracked for P2:** `HttpServerReport` duplicates `TcpServerReport` (ADR D7).
-  server-http builds server-tcp's `TcpConnectionResult` and transport-h2c's
-  `ConnectionOptions` with struct literals.
+- **Tracked for P2:** server-http builds server-tcp's `TcpConnectionResult`
+  and transport-h2c's `ConnectionOptions` with struct literals.
