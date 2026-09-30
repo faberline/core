@@ -40,3 +40,6 @@ impl std::fmt::Display for ProjectionLag {
 }
 
 impl std::error::Error for ProjectionLag {}
+
+#[cfg(test)]
+mod tests;

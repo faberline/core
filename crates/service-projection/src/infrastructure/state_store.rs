@@ -87,3 +87,6 @@ pub(crate) fn persist(path: &Path, checkpoint: &ProjectionCheckpoint, state: &[u
     .with_context(|| format!("atomically persist projection state {}", path.display()))?;
     set_file_mode(path)
 }
+
+#[cfg(test)]
+mod tests;

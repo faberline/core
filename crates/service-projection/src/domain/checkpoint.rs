@@ -52,3 +52,6 @@ pub(crate) fn checkpoint(
 fn now() -> String {
     Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
 }
+
+#[cfg(test)]
+mod tests;

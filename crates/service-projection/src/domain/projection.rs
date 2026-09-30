@@ -44,3 +44,6 @@ pub(crate) fn validate_descriptor(descriptor: &ProjectionDescriptor) -> Result<(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;
