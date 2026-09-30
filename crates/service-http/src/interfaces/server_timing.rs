@@ -1,3 +1,28 @@
+//! W3C `Server-Timing` on every response — per-request latency attribution
+//! for integrators who have no access to Prometheus metrics or logs.
+//!
+//! [`server_timing_middleware`] adds one `Server-Timing` response header to
+//! every request it wraps:
+//!
+//! - **Baseline, always present:** `app;dur=<ms>` — the wall-clock time from
+//!   this middleware's `next.run` entry to the response leaving it. That is
+//!   the same request/response boundary [`crate::trace_layer`]
+//!   spans; compose both onto the **same, outermost** layer position (see
+//!   the crate root's "What a service wires" example) so `app;dur=` and the
+//!   trace span's recorded latency describe the same measurement window
+//!   instead of two independently-drifting notions of "how long did this
+//!   take". tower-http's `OnResponse::on_response` hook only gets an
+//!   immutable `&Response` alongside the latency it measured — there is no
+//!   hook to write a header from a value it already computed, so this
+//!   middleware cannot literally reuse `TraceLayer`'s internal timer without
+//!   forking tower-http; composing at the same outer boundary is the closest
+//!   a header-writing layer can get to "don't re-time" without doing that.
+//! - **Phase entries, opt-in per response:** handlers push named durations
+//!   onto the [`ServerTimingExt`] extension this middleware inserts into
+//!   every request (`ext.push("search", elapsed)`), and they render after
+//!   `app;dur=` — but only on responses that carry
+//!   [`ServerTimingDisclosure::Full`] (see its docs).
+
 use std::fmt::Write as _;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -46,11 +71,61 @@ impl ServerTimingExt {
 /// Per-response disclosure decision for the phase breakdown.
 ///
 /// Insert [`Full`](Self::Full) into a **response's** extensions (not the
-/// request's — see the module docs) before it returns through
+/// request's — see below) before it returns through
 /// [`server_timing_middleware`] to opt that one response into the phase
 /// breakdown. Any response without this marker — which today is every
 /// response, since nothing in this crate sets it — stays
 /// [`TotalOnly`](Self::TotalOnly).
+///
+/// ## Disclosure posture
+///
+/// The issue that motivated `server_timing_middleware` asks for total-only breakdown on
+/// unauthenticated requests and a full phase breakdown once a request
+/// carries a successful auth context. `service-http` cannot make that
+/// distinction today:
+///
+/// - This crate does not depend on `service-auth`.
+/// - `service-auth`'s `auth_middleware<V>` inserts the concrete,
+///   per-service `V::Principal` (e.g. lumen's `AuthContext`) into
+///   **request** extensions on success. There is no crate-neutral "this
+///   request authenticated" marker type — every adopter's principal type is
+///   different, and this crate would have to name one of them to look for
+///   it.
+/// - Nothing publishes a **response**-side authentication signal either
+///   (the only place a middleware positioned outside the whole stack, the
+///   way `server_timing_middleware` is meant to be, can observe anything
+///   after the handler has run).
+///
+/// Given that, the posture is decided conservatively, once: **every**
+/// response defaults to [`ServerTimingDisclosure::TotalOnly`] — `app;dur=`
+/// only, no phase entries — regardless of the request's auth state. This is
+/// the safe default the originating issue calls out explicitly for the case
+/// where "auth state isn't visible at this layer".
+///
+/// The hook for later: any layer or handler nested inside
+/// `server_timing_middleware` (so, anything that runs during `next.run` —
+/// including a service's own auth middleware or the handler itself) may
+/// flip one response to full disclosure by inserting
+/// `ServerTimingDisclosure::Full` into that **response's** extensions
+/// before it returns:
+///
+/// ```ignore
+/// use axum::response::IntoResponse;
+/// use service_http::ServerTimingDisclosure;
+///
+/// async fn handler() -> axum::response::Response {
+///     let mut response = "ok".into_response();
+///     // e.g. once request-side auth state is confirmed successful:
+///     response.extensions_mut().insert(ServerTimingDisclosure::Full);
+///     response
+/// }
+/// ```
+///
+/// `server_timing_middleware` never inspects a principal type or
+/// credentials itself — it only ever looks for this one marker on the
+/// response it gets back. Wiring that marker from a real auth success (in
+/// `service-auth` or a service's own auth layer) is deliberately left as
+/// follow-up work, not part of this change.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ServerTimingDisclosure {
     /// `app;dur=` only. The safe default.
@@ -64,11 +139,16 @@ pub enum ServerTimingDisclosure {
 /// Add a `Server-Timing` response header to every request this middleware
 /// wraps.
 ///
+/// Compose it at the same, outermost layer position as
+/// [`crate::trace_layer`] (see the crate root's "What a service wires"
+/// example) so `app;dur=` and the trace span's recorded latency describe the
+/// same measurement window.
+///
 /// Always renders `app;dur=<total-ms>` — the time from this call's
 /// `next.run` entry to the response coming back. Appends phase entries from
 /// [`ServerTimingExt`] only when the response carries
-/// [`ServerTimingDisclosure::Full`] (see the module docs for the posture
-/// decision and how a service opts a response in later). A response header
+/// [`ServerTimingDisclosure::Full`] (see [`ServerTimingDisclosure`] for the
+/// posture decision and how a service opts a response in). A response header
 /// value that somehow fails to parse as one (it never should — rendered
 /// text is ASCII digits/`.`/`,`/`;`/sanitized tokens) is dropped rather than
 /// panicking; the response still returns.

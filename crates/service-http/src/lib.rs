@@ -5,10 +5,10 @@
 //! standard probe/admin endpoints (`/healthz` `/readyz` `/metrics`
 //! `/openapi.json` `/docs`), observability compatibility adapters, lifecycle
 //! readiness/shutdown re-exports, runtime delegation, per-request
-//! `Server-Timing` attribution ([`server_timing`]), the shared
-//! request-body byte cap ([`body_limit`]), and the
+//! `Server-Timing` attribution ([`server_timing_middleware`]), the shared
+//! request-body byte cap ([`body_limit_layer`]), and the
 //! `{"error", "message"}` HTTP error envelope
-//! ([`error`]) each service renders for its error responses. This crate is
+//! ([`ErrorEnvelope`], [`ApiErr`]) each service renders for its error responses. This crate is
 //! the one place that HTTP shape lives. Protocol-neutral logging, tracing,
 //! metric-provider, and lifecycle metric ownership belongs to
 //! `service-observability`. This crate operationalizes the CONTRIBUTING "standard
@@ -18,10 +18,10 @@
 //! ## Composition
 //!
 //! It composes, it does not replace: [`transport::serve`] delegates listener
-//! ownership to `server-http`; [`probes::standard_probe_routes`] returns an `axum::Router`
+//! ownership to `server-http`; [`standard_probe_routes`] returns an `axum::Router`
 //! a service `.merge`s its own (auth'd, body-limited) data plane onto —
-//! [`body_limit::body_limit_layer`] is the body-limiting piece of that data
-//! plane (see its module docs for placement and the recommended default).
+//! [`body_limit_layer`] is the body-limiting piece of that data
+//! plane (see its docs for placement and the recommended default).
 //!
 //! ## What a service wires
 //!
@@ -68,11 +68,11 @@
 //! behind the `otlp` feature; a service supplies its own stable identity.
 //! [`server_timing_middleware`] always renders the `app;dur=` baseline and
 //! defaults every response to [`ServerTimingDisclosure::TotalOnly`] — this
-//! crate cannot see a request's auth outcome (see [`server_timing`] for why)
+//! crate cannot see a request's auth outcome (see [`ServerTimingDisclosure`] for why)
 //! so it does not attempt to gate the phase breakdown on it; a service opts
 //! a response into [`ServerTimingDisclosure::Full`] itself.
 //!
-//! [`error::ErrorEnvelope`]'s derived `utoipa::ToSchema` is named
+//! [`ErrorEnvelope`]'s derived `utoipa::ToSchema` is named
 //! `ErrorEnvelope` in a service's generated OpenAPI document. A service that
 //! already published a different schema name for this shape (e.g. lumen's
 //! established `ApiError`) keeps its own local doc-only struct of the same
@@ -83,12 +83,12 @@
 //! ...)]` override on this shared struct can reproduce a *different*
 //! consuming service's pre-existing name and doc-comment-derived
 //! description without baking that service's spec-path text into this
-//! generic crate. [`error::ApiErr`] (the runtime status/kind/message
+//! generic crate. [`ApiErr`] (the runtime status/kind/message
 //! wrapper — it carries no `ToSchema`) has no such constraint and is meant
 //! to be adopted directly.
 
+mod api;
 mod application;
-mod compat;
 mod infrastructure;
 mod interfaces;
 
@@ -101,10 +101,7 @@ pub use application::{
     ConcurrencyLease, WeightedAdmission, WeightedAdmissionConfig, WeightedAdmissionConfigError,
     WeightedAdmissionError,
 };
-pub use compat::{
-    admission, body_limit, config, content_decode, error, logging, metrics, probes, readiness,
-    reverse_proxy, server_timing, signal, transport, weighted_admission,
-};
+pub use api::transport;
 #[cfg(feature = "otlp")]
 pub use infrastructure::extract_trace_context;
 pub use infrastructure::{
@@ -135,6 +132,24 @@ pub use interfaces::{server_timing_middleware, ServerTimingDisclosure, ServerTim
 /// Re-exported so a service can build a [`serve_tls`] configuration source
 /// without depending on `server-http` directly (#3113 R1).
 pub use server_http::{config_source, HttpServerOptions, ServerConfigSource};
+/// Probe-facing name for the protocol-neutral lifecycle readiness contract.
+///
+/// New production code should pass a [`server_lifecycle::LifecycleController`]
+/// to `lifecycle_probe_routes`; this re-export remains for source-compatible
+/// migration of services that still own a separate readiness hook.
+///
+/// A service supplies a type that reports whether it is currently draining
+/// (post-SIGTERM grace window). The shared probe router calls
+/// [`server_lifecycle::Readiness::is_draining`] on every `/readyz` hit so k8s sees 503 the
+/// moment a graceful shutdown begins, and stops routing before the listener
+/// closes. In lumen/keep this is the engine's drain flag; any
+/// `Arc`-shareable, `is_draining()`-reporting type works.
 pub use server_lifecycle::Readiness as ReadinessHook;
 pub use service_observability::LifecycleMetrics;
+/// HTTP compatibility re-export for the protocol-neutral metrics seam.
+///
+/// A service supplies a type that renders its Prometheus text-format body; the
+/// shared probe router serves it at `GET /metrics` as
+/// `text/plain; version=0.0.4`. When a service has no metrics it can omit the
+/// provider entirely (the probe router serves an empty body).
 pub use service_observability::MetricsProvider;

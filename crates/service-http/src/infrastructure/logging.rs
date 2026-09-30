@@ -1,3 +1,5 @@
+//! Compatibility adapter to protocol-neutral `service-observability`.
+
 use super::config::HttpConfig;
 
 pub use service_observability::{OtelFallback, TracingMode};

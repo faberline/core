@@ -120,8 +120,9 @@ mod_module_files = "deny"
 [shared_kernel]
 path = "crates/surface/src"
 
-# Compatibility facades: src/compat/<old>.rs holds only `pub use` lines that
-# keep an old public module path working. Added crate by crate.
+# Public path modules that hold only `pub use` lines. src/compat/<old>.rs keeps
+# an old public module path working; src/api/<name>.rs is a public module whose
+# names the crate root does not re-export.
 [assembly]
 modules = [
   "crates/cli-std/src/compat",
@@ -130,7 +131,7 @@ modules = [
   "crates/raft-runtime/src/compat",
   "crates/service-auth/src/compat",
   "crates/service-backup/src/compat",
-  "crates/service-http/src/compat",
+  "crates/service-http/src/api",
   "crates/service-k8s/src/compat",
 ]
 

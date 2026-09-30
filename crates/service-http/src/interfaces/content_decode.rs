@@ -1,3 +1,5 @@
+//! Bounded request decoding for identity and gzip content encodings.
+
 use std::io::Read;
 
 use axum::http::HeaderMap;

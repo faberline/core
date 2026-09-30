@@ -90,12 +90,15 @@ Downstream crates import from the crate root only: `ApiErr` and the envelopes,
 `serve_tls`, `trace_layer`, the content-decode types and the signal helpers.
 The root also re-exports `HttpServerOptions`, `ServerConfigSource` and
 `config_source` from server-http, and `LifecycleMetrics`, `LogFormat`,
-`ServiceIdentity` and the tracing initializers from service-observability. P1
-keeps every root re-export, and the old modules `admission`, `body_limit`,
-`config`, `content_decode`, `error`, `logging`, `metrics`, `probes`,
-`readiness`, `reverse_proxy`, `server_timing`, `signal`, `transport` and
-`weighted_admission` stay as compatibility facades; none has a known external
-user by path.
+`ServiceIdentity` and the tracing initializers from service-observability.
+
+`transport` is the one public module (`src/api/transport.rs`): it also holds
+`request_trace_context`, `RequestTraceContext`, `CorrelatingMakeSpan` and the
+access-log span hooks, which the root does not re-export. P2 deleted the old
+modules `admission`, `body_limit`, `config`, `content_decode`, `error`,
+`logging`, `metrics`, `probes`, `readiness`, `reverse_proxy`, `server_timing`,
+`signal` and `weighted_admission`: every name in them is at the crate root, and
+none had a known external user by path.
 
 ## Exceptions and debts
 

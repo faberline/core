@@ -25,7 +25,7 @@ impl<B> MakeSpan<B> for PropagatingMakeSpan {
 }
 
 /// Serve `app` (HTTP/1.1 + h2c on one port) on `listener`, stopping when
-/// `shutdown` resolves (e.g. [`crate::signal::shutdown_with_drain`]).
+/// `shutdown` resolves (e.g. [`crate::shutdown_with_drain`]).
 ///
 /// Thin delegation to [`server_http::serve_h2c`] — the shared HTTP runtime — so
 /// a service does not hand-roll the hyper-util auto-builder accept loop.

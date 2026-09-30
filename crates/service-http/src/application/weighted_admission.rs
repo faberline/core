@@ -1,3 +1,5 @@
+//! Weighted quota admission with an RAII concurrency lease.
+
 use std::{
     collections::HashMap,
     fmt,
