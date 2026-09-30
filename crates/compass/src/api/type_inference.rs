@@ -8,7 +8,6 @@ mod cache;
 mod cfg_narrow;
 mod check;
 mod class_info;
-mod codegen;
 mod config;
 mod deep_inference;
 mod env;
@@ -63,10 +62,6 @@ pub use cfg_narrow::{
 };
 pub use check::{build_semantic_model, SemanticModelBuilder, TypeChecker, TypeError};
 pub use class_info::{ClassInfo, GenericParam};
-pub use codegen::{
-    CodeGenKind, CodeGenOptions, CodeGenRequest, CodeGenResult, CodeGenerator, DocstringStyle,
-    TestFramework,
-};
 pub use config::{ArgusConfig, EffectiveConfig, OverrideConfig, PythonEnvConfig};
 pub use deep_inference::{
     infer_type_deep, trace_type_chain, CrossFileRef, DeepInferenceResult, DeepTypeInferencer,

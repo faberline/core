@@ -29,7 +29,6 @@ pub(crate) mod stubs;
 pub(crate) mod syntax;
 pub(crate) mod ts_type_system;
 pub(crate) mod type_checking;
-pub(crate) mod type_codegen;
 pub(crate) mod type_refactoring;
 pub(crate) mod type_system;
 pub(crate) mod typeshed;
