@@ -122,5 +122,5 @@ incremental analysis, and serve JSON-RPC code-intelligence requests.
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
-| Argus daemon protocol and request handling contract | epic | - | `cargo test -p compass`; crates/compass/src/interfaces/daemon/argus_daemon.rs; crates/compass/src/application/analysis/request_handler.rs; crates/compass/src/application/daemon/protocol.rs |
+| Argus daemon protocol and request handling contract | epic | - | `cargo test -p compass`; crates/compass/src/interfaces/daemon/argus_daemon.rs; crates/compass/src/application/analysis/request_handler.rs; crates/compass/src/domain/daemon/protocol.rs |
 | Watch bridge and incremental dirty-file contract | epic | - | `cargo test -p compass`; crates/compass/src/domain/incremental/update_manager.rs; crates/compass/src/domain/incremental/dirty_file_tracker.rs; crates/compass/src/infrastructure/watch_bridge/bridge.rs; crates/compass/src/infrastructure/watch/file_watcher.rs |
