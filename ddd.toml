@@ -521,13 +521,13 @@ reason = "Moved as-is in P1: the peer HTTP handlers and the group registry decod
 rule = "B2"
 subject = "serde_yaml"
 paths = ["crates/compass/src/domain/spec/statemachine/mermaid_plus.rs"]
-reason = "Moved as-is in P1: MermaidPlusGenerator writes the YAML frontmatter with serde_yaml::to_string. P2: move the YAML serialisation behind an infrastructure adapter, or add serde_yaml to the domain allowlist."
+reason = "serde_yaml is a pure data-format codec like serde_json (on the allowlist): it formats or parses text in memory and does no I/O. MermaidPlusGenerator::generate_frontmatter calls serde_yaml::to_string to write the state machine's YAML frontmatter. Long-term."
 
 [[exceptions]]
 rule = "B2"
 subject = "toml"
 paths = ["crates/compass/src/domain/lint/toml_checker.rs"]
-reason = "Moved as-is in P1: the TM001 checker parses the linted text as a toml::Value to report syntax errors and reads no files. P2: add toml to the domain allowlist as a parser, or run the parse in infrastructure and hand the checker the result."
+reason = "toml is a pure data-format codec like serde_json (on the allowlist): it formats or parses text in memory and does no I/O. TomlChecker::check_syntax parses the linted text as a toml::Value to report TM001 syntax errors. Long-term."
 
 [[exceptions]]
 rule = "B2"
