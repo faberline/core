@@ -53,18 +53,18 @@ defer, keep, loom, lumen, relay, sift and tape.
 
 ## Invariants
 
-- `from_uri` trims its input and rejects an empty URI, a `file://` URI without
-  a path, and an `s3://` or `gs://` URI without a bucket; for any other scheme
-  the error lists `SUPPORTED_SCHEMES`. A URI never sets a region, an endpoint or
-  a credentials secret.
+- `from_uri` trims its input and returns a `DestinationError` for an empty
+  URI, a `file://` URI without a path, and an `s3://` or `gs://` URI without a
+  bucket; for any other scheme the error lists `SUPPORTED_SCHEMES`. A URI
+  never sets a region, an endpoint or a credentials secret.
 - An `s3://` destination parses in every build: S3 support is a question about
   the sink, not the URI. Without the `s3` feature, `put` and `prune` fail with a
   message naming `--features s3`.
 - `ScheduledBackupPolicy::to_runtime_policy` (also reached through `TryFrom`)
-  is the only validated conversion. It rejects a blank schedule and any
-  destination `from_uri` rejects, but does not parse the cron expression, so an
-  invalid cron fails in Kubernetes instead. A missing `retentionSecs` keeps
-  every object.
+  is the only validated conversion. It returns a `PolicyError` for a blank
+  schedule and for any destination `from_uri` rejects, whose message it passes
+  on unchanged, but does not parse the cron expression, so an invalid cron
+  fails in Kubernetes instead. A missing `retentionSecs` keeps every object.
 - `run_backup_once` prunes only after a successful put, and only when a
   maximum age is set. The caller passes the timestamp, and the payload must
   already be a consistent snapshot.
@@ -101,12 +101,10 @@ the root does not re-export its names.
 ## Exceptions and debts
 
 - **Checker exceptions (P1):**
-  - B2 (`anyhow`, `schemars`): `BackupDestination`, `ScheduledBackupPolicy`
-    and `RetentionPolicy` derive `schemars::JsonSchema` because downstream CRDs
-    embed them, and `from_uri`, `to_runtime_policy` and the
-    `TryFrom<&ScheduledBackupPolicy>` impl return `anyhow` errors. P2 adds a
-    `thiserror` error (ADR D4), and moves the schema derive to interfaces CRD
-    types or keeps it with a long-term reason.
+  - B2 (`schemars`): `BackupDestination`, `ScheduledBackupPolicy` and
+    `RetentionPolicy` derive `schemars::JsonSchema` because downstream CRDs
+    embed them. P2 moves the schema derive to interfaces CRD types or keeps it
+    with a long-term reason.
   - B3 `application->infrastructure`: `run_backup_once` takes the
     infrastructure `BackupSink`, and the admin-snapshot use case calls
     `fetch_admin_snapshot` and `sink_from_destination` directly. P2 moves the

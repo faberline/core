@@ -15,6 +15,8 @@ s3 = ["dep:aws-config", "dep:aws-sdk-s3", "dep:tokio"]
 
 [dependencies]
 anyhow = { workspace = true }
+# Domain errors (DestinationError, PolicyError) are typed; callers still convert with `?`.
+thiserror = { workspace = true }
 aws-config = { version = "1", optional = true }
 aws-sdk-s3 = { version = "1", optional = true }
 cli-std = { path = "../cli-std", default-features = false }

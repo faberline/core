@@ -25,6 +25,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use super::PolicyError;
 use crate::BackupDestination;
 
 /// Operator/runner-facing backup policy.
@@ -60,9 +61,9 @@ pub struct ScheduledBackupPolicy {
 
 impl ScheduledBackupPolicy {
     /// Validate the flat CRD projection and create the runtime policy.
-    pub fn to_runtime_policy(&self) -> anyhow::Result<BackupPolicy> {
+    pub fn to_runtime_policy(&self) -> Result<BackupPolicy, PolicyError> {
         if self.schedule.trim().is_empty() {
-            anyhow::bail!("backup schedule must not be empty");
+            return Err(PolicyError::EmptySchedule);
         }
         Ok(BackupPolicy {
             schedule: self.schedule.clone(),
@@ -75,7 +76,7 @@ impl ScheduledBackupPolicy {
 }
 
 impl TryFrom<&ScheduledBackupPolicy> for BackupPolicy {
-    type Error = anyhow::Error;
+    type Error = PolicyError;
 
     fn try_from(policy: &ScheduledBackupPolicy) -> Result<Self, Self::Error> {
         policy.to_runtime_policy()

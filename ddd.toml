@@ -383,15 +383,6 @@ reason = "Moved as-is in P1: the CLI entry `run` builds GenOptions and prints th
 
 [[exceptions]]
 rule = "B2"
-subject = "anyhow"
-paths = [
-  "crates/service-backup/src/domain/destination.rs",
-  "crates/service-backup/src/domain/policy.rs",
-]
-reason = "Moved as-is in P1: BackupDestination::from_uri and ScheduledBackupPolicy::to_runtime_policy return anyhow::Result, and TryFrom<&ScheduledBackupPolicy> for BackupPolicy has Error = anyhow::Error, which downstream operators match on. P2: a thiserror destination/policy error (W3)."
-
-[[exceptions]]
-rule = "B2"
 subject = "schemars"
 paths = [
   "crates/service-backup/src/domain/destination.rs",

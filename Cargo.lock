@@ -4929,6 +4929,7 @@ dependencies = [
  "storage-durable",
  "storage-object",
  "tempfile",
+ "thiserror 2.0.18",
  "tokio",
  "urlencoding",
  "wiremock",

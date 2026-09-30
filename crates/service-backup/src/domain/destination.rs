@@ -27,9 +27,10 @@
 //! [`BackupSink::put`](crate::BackupSink::put), through
 //! [`UnsupportedCloudSink`](crate::UnsupportedCloudSink). "Does this binary
 //! support S3" is therefore a question about the sink, never about the URI.
-use anyhow::{bail, ensure, Result};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+use super::DestinationError;
 
 /// Backup destination declared by a service CR or runner config.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -110,11 +111,15 @@ pub const SUPPORTED_SCHEMES: &[SchemeInfo] = &[
 impl BackupDestination {
     /// Parse the common URI spellings used by operators and CLIs.
     /// `gs://bucket/prefix` selects the always-linked GCS adapter.
-    pub fn from_uri(raw: &str) -> Result<Self> {
+    pub fn from_uri(raw: &str) -> Result<Self, DestinationError> {
         let raw = raw.trim();
-        ensure!(!raw.is_empty(), "backup destination URI is empty");
+        if raw.is_empty() {
+            return Err(DestinationError::Empty);
+        }
         if let Some(path) = raw.strip_prefix("file://") {
-            ensure!(!path.is_empty(), "file backup URI has no path");
+            if path.is_empty() {
+                return Err(DestinationError::MissingPath);
+            }
             return Ok(Self::Local {
                 path: path.to_string(),
                 prefix: None,
@@ -138,14 +143,9 @@ impl BackupDestination {
                 credentials_secret: None,
             });
         }
-        bail!(
-            "unsupported backup destination URI `{raw}`; use {}",
-            SUPPORTED_SCHEMES
-                .iter()
-                .map(|s| s.scheme)
-                .collect::<Vec<_>>()
-                .join(", ")
-        )
+        Err(DestinationError::UnsupportedScheme {
+            uri: raw.to_string(),
+        })
     }
 
     pub fn identity(&self) -> String {
@@ -169,13 +169,15 @@ impl BackupDestination {
     }
 }
 
-fn split_bucket_prefix(rest: &str, scheme: &str) -> Result<(String, String)> {
+fn split_bucket_prefix(
+    rest: &str,
+    scheme: &'static str,
+) -> Result<(String, String), DestinationError> {
     let rest = rest.trim_end_matches('/');
-    let Some((bucket, prefix)) = rest.split_once('/') else {
-        ensure!(!rest.is_empty(), "{scheme} backup URI has no bucket");
-        return Ok((rest.to_string(), String::new()));
-    };
-    ensure!(!bucket.is_empty(), "{scheme} backup URI has no bucket");
+    let (bucket, prefix) = rest.split_once('/').unwrap_or((rest, ""));
+    if bucket.is_empty() {
+        return Err(DestinationError::MissingBucket { scheme });
+    }
     Ok((bucket.to_string(), prefix.trim_matches('/').to_string()))
 }
 

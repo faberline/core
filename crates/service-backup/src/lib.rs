@@ -25,8 +25,8 @@ pub use api::llm;
 pub use application::run_admin_snapshot_backup;
 pub use application::{run_backup_once, BackupObject, BackupRunResult};
 pub use domain::{
-    BackupDestination, BackupPolicy, RetentionPolicy, ScheduledBackupPolicy, SchemeInfo,
-    SUPPORTED_SCHEMES,
+    BackupDestination, BackupPolicy, DestinationError, PolicyError, RetentionPolicy,
+    ScheduledBackupPolicy, SchemeInfo, SUPPORTED_SCHEMES,
 };
 #[cfg(feature = "http-client")]
 pub use infrastructure::{
