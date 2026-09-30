@@ -382,7 +382,7 @@ paths = [
   "crates/service-auth/src/infrastructure/google/http.rs",
   "crates/service-auth/src/infrastructure/k8s/kube_token_minter.rs",
 ]
-reason = "Moved as-is in P1: HttpJwksSource, HttpAccessTokenIntrospection, KubeReviewBackend and KubeTokenMinter implement the #[async_trait] ports JwksSource, AccessTokenIntrospection, ReviewBackend and TokenMinter, which B2 keeps out of domain, together with their request and outcome types; KubeTokenMinter also reads the k8s SystemClock, and GoogleVerifier::google() in http.rs wires the HTTP sources and a ReloadableRoleMapVerifier into a GoogleVerifier. P2: the ports and their value types move to domain as native async-fn traits, SystemClock becomes an infrastructure adapter behind the domain Clock port, and google() moves to an assembly constructor."
+reason = "Long-term: HttpJwksSource (http.rs) implements the application port JwksSource, whose fetch returns jsonwebtoken::jwk::JwkSet, a type outside the domain allowlist, so the port cannot move to domain without a second copy of the RFC 7517 key set. KubeTokenMinter (kube_token_minter.rs) implements the application port TokenMinter with MintedToken, TokenRequestTarget and TokenRequestError; the interfaces LoopbackProxy::next_fatal returns TokenRequestError, so moving the port and its error to domain would make interfaces name a domain type (B3). Both adapters therefore keep implementing application ports."
 
 [[exceptions]]
 rule = "B2"
