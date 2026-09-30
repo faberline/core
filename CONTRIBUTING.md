@@ -1478,7 +1478,7 @@ builds. Reference adopters: `apps/jet` and `apps/lumen`.
 - **`issue`** — `cli_std::issue::{search, view, create}`. `search`/`view` are
   read-only GitHub API GETs (tokenless on public repos); `create` submits via the
   API when `GITHUB_TOKEN` is set, else prints a pre-filled `issues/new` URL. Pass
-  the tracker's `app:<name>` label in `CreateOptions.label` so it is applied
+  the tracker's `app:<name>` label with `CreateOptions::with_label` so it is applied
   on submit **and** carried into the URL fallback's `&labels=`; `search` filters
   to that same label. The group is named `issue` (**not** `report`), leaving
   domain `report` verbs (`jet report` = HTML **test** reports) untouched.

@@ -223,11 +223,7 @@ async fn comment_reopens_then_comments_with_the_github_token() {
 #[tokio::test]
 async fn create_goes_through_courier_when_it_is_configured() {
     let api = Api::default();
-    let opts = CreateOptions {
-        title: "boom".into(),
-        yes: true,
-        ..CreateOptions::default()
-    };
+    let opts = CreateOptions::new("boom").with_yes(true);
     let access = Access {
         courier: Some("https://courier.example/"),
         token: Some("tok"),
@@ -245,10 +241,7 @@ async fn create_goes_through_courier_when_it_is_configured() {
 #[tokio::test]
 async fn create_without_a_credential_submits_nothing_and_asks_nothing() {
     let api = Api::default();
-    let opts = CreateOptions {
-        title: "boom".into(),
-        ..CreateOptions::default()
-    };
+    let opts = CreateOptions::new("boom");
     let access = Access {
         courier: None,
         token: None,

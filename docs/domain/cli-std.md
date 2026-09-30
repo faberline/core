@@ -50,7 +50,9 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
 - **issue report** — the diagnostics block (tool identity, OS and architecture,
   and optionally the status of a running node) and the body that an issue or a
   follow-up comment carries. The options of each verb are `CreateOptions`,
-  `CommentOptions` and `SearchOptions`.
+  `CommentOptions` and `SearchOptions`. `CreateOptions::new(title)` starts the
+  create flags, `with_*` builders set the rest, and getters of the same names
+  read them.
 - **connect role** — `connect::Role` (`Read`, `Write`, `Admin`) together with
   `TokenClaims`, which hold a subject and a role per collection (`*` grants
   every collection).
@@ -173,9 +175,9 @@ jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
   no exception.
 - **Tracked for P2:**
   - Public fields built with struct literals (ADR D2):
-    - `upgrade::Options` and the issue option structs, in the CLIs of beam,
-      cap, courier, defer, jet, keep, loom, lumen, mamba, mesh, pgpool, relay,
-      sift, tape and vat;
+    - `upgrade::Options`, `CommentOptions` and `SearchOptions`, in the CLIs
+      of beam, cap, courier, defer, jet, keep, loom, lumen, mamba, mesh,
+      pgpool, relay, sift, tape and vat;
     - the v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, in lumen.
   - `TopicSection` is an enum and keeps its public variants; tape builds its
     `Generated` variant with named fields.
