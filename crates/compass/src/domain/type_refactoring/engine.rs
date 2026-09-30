@@ -12,6 +12,7 @@ use std::path::PathBuf;
 
 use crate::domain::ast_editing::mutable_ast::MutableAst;
 use crate::domain::semantic_search::engine::SemanticSearchEngine;
+use crate::domain::syntax::source_parser::SourceParser;
 use crate::domain::type_refactoring::request::{RefactorKind, RefactorRequest};
 use crate::domain::type_refactoring::result::RefactorResult;
 use crate::type_inference::{DeepTypeInferencer, TypeContext};
@@ -46,24 +47,25 @@ pub struct RefactoringEngine {
     ast_cache: HashMap<PathBuf, MutableAst>,
     /// Semantic search engine for finding references
     search_engine: SemanticSearchEngine,
+    /// Parses files for the AST cache
+    parser: Box<dyn SourceParser + Send + Sync>,
 }
 
 impl RefactoringEngine {
-    /// Create a new refactoring engine.
-    pub fn new() -> Self {
-        Self {
-            inferencer: DeepTypeInferencer::new(),
-            ast_cache: HashMap::new(),
-            search_engine: SemanticSearchEngine::new(),
-        }
-    }
-
-    /// Create with existing type inferencer.
-    pub fn with_inferencer(inferencer: DeepTypeInferencer) -> Self {
+    /// A refactoring engine that parses files with `parser` and takes type
+    /// information from `inferencer`.
+    ///
+    /// `RefactoringEngine::new`, `with_inferencer` and `Default` (in the
+    /// composition root) use the tree-sitter parser.
+    pub fn with_parser(
+        parser: Box<dyn SourceParser + Send + Sync>,
+        inferencer: DeepTypeInferencer,
+    ) -> Self {
         Self {
             inferencer,
             ast_cache: HashMap::new(),
             search_engine: SemanticSearchEngine::new(),
+            parser,
         }
     }
 
@@ -91,12 +93,6 @@ impl RefactoringEngine {
     /// Get type context.
     pub fn type_context(&self) -> &TypeContext {
         self.inferencer.context()
-    }
-}
-
-impl Default for RefactoringEngine {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

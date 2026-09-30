@@ -9,3 +9,5 @@ pub(crate) mod analysis;
 pub(crate) mod check;
 pub(crate) mod daemon;
 pub(crate) mod outline;
+pub(crate) mod refactoring;
+pub(crate) mod semantic_search;

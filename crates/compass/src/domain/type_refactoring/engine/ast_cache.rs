@@ -6,20 +6,19 @@ use tree_sitter::Node;
 use crate::domain::ast_editing::mutable_ast::{
     MutableAst, MutableNode, NodeId, NodeMetadata, Span,
 };
+use crate::domain::syntax::language::Language;
 use crate::domain::type_refactoring::engine::RefactoringEngine;
-use crate::syntax::MultiParser;
 
 impl RefactoringEngine {
     /// Populate AST cache for a file.
     pub fn populate_ast_cache(&mut self, file: &PathBuf, content: &str) -> Result<(), String> {
         // Detect language from file extension
-        let language = MultiParser::detect_language(file)
+        let language = Language::from_path(file)
             .ok_or_else(|| format!("Failed to detect language for file: {:?}", file))?;
 
         // Parse the file
-        let mut parser =
-            MultiParser::new().map_err(|e| format!("Failed to create parser: {}", e))?;
-        let parsed = parser
+        let parsed = self
+            .parser
             .parse(content, language)
             .ok_or_else(|| "Failed to parse file".to_string())?;
 
