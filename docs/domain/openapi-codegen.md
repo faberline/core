@@ -14,7 +14,10 @@ defer, keep, loom, lumen, relay, sift and tape use it to generate their clients.
 - **GenOptions** — one generation request: `Lang` (`Ts`, `Py`, `Rust`, which
   selects the emitter), an optional target profile, spec and output paths,
   client name, `HttpClient` (`Fetch` or `Axios`, TypeScript only) and which
-  parts to emit (types, client, hooks).
+  parts to emit (types, client, hooks). Built with
+  `GenOptions::new(lang, spec_path, out_dir, client_name)` and the `with_*`
+  builders (target, HTTP client, emit flags); read through getters named
+  after each field.
 - **Target profile** — `TargetProfile`: one of `PythonTarget` (3.11–3.14),
   `TypeScriptTarget` (5.0) or `RustTarget` (2021, 2024), with a stable id such
   as `python-3.12`. It switches on version-dependent syntax (PEP 695 aliases
@@ -41,15 +44,16 @@ defer, keep, loom, lumen, relay, sift and tape use it to generate their clients.
 ## Ports
 
 None. Generation is pure; only `GeneratedOutput::write_to_dir` and the `run`
-CLI entry touch the file system.
+CLI entry touch the file system. `run` is wiring: it lives in the `src/app`
+composition root, reads the spec, calls generation and writes the output.
 
 ## Invariants
 
 - `generate` and its variants map spec JSON text to an in-memory
   `GeneratedOutput` without file-system access.
 - Without a target profile the output is the legacy output and has no manifest.
-  With one, a profile for another language than `GenOptions::lang`, or one that
-  conflicts with `GenOptions::target`, is rejected before any parsing.
+  With one, a profile for another language than `GenOptions::lang()`, or one
+  that conflicts with `GenOptions::target()`, is rejected before any parsing.
 - Only the `*_with_file_bearer_auth` entry points add credential reading; plain
   `generate` output stays byte-for-byte unchanged.
 - `FileBearerAuth::new` requires a non-empty UTF-8 token path, a hostname suffix
@@ -68,7 +72,8 @@ CLI entry touch the file system.
 ## Published language
 
 No other core context depends on openapi-codegen. Downstream CLIs import from
-the crate root: `generate` or `generate_for_target` with `GenOptions`, `Lang`,
+the crate root: `generate` or `generate_for_target` with `GenOptions` (built
+with `GenOptions::new`), `Lang`,
 `HttpClient`, `TargetPolicy` and `MANIFEST_FILE`; lumen also uses
 `generate_for_target_with_file_bearer_auth`, `FileBearerAuth` and
 `llm::topic`. Three public modules keep their paths because they hold names
@@ -79,11 +84,8 @@ topic (v1).
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B3 `interfaces->domain`: the CLI entry `run` builds `GenOptions` and
-    prints the manifest path, both domain items. P2 lets the application layer
-    take a CLI request and return the written paths.
-- **Tracked for P2:** `GenOptions` public fields, built with struct literals by
-  defer, keep, loom, lumen, relay, sift and tape. `anyhow` in the public
-  signatures of `TargetPolicy::from_toml` (infrastructure) and the root
-  `generate*` functions (application) (ADR D4).
+- **Checker exceptions:** none. P2 moved the CLI entry `run`, which names
+  `GenOptions` and `MANIFEST_FILE`, from `interfaces` into the `src/app`
+  composition root, which the checker does not check.
+- **Tracked:** `anyhow` in the public signatures of `TargetPolicy::from_toml`
+  (infrastructure) and the root `generate*` functions (application) (ADR D4).
