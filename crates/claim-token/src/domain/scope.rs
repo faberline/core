@@ -10,3 +10,6 @@ pub struct Scope {
     /// Expiry, unix seconds.
     pub exp: u64,
 }
+
+#[cfg(test)]
+mod tests;
