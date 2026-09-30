@@ -1181,7 +1181,6 @@ dependencies = [
  "notify",
  "rayon",
  "regex",
- "regex-lite",
  "reqwest",
  "serde",
  "serde_json",

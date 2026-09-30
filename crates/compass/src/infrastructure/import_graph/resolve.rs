@@ -1,4 +1,4 @@
-use regex_lite::Regex;
+use regex::Regex;
 use std::path::{Path, PathBuf};
 
 /// Resolve an import path to an absolute file path
@@ -160,7 +160,7 @@ fn resolve_go_import(imp: &str, _from: &Path, root: &Path) -> Option<PathBuf> {
     let go_mod = root.join("go.mod");
     if go_mod.exists() {
         if let Ok(content) = std::fs::read_to_string(&go_mod) {
-            let re = Regex::new(r"^\s*module\s+(\S+)").unwrap();
+            let re = Regex::new(r"^(?-u:\s)*module(?-u:\s)+([^\t\n\x0B\x0C\r ]+)").unwrap();
             for line in content.lines() {
                 if let Some(c) = re.captures(line) {
                     if let Some(rest) = imp.strip_prefix(&c[1]) {

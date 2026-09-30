@@ -224,7 +224,7 @@ fn glob_matches(pattern: &str, path: &str) -> bool {
     let pattern = pattern.replace('\x00', ".*");
     let regex_pattern = format!("^{}$", pattern);
 
-    if let Ok(re) = regex_lite::Regex::new(&regex_pattern) {
+    if let Ok(re) = regex::Regex::new(&regex_pattern) {
         re.is_match(path)
     } else {
         // Fallback: simple contains check

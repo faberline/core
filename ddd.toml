@@ -519,16 +519,6 @@ reason = "Moved as-is in P1: the peer HTTP handlers and the group registry decod
 
 [[exceptions]]
 rule = "B2"
-subject = "regex_lite"
-paths = [
-  "crates/compass/src/domain/checker_config/argus_config.rs",
-  "crates/compass/src/domain/import_graph/extract.rs",
-  "crates/compass/src/domain/lint/custom.rs",
-]
-reason = "Moved as-is in P1: custom lint rules compile user-configured patterns, ArgusConfig's glob matcher, the per-language import extractors and TypeScript template-literal matching all build regex_lite patterns (compass E6). P2: switch them to regex, which the domain allowlist already has."
-
-[[exceptions]]
-rule = "B2"
 subject = "serde_yaml"
 paths = ["crates/compass/src/domain/spec/statemachine/mermaid_plus.rs"]
 reason = "Moved as-is in P1: MermaidPlusGenerator writes the YAML frontmatter with serde_yaml::to_string. P2: move the YAML serialisation behind an infrastructure adapter, or add serde_yaml to the domain allowlist."

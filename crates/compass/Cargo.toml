@@ -23,7 +23,6 @@ thiserror.workspace = true
 
 # Regex
 regex.workspace = true
-regex-lite = "0.1"
 
 # Async runtime (LSP server + Argus daemon)
 tokio.workspace = true

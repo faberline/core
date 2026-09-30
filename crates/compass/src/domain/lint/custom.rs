@@ -1,5 +1,4 @@
 use crate::domain::syntax::parsed_file::NodeRange;
-use regex_lite::Regex;
 use serde::Deserialize;
 use tree_sitter::StreamingIterator;
 
@@ -7,6 +6,10 @@ use crate::diagnostic::{
     Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, QuickFix, Range, RuleCode,
 };
 use crate::syntax::ParsedFile;
+
+mod pattern;
+
+use pattern::RulePattern;
 
 // ============================================================================
 // Rule configuration types (deserialized from rules.toml)
@@ -77,7 +80,7 @@ pub struct CustomRulesFile {
 
 struct CompiledRegexRule {
     config: CustomRuleConfig,
-    regex: Regex,
+    regex: RulePattern,
 }
 
 struct CompiledQueryRule {
@@ -104,13 +107,16 @@ impl CustomLintEngine {
     ///
     /// Regex rules are compiled eagerly; invalid patterns are skipped with a
     /// warning rather than panicking.
+    ///
+    /// Patterns keep regex-lite's dialect: `\d`, `\s`, `\w`, word boundaries
+    /// and `(?i)` are ASCII-only.
     pub fn from_rules_file(rules_file: &CustomRulesFile) -> Self {
         let mut regex_rules = Vec::new();
         let mut query_rules = Vec::new();
 
         for rule in &rules_file.rules {
             match rule.kind {
-                RuleKind::Regex => match Regex::new(&rule.pattern) {
+                RuleKind::Regex => match RulePattern::new(&rule.pattern) {
                     Ok(regex) => regex_rules.push(CompiledRegexRule {
                         config: rule.clone(),
                         regex,
