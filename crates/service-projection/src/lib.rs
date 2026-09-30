@@ -3,6 +3,7 @@
 //! The runtime owns checkpoints, catch-up, rebuild, publication, and flush.
 //! Products keep typed handles and define their record and projection logic.
 
+mod app;
 mod application;
 mod domain;
 mod infrastructure;

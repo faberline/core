@@ -53,6 +53,16 @@ an `anyhow::Error`, with `ProjectionError::other`.
   `restore`, `checkpoint_committed` and `semantic_digest` (by default the
   sha256 of the snapshot).
 
+The runtime saves state through one crate-internal port, which products do
+not see:
+
+- `ProjectionStateStore` — `prepare_root`, `read` a projection's saved
+  bytes, `restore` (decode and check them against the descriptor), `quarantine`
+  and `persist`. Infrastructure implements it with the envelope file of each
+  projection. The composition root (`src/app`) keeps the public
+  `ProjectionRegistry::new(root, source, config)`: it builds the file store
+  under `root` and passes it to the registry, which hands it to every handle.
+
 ## Invariants
 
 - A name is not blank and has no `/` or NUL; a registry refuses a duplicate.
@@ -90,9 +100,6 @@ test checks its own sources for `service_projection::ProjectionRegistry`.
   - B2 (`utoipa`): `ProjectionDescriptor`, `ProjectionCheckpoint` and
     `ProjectionLag` derive `ToSchema`, and sift's OpenAPI document uses those
     schema names. P2 moves the schemas to interfaces types with the same names.
-  - B3 `application->infrastructure`: `ProjectionHandle` and
-    `ProjectionRegistry` call the file-state functions directly. P2 adds a
-    state-store port.
 - **Tracked for P2:**
   - `ProjectionDescriptor` built with struct literals by sift (ADR D2); the
     checkpoint, envelope, lag and comparison types also have public fields.

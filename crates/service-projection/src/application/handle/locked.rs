@@ -5,7 +5,6 @@ use chrono::Utc;
 
 use super::{LiveProjection, ProjectionHandle};
 use crate::domain::{checkpoint, Projection, ProjectionLag, ProjectionRecord, RebuildComparison};
-use crate::infrastructure::persist;
 
 impl<Record, P> ProjectionHandle<Record, P>
 where
@@ -68,7 +67,7 @@ where
             &state,
             Utc::now(),
         );
-        persist(&self.state_path, &checkpoint, &state)?;
+        self.store.persist(&self.name, &checkpoint, &state)?;
         live.implementation.checkpoint_committed()?;
         live.persisted_cursor = checkpoint.cursor;
         live.checkpoint = checkpoint;
@@ -94,7 +93,7 @@ where
             &state,
             Utc::now(),
         );
-        persist(&self.state_path, &checkpoint, &state)?;
+        self.store.persist(&self.name, &checkpoint, &state)?;
         rebuilt.checkpoint_committed()?;
         live.implementation = rebuilt;
         live.checkpoint = checkpoint;
