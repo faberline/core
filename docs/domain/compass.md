@@ -73,10 +73,11 @@ functions it instruments.
 - `SourceParser` — parses source into a `ParsedFile`, or a line-based one;
   `MultiParser` (the tree-sitter grammars, `infrastructure/syntax`) implements
   it.
-- `SourceWalker` — the files under a path and their source; `FsSourceWalker`
-  implements it.
-- `AnalysisCache` — loads, stores and invalidates a file's cached semantic
-  model; the daemon's `DiskCache` implements it.
+- `SourceWalker` (crate-private) — the files under a path and their source;
+  `FsSourceWalker` implements it.
+- `AnalysisCache` (crate-private) — loads, stores and invalidates a file's
+  cached semantic model; the daemon's `DiskCache` implements it. The public
+  `type_inference::AnalysisCache` is an unrelated module-cache struct.
 - `Checker` — lints one `ParsedFile`; one implementation per `Language`
   (`PythonChecker`, `RustChecker`, …, `YamlDispatcher` for YAML).
 - `CodeGenerator` — emits code for a serialized spec. The contract is in
