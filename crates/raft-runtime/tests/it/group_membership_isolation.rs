@@ -25,7 +25,7 @@ use tempfile::TempDir;
 use raft_core::ConfState;
 use raft_runtime::{
     FsyncPolicy, GroupId, HostConfig, Index, Membership, MembershipPhase, RaftHost, RaftRegistry,
-    RaftStateMachine, RaftStatus, RaftStore,
+    RaftStateMachine, RaftStatus, RaftStore, StateMachineError,
 };
 
 use crate::support::cluster;
@@ -46,16 +46,16 @@ impl NullSm {
 }
 
 impl RaftStateMachine for NullSm {
-    fn apply(&self, index: Index, _command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
         self.applied.store(index, Ordering::Release);
         Ok(())
     }
 
-    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> Result<(), StateMachineError> {
         Ok(())
     }
 
-    fn restore(&self, _reader: &mut dyn std::io::Read) -> anyhow::Result<()> {
+    fn restore(&self, _reader: &mut dyn std::io::Read) -> Result<(), StateMachineError> {
         Ok(())
     }
 

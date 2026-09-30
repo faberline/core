@@ -6,7 +6,7 @@ use tempfile::TempDir;
 use raft_core::VoteReq;
 use raft_runtime::{
     FsyncPolicy, GroupId, HostConfig, Index, Membership, RaftHost, RaftRegistry, RaftStateMachine,
-    RaftStatus, RaftStore, RegistryError,
+    RaftStatus, RaftStore, RegistryError, StateMachineError,
 };
 
 use crate::support::cluster;
@@ -38,7 +38,7 @@ impl SequenceSm {
 }
 
 impl RaftStateMachine for SequenceSm {
-    fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
         let val = if command.len() == 8 {
             u64::from_le_bytes(command.try_into().unwrap())
         } else if command.len() == 1 {
@@ -51,20 +51,22 @@ impl RaftStateMachine for SequenceSm {
         Ok(())
     }
 
-    fn snapshot(&self, writer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn snapshot(&self, writer: &mut dyn std::io::Write) -> Result<(), StateMachineError> {
         let cmds = self.commands.lock().unwrap().clone();
-        let bytes = serde_json::to_vec(&cmds)?;
-        writer.write_all(&bytes)?;
+        let bytes = serde_json::to_vec(&cmds).map_err(StateMachineError::other)?;
+        writer.write_all(&bytes).map_err(StateMachineError::other)?;
         Ok(())
     }
 
-    fn restore(&self, reader: &mut dyn std::io::Read) -> anyhow::Result<()> {
+    fn restore(&self, reader: &mut dyn std::io::Read) -> Result<(), StateMachineError> {
         let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes)?;
+        reader
+            .read_to_end(&mut bytes)
+            .map_err(StateMachineError::other)?;
         if bytes.is_empty() {
             return Ok(());
         }
-        let cmds: Vec<u64> = serde_json::from_slice(&bytes)?;
+        let cmds: Vec<u64> = serde_json::from_slice(&bytes).map_err(StateMachineError::other)?;
         let last = cmds.len() as u64;
         *self.commands.lock().unwrap() = cmds;
         self.applied.store(last, Ordering::Release);

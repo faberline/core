@@ -42,6 +42,7 @@ pub use application::{
 };
 pub use application::{GroupId, LEGACY_GROUP_ID};
 pub use application::{HostConfig, SnapshotPolicy};
+pub use application::{MembershipError, StateMachineError};
 pub use application::{MembershipPolicy, ReplicaHostBuilder, ReplicaHostRuntime};
 pub use application::{OutcomeWindow, OUTCOME_WINDOW_DEFAULT_CAPACITY};
 pub use application::{ProposalCache, DEFAULT_PROPOSAL_CACHE_CAPACITY};

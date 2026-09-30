@@ -3,6 +3,7 @@ use raft_core::{AppendReq, VoteResp};
 
 use crate::application::host::apply::apply_ready_with_admission;
 use crate::interfaces::peer_http::host_status;
+use crate::StateMachineError;
 
 struct TestPermit {
     id: u64,
@@ -58,9 +59,12 @@ impl AdmissionSm {
 }
 
 impl RaftStateMachine for AdmissionSm {
-    fn admit_proposal(&self, _command: &[u8]) -> anyhow::Result<Option<AdmissionPermit>> {
+    fn admit_proposal(
+        &self,
+        _command: &[u8],
+    ) -> Result<Option<AdmissionPermit>, StateMachineError> {
         if let Some(backpressure) = &self.reject {
-            return Err(anyhow::Error::new(backpressure.clone()));
+            return Err(StateMachineError::other(backpressure.clone()));
         }
         let id = self.next_permit.fetch_add(1, Ordering::SeqCst) + 1;
         self.admitted.fetch_add(1, Ordering::SeqCst);
@@ -75,7 +79,7 @@ impl RaftStateMachine for AdmissionSm {
         index: Index,
         _command: &[u8],
         permit: Option<AdmissionPermit>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), StateMachineError> {
         let permit =
             permit.map(|permit| permit.downcast::<TestPermit>().expect("test permit type"));
         if let Some(permit) = &permit {
@@ -89,21 +93,23 @@ impl RaftStateMachine for AdmissionSm {
             std::thread::yield_now();
         }
         if self.early_watermark_then_fail.load(Ordering::SeqCst) {
-            anyhow::bail!("injected error after an early state-machine watermark");
+            return Err(StateMachineError::other(
+                "injected error after an early state-machine watermark",
+            ));
         }
         self.applied.store(index, Ordering::SeqCst);
         drop(permit);
         Ok(())
     }
 
-    fn apply(&self, index: Index, _command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
         self.applied.store(index, Ordering::SeqCst);
         Ok(())
     }
-    fn snapshot(&self, _writer: &mut dyn Write) -> anyhow::Result<()> {
+    fn snapshot(&self, _writer: &mut dyn Write) -> Result<(), StateMachineError> {
         Ok(())
     }
-    fn restore(&self, _reader: &mut dyn Read) -> anyhow::Result<()> {
+    fn restore(&self, _reader: &mut dyn Read) -> Result<(), StateMachineError> {
         Ok(())
     }
     fn applied_index(&self) -> Index {

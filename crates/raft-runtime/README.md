@@ -24,11 +24,17 @@ A promise with no gate under it is not claimed.
 Services can host Raft state machines through a shared h2c driver instead of
 duplicating peer transport and read consistency plumbing.
 
+State-machine ports return `StateMachineError` and `MembershipPolicy` returns
+`MembershipError`. An implementor's `anyhow::Error` converted with `?` comes
+back from the host unchanged, so a caller's `downcast_ref` still finds the
+implementor's own error type.
+
 - Root WI: none; this capability predates the tracker.
 - Surfaces: Rust API: `raft_runtime`.
 - Gate — behavior: `cargo test -p raft-runtime` - host, config, store, and read
   consistency coverage
 - Gate: `cargo test -p raft-runtime`
+- Gate: `cargo test -p raft-runtime --test it -- port_error_downcast::`
 - Source: `crates/raft-runtime/src/lib.rs`
 - Evidence: `cargo test -p raft-runtime`; crates/raft-runtime/src/lib.rs
 

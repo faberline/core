@@ -16,7 +16,7 @@ use raft_runtime::conformance::DeterministicHost;
 use raft_runtime::{
     ActiveAssignment, AdmissionRefused, ClusterStateView, FenceToken, FencedAssignment,
     FsyncPolicy, GroupId, LeadershipHandoff, MembershipPhase, PeerAddr, RaftRole, RaftStateMachine,
-    RaftStatus, RaftStore,
+    RaftStatus, RaftStore, StateMachineError,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -272,17 +272,21 @@ fn cluster_view_json_is_pinned() {
 struct CountingSm(AtomicU64);
 
 impl RaftStateMachine for CountingSm {
-    fn apply(&self, index: Index, _: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, _: &[u8]) -> Result<(), StateMachineError> {
         self.0.store(index, Ordering::Release);
         Ok(())
     }
-    fn snapshot(&self, writer: &mut dyn Write) -> anyhow::Result<()> {
-        writer.write_all(&self.0.load(Ordering::Acquire).to_le_bytes())?;
+    fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
+        writer
+            .write_all(&self.0.load(Ordering::Acquire).to_le_bytes())
+            .map_err(StateMachineError::other)?;
         Ok(())
     }
-    fn restore(&self, reader: &mut dyn Read) -> anyhow::Result<()> {
+    fn restore(&self, reader: &mut dyn Read) -> Result<(), StateMachineError> {
         let mut bytes = [0; 8];
-        reader.read_exact(&mut bytes)?;
+        reader
+            .read_exact(&mut bytes)
+            .map_err(StateMachineError::other)?;
         self.0.store(u64::from_le_bytes(bytes), Ordering::Release);
         Ok(())
     }

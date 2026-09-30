@@ -91,7 +91,9 @@ impl Shared {
             if let Some((index, term, source, permit)) = selected {
                 if self.sm.applied_index() < index {
                     let command = source.map()?;
-                    self.sm.apply_admitted(index, command.command(), permit)?;
+                    self.sm
+                        .apply_admitted(index, command.command(), permit)
+                        .map_err(StateMachineError::into_anyhow)?;
                     if self.sm.applied_index() < index {
                         anyhow::bail!(
                             "state machine returned success without applying index {index}"
@@ -199,7 +201,11 @@ impl Shared {
         if restore {
             let result = bytes
                 .ok_or_else(|| anyhow!("durable snapshot has no restore bytes"))
-                .and_then(|bytes| self.sm.restore(&mut std::io::Cursor::new(bytes)));
+                .and_then(|bytes| {
+                    self.sm
+                        .restore(&mut std::io::Cursor::new(bytes))
+                        .map_err(StateMachineError::into_anyhow)
+                });
             if let Err(error) = result {
                 tracing::error!(%error, "raft: durable snapshot restore failed; latch node until restart");
                 *self.latched_failure.lock().unwrap() = Some(StorageFailed {

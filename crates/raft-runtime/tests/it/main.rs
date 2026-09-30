@@ -16,6 +16,7 @@ mod legacy_store_migration;
 mod member_admission;
 mod membership_changes;
 mod peer_mtls;
+mod port_error_downcast;
 mod proposal_admission_boundary;
 mod proposal_outcomes;
 mod publish_preflight;

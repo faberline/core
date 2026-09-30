@@ -1,5 +1,6 @@
 use super::*;
 use crate::application::host::snapshot_compaction::preflight_snapshot_with_serial;
+use crate::StateMachineError;
 
 struct PermitPreparation {
     released: StdMutex<Option<oneshot::Sender<()>>>,
@@ -21,13 +22,16 @@ impl Drop for PermitPreparation {
 struct PermitCapture;
 
 impl crate::PreparedSnapshot for PermitCapture {
-    fn write_to(self: Box<Self>, _writer: &mut dyn Write) -> Result<()> {
+    fn write_to(self: Box<Self>, _writer: &mut dyn Write) -> Result<(), StateMachineError> {
         Ok(())
     }
 }
 
 impl crate::SnapshotPreparation for PermitPreparation {
-    fn capture_at(self: Box<Self>, _index: Index) -> Result<Box<dyn crate::PreparedSnapshot>> {
+    fn capture_at(
+        self: Box<Self>,
+        _index: Index,
+    ) -> Result<Box<dyn crate::PreparedSnapshot>, StateMachineError> {
         Ok(Box::new(PermitCapture))
     }
 }
@@ -38,15 +42,17 @@ struct PermitPreflightSm {
 }
 
 impl RaftStateMachine for PermitPreflightSm {
-    fn apply(&self, _index: Index, _command: &[u8]) -> Result<()> {
+    fn apply(&self, _index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
         Ok(())
     }
 
-    fn snapshot(&self, _writer: &mut dyn Write) -> Result<()> {
+    fn snapshot(&self, _writer: &mut dyn Write) -> Result<(), StateMachineError> {
         Ok(())
     }
 
-    fn preflight_snapshot(&self) -> Result<Option<Box<dyn SnapshotPreparation>>> {
+    fn preflight_snapshot(
+        &self,
+    ) -> Result<Option<Box<dyn SnapshotPreparation>>, StateMachineError> {
         self.preflight_entered.store(true, Ordering::Release);
         let released = self
             .released
@@ -58,7 +64,7 @@ impl RaftStateMachine for PermitPreflightSm {
         })))
     }
 
-    fn restore(&self, _reader: &mut dyn Read) -> Result<()> {
+    fn restore(&self, _reader: &mut dyn Read) -> Result<(), StateMachineError> {
         Ok(())
     }
 

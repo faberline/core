@@ -13,6 +13,7 @@ pub(super) async fn preflight_snapshot_with_serial(
             // capacity. Keep the drain lease until that worker releases it.
             let _operation = preflight_operation;
             sm.preflight_snapshot()
+                .map_err(StateMachineError::into_anyhow)
         })
         .await??;
         match Arc::clone(&snapshot_install).try_lock_owned() {
@@ -160,7 +161,9 @@ impl RaftHost {
                 let _serial = state_machine_lease
                     .take()
                     .expect("new snapshot must retain its state-machine lease");
-                preparation.capture_at(up_to)
+                preparation
+                    .capture_at(up_to)
+                    .map_err(StateMachineError::into_anyhow)
             })
             .await??;
             let export_operation = Arc::clone(&operation);
@@ -169,7 +172,9 @@ impl RaftHost {
                 // proceeds. Retain peer-work ownership until output ends.
                 let _operation = export_operation;
                 let mut sink = ChunkSink::new(SNAPSHOT_CHUNK_SIZE);
-                prepared.write_to(&mut sink)?;
+                prepared
+                    .write_to(&mut sink)
+                    .map_err(StateMachineError::into_anyhow)?;
                 Ok::<_, anyhow::Error>(sink.into_bytes())
             })
             .await??
@@ -182,7 +187,8 @@ impl RaftHost {
                     .take()
                     .expect("legacy snapshot must retain its state-machine lease");
                 let mut sink = ChunkSink::new(SNAPSHOT_CHUNK_SIZE);
-                sm.snapshot_at(up_to, &mut sink)?;
+                sm.snapshot_at(up_to, &mut sink)
+                    .map_err(StateMachineError::into_anyhow)?;
                 Ok::<_, anyhow::Error>(sink.into_bytes())
             })
             .await??

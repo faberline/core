@@ -13,7 +13,7 @@ use raft_runtime::conformance::{
     ConformanceRole, DeterministicHost, EnvelopeKind, PendingEnvelope, StateMachineOperation,
     TRACE_SCHEMA,
 };
-use raft_runtime::{FsyncPolicy, RaftStateMachine, RaftStore};
+use raft_runtime::{FsyncPolicy, RaftStateMachine, RaftStore, StateMachineError};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use tempfile::TempDir;
@@ -40,17 +40,20 @@ impl Sm {
 }
 
 impl RaftStateMachine for Sm {
-    fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
         let mut prefix = self.prefix.lock().expect("state-machine lock");
         match prefix.last() {
             Some((last, saved)) if *last == index => {
-                anyhow::ensure!(saved == command, "same index has different command");
+                if saved != command {
+                    return Err(StateMachineError::other("same index has different command"));
+                }
             }
             Some((last, _)) => {
-                anyhow::ensure!(
-                    index > *last,
-                    "state machine applied index {index} after later index {last}"
-                );
+                if index <= *last {
+                    return Err(StateMachineError::other(format!(
+                        "state machine applied index {index} after later index {last}"
+                    )));
+                }
                 prefix.push((index, command.to_vec()));
             }
             None => prefix.push((index, command.to_vec())),
@@ -58,17 +61,19 @@ impl RaftStateMachine for Sm {
         Ok(())
     }
 
-    fn snapshot(&self, writer: &mut dyn Write) -> anyhow::Result<()> {
-        serde_json::to_writer(writer, &self.prefix()).map_err(Into::into)
+    fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
+        serde_json::to_writer(writer, &self.prefix()).map_err(StateMachineError::other)
     }
 
-    fn restore(&self, reader: &mut dyn Read) -> anyhow::Result<()> {
-        let prefix: Vec<(Index, Vec<u8>)> = serde_json::from_reader(reader)?;
+    fn restore(&self, reader: &mut dyn Read) -> Result<(), StateMachineError> {
+        let prefix: Vec<(Index, Vec<u8>)> =
+            serde_json::from_reader(reader).map_err(StateMachineError::other)?;
         for pair in prefix.windows(2) {
-            anyhow::ensure!(
-                pair[0].0 < pair[1].0,
-                "snapshot state-machine prefix is not strictly ordered"
-            );
+            if pair[0].0 >= pair[1].0 {
+                return Err(StateMachineError::other(
+                    "snapshot state-machine prefix is not strictly ordered",
+                ));
+            }
         }
         *self.prefix.lock().expect("state-machine lock") = prefix;
         Ok(())

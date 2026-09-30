@@ -9,12 +9,13 @@ use std::sync::Arc;
 use anyhow::{bail, Context, Result};
 
 use crate::{
-    ClusterTopology, FsyncPolicy, HostConfig, PeerTransport, RaftHost, RaftStateMachine, RaftStore,
+    ClusterTopology, FsyncPolicy, HostConfig, MembershipError, PeerTransport, RaftHost,
+    RaftStateMachine, RaftStore,
 };
 
 /// Product policy applied after the shared topology has been read and checked.
 pub trait MembershipPolicy: Send + Sync + 'static {
-    fn validate(&self, topology: &ClusterTopology) -> Result<()>;
+    fn validate(&self, topology: &ClusterTopology) -> std::result::Result<(), MembershipError>;
 }
 
 /// A fully started replicated host and the transport used by its peer server.
@@ -85,7 +86,9 @@ where
             &self.peers_override,
             &self.scheme,
         )?;
-        self.membership_policy.validate(&topology)?;
+        self.membership_policy
+            .validate(&topology)
+            .map_err(MembershipError::into_anyhow)?;
         Ok(topology)
     }
 

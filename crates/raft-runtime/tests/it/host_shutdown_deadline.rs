@@ -27,7 +27,7 @@ use tempfile::TempDir;
 use raft_runtime::{
     FsyncPolicy, HostConfig, HostShutdownReport, LeadershipHandoff, Membership, PhaseStatus,
     ProposalOutcome, RaftHost, RaftStateMachine, RaftStatus, RaftStore, ShutdownCaller,
-    ShutdownPhase,
+    ShutdownPhase, StateMachineError,
 };
 use server_lifecycle::ShutdownDeadline;
 
@@ -200,7 +200,7 @@ impl BlockingApplySm {
 }
 
 impl RaftStateMachine for BlockingApplySm {
-    fn apply(&self, index: u64, _command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: u64, _command: &[u8]) -> Result<(), StateMachineError> {
         let fail = {
             let mut gate = self.gate.lock().expect("blocking gate mutex poisoned");
             gate.callback_indices.push(index);
@@ -223,18 +223,20 @@ impl RaftStateMachine for BlockingApplySm {
             }
         };
         if fail {
-            anyhow::bail!("injected state-machine apply failure at index {index}");
+            return Err(StateMachineError::other(format!(
+                "injected state-machine apply failure at index {index}"
+            )));
         }
         self.applied
             .store(index, std::sync::atomic::Ordering::Release);
         Ok(())
     }
 
-    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> Result<(), StateMachineError> {
         Ok(())
     }
 
-    fn restore(&self, _reader: &mut dyn std::io::Read) -> anyhow::Result<()> {
+    fn restore(&self, _reader: &mut dyn std::io::Read) -> Result<(), StateMachineError> {
         Ok(())
     }
 

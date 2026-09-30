@@ -23,7 +23,8 @@ pub(super) fn apply_ready_with_admission(
     pending_admission: Option<&StdMutex<BTreeMap<(Index, u64), AdmissionPermit>>>,
 ) -> anyhow::Result<()> {
     if let Some(bytes) = node.take_installed_snapshot() {
-        sm.restore(&mut std::io::Cursor::new(bytes))?;
+        sm.restore(&mut std::io::Cursor::new(bytes))
+            .map_err(StateMachineError::into_anyhow)?;
     }
     let mut advanced = false;
     while let Some((index, term, kind)) = node.peek_next_committed_identity() {
@@ -38,7 +39,8 @@ pub(super) fn apply_ready_with_admission(
             let persisted = node.persisted_ref();
             let offset = (index - persisted.snapshot_index - 1) as usize;
             let entry = &persisted.log[offset];
-            sm.apply_admitted(index, &entry.command, permit)?;
+            sm.apply_admitted(index, &entry.command, permit)
+                .map_err(StateMachineError::into_anyhow)?;
             if sm.applied_index() < index {
                 anyhow::bail!("state machine returned success without applying index {index}");
             }
@@ -63,7 +65,7 @@ pub(super) fn apply_ready_with_admission(
     let mut sink = ChunkSink::new(SNAPSHOT_CHUNK_SIZE);
     match sm.snapshot_at(applied, &mut sink) {
         Ok(()) => node.compact(applied, sink.into_bytes()),
-        Err(e) if strict => return Err(e),
+        Err(e) if strict => return Err(e.into_anyhow()),
         Err(e) => tracing::warn!(error = %e, "raft: snapshot capture failed; skip compaction"),
     }
     Ok(())

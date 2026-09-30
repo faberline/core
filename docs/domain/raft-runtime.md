@@ -49,9 +49,18 @@ sift and tape each run their replicated state through it.
 - `RaftStateMachine` — the service's replicated state: apply, snapshot,
   restore, applied index, plus optional proposal admission and prepared
   snapshots (`SnapshotPreparation`, `PreparedSnapshot`). Implemented by defer,
-  keep, loom, lumen, relay, sift and tape.
+  keep, loom, lumen, relay, sift and tape. Every method returns
+  `StateMachineError`.
 - `MembershipPolicy` — a product check applied to the `ClusterTopology` after
-  the shared topology has been read and checked. Implemented by sift.
+  the shared topology has been read and checked. Implemented by sift. Returns
+  `MembershipError`.
+
+Both errors wrap an implementor's own error in `Other`, built with
+`StateMachineError::other(e)` or with `?` from an `anyhow::Error`. The host
+hands an `anyhow::Error` converted with `?` back unchanged, so a caller's
+`downcast_ref` finds the implementor's type as before; a
+`ProposalBackpressure` from `admit_proposal` reaches the caller of `propose`
+whichever way it was wrapped.
 
 ## Invariants
 
@@ -100,7 +109,6 @@ in them is at the crate root, so keep, lumen, relay and tape import
     wire module shared by both sides, and the conformance host takes the store
     port.
 - **Tracked for P2:**
-  - `anyhow` in both ports (ADR D4), implemented in seven downstream repos.
   - Public fields built with struct literals (ADR D2): `HostConfig` in defer,
     keep, lumen, relay and tape; `FenceToken` in defer and relay;
     `ClusterDims`, `PeerAddr` and `ClusterStateView` in lumen.

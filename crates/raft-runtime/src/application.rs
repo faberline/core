@@ -7,6 +7,7 @@ mod fenced_assignment;
 mod group;
 mod host;
 mod outcome_window;
+mod port_error;
 mod proposal_cache;
 mod read_consistency;
 mod replica_host;
@@ -24,6 +25,7 @@ pub use host::{
     ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed, SNAPSHOT_CHUNK_SIZE,
 };
 pub use outcome_window::{OutcomeWindow, DEFAULT_CAPACITY as OUTCOME_WINDOW_DEFAULT_CAPACITY};
+pub use port_error::{MembershipError, StateMachineError};
 pub use proposal_cache::{ProposalCache, DEFAULT_PROPOSAL_CACHE_CAPACITY};
 pub use read_consistency::{ReadConsistency, READ_CONSISTENCY_HEADER};
 pub use replica_host::{MembershipPolicy, ReplicaHostBuilder, ReplicaHostRuntime};

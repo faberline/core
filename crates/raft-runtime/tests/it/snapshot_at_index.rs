@@ -9,6 +9,7 @@ use std::{
 
 use raft_runtime::{
     FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
+    StateMachineError,
 };
 
 struct IndexedSnapshotStateMachine {
@@ -26,25 +27,31 @@ impl IndexedSnapshotStateMachine {
 }
 
 impl RaftStateMachine for IndexedSnapshotStateMachine {
-    fn apply(&self, index: Index, _command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
         self.applied.store(index, Ordering::Release);
         Ok(())
     }
 
-    fn snapshot(&self, writer: &mut dyn Write) -> anyhow::Result<()> {
-        writer.write_all(&self.applied.load(Ordering::Acquire).to_le_bytes())?;
+    fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
+        writer
+            .write_all(&self.applied.load(Ordering::Acquire).to_le_bytes())
+            .map_err(StateMachineError::other)?;
         Ok(())
     }
 
-    fn snapshot_at(&self, index: Index, writer: &mut dyn Write) -> anyhow::Result<()> {
+    fn snapshot_at(&self, index: Index, writer: &mut dyn Write) -> Result<(), StateMachineError> {
         self.requested.lock().unwrap().push(index);
-        writer.write_all(&index.to_le_bytes())?;
+        writer
+            .write_all(&index.to_le_bytes())
+            .map_err(StateMachineError::other)?;
         Ok(())
     }
 
-    fn restore(&self, reader: &mut dyn Read) -> anyhow::Result<()> {
+    fn restore(&self, reader: &mut dyn Read) -> Result<(), StateMachineError> {
         let mut bytes = [0_u8; 8];
-        reader.read_exact(&mut bytes)?;
+        reader
+            .read_exact(&mut bytes)
+            .map_err(StateMachineError::other)?;
         self.applied
             .store(u64::from_le_bytes(bytes), Ordering::Release);
         Ok(())

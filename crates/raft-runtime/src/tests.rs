@@ -1,4 +1,5 @@
 use super::*;
+use crate::StateMachineError;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -22,13 +23,19 @@ impl CounterSm {
     }
 }
 impl RaftStateMachine for CounterSm {
-    fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
         match self.apply_mode.load(Ordering::Acquire) {
             1 => {
                 self.applied.store(index, Ordering::Release);
-                anyhow::bail!("injected completed domain refusal")
+                return Err(StateMachineError::other(
+                    "injected completed domain refusal",
+                ));
             }
-            2 => anyhow::bail!("injected incomplete infrastructure failure"),
+            2 => {
+                return Err(StateMachineError::other(
+                    "injected incomplete infrastructure failure",
+                ))
+            }
             _ => {}
         }
         let v = u64::from_le_bytes(command.try_into().unwrap_or([0; 8]));
@@ -36,15 +43,19 @@ impl RaftStateMachine for CounterSm {
         self.applied.store(index, Ordering::Release);
         Ok(())
     }
-    fn snapshot(&self, writer: &mut dyn Write) -> anyhow::Result<()> {
-        let bytes = serde_json::to_vec(&*self.log.lock().unwrap())?;
-        writer.write_all(&bytes)?;
+    fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
+        let bytes =
+            serde_json::to_vec(&*self.log.lock().unwrap()).map_err(StateMachineError::other)?;
+        writer.write_all(&bytes).map_err(StateMachineError::other)?;
         Ok(())
     }
-    fn restore(&self, reader: &mut dyn Read) -> anyhow::Result<()> {
+    fn restore(&self, reader: &mut dyn Read) -> Result<(), StateMachineError> {
         let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes)?;
-        let log: Vec<(Index, u64)> = serde_json::from_slice(&bytes)?;
+        reader
+            .read_to_end(&mut bytes)
+            .map_err(StateMachineError::other)?;
+        let log: Vec<(Index, u64)> =
+            serde_json::from_slice(&bytes).map_err(StateMachineError::other)?;
         let last = log.last().map(|(i, _)| *i).unwrap_or(0);
         *self.log.lock().unwrap() = log;
         self.applied.store(last, Ordering::Release);

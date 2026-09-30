@@ -26,7 +26,7 @@ use std::time::Duration;
 
 use raft_runtime::{
     FsyncPolicy, HostConfig, Index, Membership, PreparedSnapshot, RaftHost, RaftStateMachine,
-    RaftStore, SnapshotPreparation, Term,
+    RaftStore, SnapshotPreparation, StateMachineError, Term,
 };
 use tempfile::TempDir;
 use tokio::sync::oneshot;
@@ -47,7 +47,10 @@ impl SnapshotCore {
     }
 
     fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()> {
-        let mut records = self.records.lock().expect("snapshot records mutex poisoned");
+        let mut records = self
+            .records
+            .lock()
+            .expect("snapshot records mutex poisoned");
         if let Some((previous, _)) = records.last() {
             anyhow::ensure!(
                 *previous < index,
@@ -65,7 +68,10 @@ impl SnapshotCore {
     }
 
     fn bytes_through(&self, index: Index) -> anyhow::Result<Vec<u8>> {
-        let records = self.records.lock().expect("snapshot records mutex poisoned");
+        let records = self
+            .records
+            .lock()
+            .expect("snapshot records mutex poisoned");
         if index > 0 {
             let last = records
                 .iter()
@@ -128,9 +134,15 @@ impl PreflightGate {
             .expect("preflight is entered once")
             .send(())
             .expect("test keeps the preflight observation receiver alive");
-        let mut released = self.released.lock().expect("preflight release mutex poisoned");
+        let mut released = self
+            .released
+            .lock()
+            .expect("preflight release mutex poisoned");
         while !*released {
-            released = self.wake.wait(released).expect("preflight release mutex poisoned");
+            released = self
+                .wake
+                .wait(released)
+                .expect("preflight release mutex poisoned");
         }
     }
 
@@ -176,14 +188,23 @@ impl CaptureGate {
             .expect("capture is entered once")
             .send(observation)
             .expect("test keeps the capture observation receiver alive");
-        let mut released = self.released.lock().expect("capture release mutex poisoned");
+        let mut released = self
+            .released
+            .lock()
+            .expect("capture release mutex poisoned");
         while !*released {
-            released = self.wake.wait(released).expect("capture release mutex poisoned");
+            released = self
+                .wake
+                .wait(released)
+                .expect("capture release mutex poisoned");
         }
     }
 
     fn release(&self) {
-        *self.released.lock().expect("capture release mutex poisoned") = true;
+        *self
+            .released
+            .lock()
+            .expect("capture release mutex poisoned") = true;
         self.wake.notify_all();
     }
 }
@@ -217,7 +238,10 @@ impl ExportGate {
             .expect("test keeps the export observation receiver alive");
         let mut released = self.released.lock().expect("export release mutex poisoned");
         while !*released {
-            released = self.wake.wait(released).expect("export release mutex poisoned");
+            released = self
+                .wake
+                .wait(released)
+                .expect("export release mutex poisoned");
         }
     }
 
@@ -315,28 +339,40 @@ struct CapturedSnapshot {
 }
 
 impl PreparedSnapshot for CapturedSnapshot {
-    fn write_to(self: Box<Self>, writer: &mut dyn Write) -> anyhow::Result<()> {
+    fn write_to(self: Box<Self>, writer: &mut dyn Write) -> Result<(), StateMachineError> {
         match &self.export_mode {
             ExportMode::Immediate => {}
             ExportMode::Block(gate) => gate.export_and_wait(),
-            ExportMode::Fail => anyhow::bail!("injected prepared snapshot export failure"),
+            ExportMode::Fail => {
+                return Err(StateMachineError::other(
+                    "injected prepared snapshot export failure",
+                ))
+            }
         }
-        writer.write_all(&self.bytes)?;
+        writer
+            .write_all(&self.bytes)
+            .map_err(StateMachineError::other)?;
         Ok(())
     }
 }
 
 impl SnapshotPreparation for PreparedSnapshotPreparation {
-    fn capture_at(self: Box<Self>, index: Index) -> anyhow::Result<Box<dyn PreparedSnapshot>> {
+    fn capture_at(
+        self: Box<Self>,
+        index: Index,
+    ) -> Result<Box<dyn PreparedSnapshot>, StateMachineError> {
         if matches!(&self.capture_mode, CaptureMode::Fail) {
-            anyhow::bail!("injected prepared snapshot capture failure");
+            return Err(StateMachineError::other(
+                "injected prepared snapshot capture failure",
+            ));
         }
 
         let observed_applied = self.core.applied_index();
-        anyhow::ensure!(
-            observed_applied == index,
-            "prepared snapshot must capture exact prefix {index}; current applied index is {observed_applied}"
-        );
+        if observed_applied != index {
+            return Err(StateMachineError::other(format!(
+                "prepared snapshot must capture exact prefix {index}; current applied index is {observed_applied}"
+            )));
+        }
         let bytes = self.core.bytes_through(index)?;
         self.capture_requests
             .lock()
@@ -358,23 +394,31 @@ impl SnapshotPreparation for PreparedSnapshotPreparation {
 }
 
 impl RaftStateMachine for PreparedSnapshotStateMachine {
-    fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()> {
-        self.core.apply(index, command)
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
+        Ok(self.core.apply(index, command)?)
     }
 
-    fn snapshot(&self, writer: &mut dyn Write) -> anyhow::Result<()> {
-        self.core.snapshot(writer)
+    fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
+        Ok(self.core.snapshot(writer)?)
     }
 
-    fn snapshot_at(&self, _index: Index, _writer: &mut dyn Write) -> anyhow::Result<()> {
-        anyhow::bail!("prepared snapshot opt-in must not fall back to snapshot_at")
+    fn snapshot_at(&self, _index: Index, _writer: &mut dyn Write) -> Result<(), StateMachineError> {
+        Err(StateMachineError::other(
+            "prepared snapshot opt-in must not fall back to snapshot_at",
+        ))
     }
 
-    fn preflight_snapshot(&self) -> anyhow::Result<Option<Box<dyn SnapshotPreparation>>> {
+    fn preflight_snapshot(
+        &self,
+    ) -> Result<Option<Box<dyn SnapshotPreparation>>, StateMachineError> {
         match &self.preflight_mode {
             PreflightMode::Immediate => {}
             PreflightMode::Block(gate) => gate.enter_and_wait(),
-            PreflightMode::Fail => anyhow::bail!("injected snapshot preflight failure"),
+            PreflightMode::Fail => {
+                return Err(StateMachineError::other(
+                    "injected snapshot preflight failure",
+                ))
+            }
         }
         Ok(Some(Box::new(PreparedSnapshotPreparation {
             core: Arc::clone(&self.core),
@@ -384,8 +428,8 @@ impl RaftStateMachine for PreparedSnapshotStateMachine {
         })))
     }
 
-    fn restore(&self, reader: &mut dyn Read) -> anyhow::Result<()> {
-        self.core.restore(reader)
+    fn restore(&self, reader: &mut dyn Read) -> Result<(), StateMachineError> {
+        Ok(self.core.restore(reader)?)
     }
 
     fn applied_index(&self) -> Index {
@@ -405,8 +449,12 @@ where
             learners: Vec::new(),
         },
         HashMap::new(),
-        RaftStore::open(data.path().to_str().expect("temporary path is UTF-8"), 0, FsyncPolicy::Always)
-            .expect("open raft store"),
+        RaftStore::open(
+            data.path().to_str().expect("temporary path is UTF-8"),
+            0,
+            FsyncPolicy::Always,
+        )
+        .expect("open raft store"),
         state_machine as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     ));
@@ -463,11 +511,8 @@ async fn preflight_does_not_hold_apply_and_stale_explicit_prefix_refuses() {
     let _release_preflight = ReleasePreflight(Arc::clone(&preflight_gate));
 
     let snapshot_host = Arc::clone(&host);
-    let snapshot = tokio::spawn(async move {
-        snapshot_host
-            .snapshot_and_compact_through(requested)
-            .await
-    });
+    let snapshot =
+        tokio::spawn(async move { snapshot_host.snapshot_and_compact_through(requested).await });
     assert!(
         wait_for_signal(preflight_rx).await.is_some(),
         "the host must call the snapshot preflight hook before capture"
@@ -534,7 +579,9 @@ async fn preflight_does_not_hold_apply_and_stale_explicit_prefix_refuses() {
         vec![requested, later],
         "the stale requested prefix remains recoverable in the Raft log"
     );
-    host.shutdown().await.expect("shutdown host after stale refusal");
+    host.shutdown()
+        .await
+        .expect("shutdown host after stale refusal");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -686,7 +733,10 @@ async fn capture_keeps_its_exact_cut_and_releases_apply_before_export() {
             if *applied.borrow_and_update() > capture_index {
                 return;
             }
-            applied.changed().await.expect("host keeps its applied watch");
+            applied
+                .changed()
+                .await
+                .expect("host keeps its applied watch");
         }
     })
     .await
@@ -783,7 +833,10 @@ async fn capture_keeps_its_exact_cut_and_releases_apply_before_export() {
         !applied_during_capture,
         "a committed later record cannot apply while capture_at holds the capture lease"
     );
-    assert_eq!(capture_floor, capture_index, "capture excludes later applied records");
+    assert_eq!(
+        capture_floor, capture_index,
+        "capture excludes later applied records"
+    );
     assert!(
         !completed_during_capture,
         "read-your-write propose remains pending until the capture lease is released"
@@ -818,7 +871,8 @@ async fn assert_failed_prepared_snapshot_retains_prefix(stage: FailureStage) {
             "injected prepared snapshot export failure",
         ),
     };
-    let state_machine = PreparedSnapshotStateMachine::new(preflight_mode, capture_mode, export_mode);
+    let state_machine =
+        PreparedSnapshotStateMachine::new(preflight_mode, capture_mode, export_mode);
     let (_data, host) = spawn_host(state_machine);
     let first = host
         .propose(b"prefix-retained-on-failure".to_vec())

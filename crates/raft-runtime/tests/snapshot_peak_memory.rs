@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use raft_core::Index;
-use raft_runtime::{ChunkSink, RaftStateMachine, SNAPSHOT_CHUNK_SIZE};
+use raft_runtime::{ChunkSink, RaftStateMachine, StateMachineError, SNAPSHOT_CHUNK_SIZE};
 
 struct CountingAlloc;
 
@@ -78,41 +78,57 @@ impl MemoryTestSm {
 }
 
 impl RaftStateMachine for MemoryTestSm {
-    fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
         let mut entries = self.entries.lock().unwrap();
         entries.push((index, command.to_vec()));
         self.applied.store(index, Ordering::Release);
         Ok(())
     }
 
-    fn snapshot(&self, writer: &mut dyn Write) -> anyhow::Result<()> {
+    fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
         let entries = self.entries.lock().unwrap();
         let total = entries.len() as u64;
-        writer.write_all(&total.to_le_bytes())?;
+        writer
+            .write_all(&total.to_le_bytes())
+            .map_err(StateMachineError::other)?;
         for (idx, payload) in entries.iter() {
-            writer.write_all(&idx.to_le_bytes())?;
+            writer
+                .write_all(&idx.to_le_bytes())
+                .map_err(StateMachineError::other)?;
             let len = payload.len() as u32;
-            writer.write_all(&len.to_le_bytes())?;
-            writer.write_all(payload)?;
+            writer
+                .write_all(&len.to_le_bytes())
+                .map_err(StateMachineError::other)?;
+            writer
+                .write_all(payload)
+                .map_err(StateMachineError::other)?;
         }
-        writer.flush()?;
+        writer.flush().map_err(StateMachineError::other)?;
         Ok(())
     }
 
-    fn restore(&self, reader: &mut dyn Read) -> anyhow::Result<()> {
+    fn restore(&self, reader: &mut dyn Read) -> Result<(), StateMachineError> {
         let mut count_buf = [0u8; 8];
-        reader.read_exact(&mut count_buf)?;
+        reader
+            .read_exact(&mut count_buf)
+            .map_err(StateMachineError::other)?;
         let count = u64::from_le_bytes(count_buf);
         let mut restored_entries = Vec::with_capacity(count.min(1024) as usize);
         let mut last_idx = 0;
         let mut u32_buf = [0u8; 4];
         for _ in 0..count {
-            reader.read_exact(&mut count_buf)?;
+            reader
+                .read_exact(&mut count_buf)
+                .map_err(StateMachineError::other)?;
             let idx = u64::from_le_bytes(count_buf);
-            reader.read_exact(&mut u32_buf)?;
+            reader
+                .read_exact(&mut u32_buf)
+                .map_err(StateMachineError::other)?;
             let len = u32::from_le_bytes(u32_buf) as usize;
             let mut payload = vec![0u8; len];
-            reader.read_exact(&mut payload)?;
+            reader
+                .read_exact(&mut payload)
+                .map_err(StateMachineError::other)?;
             last_idx = idx;
             restored_entries.push((idx, payload));
         }
