@@ -33,8 +33,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use service_k8s::controller::reconcile_once;
-use service_k8s::Election;
 use service_k8s::service::{ManagedService, PruneTarget, ReadinessTarget, ReadyFacts};
+use service_k8s::Election;
 
 const NAMESPACE: &str = "acme";
 const CHILD: &str = "pruned-child";
@@ -52,7 +52,9 @@ type Log = Arc<Mutex<Vec<Recorded>>>;
 
 /// A fake apiserver that answers `route(method, path)` and records every
 /// request it was asked, body included.
-fn fake_apiserver(route: impl Fn(&str, &str) -> (u16, Value) + Send + Sync + 'static) -> (Client, Log) {
+fn fake_apiserver(
+    route: impl Fn(&str, &str) -> (u16, Value) + Send + Sync + 'static,
+) -> (Client, Log) {
     let log: Log = Arc::new(Mutex::new(Vec::new()));
     let seen = log.clone();
     let route = Arc::new(route);
@@ -65,11 +67,7 @@ fn fake_apiserver(route: impl Fn(&str, &str) -> (u16, Value) + Send + Sync + 'st
             let bytes = req.into_body().collect_bytes().await.unwrap_or_default();
             let body = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
             let (code, response) = route(&method, &path);
-            seen.lock().unwrap().push(Recorded {
-                method,
-                path,
-                body,
-            });
+            seen.lock().unwrap().push(Recorded { method, path, body });
             Ok::<_, std::convert::Infallible>(
                 http::Response::builder()
                     .status(code)
@@ -106,10 +104,7 @@ impl ManagedService for PruningService {
     }
 
     fn readiness_targets(&self) -> Vec<ReadinessTarget> {
-        vec![ReadinessTarget {
-            kind: "Deployment",
-            name: self.spec.child.clone(),
-        }]
+        vec![ReadinessTarget::new("Deployment", self.spec.child.clone())]
     }
 
     fn status_patch(&self, ready: &ReadyFacts) -> Value {
@@ -118,11 +113,11 @@ impl ManagedService for PruningService {
 
     /// The whole subject of this file: a target the spec no longer wants.
     fn prunes(&self) -> Vec<PruneTarget> {
-        vec![PruneTarget {
-            api_version: "networking.k8s.io/v1",
-            kind: "NetworkPolicy",
-            name: PRUNE_TARGET.to_string(),
-        }]
+        vec![PruneTarget::new(
+            "networking.k8s.io/v1",
+            "NetworkPolicy",
+            PRUNE_TARGET,
+        )]
     }
 }
 
@@ -234,7 +229,10 @@ async fn an_unserved_prune_api_still_reaches_the_status_write() {
         // about; answering it 201 keeps it out of the way without hiding it
         // from the request log.
         ("POST", p) if p.ends_with("/events") => (201, json!({ "metadata": { "name": "e" } })),
-        _ => (500, json!({ "kind": "Status", "status": "Failure", "code": 500 })),
+        _ => (
+            500,
+            json!({ "kind": "Status", "status": "Failure", "code": 500 }),
+        ),
     });
 
     // The reconcile's own return value is checked at the end, not here. What
@@ -289,8 +287,8 @@ async fn an_unserved_prune_api_still_reaches_the_status_write() {
 
     // The reconcile converged everything it could, so it asks to come back
     // rather than reporting an operator failure a restart could fix.
-    let action = action
-        .expect("an API the cluster does not serve is a cluster fact, not an operator error");
+    let action =
+        action.expect("an API the cluster does not serve is a cluster fact, not an operator error");
     assert!(
         format!("{action:?}").contains("requeue"),
         "an unavailable prune target requeues: {action:?}"
@@ -309,7 +307,10 @@ async fn a_served_prune_api_writes_no_block() {
         ("GET", p) if p.ends_with("/networkpolicies/pruned-policy") => served_but_absent(),
         ("PATCH", p) if p.ends_with("/pruningservices/pruned/status") => (200, cr_response()),
         ("POST", p) if p.ends_with("/events") => (201, json!({ "metadata": { "name": "e" } })),
-        _ => (500, json!({ "kind": "Status", "status": "Failure", "code": 500 })),
+        _ => (
+            500,
+            json!({ "kind": "Status", "status": "Failure", "code": 500 }),
+        ),
     });
 
     reconcile_once(client, subject(), leader())

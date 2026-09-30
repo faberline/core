@@ -77,7 +77,7 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
     }
 
     let mut cluster_delete_pending = false;
-    for target in cluster_children.iter().filter(|target| !target.desired) {
+    for target in cluster_children.iter().filter(|target| !target.desired()) {
         cluster_delete_pending |= prune_cluster_scoped_object(client, S::MANAGER, target).await?
             == ClusterPruneOutcome::DeleteRequested;
     }
@@ -91,7 +91,8 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
         .reconcile_plan(client.clone())
         .await
         .map_err(|error| Error::Plan(error.to_string()))?;
-    for child in plan.children {
+    let (children, context) = plan.into_parts();
+    for child in children {
         apply_object(client, &ns, S::MANAGER, child).await?;
     }
 
@@ -114,7 +115,9 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
             if prune_object(client, &ns, uid, &target).await? == PruneOutcome::Unavailable {
                 unavailable.push(format!(
                     "{} {}/{}",
-                    target.api_version, target.kind, target.name
+                    target.api_version(),
+                    target.kind(),
+                    target.name()
                 ));
             }
         }
@@ -123,14 +126,14 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
     // 2. Observe readiness for the service's declared targets.
     let mut ready = HashMap::new();
     for t in obj.readiness_targets() {
-        let r = ready_replicas(client, &ns, t.kind, &t.name).await?;
-        ready.insert(t.name, r);
+        let r = ready_replicas(client, &ns, t.kind(), t.name()).await?;
+        ready.insert(t.name().to_string(), r);
     }
 
     // 3. Write the status subresource (Merge avoids managed-field conflicts):
     // the service's status plus the conditions the application step stamps.
-    let ready = ReadyFacts { ready };
-    let status = status_patch(obj.as_ref(), &ready, &plan.context, &unavailable)?;
+    let ready = ReadyFacts::new(ready);
+    let status = status_patch(obj.as_ref(), &ready, &context, &unavailable)?;
 
     // Tell the CR's owner, once, that their edit was picked up (#2620): only
     // for a generation the operator has not converged yet.

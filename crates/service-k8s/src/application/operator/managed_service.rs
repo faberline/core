@@ -22,22 +22,54 @@ use crate::domain::condition::{Condition, ConditionFact};
 /// A workload to poll for `.status.readyReplicas` during reconcile.
 #[cfg(feature = "controller")]
 pub struct ReadinessTarget {
-    pub kind: &'static str,
-    pub name: String,
+    kind: &'static str,
+    name: String,
+}
+
+#[cfg(feature = "controller")]
+impl ReadinessTarget {
+    /// Poll the workload of `kind` (`StatefulSet`, `Deployment` or
+    /// `DaemonSet`) named `name` in the CR's namespace.
+    pub fn new(kind: &'static str, name: impl Into<String>) -> Self {
+        Self {
+            kind,
+            name: name.into(),
+        }
+    }
+
+    /// The workload kind.
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    /// The workload name; also the key of its count in [`ReadyFacts`].
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 /// Observed readiness handed to [`ManagedService::status_patch`]
 /// (workload name → `readyReplicas`).
 #[cfg(feature = "controller")]
 pub struct ReadyFacts {
-    pub ready: HashMap<String, i64>,
+    ready: HashMap<String, i64>,
 }
 
 #[cfg(feature = "controller")]
 impl ReadyFacts {
+    /// Readiness observed as workload name → `readyReplicas`.
+    pub fn new(ready: HashMap<String, i64>) -> Self {
+        Self { ready }
+    }
+
     /// Ready replicas for `name`, or 0 if the workload was absent.
     pub fn get(&self, name: &str) -> i64 {
         self.ready.get(name).copied().unwrap_or(0)
+    }
+
+    /// Every observed count, by workload name.
+    pub fn ready(&self) -> &HashMap<String, i64> {
+        &self.ready
     }
 }
 
@@ -46,8 +78,33 @@ impl ReadyFacts {
 /// only after children have been applied and readiness has been observed.
 #[cfg(feature = "controller")]
 pub struct ReconcilePlan {
-    pub children: Vec<serde_json::Value>,
-    pub context: serde_json::Value,
+    children: Vec<serde_json::Value>,
+    context: serde_json::Value,
+}
+
+#[cfg(feature = "controller")]
+impl ReconcilePlan {
+    /// The children to server-side-apply, and the context handed back to
+    /// [`ManagedService::status_patch_with_context`] and
+    /// [`ManagedService::conditions`].
+    pub fn new(children: Vec<serde_json::Value>, context: serde_json::Value) -> Self {
+        Self { children, context }
+    }
+
+    /// The children to server-side-apply.
+    pub fn children(&self) -> &[serde_json::Value] {
+        &self.children
+    }
+
+    /// The service's opaque context.
+    pub fn context(&self) -> &serde_json::Value {
+        &self.context
+    }
+
+    /// The children and the context, moved out.
+    pub fn into_parts(self) -> (Vec<serde_json::Value>, serde_json::Value) {
+        (self.children, self.context)
+    }
 }
 
 /// One service's contribution to the shared operator. Implemented on the CRD
@@ -80,12 +137,7 @@ pub trait ManagedService:
         _client: Client,
     ) -> impl Future<Output = anyhow::Result<ReconcilePlan>> + Send {
         let children = self.render();
-        async move {
-            Ok(ReconcilePlan {
-                children,
-                context: serde_json::Value::Null,
-            })
-        }
+        async move { Ok(ReconcilePlan::new(children, serde_json::Value::Null)) }
     }
 
     /// The workloads whose `.status.readyReplicas` feed [`Self::status_patch`].
@@ -172,22 +224,102 @@ pub trait ManagedService:
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg(feature = "controller")]
 pub struct PruneTarget {
-    pub api_version: &'static str,
-    pub kind: &'static str,
-    pub name: String,
+    api_version: &'static str,
+    kind: &'static str,
+    name: String,
+}
+
+#[cfg(feature = "controller")]
+impl PruneTarget {
+    /// The object of `api_version` and `kind` named `name` in the CR's
+    /// namespace.
+    pub fn new(api_version: &'static str, kind: &'static str, name: impl Into<String>) -> Self {
+        Self {
+            api_version,
+            kind,
+            name: name.into(),
+        }
+    }
+
+    /// The object's `apiVersion`, for example `networking.k8s.io/v1`.
+    pub fn api_version(&self) -> &'static str {
+        self.api_version
+    }
+
+    /// The object's kind.
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    /// The object's name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 /// One cluster-scoped child whose lifetime follows a namespaced CR.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg(feature = "controller")]
 pub struct ClusterScopedChild {
-    pub api_version: &'static str,
-    pub kind: &'static str,
-    pub name: String,
-    pub expected_labels: BTreeMap<String, String>,
-    /// `true` means the current spec renders the child. `false` means a prior
-    /// version may have rendered it and the controller must remove it.
-    pub desired: bool,
+    api_version: &'static str,
+    kind: &'static str,
+    name: String,
+    expected_labels: BTreeMap<String, String>,
+    desired: bool,
+}
+
+#[cfg(feature = "controller")]
+impl ClusterScopedChild {
+    /// The cluster-scoped object of `api_version` and `kind` named `name`.
+    /// `desired` is `true` when the current spec renders the child, and
+    /// `false` when a prior version may have rendered it and the controller
+    /// must remove it. It starts with no expected labels.
+    pub fn new(
+        api_version: &'static str,
+        kind: &'static str,
+        name: impl Into<String>,
+        desired: bool,
+    ) -> Self {
+        Self {
+            api_version,
+            kind,
+            name: name.into(),
+            expected_labels: BTreeMap::new(),
+            desired,
+        }
+    }
+
+    /// Adds labels the live object must carry before the controller deletes
+    /// it.
+    pub fn with_expected_labels(mut self, labels: BTreeMap<String, String>) -> Self {
+        self.expected_labels.extend(labels);
+        self
+    }
+
+    /// The object's `apiVersion`.
+    pub fn api_version(&self) -> &'static str {
+        self.api_version
+    }
+
+    /// The object's kind.
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    /// The object's name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The labels the live object must carry before it is deleted.
+    pub fn expected_labels(&self) -> &BTreeMap<String, String> {
+        &self.expected_labels
+    }
+
+    /// Whether the current spec renders the child.
+    pub fn desired(&self) -> bool {
+        self.desired
+    }
 }
 
 #[cfg(all(test, feature = "controller"))]

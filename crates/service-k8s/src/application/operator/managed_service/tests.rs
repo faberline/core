@@ -31,10 +31,7 @@ impl ManagedService for PureRenderService {
     }
 
     fn readiness_targets(&self) -> Vec<ReadinessTarget> {
-        vec![ReadinessTarget {
-            kind: "Deployment",
-            name: "pure-render".into(),
-        }]
+        vec![ReadinessTarget::new("Deployment", "pure-render")]
     }
 
     fn status_patch(&self, ready: &ReadyFacts) -> serde_json::Value {
@@ -57,14 +54,50 @@ async fn default_plan_and_status_preserve_existing_contract() {
         .reconcile_plan(inert_client())
         .await
         .expect("pure render plan");
-    assert_eq!(plan.children, expected);
-    assert!(plan.context.is_null());
+    assert_eq!(plan.children(), expected);
+    assert!(plan.context().is_null());
 
-    let ready = ReadyFacts {
-        ready: HashMap::from([("pure-render".into(), 2)]),
-    };
+    let ready = ReadyFacts::new(HashMap::from([("pure-render".into(), 2)]));
     assert_eq!(
         service.status_patch_with_context(&ready, &json!({ "ignored": true })),
         service.status_patch(&ready)
     );
+}
+
+#[test]
+fn constructors_keep_what_they_were_given() {
+    let target = ReadinessTarget::new("StatefulSet", "db-store");
+    assert_eq!((target.kind(), target.name()), ("StatefulSet", "db-store"));
+
+    let prune = PruneTarget::new("networking.k8s.io/v1", "NetworkPolicy", "db");
+    assert_eq!(
+        (prune.api_version(), prune.kind(), prune.name()),
+        ("networking.k8s.io/v1", "NetworkPolicy", "db")
+    );
+
+    let child = ClusterScopedChild::new(
+        "rbac.authorization.k8s.io/v1",
+        "ClusterRoleBinding",
+        "db.auth-delegator",
+        false,
+    );
+    assert!(child.expected_labels().is_empty());
+    assert!(!child.desired());
+    let child = child
+        .with_expected_labels(BTreeMap::from([("a".to_string(), "1".to_string())]))
+        .with_expected_labels(BTreeMap::from([("b".to_string(), "2".to_string())]));
+    assert_eq!(
+        child.expected_labels().keys().collect::<Vec<_>>(),
+        ["a", "b"]
+    );
+
+    let plan = ReconcilePlan::new(vec![json!({"kind": "Service"})], json!({"k": 1}));
+    let (children, context) = plan.into_parts();
+    assert_eq!(children, vec![json!({"kind": "Service"})]);
+    assert_eq!(context, json!({"k": 1}));
+
+    let ready = ReadyFacts::new(HashMap::from([("db-store".to_string(), 3)]));
+    assert_eq!(ready.get("db-store"), 3);
+    assert_eq!(ready.get("absent"), 0);
+    assert_eq!(ready.ready().len(), 1);
 }

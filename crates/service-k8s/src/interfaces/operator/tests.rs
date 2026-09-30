@@ -41,11 +41,7 @@ fn fake_apiserver(responses: Vec<(u16, Value)>) -> (Client, Arc<Mutex<Vec<String
 }
 
 fn np_target() -> service::PruneTarget {
-    service::PruneTarget {
-        api_version: "networking.k8s.io/v1",
-        kind: "NetworkPolicy",
-        name: "search".to_string(),
-    }
+    service::PruneTarget::new("networking.k8s.io/v1", "NetworkPolicy", "search")
 }
 
 fn live_policy(owner_uid: &str, controller: bool) -> Value {
