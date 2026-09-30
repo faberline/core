@@ -37,3 +37,6 @@ pub enum PutCondition {
     IfAbsent,
     IfVersion(ObjectVersion),
 }
+
+#[cfg(test)]
+mod tests;
