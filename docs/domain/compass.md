@@ -24,7 +24,8 @@ functions it instruments.
   string), a `DiagnosticCategory` (Syntax, Type, Names, Logic,
   Security, Style, Custom), a message, and `QuickFix`es made of `TextEdit`s.
 - **Checking** — a `Checker` lints one language; `CheckerRegistry` holds them.
-  `LintConfig` selects languages, path exclusions and a minimum severity;
+  `LintConfig` selects languages, path exclusions and a minimum severity
+  (private fields: start from `Default` and use the `with_*` builders);
   `FileResult` is one file's diagnostics. `detect_sql_injection` is a
   standalone security check over source text.
 - **Outline** — `FunctionDef` is one callable definition (name, `FunctionKind`,
@@ -129,7 +130,7 @@ function.
   allows them.
 - **Tracked for P2:** `CodeGenerator` takes `serde_json::Value` to avoid a
   circular crate dependency. Public fields on `Position`, `Range`, `TextEdit`,
-  `Diagnostic`, `LintConfig` and the `SpecIR` structs. Bare identities:
+  `Diagnostic` and the `SpecIR` structs. Bare identities:
   `PathBuf` as file identity, `NodeId` with a public `.0`, and two unrelated
   `SymbolId` types. The semantic model's `ScopeId` and `SymbolId` keep their
   value private (`new`/`get`), and the rule code is a `RuleCode`.
