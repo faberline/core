@@ -73,7 +73,7 @@ impl GcsSink {
     }
 
     pub fn get_object(&self, key: &str) -> Result<Vec<u8>> {
-        Ok(self.store.get(key.trim_start_matches('/'))?.bytes)
+        Ok(self.store.get(key.trim_start_matches('/'))?.into_parts().1)
     }
 
     pub fn delete_object(&self, key: &str) -> Result<()> {
@@ -87,11 +87,10 @@ impl GcsSink {
             .into_iter()
             .map(|meta| {
                 let updated = meta
-                    .updated
-                    .as_deref()
+                    .updated()
                     .context("GCS object metadata lacks updated time")?;
                 Ok((
-                    meta.key,
+                    meta.key().to_string(),
                     DateTime::parse_from_rfc3339(updated)?.with_timezone(&Utc),
                 ))
             })

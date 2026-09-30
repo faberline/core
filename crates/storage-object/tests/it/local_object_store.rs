@@ -12,25 +12,25 @@ fn local_store_preserves_bytes_versions_and_conditional_puts() {
             PutCondition::IfAbsent,
         )
         .unwrap();
-    assert_eq!(store.get(&first.key).unwrap().bytes, b"first");
-    assert_eq!(store.head(&first.key).unwrap(), first);
+    assert_eq!(store.get(first.key()).unwrap().bytes(), b"first");
+    assert_eq!(store.head(first.key()).unwrap(), first);
     assert!(matches!(
-        store.put(&first.key, b"bad", "text/plain", PutCondition::IfAbsent),
+        store.put(first.key(), b"bad", "text/plain", PutCondition::IfAbsent),
         Err(ObjectStoreError::PreconditionFailed { .. })
     ));
     let second = store
         .put(
-            &first.key,
+            first.key(),
             b"second",
             "application/octet-stream",
-            PutCondition::IfVersion(first.version.clone()),
+            PutCondition::IfVersion(first.version().clone()),
         )
         .unwrap();
-    assert_ne!(first.version, second.version);
+    assert_ne!(first.version(), second.version());
     assert_eq!(store.list("segments/logs").unwrap(), vec![second.clone()]);
-    store.delete(&second.key).unwrap();
+    store.delete(second.key()).unwrap();
     assert!(matches!(
-        store.get(&second.key),
+        store.get(second.key()),
         Err(ObjectStoreError::NotFound { .. })
     ));
 }

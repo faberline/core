@@ -18,7 +18,12 @@ adapter and implements the port itself.
   local store, the object generation for GCS, and the version id, else the
   ETag, for S3.
 - **Object metadata** — `ObjectMeta`: key, size, content type, version, and
-  the optional ETag and update time. `Object` is metadata plus bytes.
+  the optional ETag and update time. The fields are private:
+  `ObjectMeta::new(key, size, content_type, version)` builds it, with
+  `with_etag` and `with_updated` for the optional fields, and getters named
+  after the fields read it. `Object` is metadata plus bytes:
+  `Object::new(meta, bytes)`, `meta()`, `bytes()` and `into_parts()`. The
+  serde shape of `ObjectMeta` is unchanged.
 - **Put condition** — `PutCondition`: `Any`, `IfAbsent` or
   `IfVersion(version)`.
 - **Object-store error** — `ObjectStoreError` (thiserror): `NotFound`,
@@ -57,8 +62,5 @@ no old module path needs a facade.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. Network, file-system and environment
+- **Checker exceptions:** None. Network, file-system and environment
   access are the job of an infrastructure crate.
-- **Tracked for P2:** `ObjectMeta` and `Object` public fields, built with
-  struct literals by sift (ADR D2). The port already returns a typed error,
-  not `anyhow`.

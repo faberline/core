@@ -42,14 +42,12 @@ impl ObjectStore for MemoryStore {
             return Err(ObjectStoreError::PreconditionFailed { key: key.into() });
         }
         objects.insert(key.into(), (bytes.to_vec(), content_type.into()));
-        Ok(ObjectMeta {
-            key: key.into(),
-            size: bytes.len() as u64,
-            content_type: content_type.into(),
-            version: ObjectVersion::new(format!("v-{}", bytes.len())),
-            etag: None,
-            updated: None,
-        })
+        Ok(ObjectMeta::new(
+            key,
+            bytes.len() as u64,
+            content_type,
+            ObjectVersion::new(format!("v-{}", bytes.len())),
+        ))
     }
 
     fn get(&self, key: &str) -> storage_object::Result<Object> {
@@ -59,21 +57,17 @@ impl ObjectStore for MemoryStore {
             .get(key)
             .cloned()
             .ok_or_else(|| ObjectStoreError::NotFound { key: key.into() })?;
-        Ok(Object {
-            meta: ObjectMeta {
-                key: key.into(),
-                size: bytes.len() as u64,
-                content_type,
-                version: ObjectVersion::new(format!("v-{}", bytes.len())),
-                etag: None,
-                updated: None,
-            },
-            bytes,
-        })
+        let meta = ObjectMeta::new(
+            key,
+            bytes.len() as u64,
+            content_type,
+            ObjectVersion::new(format!("v-{}", bytes.len())),
+        );
+        Ok(Object::new(meta, bytes))
     }
 
     fn head(&self, key: &str) -> storage_object::Result<ObjectMeta> {
-        self.get(key).map(|object| object.meta)
+        self.get(key).map(|object| object.into_parts().0)
     }
 
     fn list(&self, prefix: &str) -> storage_object::Result<Vec<ObjectMeta>> {
@@ -83,13 +77,13 @@ impl ObjectStore for MemoryStore {
             .unwrap()
             .iter()
             .filter(|(key, _)| key.starts_with(prefix))
-            .map(|(key, (bytes, content_type))| ObjectMeta {
-                key: key.clone(),
-                size: bytes.len() as u64,
-                content_type: content_type.clone(),
-                version: ObjectVersion::new(format!("v-{}", bytes.len())),
-                etag: None,
-                updated: None,
+            .map(|(key, (bytes, content_type))| {
+                ObjectMeta::new(
+                    key.clone(),
+                    bytes.len() as u64,
+                    content_type.clone(),
+                    ObjectVersion::new(format!("v-{}", bytes.len())),
+                )
             })
             .collect())
     }

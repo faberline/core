@@ -26,7 +26,7 @@ impl ImmutableObjectStore for ObjectStoreAdapter {
             Ok(_) => Ok(()),
             Err(ObjectStoreError::PreconditionFailed { .. }) => {
                 let existing = self.store.get(key)?;
-                if existing.bytes != bytes {
+                if existing.bytes() != bytes {
                     return Err(SegmentError::ImmutableObjectChanged {
                         key: key.to_string(),
                     });
@@ -38,7 +38,7 @@ impl ImmutableObjectStore for ObjectStoreAdapter {
     }
 
     fn get(&self, key: &str) -> Result<Vec<u8>> {
-        Ok(self.store.get(key)?.bytes)
+        Ok(self.store.get(key)?.into_parts().1)
     }
 
     fn delete(&self, key: &str) -> Result<()> {

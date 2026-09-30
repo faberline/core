@@ -151,14 +151,13 @@ impl ObjectStore for S3ObjectStore {
                     .send()
                     .await
                     .map_err(|error| Self::map_error(&error_key, error))?;
-                Ok(ObjectMeta {
-                    key: result_key,
-                    size: body.len() as u64,
+                Ok(ObjectMeta::new(
+                    result_key,
+                    body.len() as u64,
                     content_type,
-                    version: Self::version(response.version_id(), response.e_tag()),
-                    etag: response.e_tag().map(str::to_string),
-                    updated: None,
-                })
+                    Self::version(response.version_id(), response.e_tag()),
+                )
+                .with_etag(response.e_tag().map(str::to_string)))
             })
         })
     }
@@ -194,17 +193,12 @@ impl ObjectStore for S3ObjectStore {
                     })?
                     .into_bytes()
                     .to_vec();
-                Ok(Object {
-                    meta: ObjectMeta {
-                        key: result_key,
-                        size,
-                        content_type,
-                        version,
-                        etag,
-                        updated,
-                    },
+                Ok(Object::new(
+                    ObjectMeta::new(result_key, size, content_type, version)
+                        .with_etag(etag)
+                        .with_updated(updated),
                     bytes,
-                })
+                ))
             })
         })
     }
@@ -223,17 +217,16 @@ impl ObjectStore for S3ObjectStore {
                     .send()
                     .await
                     .map_err(|error| Self::map_error(&error_key, error))?;
-                Ok(ObjectMeta {
-                    key: result_key,
-                    size: response.content_length().unwrap_or_default().max(0) as u64,
-                    content_type: response
+                Ok(ObjectMeta::new(
+                    result_key,
+                    response.content_length().unwrap_or_default().max(0) as u64,
+                    response
                         .content_type()
-                        .unwrap_or("application/octet-stream")
-                        .to_string(),
-                    version: Self::version(response.version_id(), response.e_tag()),
-                    etag: response.e_tag().map(str::to_string),
-                    updated: response.last_modified().map(ToString::to_string),
-                })
+                        .unwrap_or("application/octet-stream"),
+                    Self::version(response.version_id(), response.e_tag()),
+                )
+                .with_etag(response.e_tag().map(str::to_string))
+                .with_updated(response.last_modified().map(ToString::to_string)))
             })
         })
     }
@@ -279,21 +272,23 @@ impl ObjectStore for S3ObjectStore {
                                 .to_string()
                         };
                         let etag = object.e_tag().map(str::to_string);
-                        objects.push(ObjectMeta {
-                            key,
-                            size: object.size().unwrap_or_default().max(0) as u64,
-                            content_type: "application/octet-stream".to_string(),
-                            version: Self::version(None, object.e_tag()),
-                            etag,
-                            updated: object.last_modified().map(ToString::to_string),
-                        });
+                        objects.push(
+                            ObjectMeta::new(
+                                key,
+                                object.size().unwrap_or_default().max(0) as u64,
+                                "application/octet-stream",
+                                Self::version(None, object.e_tag()),
+                            )
+                            .with_etag(etag)
+                            .with_updated(object.last_modified().map(ToString::to_string)),
+                        );
                     }
                     continuation = response.next_continuation_token().map(str::to_string);
                     if !response.is_truncated().unwrap_or(false) {
                         break;
                     }
                 }
-                objects.sort_by(|left, right| left.key.cmp(&right.key));
+                objects.sort_by(|left, right| left.key().cmp(right.key()));
                 Ok(objects)
             })
         })
