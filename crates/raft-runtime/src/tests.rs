@@ -3,6 +3,8 @@ use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+mod peer_wire_golden;
+
 /// A trivial state machine: applies `u64` commands into a log, tracks the
 /// applied index, snapshots/restores the whole log.
 struct CounterSm {

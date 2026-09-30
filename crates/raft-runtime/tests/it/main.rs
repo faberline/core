@@ -27,3 +27,4 @@ mod snapshot_generations;
 mod snapshot_install_safety;
 mod snapshot_preflight_release;
 mod undeliverable_messages;
+mod wire_golden;
