@@ -95,11 +95,13 @@ runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
+- **Checker exceptions (long-term):**
   - B2 (`schemars`): `ReplicaLayerPolicy`, `ShardSplitPolicy`, `Condition`,
-    `ProbeTiming` and `LifecyclePolicy` derive `JsonSchema` because CRD specs
-    and statuses embed them. P2 gives the CRD wire shapes their own schema
-    types in interfaces.
+    `ProbeTiming` and `LifecyclePolicy` derive `JsonSchema`, a compile-time
+    description of the same serde wire shape. Downstream CRD specs and
+    statuses embed them as-is (for example `Vec<service_k8s::Condition>` in
+    lumen and tape), so their generated schemas must not change, and an
+    interfaces copy would duplicate the wire contract. The derive does no I/O.
 - **Tracked for P2:** public fields on `Election`, `InstanceScope`,
   `ReadyFacts`, `ReadinessTarget`, `PruneTarget`, `ClusterScopedChild`,
   `ReconcilePlan`, `RenderCtx`, the render `*Plan` types, `Condition`,

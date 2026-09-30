@@ -444,7 +444,7 @@ paths = [
   "crates/service-k8s/src/domain/condition.rs",
   "crates/service-k8s/src/domain/lifecycle.rs",
 ]
-reason = "Moved as-is in P1: ReplicaLayerPolicy, ShardSplitPolicy, Condition, ProbeTiming and LifecyclePolicy derive JsonSchema because service CRD specs and statuses embed them directly. P2: keep these as plain domain values and give the CRD wire shapes their own JsonSchema types in interfaces, converting at the boundary."
+reason = "schemars::JsonSchema is a compile-time description of the same serde wire shape. ReplicaLayerPolicy, ShardSplitPolicy, Condition, ProbeTiming and LifecyclePolicy are embedded as-is in downstream CRD specs and statuses (for example lumen crd.rs and tape crd.rs `Vec<service_k8s::Condition>`), whose generated schemas must not change, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
 
 [[exceptions]]
 rule = "B3"
