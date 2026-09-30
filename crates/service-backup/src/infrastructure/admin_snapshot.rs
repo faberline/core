@@ -5,10 +5,11 @@ mod snapshot_endpoint;
 #[cfg(test)]
 mod tests;
 mod transport;
+mod transport_config;
 
 pub(crate) use snapshot_endpoint::AdminSnapshotEndpoint;
 pub use transport::{
     AdminSnapshotDiagnostic, AdminSnapshotOperation, AdminSnapshotRequest,
-    AdminSnapshotRequestError, AdminSnapshotTransport, AdminSnapshotTransportConfig,
-    AdminSnapshotTransportError,
+    AdminSnapshotRequestError, AdminSnapshotTransport, AdminSnapshotTransportError,
 };
+pub use transport_config::AdminSnapshotTransportConfig;

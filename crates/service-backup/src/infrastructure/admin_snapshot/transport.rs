@@ -1,10 +1,7 @@
-use std::{fmt, sync::Arc, time::Duration};
+use std::{fmt, sync::Arc};
 
+use super::transport_config::AdminSnapshotTransportConfig;
 use crate::domain::BearerTokenSource;
-
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-const OPERATION_TIMEOUT: Duration = Duration::from_secs(2 * 60 * 60);
-const BACKUP_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// The standard operation performed by [`AdminSnapshotTransport`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,83 +54,6 @@ impl AdminSnapshotOperation {
             Self::Backup => "backup",
             Self::Restore => "restore",
         }
-    }
-}
-
-/// Shared transport limits. Products may lower these values but do not need to
-/// own request, redirect, retry, idle-read, or diagnostic-body control flow.
-///
-/// Start from [`Default`] (10 s connect, 2 h operation, 30 s idle read, 8 KiB
-/// diagnostic body) and change one limit with a `with_*` builder:
-///
-/// ```
-/// use std::time::Duration;
-/// use service_backup::AdminSnapshotTransportConfig;
-///
-/// let config = AdminSnapshotTransportConfig::default()
-///     .with_operation_timeout(Duration::from_secs(60))
-///     .with_max_diagnostic_bytes(1024);
-/// assert_eq!(config.operation_timeout(), Duration::from_secs(60));
-/// assert_eq!(config.max_diagnostic_bytes(), 1024);
-/// ```
-#[derive(Clone, Copy, Debug)]
-pub struct AdminSnapshotTransportConfig {
-    connect_timeout: Duration,
-    operation_timeout: Duration,
-    response_idle_timeout: Duration,
-    max_diagnostic_bytes: usize,
-}
-
-impl Default for AdminSnapshotTransportConfig {
-    fn default() -> Self {
-        Self {
-            connect_timeout: CONNECT_TIMEOUT,
-            operation_timeout: OPERATION_TIMEOUT,
-            response_idle_timeout: BACKUP_IDLE_TIMEOUT,
-            max_diagnostic_bytes: 8 * 1024,
-        }
-    }
-}
-
-impl AdminSnapshotTransportConfig {
-    /// How long establishing the TCP/TLS connection may take.
-    pub fn with_connect_timeout(mut self, connect_timeout: Duration) -> Self {
-        self.connect_timeout = connect_timeout;
-        self
-    }
-
-    /// The bound on one whole request, from send to the last body byte.
-    pub fn with_operation_timeout(mut self, operation_timeout: Duration) -> Self {
-        self.operation_timeout = operation_timeout;
-        self
-    }
-
-    /// How long the transport waits for the next response chunk.
-    pub fn with_response_idle_timeout(mut self, response_idle_timeout: Duration) -> Self {
-        self.response_idle_timeout = response_idle_timeout;
-        self
-    }
-
-    /// How many bytes of a non-200 response body a diagnostic keeps.
-    pub fn with_max_diagnostic_bytes(mut self, max_diagnostic_bytes: usize) -> Self {
-        self.max_diagnostic_bytes = max_diagnostic_bytes;
-        self
-    }
-
-    pub fn connect_timeout(&self) -> Duration {
-        self.connect_timeout
-    }
-
-    pub fn operation_timeout(&self) -> Duration {
-        self.operation_timeout
-    }
-
-    pub fn response_idle_timeout(&self) -> Duration {
-        self.response_idle_timeout
-    }
-
-    pub fn max_diagnostic_bytes(&self) -> usize {
-        self.max_diagnostic_bytes
     }
 }
 
@@ -290,7 +210,7 @@ impl AdminSnapshotTransport {
         config: AdminSnapshotTransportConfig,
     ) -> std::result::Result<Self, AdminSnapshotTransportError> {
         let client = reqwest::Client::builder()
-            .connect_timeout(config.connect_timeout)
+            .connect_timeout(config.connect_timeout())
             .redirect(reqwest::redirect::Policy::none())
             .retry(reqwest::retry::never())
             .build()
@@ -299,7 +219,10 @@ impl AdminSnapshotTransport {
     }
 
     #[cfg(test)]
-    pub(super) fn for_tests(operation: Duration, backup_idle: Duration) -> Self {
+    pub(super) fn for_tests(
+        operation: std::time::Duration,
+        backup_idle: std::time::Duration,
+    ) -> Self {
         Self::with_config(
             AdminSnapshotTransportConfig::default()
                 .with_operation_timeout(operation)
@@ -316,7 +239,7 @@ impl AdminSnapshotTransport {
         policy: &AdminSnapshotRequest,
     ) -> std::result::Result<Vec<u8>, AdminSnapshotRequestError> {
         let operation = AdminSnapshotOperation::Backup;
-        let result = tokio::time::timeout(self.config.operation_timeout, async {
+        let result = tokio::time::timeout(self.config.operation_timeout(), async {
             let url = format!("{}/admin/backup", base_url.trim_end_matches('/'));
             let mut request = self.client.get(url).headers(policy.headers.clone());
             match &policy.credential {
@@ -338,11 +261,11 @@ impl AdminSnapshotTransport {
             if response.status() != reqwest::StatusCode::OK {
                 let status = response.status().as_u16();
                 let mut body = Vec::new();
-                let limit = self.config.max_diagnostic_bytes;
+                let limit = self.config.max_diagnostic_bytes();
                 let mut truncated = false;
                 loop {
                     let chunk =
-                        tokio::time::timeout(self.config.response_idle_timeout, response.chunk())
+                        tokio::time::timeout(self.config.response_idle_timeout(), response.chunk())
                             .await
                             .map_err(|_| AdminSnapshotRequestError::ResponseReadFailed {
                                 operation,
@@ -360,7 +283,7 @@ impl AdminSnapshotTransport {
                     body.extend_from_slice(&chunk);
                     if body.len() == limit {
                         let more = tokio::time::timeout(
-                            self.config.response_idle_timeout,
+                            self.config.response_idle_timeout(),
                             response.chunk(),
                         )
                         .await
@@ -382,7 +305,7 @@ impl AdminSnapshotTransport {
             let mut payload = Vec::new();
             loop {
                 let chunk =
-                    tokio::time::timeout(self.config.response_idle_timeout, response.chunk())
+                    tokio::time::timeout(self.config.response_idle_timeout(), response.chunk())
                         .await
                         .map_err(|_| AdminSnapshotRequestError::ResponseReadFailed { operation })?
                         .map_err(|_| AdminSnapshotRequestError::ResponseReadFailed { operation })?;
@@ -416,7 +339,7 @@ impl AdminSnapshotTransport {
         snapshot: &[u8],
     ) -> std::result::Result<(), AdminSnapshotTransportError> {
         let operation = AdminSnapshotOperation::Restore;
-        tokio::time::timeout(self.config.operation_timeout, async {
+        tokio::time::timeout(self.config.operation_timeout(), async {
             let url = format!("{}/admin/restore", base_url.trim_end_matches('/'));
             let mut request = self
                 .client
