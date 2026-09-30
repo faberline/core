@@ -27,7 +27,7 @@ pub struct CommentOptions {
     /// Optional operator/user verification note. When empty, a standard
     /// "verification failed after closure" note is used.
     pub message: Option<String>,
-    /// Override the target repo (`owner/name`); defaults to `tool.repo`.
+    /// Override the target repo (`owner/name`); defaults to `tool.repo()`.
     pub repo: Option<String>,
     /// Print the comment request without changing GitHub state.
     pub dry_run: bool,

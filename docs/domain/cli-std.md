@@ -24,7 +24,9 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
 ## Model
 
 - **ToolInfo** — the calling binary's identity and build provenance: project,
-  repo, target, version, git sha and built-at, all static strings. It derives
+  repo, target, version, git sha and built-at, all static strings. A binary
+  builds it with the `const fn` `ToolInfo::new` and reads it through getters
+  of the same names. It derives
   the issue label `app:<project>`, the release tag prefix `<project>@`, the
   release asset `<project>-<target>.tar.gz` and the binary's path inside it.
 - **llm topic (v1)** — `llm::Topic`: a static help topic with an id, a summary
@@ -169,9 +171,9 @@ jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
   no exception.
 - **Tracked for P2:**
   - Public fields built with struct literals (ADR D2):
-    - `ToolInfo`, `llm::Topic`, `upgrade::Options` and the issue option
-      structs, in the CLIs of beam, cap, courier, defer, jet, keep, loom,
-      lumen, mamba, mesh, pgpool, relay, sift, tape and vat;
+    - `llm::Topic`, `upgrade::Options` and the issue option structs, in the
+      CLIs of beam, cap, courier, defer, jet, keep, loom, lumen, mamba, mesh,
+      pgpool, relay, sift, tape and vat;
     - `SectionedTopic` and `TopicSection`, in tape;
     - the v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, in lumen.
   - `anyhow` in public signatures, including the `CliModule::execute` port

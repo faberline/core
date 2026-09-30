@@ -5,7 +5,7 @@ use crate::ToolInfo;
 
 /// The repo to file against: `--repo` else the tool's default.
 pub fn resolve_repo<'a>(tool: &'a ToolInfo, repo: Option<&'a str>) -> &'a str {
-    repo.unwrap_or(tool.repo)
+    repo.unwrap_or(tool.repo())
 }
 
 /// Split `"owner/name"` into its two path segments for courier's

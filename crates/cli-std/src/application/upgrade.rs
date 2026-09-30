@@ -105,7 +105,7 @@ pub fn decide_action(current: &Version, selected: &Version, force: bool) -> Acti
 #[cfg(any(feature = "online", test))]
 fn check_next_command(tool: &ToolInfo, current: &Version, selected: &Version) -> String {
     if selected > current {
-        format!("{} upgrade", tool.project)
+        format!("{} upgrade", tool.project())
     } else {
         "done".to_string()
     }
@@ -123,17 +123,17 @@ pub(crate) async fn run<A: ReleaseSource>(
     open: impl FnOnce() -> Result<A, RemoteError>,
 ) -> Result<()> {
     let prefix = tool.tag_prefix();
-    let current = Version::parse(tool.version).context("parse current version")?;
+    let current = Version::parse(tool.version()).context("parse current version")?;
     let api = open()?;
 
-    let tags = list_release_tags(&api, tool.repo).await?;
+    let tags = list_release_tags(&api, tool.repo()).await?;
     let Some((tag, selected)) = select_version(&tags, &prefix, opts.tag.as_deref()) else {
         if opts.check && opts.tag.is_none() {
             println!("current: {current}");
             println!("latest:  none");
             println!(
                 "→ no stable {} release found (scanned {} tags)",
-                tool.project,
+                tool.project(),
                 tags.len()
             );
             println!("next: done");
@@ -142,12 +142,12 @@ pub(crate) async fn run<A: ReleaseSource>(
         match opts.tag.as_deref() {
             Some(t) => bail!(
                 "no {} release matching `{t}` (scanned {} tags)",
-                tool.project,
+                tool.project(),
                 tags.len()
             ),
             None => bail!(
                 "no stable {} release found (scanned {} tags)",
-                tool.project,
+                tool.project(),
                 tags.len()
             ),
         }
@@ -159,7 +159,7 @@ pub(crate) async fn run<A: ReleaseSource>(
         println!(
             "{}",
             if selected > current {
-                format!("→ run `{} upgrade` to update", tool.project)
+                format!("→ run `{} upgrade` to update", tool.project())
             } else {
                 "→ up to date".to_string()
             }
@@ -175,9 +175,13 @@ pub(crate) async fn run<A: ReleaseSource>(
     }
 
     let asset = tool.asset_name();
-    let (tar_url, sha_url) = asset_urls(&api, tool.repo, &tag, &asset).await?;
+    let (tar_url, sha_url) = asset_urls(&api, tool.repo(), &tag, &asset).await?;
 
-    if !opts.yes && !prompt.confirm(&format!("upgrade {} {current} → {selected}?", tool.project))?
+    if !opts.yes
+        && !prompt.confirm(&format!(
+            "upgrade {} {current} → {selected}?",
+            tool.project()
+        ))?
     {
         println!("aborted");
         println!("next: done");
@@ -197,7 +201,7 @@ pub(crate) async fn run<A: ReleaseSource>(
     }
 
     let bin = extract_binary(&tar_bytes, &tool.inner_binary_path())?;
-    installer.install_over_self(&bin, &format!("{}-upgrade", tool.project))?;
+    installer.install_over_self(&bin, &format!("{}-upgrade", tool.project()))?;
     println!("upgraded {current} → {selected}");
     println!("next: done");
     Ok(())
@@ -207,7 +211,7 @@ pub(crate) async fn run<A: ReleaseSource>(
 #[cfg(not(feature = "online"))]
 pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
     if opts.check {
-        println!("current: {}", tool.version);
+        println!("current: {}", tool.version());
         println!("latest:  unavailable (this build has no `online` feature)");
         println!("→ rebuild with self-update support to query GitHub releases");
         println!("next: done");
@@ -215,7 +219,7 @@ pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
     }
     anyhow::bail!(
         "this {} build was compiled without self-update support (the `online` feature)",
-        tool.project
+        tool.project()
     )
 }
 
@@ -293,26 +297,9 @@ mod tests {
     #[test]
     fn check_next_command_prefers_upgrade_only_when_newer() {
         let current = Version::new(0, 4, 11);
+        assert_eq!(check_next_command(&TOOL, &current, &current), "done");
         assert_eq!(
-            check_next_command(
-                &ToolInfo {
-                    version: "0.4.11",
-                    ..TOOL
-                },
-                &current,
-                &current
-            ),
-            "done"
-        );
-        assert_eq!(
-            check_next_command(
-                &ToolInfo {
-                    version: "0.4.11",
-                    ..TOOL
-                },
-                &current,
-                &Version::new(0, 4, 12)
-            ),
+            check_next_command(&TOOL, &current, &Version::new(0, 4, 12)),
             "lumen upgrade"
         );
     }
@@ -337,12 +324,12 @@ mod tests {
         assert!(extract_binary(&gz, "lumen-t/other").is_err());
     }
 
-    const TOOL: ToolInfo = ToolInfo {
-        project: "lumen",
-        repo: "faberline/lumen",
-        target: "aarch64-apple-darwin",
-        version: "0.4.11",
-        git_sha: "abc1234",
-        built_at: "1700000000",
-    };
+    const TOOL: ToolInfo = ToolInfo::new(
+        "lumen",
+        "faberline/lumen",
+        "aarch64-apple-darwin",
+        "0.4.11",
+        "abc1234",
+        "1700000000",
+    );
 }

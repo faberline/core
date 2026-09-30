@@ -16,14 +16,14 @@ use crate::domain::release::{InstallError, ReleaseSource, SelfInstall};
 use crate::domain::remote::RemoteError;
 use crate::ToolInfo;
 
-const TOOL: ToolInfo = ToolInfo {
-    project: "lumen",
-    repo: "faberline/lumen",
-    target: "aarch64-apple-darwin",
-    version: "0.4.11",
-    git_sha: "abc1234",
-    built_at: "1700000000",
-};
+const TOOL: ToolInfo = ToolInfo::new(
+    "lumen",
+    "faberline/lumen",
+    "aarch64-apple-darwin",
+    "0.4.11",
+    "abc1234",
+    "1700000000",
+);
 
 struct Access {
     courier: Option<&'static str>,

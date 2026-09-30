@@ -12,7 +12,7 @@ use crate::ToolInfo;
 /// install path through a clear error; `--check` still degrades clearly.
 pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
     use_case::run(tool, opts, &TerminalPrompt, &SelfReplace, || {
-        HttpClient::new(format!("{}-upgrade/{}", tool.project, tool.version))
+        HttpClient::new(format!("{}-upgrade/{}", tool.project(), tool.version()))
     })
     .await
 }

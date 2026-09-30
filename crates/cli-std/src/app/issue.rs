@@ -36,5 +36,5 @@ pub async fn view(tool: &ToolInfo, number: u64) -> Result<()> {
 
 /// The client every issue verb sends with: user agent `<project>-issue/<version>`.
 fn client(tool: &ToolInfo) -> Result<HttpClient, RemoteError> {
-    HttpClient::new(format!("{}-issue/{}", tool.project, tool.version))
+    HttpClient::new(format!("{}-issue/{}", tool.project(), tool.version()))
 }

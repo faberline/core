@@ -51,7 +51,7 @@ where
     let api = open()?;
 
     let v: serde_json::Value = if let Some(courier_url) = access.courier_url() {
-        let (owner, name) = split_repo_owner_name(tool.repo)?;
+        let (owner, name) = split_repo_owner_name(tool.repo())?;
         let mut q = format!("label:\"{label}\"");
         if let Some(text) = opts.query.as_deref() {
             if !text.trim().is_empty() {
@@ -63,7 +63,7 @@ where
         api.courier_get_json(&url, "courier issue search response")
             .await?
     } else {
-        let mut q = format!("repo:{} is:issue label:\"{}\"", tool.repo, label);
+        let mut q = format!("repo:{} is:issue label:\"{}\"", tool.repo(), label);
         if opts.state != "all" {
             q.push_str(&format!(" state:{}", opts.state));
         }

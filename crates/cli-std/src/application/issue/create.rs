@@ -32,7 +32,7 @@ pub struct CreateOptions {
     pub message: Option<String>,
     /// Optional running node to enrich the report from (`/version`+`/healthz`).
     pub url: Option<String>,
-    /// Override the target repo (`owner/name`); defaults to `tool.repo`.
+    /// Override the target repo (`owner/name`); defaults to `tool.repo()`.
     pub repo: Option<String>,
     pub label: Vec<String>,
     pub dry_run: bool,

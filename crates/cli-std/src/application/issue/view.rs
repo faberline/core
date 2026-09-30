@@ -28,11 +28,11 @@ where
     let api = open()?;
 
     let v: serde_json::Value = if let Some(courier_url) = access.courier_url() {
-        let (owner, name) = split_repo_owner_name(tool.repo)?;
+        let (owner, name) = split_repo_owner_name(tool.repo())?;
         let url = courier_view_url(&courier_url, owner, name, number);
         api.courier_get_json(&url, "courier issue response").await?
     } else {
-        let url = github_view_url(tool.repo, number);
+        let url = github_view_url(tool.repo(), number);
         api.get_json(&url, "issue response").await?
     };
 

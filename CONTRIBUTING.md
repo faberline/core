@@ -1457,7 +1457,8 @@ Implementation notes not obvious from the signature:
 The logic for all three lives in the shared **`crates/cli-std`** crate (`cli_std`),
 which is **clap-agnostic**: each CLI keeps its own clap registration — so it owns
 the convention's flag shape (`--topic`, not a positional) — and delegates the
-behavior to the crate, parameterized by a `cli_std::ToolInfo` it fills from its
+behavior to the crate, parameterized by a `cli_std::ToolInfo` it builds with
+`ToolInfo::new` from its
 own `build.rs` stamps (project, repo, target triple, version, git sha — emit
 them with `crates/build-stamp`'s `stamp("<PREFIX>")`, not a hand-rolled
 `build.rs`). A tool

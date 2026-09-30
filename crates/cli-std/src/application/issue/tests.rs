@@ -9,14 +9,14 @@ use crate::domain::issue::payload::{comment_payload, issue_payload};
 use crate::domain::issue::url::prefilled_url;
 use crate::ToolInfo;
 
-const TOOL: ToolInfo = ToolInfo {
-    project: "lumen",
-    repo: "faberline/lumen",
-    target: "aarch64-apple-darwin",
-    version: "0.4.3",
-    git_sha: "abc1234",
-    built_at: "1700000000",
-};
+const TOOL: ToolInfo = ToolInfo::new(
+    "lumen",
+    "faberline/lumen",
+    "aarch64-apple-darwin",
+    "0.4.3",
+    "abc1234",
+    "1700000000",
+);
 
 #[test]
 fn diagnostics_and_body() {
