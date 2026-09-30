@@ -47,7 +47,7 @@ pub use domain::error::argus_error::ArgusError;
 pub use domain::lint::checker::Checker;
 pub use domain::lint::registry::CheckerRegistry;
 pub use domain::syntax::language::Language;
-pub use domain::syntax::parsed_file::ParsedFile;
+pub use domain::syntax::parsed_file::{NodeRange, ParsedFile};
 pub use infrastructure::codegen::traits::{
     CodeGenerator, GenContext, GenError, GenResult, GeneratedCode, TechStack,
 };

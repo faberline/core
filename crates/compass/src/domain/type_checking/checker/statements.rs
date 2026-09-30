@@ -1,6 +1,7 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use tree_sitter::Node;
 
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
 use crate::domain::type_checking::checker::TypeChecker;
 use crate::domain::type_system::annotation::parse_type_annotation;
 use crate::domain::type_system::ty::Type;
@@ -20,7 +21,7 @@ impl<'a> TypeChecker<'a> {
 
                 if !self.is_assignable(&expected, &value_type) {
                     self.diagnostics.push(Diagnostic::error(
-                        Range::from_node(&value),
+                        value.to_range(),
                         "TC001",
                         DiagnosticCategory::Type,
                         format!(
@@ -58,7 +59,7 @@ impl<'a> TypeChecker<'a> {
         if !expected_return.is_unknown() && !expected_return.is_any() {
             if !self.is_assignable(&expected_return, &actual_return) {
                 self.diagnostics.push(Diagnostic::error(
-                    Range::from_node(node),
+                    node.to_range(),
                     "TC003",
                     DiagnosticCategory::Type,
                     format!(

@@ -1,5 +1,6 @@
 use super::TypeScriptChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl TypeScriptChecker {
@@ -13,7 +14,7 @@ impl TypeScriptChecker {
                         let text = file.node_text(&child);
                         if text.contains("async") || text.ends_with("Async()") {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(node),
+                                node.to_range(),
                                 "TS006",
                                 DiagnosticCategory::Logic,
                                 "Floating promise — add 'await' or handle the returned promise",
@@ -41,7 +42,7 @@ impl TypeScriptChecker {
                     if let Some(expr) = inner {
                         if expr.kind() == "identifier" {
                             diagnostics.push(Diagnostic::new(
-                                Range::from_node(&expr),
+                                expr.to_range(),
                                 DiagnosticSeverity::Information,
                                 "TS007",
                                 DiagnosticCategory::Type,
@@ -66,7 +67,7 @@ impl TypeScriptChecker {
                     let ty_text = file.node_text(&ty).trim().to_string();
                     if expr_text == ty_text {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "TS008",
                             DiagnosticCategory::Type,
                             "Unnecessary type assertion — expression already has this type",
@@ -93,7 +94,7 @@ impl TypeScriptChecker {
                         });
                         if !has_members {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(node),
+                                node.to_range(),
                                 "TS009",
                                 DiagnosticCategory::Style,
                                 "Empty interface — use a type alias or add members",
@@ -122,7 +123,7 @@ impl TypeScriptChecker {
                                 let val_text = file.node_text(&val).trim().to_string();
                                 if let Some(prev_line) = seen.get(&val_text) {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(&val),
+                                        val.to_range(),
                                         "TS010",
                                         DiagnosticCategory::Logic,
                                         format!(
@@ -160,7 +161,7 @@ impl TypeScriptChecker {
                                     let obj_text = file.node_text(&obj);
                                     if left_text == obj_text {
                                         diagnostics.push(Diagnostic::new(
-                                            Range::from_node(node),
+                                            node.to_range(),
                                             DiagnosticSeverity::Hint,
                                             "TS011",
                                             DiagnosticCategory::Style,
@@ -189,7 +190,7 @@ impl TypeScriptChecker {
                 let text = file.node_text(node);
                 if text.starts_with("namespace") || text.starts_with("module") {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         "TS012",
                         DiagnosticCategory::Style,
                         "Avoid namespace/module declarations — use ES modules instead",
@@ -212,7 +213,7 @@ impl TypeScriptChecker {
                     .any(|c| c.kind() == "type_annotation");
                 if !has_return_type {
                     diagnostics.push(Diagnostic::new(
-                        Range::from_node(node),
+                        node.to_range(),
                         DiagnosticSeverity::Information,
                         "TS013",
                         DiagnosticCategory::Type,
@@ -233,7 +234,7 @@ impl TypeScriptChecker {
                 if let Some(func) = node.child_by_field_name("function") {
                     if func.kind() == "identifier" && file.node_text(&func) == "require" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "TS014",
                             DiagnosticCategory::Style,
                             "Use ES 'import' instead of 'require()'",
@@ -274,7 +275,7 @@ impl TypeScriptChecker {
                                     .any(|c| c.kind() == "import_specifier");
                                 if has_any && all_upper {
                                     diagnostics.push(Diagnostic::new(
-                                        Range::from_node(node),
+                                        node.to_range(),
                                         DiagnosticSeverity::Hint,
                                         "TS015",
                                         DiagnosticCategory::Style,

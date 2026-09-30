@@ -131,5 +131,6 @@ function.
   `Diagnostic`, `LintConfig` and the `SpecIR` structs. Bare identities:
   `PathBuf` as file identity, the rule code as a `String`, id newtypes with a
   public `.0` (`ScopeId`, `NodeId`), and two unrelated `SymbolId` types.
-  `SchemaRegistry::global` is a `OnceLock` singleton. `Range::from_node` takes
-  a tree-sitter node: an inherent method in P1, an extension trait in P2.
+  `SchemaRegistry::global` is a `OnceLock` singleton. The diagnostic model no
+  longer names tree-sitter: a node's range comes from the `NodeRange`
+  extension trait (`node.to_range()`) in `domain/syntax/parsed_file.rs`.

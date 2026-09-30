@@ -1,7 +1,6 @@
 //! Python symbol extraction visitor methods
 
-use crate::domain::diagnostic::model::Range;
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 use super::{SymbolKind, SymbolTableBuilder, TypeInfo};
 
@@ -29,7 +28,7 @@ impl SymbolTableBuilder {
                 let name = file.node_text(node);
                 if let Some(symbols) = self.table.by_name.get(name) {
                     if let Some(&id) = symbols.last() {
-                        self.table.add_reference(id, Range::from_node(node));
+                        self.table.add_reference(id, node.to_range());
                     }
                 }
                 return;
@@ -53,7 +52,7 @@ impl SymbolTableBuilder {
         let name = name_node
             .map(|n| file.node_text(&n).to_string())
             .unwrap_or_default();
-        let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+        let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
         // Get return type annotation
         let return_type = node.child_by_field_name("return_type").map(|n| {
@@ -95,7 +94,7 @@ impl SymbolTableBuilder {
         let name = name_node
             .map(|n| file.node_text(&n).to_string())
             .unwrap_or_default();
-        let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+        let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
         let doc = self.extract_python_docstring(node, file);
 
@@ -122,7 +121,7 @@ impl SymbolTableBuilder {
         if let Some(left) = node.child_by_field_name("left") {
             if left.kind() == "identifier" {
                 let name = file.node_text(&left).to_string();
-                let location = Range::from_node(&left);
+                let location = left.to_range();
 
                 // Try to get type annotation
                 let type_info = node
@@ -155,7 +154,7 @@ impl SymbolTableBuilder {
                     self.table.add_symbol(
                         name,
                         SymbolKind::Parameter,
-                        Range::from_node(&child),
+                        child.to_range(),
                         None,
                         None,
                         self.current_scope,
@@ -171,7 +170,7 @@ impl SymbolTableBuilder {
                         self.table.add_symbol(
                             name,
                             SymbolKind::Parameter,
-                            Range::from_node(&name_node),
+                            name_node.to_range(),
                             type_info,
                             None,
                             self.current_scope,

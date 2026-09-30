@@ -1,5 +1,6 @@
 use super::JavaScriptChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl JavaScriptChecker {
@@ -15,7 +16,7 @@ impl JavaScriptChecker {
                 let text = file.node_text(node);
                 if text.starts_with("var ") {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         "JS001",
                         DiagnosticCategory::Style,
                         "Avoid 'var' — use 'let' or 'const' for block scoping",
@@ -41,7 +42,7 @@ impl JavaScriptChecker {
                         let text = file.node_text(&func);
                         if text == "console.log" {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(node),
+                                node.to_range(),
                                 "JS002",
                                 DiagnosticCategory::Style,
                                 "Remove 'console.log' before production",
@@ -69,14 +70,14 @@ impl JavaScriptChecker {
                     let op_text = file.node_text(&op);
                     if op_text == "==" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "JS003",
                             DiagnosticCategory::Logic,
                             "Use '===' instead of '==' to avoid type coercion",
                         ));
                     } else if op_text == "!=" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "JS003",
                             DiagnosticCategory::Logic,
                             "Use '!==' instead of '!=' to avoid type coercion",
@@ -104,7 +105,7 @@ impl JavaScriptChecker {
                         let name = file.node_text(&func);
                         if name == "eval" {
                             diagnostics.push(Diagnostic::new(
-                                Range::from_node(node),
+                                node.to_range(),
                                 DiagnosticSeverity::Error,
                                 "JS004",
                                 DiagnosticCategory::Security,
@@ -126,7 +127,7 @@ impl JavaScriptChecker {
         file.walk(|node, _depth| {
             if node.kind() == "debugger_statement" {
                 diagnostics.push(Diagnostic::warning(
-                    Range::from_node(node),
+                    node.to_range(),
                     "JS005",
                     DiagnosticCategory::Logic,
                     "Remove 'debugger' statement before production",

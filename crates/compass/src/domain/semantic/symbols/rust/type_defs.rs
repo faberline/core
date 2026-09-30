@@ -1,7 +1,6 @@
 use super::extract_rust_doc_comments;
-use crate::domain::diagnostic::model::Range;
 use crate::domain::semantic::symbols::{SymbolKind, SymbolTableBuilder, TypeInfo};
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 impl SymbolTableBuilder {
     /// R2: Extract struct definitions
@@ -10,7 +9,7 @@ impl SymbolTableBuilder {
         let name = name_node
             .map(|n| file.node_text(&n).to_string())
             .unwrap_or_default();
-        let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+        let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
         let doc = extract_rust_doc_comments(node, file);
 
@@ -41,7 +40,7 @@ impl SymbolTableBuilder {
                 let name = name_node
                     .map(|n| file.node_text(&n).to_string())
                     .unwrap_or_default();
-                let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+                let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
                 let type_info = child
                     .child_by_field_name("type")
@@ -65,7 +64,7 @@ impl SymbolTableBuilder {
         let name = name_node
             .map(|n| file.node_text(&n).to_string())
             .unwrap_or_default();
-        let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+        let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
         let doc = extract_rust_doc_comments(node, file);
 
@@ -89,7 +88,7 @@ impl SymbolTableBuilder {
                     let vname = vname_node
                         .map(|n| file.node_text(&n).to_string())
                         .unwrap_or_default();
-                    let vlocation = vname_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+                    let vlocation = vname_node.map(|n| n.to_range()).unwrap_or_default();
 
                     self.table.add_symbol(
                         vname,
@@ -112,7 +111,7 @@ impl SymbolTableBuilder {
         let name = name_node
             .map(|n| file.node_text(&n).to_string())
             .unwrap_or_default();
-        let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+        let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
         let doc = extract_rust_doc_comments(node, file);
 

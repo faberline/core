@@ -1,5 +1,6 @@
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
 use crate::domain::check::lint_config::LintConfig;
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::{Language, ParsedFile};
 
 mod basic_rules;
@@ -33,7 +34,7 @@ impl super::checker::Checker for TypeScriptChecker {
             file.walk(|node, _depth| {
                 if node.is_error() || node.is_missing() {
                     diagnostics.push(Diagnostic::error(
-                        Range::from_node(node),
+                        node.to_range(),
                         "TS000",
                         DiagnosticCategory::Syntax,
                         "Syntax error",

@@ -1,6 +1,7 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use tree_sitter::Node;
 
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
 use crate::domain::type_checking::checker::{TypeChecker, VariancePosition};
 use crate::domain::type_system::class_info::ClassInfo;
 use crate::domain::type_system::ty::{Type, Variance};
@@ -120,7 +121,7 @@ impl<'a> TypeChecker<'a> {
                 };
 
                 self.diagnostics.push(Diagnostic::error(
-                    Range::from_node(node),
+                    node.to_range(),
                     "TC010",
                     DiagnosticCategory::Type,
                     format!(

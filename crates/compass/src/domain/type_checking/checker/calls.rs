@@ -1,3 +1,4 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use std::collections::HashMap;
 
 use tree_sitter::Node;
@@ -26,7 +27,7 @@ impl<'a> TypeChecker<'a> {
             _ => {
                 // Not callable
                 self.diagnostics.push(Diagnostic::error(
-                    Range::from_node(&func),
+                    func.to_range(),
                     "TC004",
                     DiagnosticCategory::Type,
                     format!("Type '{}' is not callable", func_type),
@@ -55,13 +56,12 @@ impl<'a> TypeChecker<'a> {
                         let name = self.node_text(&name_node).to_string();
                         if let Some(value_node) = child.child_by_field_name("value") {
                             let value_type = self.inferencer.infer_expr(&value_node);
-                            keyword_args.insert(name, (Range::from_node(&child), value_type));
+                            keyword_args.insert(name, (child.to_range(), value_type));
                         }
                     }
                 }
                 _ => {
-                    positional_args
-                        .push((Range::from_node(&child), self.inferencer.infer_expr(&child)));
+                    positional_args.push((child.to_range(), self.inferencer.infer_expr(&child)));
                 }
             }
         }
@@ -82,7 +82,7 @@ impl<'a> TypeChecker<'a> {
                 .any(|p| matches!(p.kind, ParamKind::VarPositional))
         {
             self.diagnostics.push(Diagnostic::error(
-                Range::from_node(&args),
+                args.to_range(),
                 "TC006",
                 DiagnosticCategory::Type,
                 format!(
@@ -153,7 +153,7 @@ impl<'a> TypeChecker<'a> {
 
                 if !provided_positionally && !provided_by_keyword {
                     self.diagnostics.push(Diagnostic::error(
-                        Range::from_node(&args),
+                        args.to_range(),
                         "TC007",
                         DiagnosticCategory::Type,
                         format!("Missing required argument: '{}'", param.name),
@@ -180,7 +180,7 @@ impl<'a> TypeChecker<'a> {
                 .unwrap_or("?");
 
             self.diagnostics.push(Diagnostic::warning(
-                Range::from_node(node),
+                node.to_range(),
                 "TC009",
                 DiagnosticCategory::Type,
                 format!(

@@ -1,5 +1,6 @@
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
 use crate::domain::check::lint_config::LintConfig;
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::{Language, ParsedFile};
 
 /// Deprecated HTML tags that should not be used in modern HTML
@@ -26,7 +27,7 @@ impl HtmlChecker {
                 if tag_name.eq_ignore_ascii_case("img") {
                     if !Self::has_attribute(node, "alt", file) {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "HTML001",
                             DiagnosticCategory::Style,
                             "Missing 'alt' attribute on <img> — required for accessibility",
@@ -53,7 +54,7 @@ impl HtmlChecker {
                 if tag_name.eq_ignore_ascii_case("html") {
                     if !Self::has_attribute(node, "lang", file) {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "HTML002",
                             DiagnosticCategory::Style,
                             "Missing 'lang' attribute on <html> — required for accessibility",
@@ -82,7 +83,7 @@ impl HtmlChecker {
                         let trimmed = href_value.trim();
                         if trimmed.is_empty() || trimmed == "\"\"" || trimmed == "''" {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(node),
+                                node.to_range(),
                                 "HTML003",
                                 DiagnosticCategory::Logic,
                                 "Empty 'href' attribute on <a> — use a valid URL or '#'",
@@ -110,7 +111,7 @@ impl HtmlChecker {
                 let tag_lower = tag_name.to_ascii_lowercase();
                 if DEPRECATED_TAGS.contains(&tag_lower.as_str()) {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         "HTML004",
                         DiagnosticCategory::Style,
                         format!(
@@ -141,7 +142,7 @@ impl HtmlChecker {
                     let has_title = Self::has_child_tag(node, "title", file);
                     if !has_title {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "HTML005",
                             DiagnosticCategory::Style,
                             "Missing <title> element in <head>",
@@ -271,7 +272,7 @@ impl super::checker::Checker for HtmlChecker {
             file.walk(|node, _depth| {
                 if node.is_error() || node.is_missing() {
                     diagnostics.push(Diagnostic::error(
-                        Range::from_node(node),
+                        node.to_range(),
                         "HTML000",
                         DiagnosticCategory::Syntax,
                         "Syntax error",

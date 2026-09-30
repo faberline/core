@@ -74,15 +74,6 @@ impl Range {
         Self { start, end }
     }
 
-    pub fn from_node(node: &tree_sitter::Node<'_>) -> Self {
-        let start = node.start_position();
-        let end = node.end_position();
-        Self {
-            start: Position::new(start.row as u32, start.column as u32),
-            end: Position::new(end.row as u32, end.column as u32),
-        }
-    }
-
     /// Check if a position is within this range
     pub fn contains(&self, line: u32, character: u32) -> bool {
         // Check if position is after start

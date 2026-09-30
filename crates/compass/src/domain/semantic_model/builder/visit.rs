@@ -1,6 +1,6 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use tree_sitter::Node;
 
-use crate::diagnostic::Range;
 use crate::domain::semantic_model::builder::SemanticModelBuilder;
 use crate::domain::semantic_model::ids::SymbolId;
 use crate::domain::semantic_model::symbol::{SemanticSymbolKind, SymbolData};
@@ -42,10 +42,7 @@ impl<'a> SemanticModelBuilder<'a> {
         let name = name_node
             .map(|n| self.node_text(&n).to_string())
             .unwrap_or_default();
-        let def_range = name_node
-            .as_ref()
-            .map(|n| Range::from_node(n))
-            .unwrap_or_default();
+        let def_range = name_node.as_ref().map(|n| n.to_range()).unwrap_or_default();
 
         // Get return type
         let return_type = node
@@ -82,7 +79,7 @@ impl<'a> SemanticModelBuilder<'a> {
             .add_typed_range(def_range, type_info, Some(symbol_id));
 
         // Enter function scope
-        let func_range = Range::from_node(node);
+        let func_range = node.to_range();
         self.push_scope(func_range);
 
         // Process parameters
@@ -104,10 +101,7 @@ impl<'a> SemanticModelBuilder<'a> {
         let name = name_node
             .map(|n| self.node_text(&n).to_string())
             .unwrap_or_default();
-        let def_range = name_node
-            .as_ref()
-            .map(|n| Range::from_node(n))
-            .unwrap_or_default();
+        let def_range = name_node.as_ref().map(|n| n.to_range()).unwrap_or_default();
 
         let type_info = TypeInfo::Instance {
             name: name.clone(),
@@ -132,7 +126,7 @@ impl<'a> SemanticModelBuilder<'a> {
             .add_typed_range(def_range, type_info, Some(class_id));
 
         // Enter class scope
-        let class_range = Range::from_node(node);
+        let class_range = node.to_range();
         self.push_scope(class_range);
 
         // Process body
@@ -170,10 +164,7 @@ impl<'a> SemanticModelBuilder<'a> {
         let name = name_node
             .map(|n| self.node_text(&n).to_string())
             .unwrap_or_default();
-        let def_range = name_node
-            .as_ref()
-            .map(|n| Range::from_node(n))
-            .unwrap_or_default();
+        let def_range = name_node.as_ref().map(|n| n.to_range()).unwrap_or_default();
 
         let return_type = node
             .child_by_field_name("return_type")
@@ -204,7 +195,7 @@ impl<'a> SemanticModelBuilder<'a> {
             .add_typed_range(def_range, type_info, Some(method_id));
 
         // Process method body in its own scope
-        let method_range = Range::from_node(node);
+        let method_range = node.to_range();
         self.push_scope(method_range);
 
         if let Some(ref params) = node.child_by_field_name("parameters") {
@@ -223,7 +214,7 @@ impl<'a> SemanticModelBuilder<'a> {
         if let Some(left) = node.child_by_field_name("left") {
             if left.kind() == "identifier" {
                 let name = self.node_text(&left).to_string();
-                let def_range = Range::from_node(&left);
+                let def_range = left.to_range();
 
                 let type_info = node
                     .child_by_field_name("type")
@@ -252,7 +243,7 @@ impl<'a> SemanticModelBuilder<'a> {
         if let Some(left) = node.child_by_field_name("left") {
             if left.kind() == "identifier" {
                 let name = self.node_text(&left).to_string();
-                let def_range = Range::from_node(&left);
+                let def_range = left.to_range();
 
                 // Try to get type from annotation, or use Unknown
                 let type_info = node

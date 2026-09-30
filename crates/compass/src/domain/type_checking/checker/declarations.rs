@@ -1,6 +1,7 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use tree_sitter::Node;
 
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity};
 use crate::domain::type_checking::checker::{FunctionContext, TypeChecker};
 use crate::domain::type_system::annotation::parse_type_annotation;
 use crate::domain::type_system::ty::Type;
@@ -74,7 +75,7 @@ impl<'a> TypeChecker<'a> {
         // Check for missing return type annotation (only for public functions)
         if node.child_by_field_name("return_type").is_none() && !name.starts_with('_') {
             self.diagnostics.push(Diagnostic::new(
-                Range::from_node(node),
+                node.to_range(),
                 DiagnosticSeverity::Hint,
                 "TC002",
                 DiagnosticCategory::Type,
@@ -106,7 +107,7 @@ impl<'a> TypeChecker<'a> {
             if !ctx.has_return && !matches!(ctx.return_type, Type::None | Type::Unknown | Type::Any)
             {
                 self.diagnostics.push(Diagnostic::warning(
-                    Range::from_node(node),
+                    node.to_range(),
                     "TC003",
                     DiagnosticCategory::Type,
                     format!(

@@ -1,5 +1,6 @@
 use super::PythonChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl PythonChecker {
@@ -51,7 +52,7 @@ impl PythonChecker {
                                             || value_kind == "set"
                                         {
                                             diagnostics.push(Diagnostic::warning(
-                                                Range::from_node(&value),
+                                                value.to_range(),
                                                 "PY501",
                                                 DiagnosticCategory::Logic,
                                                 "Mutable default in Pydantic model. Use Field(default_factory=...) instead",
@@ -80,7 +81,7 @@ impl PythonChecker {
                 // @validator(...) is deprecated in V2, use @field_validator
                 if text.starts_with("@validator") && !text.starts_with("@validator_") {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         "PY502",
                         DiagnosticCategory::Style,
                         "Deprecated: @validator is Pydantic V1. Use @field_validator in V2",
@@ -89,7 +90,7 @@ impl PythonChecker {
                 // @root_validator is deprecated, use @model_validator
                 if text.starts_with("@root_validator") {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         "PY502",
                         DiagnosticCategory::Style,
                         "Deprecated: @root_validator is Pydantic V1. Use @model_validator in V2",
@@ -116,7 +117,7 @@ impl PythonChecker {
                             if let Some(name) = child.child_by_field_name("name") {
                                 if file.node_text(&name) == "Config" {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(&child),
+                                        child.to_range(),
                                         "PY503",
                                         DiagnosticCategory::Style,
                                         "Deprecated: class Config is Pydantic V1. Use model_config = ConfigDict(...) in V2",

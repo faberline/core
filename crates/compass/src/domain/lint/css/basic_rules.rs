@@ -1,3 +1,4 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use std::collections::HashMap;
 
 use super::CssChecker;
@@ -17,7 +18,7 @@ impl CssChecker {
                         let sel = file.node_text(&child).trim().to_string();
                         if let Some(prev) = seen.get(&sel) {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(&child),
+                                child.to_range(),
                                 "CSS001",
                                 DiagnosticCategory::Style,
                                 format!(
@@ -27,7 +28,7 @@ impl CssChecker {
                                 ),
                             ));
                         } else {
-                            seen.insert(sel, Range::from_node(&child));
+                            seen.insert(sel, child.to_range());
                         }
                         break;
                     }
@@ -44,7 +45,7 @@ impl CssChecker {
         file.walk(|node, _depth| {
             if node.kind() == "important" {
                 diagnostics.push(Diagnostic::new(
-                    Range::from_node(node),
+                    node.to_range(),
                     DiagnosticSeverity::Information,
                     "CSS002",
                     DiagnosticCategory::Style,
@@ -56,7 +57,7 @@ impl CssChecker {
                 let text = file.node_text(node);
                 if text.contains("!important") {
                     diagnostics.push(Diagnostic::new(
-                        Range::from_node(node),
+                        node.to_range(),
                         DiagnosticSeverity::Information,
                         "CSS002",
                         DiagnosticCategory::Style,
@@ -75,7 +76,7 @@ impl CssChecker {
         file.walk(|node, _depth| {
             if node.kind() == "import_statement" {
                 diagnostics.push(Diagnostic::warning(
-                    Range::from_node(node),
+                    node.to_range(),
                     "CSS003",
                     DiagnosticCategory::Style,
                     "Avoid '@import' — use <link> tag or a bundler for better performance",
@@ -105,7 +106,7 @@ impl CssChecker {
                         };
                         if !has_decl {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(node),
+                                node.to_range(),
                                 "CSS004",
                                 DiagnosticCategory::Style,
                                 "Empty rule set — remove it or add declarations",
@@ -125,7 +126,7 @@ impl CssChecker {
         file.walk(|node, _depth| {
             if node.kind() == "universal_selector" {
                 diagnostics.push(Diagnostic::new(
-                    Range::from_node(node),
+                    node.to_range(),
                     DiagnosticSeverity::Information,
                     "CSS005",
                     DiagnosticCategory::Style,

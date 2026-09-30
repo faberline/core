@@ -1,3 +1,4 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use regex_lite::Regex;
 use serde::Deserialize;
 use tree_sitter::StreamingIterator;
@@ -250,7 +251,7 @@ impl CustomLintEngine {
             };
 
             let node = capture.node;
-            let range = Range::from_node(&node);
+            let range = node.to_range();
 
             let mut diag = Diagnostic::new(
                 range,

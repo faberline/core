@@ -1,5 +1,6 @@
 use super::GoChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl GoChecker {
@@ -32,7 +33,7 @@ impl GoChecker {
                                     .any(|scope| scope.contains(&name));
                                 if shadowed {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(&child),
+                                        child.to_range(),
                                         "GO003",
                                         DiagnosticCategory::Logic,
                                         format!(
@@ -113,7 +114,7 @@ impl GoChecker {
                     let text = file.node_text(&child).trim();
                     if text == "return" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(&child),
+                            child.to_range(),
                             "GO004",
                             DiagnosticCategory::Style,
                             "Naked return in function with named return values — consider explicit return",
@@ -148,7 +149,7 @@ impl GoChecker {
                                 .unwrap_or(false);
                             if !in_allowed {
                                 diagnostics.push(Diagnostic::warning(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     "GO005",
                                     DiagnosticCategory::Logic,
                                     format!(
@@ -188,7 +189,7 @@ impl GoChecker {
                     let has_doc = self.has_preceding_comment(node, file);
                     if !has_doc {
                         diagnostics.push(Diagnostic::new(
-                            Range::from_node(&name_node),
+                            name_node.to_range(),
                             DiagnosticSeverity::Information,
                             "GO008",
                             DiagnosticCategory::Style,
@@ -239,7 +240,7 @@ impl GoChecker {
                                 || body_text.contains("<-ctx");
                             if !has_wg && !has_ctx {
                                 diagnostics.push(Diagnostic::new(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     DiagnosticSeverity::Warning,
                                     "GO009",
                                     DiagnosticCategory::Logic,

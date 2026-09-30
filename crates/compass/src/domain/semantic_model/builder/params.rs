@@ -1,6 +1,6 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use tree_sitter::Node;
 
-use crate::diagnostic::Range;
 use crate::domain::semantic_model::builder::SemanticModelBuilder;
 use crate::domain::semantic_model::symbol::{SemanticSymbolKind, SymbolData};
 use crate::domain::semantic_model::type_info::{ParamInfo, TypeInfo};
@@ -13,7 +13,7 @@ impl<'a> SemanticModelBuilder<'a> {
             match child.kind() {
                 "identifier" => {
                     let name = self.node_text(&child).to_string();
-                    let def_range = Range::from_node(&child);
+                    let def_range = child.to_range();
 
                     let symbol_id = self.model.add_symbol(SymbolData {
                         name,
@@ -32,7 +32,7 @@ impl<'a> SemanticModelBuilder<'a> {
                 "typed_parameter" | "typed_default_parameter" | "default_parameter" => {
                     if let Some(name_node) = child.child_by_field_name("name") {
                         let name = self.node_text(&name_node).to_string();
-                        let def_range = Range::from_node(&name_node);
+                        let def_range = name_node.to_range();
 
                         let type_info = child
                             .child_by_field_name("type")

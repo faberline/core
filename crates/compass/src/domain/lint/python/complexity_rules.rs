@@ -1,5 +1,6 @@
 use super::PythonChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl PythonChecker {
@@ -37,7 +38,7 @@ impl PythonChecker {
                     }
                     if count > MAX_ARGS {
                         diagnostics.push(Diagnostic::new(
-                            Range::from_node(&params),
+                            params.to_range(),
                             crate::diagnostic::DiagnosticSeverity::Hint,
                             "PY701",
                             DiagnosticCategory::Style,
@@ -55,7 +56,7 @@ impl PythonChecker {
                 let lines = end - start + 1;
                 if lines > MAX_LINES {
                     diagnostics.push(Diagnostic::new(
-                        Range::from_node(node),
+                        node.to_range(),
                         crate::diagnostic::DiagnosticSeverity::Hint,
                         "PY702",
                         DiagnosticCategory::Style,

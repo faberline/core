@@ -13,8 +13,7 @@
 mod tests;
 mod type_decls;
 
-use crate::domain::diagnostic::model::Range;
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 use super::{SymbolKind, SymbolTableBuilder, TypeInfo};
 
@@ -71,7 +70,7 @@ impl SymbolTableBuilder {
         for child in node.children(&mut cursor) {
             if child.kind() == "package_identifier" {
                 let name = file.node_text(&child).to_string();
-                let location = Range::from_node(&child);
+                let location = child.to_range();
                 self.table.add_symbol(
                     name,
                     SymbolKind::Module,
@@ -91,7 +90,7 @@ impl SymbolTableBuilder {
         let name = name_node
             .map(|n| file.node_text(&n).to_string())
             .unwrap_or_default();
-        let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+        let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
         let return_type = self.extract_go_return_type(node, file);
         let doc = extract_go_doc_comment(node, file);
@@ -125,7 +124,7 @@ impl SymbolTableBuilder {
         let name = name_node
             .map(|n| file.node_text(&n).to_string())
             .unwrap_or_default();
-        let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+        let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
         let return_type = self.extract_go_return_type(node, file);
         let doc = extract_go_doc_comment(node, file);
@@ -167,7 +166,7 @@ impl SymbolTableBuilder {
                 let name = name_node
                     .map(|n| file.node_text(&n).to_string())
                     .unwrap_or_default();
-                let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+                let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
                 let type_info = child
                     .child_by_field_name("type")
@@ -199,7 +198,7 @@ impl SymbolTableBuilder {
                 let name = name_node
                     .map(|n| file.node_text(&n).to_string())
                     .unwrap_or_default();
-                let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+                let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
                 let type_info = child
                     .child_by_field_name("type")
@@ -243,7 +242,7 @@ impl SymbolTableBuilder {
                         self.table.add_symbol(
                             name,
                             SymbolKind::Import,
-                            Range::from_node(&path),
+                            path.to_range(),
                             None,
                             None,
                             self.current_scope,
@@ -263,7 +262,7 @@ impl SymbolTableBuilder {
                 let name = name_node
                     .map(|n| file.node_text(&n).to_string())
                     .unwrap_or_default();
-                let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+                let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
                 let type_info = child
                     .child_by_field_name("type")

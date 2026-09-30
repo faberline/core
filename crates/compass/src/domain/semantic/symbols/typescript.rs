@@ -5,7 +5,7 @@
 
 use super::{SymbolKind, SymbolTableBuilder, TypeInfo};
 use crate::domain::diagnostic::model::Range;
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 /// Extract name and location from a node's "name" field
 fn name_loc(node: &tree_sitter::Node<'_>, file: &ParsedFile) -> (String, Range) {
@@ -13,7 +13,7 @@ fn name_loc(node: &tree_sitter::Node<'_>, file: &ParsedFile) -> (String, Range) 
     let name = name_node
         .map(|n| file.node_text(&n).to_string())
         .unwrap_or_default();
-    let loc = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+    let loc = name_node.map(|n| n.to_range()).unwrap_or_default();
     (name, loc)
 }
 
@@ -148,7 +148,7 @@ impl SymbolTableBuilder {
                         self.table.add_symbol(
                             mname,
                             SymbolKind::EnumMember,
-                            Range::from_node(&child),
+                            child.to_range(),
                             None,
                             None,
                             self.current_scope,
@@ -203,7 +203,7 @@ impl SymbolTableBuilder {
                 self.table.add_symbol(
                     name,
                     SymbolKind::Import,
-                    Range::from_node(&child),
+                    child.to_range(),
                     None,
                     None,
                     self.current_scope,
@@ -221,7 +221,7 @@ impl SymbolTableBuilder {
                         self.table.add_symbol(
                             name,
                             SymbolKind::Import,
-                            Range::from_node(&n),
+                            n.to_range(),
                             None,
                             None,
                             self.current_scope,
@@ -241,7 +241,7 @@ impl SymbolTableBuilder {
                     let name = pn
                         .map(|n| file.node_text(&n).to_string())
                         .unwrap_or_default();
-                    let loc = pn.map(|n| Range::from_node(&n)).unwrap_or_default();
+                    let loc = pn.map(|n| n.to_range()).unwrap_or_default();
                     let ti = child
                         .child_by_field_name("type")
                         .map(|n| TypeInfo::Named(file.node_text(&n).to_string()));
@@ -262,7 +262,7 @@ impl SymbolTableBuilder {
                         self.table.add_symbol(
                             name,
                             SymbolKind::Parameter,
-                            Range::from_node(&child),
+                            child.to_range(),
                             None,
                             None,
                             self.current_scope,

@@ -8,8 +8,7 @@
 //! - @media descriptors as Label
 
 use super::{SymbolKind, SymbolTableBuilder};
-use crate::domain::diagnostic::model::Range;
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 impl SymbolTableBuilder {
     /// Walk CSS AST to extract symbols
@@ -27,7 +26,7 @@ impl SymbolTableBuilder {
                         self.table.add_symbol(
                             name.to_string(),
                             SymbolKind::Class,
-                            Range::from_node(&name_node),
+                            name_node.to_range(),
                             None,
                             Some("CSS class selector".to_string()),
                             self.current_scope,
@@ -41,7 +40,7 @@ impl SymbolTableBuilder {
                             self.table.add_symbol(
                                 name.to_string(),
                                 SymbolKind::Class,
-                                Range::from_node(node),
+                                node.to_range(),
                                 None,
                                 Some("CSS class selector".to_string()),
                                 self.current_scope,
@@ -58,7 +57,7 @@ impl SymbolTableBuilder {
                         self.table.add_symbol(
                             name.to_string(),
                             SymbolKind::Variable,
-                            Range::from_node(&name_node),
+                            name_node.to_range(),
                             None,
                             Some("CSS ID selector".to_string()),
                             self.current_scope,
@@ -71,7 +70,7 @@ impl SymbolTableBuilder {
                             self.table.add_symbol(
                                 name.to_string(),
                                 SymbolKind::Variable,
-                                Range::from_node(node),
+                                node.to_range(),
                                 None,
                                 Some("CSS ID selector".to_string()),
                                 self.current_scope,
@@ -115,7 +114,7 @@ impl SymbolTableBuilder {
                     self.table.add_symbol(
                         prop.to_string(),
                         SymbolKind::Variable,
-                        Range::from_node(&child),
+                        child.to_range(),
                         None,
                         Some("CSS custom property".to_string()),
                         self.current_scope,
@@ -134,7 +133,7 @@ impl SymbolTableBuilder {
                 self.table.add_symbol(
                     name.to_string(),
                     SymbolKind::Function,
-                    Range::from_node(&name_node),
+                    name_node.to_range(),
                     None,
                     Some("CSS @keyframes animation".to_string()),
                     self.current_scope,
@@ -151,7 +150,7 @@ impl SymbolTableBuilder {
                         self.table.add_symbol(
                             name.to_string(),
                             SymbolKind::Function,
-                            Range::from_node(child),
+                            child.to_range(),
                             None,
                             Some("CSS @keyframes animation".to_string()),
                             self.current_scope,
@@ -183,7 +182,7 @@ impl SymbolTableBuilder {
                     self.table.add_symbol(
                         desc.to_string(),
                         SymbolKind::Label,
-                        Range::from_node(&child),
+                        child.to_range(),
                         None,
                         Some("CSS @media query".to_string()),
                         self.current_scope,

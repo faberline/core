@@ -1,6 +1,7 @@
 use super::terraform_rules;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
 use crate::domain::check::lint_config::LintConfig;
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::{Language, ParsedFile};
 use std::collections::HashSet;
 
@@ -71,7 +72,7 @@ impl TerraformChecker {
                                 && !val_text.contains("local.")
                             {
                                 diagnostics.push(Diagnostic::new(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     DiagnosticSeverity::Error,
                                     "TF004",
                                     DiagnosticCategory::Security,
@@ -108,7 +109,7 @@ impl TerraformChecker {
                     .get_block_label(node, file)
                     .unwrap_or_else(|| "<unknown>".to_string());
                 diagnostics.push(Diagnostic::warning(
-                    Range::from_node(node),
+                    node.to_range(),
                     "TF005",
                     DiagnosticCategory::Style,
                     format!(
@@ -168,7 +169,7 @@ impl TerraformChecker {
             if node.kind() == "block" {
                 if self.get_block_type(node, file).as_deref() == Some("variable") {
                     if let Some(name) = self.get_block_label(node, file) {
-                        declared_vars.push((name, Range::from_node(node)));
+                        declared_vars.push((name, node.to_range()));
                     }
                 }
             }

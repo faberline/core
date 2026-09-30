@@ -1,5 +1,6 @@
 use super::RustChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl RustChecker {
@@ -10,7 +11,7 @@ impl RustChecker {
         file.walk(|node, _depth| {
             if node.kind() == "unsafe_block" {
                 diagnostics.push(Diagnostic::new(
-                    Range::from_node(node),
+                    node.to_range(),
                     DiagnosticSeverity::Information,
                     "RS201",
                     DiagnosticCategory::Security,
@@ -34,7 +35,7 @@ impl RustChecker {
                         if let Some(field) = func.child_by_field_name("field") {
                             if file.node_text(&field) == "clone" {
                                 diagnostics.push(Diagnostic::new(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     DiagnosticSeverity::Hint,
                                     "RS001",
                                     DiagnosticCategory::Style,
@@ -63,7 +64,7 @@ impl RustChecker {
                             let field_name = file.node_text(&field);
                             if field_name == "unwrap" || field_name == "expect" {
                                 diagnostics.push(Diagnostic::warning(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     "RS101",
                                     DiagnosticCategory::Logic,
                                     format!(
@@ -92,7 +93,7 @@ impl RustChecker {
                     let macro_name = file.node_text(&macro_node);
                     if macro_name == "todo" || macro_name == "unimplemented" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "RS102",
                             DiagnosticCategory::Logic,
                             format!("{}! macro will panic at runtime", macro_name),
@@ -114,7 +115,7 @@ impl RustChecker {
                 if let Some(macro_node) = node.child_by_field_name("macro") {
                     if file.node_text(&macro_node) == "dbg" {
                         diagnostics.push(Diagnostic::new(
-                            Range::from_node(node),
+                            node.to_range(),
                             DiagnosticSeverity::Hint,
                             "RS103",
                             DiagnosticCategory::Style,
