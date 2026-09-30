@@ -27,5 +27,5 @@
 //! ```
 
 pub use crate::domain::lint::custom::{
-    CustomLintEngine, CustomRuleConfig, CustomRulesFile, RuleKind,
+    CustomLintEngine, CustomRuleConfig, CustomRulesFile, RejectedRule, RuleKind,
 };

@@ -531,12 +531,6 @@ reason = "Moved as-is in P1: the TM001 checker parses the linted text as a toml:
 
 [[exceptions]]
 rule = "B2"
-subject = "tracing"
-paths = ["crates/compass/src/domain/lint/custom.rs"]
-reason = "Moved as-is in P1: CustomRuleChecker logs rules whose regex or tree-sitter query fails to compile with tracing. P2: return the rejected rules as data and log them in the infrastructure custom rules loader."
-
-[[exceptions]]
-rule = "B2"
 subject = "tree_sitter"
 paths = [
   "crates/compass/src/domain/lint/custom.rs",

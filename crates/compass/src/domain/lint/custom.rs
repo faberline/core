@@ -48,10 +48,14 @@ fn default_severity() -> String {
     "warning".to_string()
 }
 
+fn custom_code(id: &str) -> RuleCode {
+    RuleCode::from(format!("CUSTOM_{id}"))
+}
+
 impl CustomRuleConfig {
     /// Returns the canonical diagnostic code: `CUSTOM_<ID>`
     pub fn code(&self) -> RuleCode {
-        RuleCode::from(format!("CUSTOM_{}", self.id))
+        custom_code(&self.id)
     }
 
     /// Parses the `severity` string into `DiagnosticSeverity`
@@ -72,6 +76,36 @@ pub struct CustomRulesFile {
     /// List of rules (TOML array-of-tables `[[rule]]`)
     #[serde(default, rename = "rule")]
     pub rules: Vec<CustomRuleConfig>,
+}
+
+/// A regex rule whose pattern does not compile, and why. The engine skips it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RejectedRule {
+    id: String,
+    pattern: String,
+    reason: String,
+}
+
+impl RejectedRule {
+    /// The rule's `id` in `rules.toml`.
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    /// The code the rule's diagnostics would have had: `CUSTOM_<ID>`.
+    pub fn code(&self) -> RuleCode {
+        custom_code(&self.id)
+    }
+
+    /// The pattern that does not compile.
+    pub fn pattern(&self) -> &str {
+        &self.pattern
+    }
+
+    /// Why the pattern does not compile.
+    pub fn reason(&self) -> &str {
+        &self.reason
+    }
 }
 
 // ============================================================================
@@ -100,19 +134,21 @@ struct CompiledQueryRule {
 pub struct CustomLintEngine {
     regex_rules: Vec<CompiledRegexRule>,
     query_rules: Vec<CompiledQueryRule>,
+    rejected: Vec<RejectedRule>,
 }
 
 impl CustomLintEngine {
     /// Build an engine from an already-parsed `CustomRulesFile`.
     ///
-    /// Regex rules are compiled eagerly; invalid patterns are skipped with a
-    /// warning rather than panicking.
+    /// Regex rules are compiled eagerly; rules whose pattern does not compile
+    /// are skipped and listed by [`rejected_rules`](Self::rejected_rules).
     ///
     /// Patterns keep regex-lite's dialect: `\d`, `\s`, `\w`, word boundaries
     /// and `(?i)` are ASCII-only.
     pub fn from_rules_file(rules_file: &CustomRulesFile) -> Self {
         let mut regex_rules = Vec::new();
         let mut query_rules = Vec::new();
+        let mut rejected = Vec::new();
 
         for rule in &rules_file.rules {
             match rule.kind {
@@ -121,14 +157,11 @@ impl CustomLintEngine {
                         config: rule.clone(),
                         regex,
                     }),
-                    Err(e) => {
-                        tracing::warn!(
-                            "Custom rule '{}': invalid regex '{}': {}",
-                            rule.id,
-                            rule.pattern,
-                            e
-                        );
-                    }
+                    Err(e) => rejected.push(RejectedRule {
+                        id: rule.id.clone(),
+                        pattern: rule.pattern.clone(),
+                        reason: e.to_string(),
+                    }),
                 },
                 RuleKind::Query => query_rules.push(CompiledQueryRule {
                     config: rule.clone(),
@@ -140,7 +173,13 @@ impl CustomLintEngine {
         Self {
             regex_rules,
             query_rules,
+            rejected,
         }
+    }
+
+    /// The regex rules skipped because their pattern does not compile.
+    pub fn rejected_rules(&self) -> &[RejectedRule] {
+        &self.rejected
     }
 
     /// Total number of loaded (valid) rules.
@@ -222,19 +261,10 @@ impl CustomLintEngine {
         let language = file.tree.language();
 
         for rule in &self.query_rules {
-            match tree_sitter::Query::new(&language, &rule.query_str) {
-                Ok(query) => {
-                    self.apply_single_query_rule(rule, file, &query, diagnostics);
-                }
-                Err(e) => {
-                    // Query may be valid for a different language — skip silently at
-                    // debug level to avoid noisy output on polyglot repos.
-                    tracing::debug!(
-                        "Custom query rule '{}': query compile error for this language: {}",
-                        rule.config.id,
-                        e
-                    );
-                }
+            // A query may be valid only for another language: skip it for this
+            // file, silently, to avoid noisy output on polyglot repos.
+            if let Ok(query) = tree_sitter::Query::new(&language, &rule.query_str) {
+                self.apply_single_query_rule(rule, file, &query, diagnostics);
             }
         }
     }

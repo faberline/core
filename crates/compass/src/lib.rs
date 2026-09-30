@@ -46,6 +46,7 @@ pub use domain::diagnostic::model::{
 pub use domain::diagnostic::rule_code::RuleCode;
 pub use domain::error::argus_error::ArgusError;
 pub use domain::lint::checker::Checker;
+pub use domain::lint::custom::RejectedRule;
 pub use domain::lint::registry::CheckerRegistry;
 pub use domain::syntax::language::Language;
 pub use domain::syntax::parsed_file::{NodeRange, ParsedFile};
