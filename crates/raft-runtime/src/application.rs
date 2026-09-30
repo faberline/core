@@ -30,9 +30,7 @@ pub use replica_host::{MembershipPolicy, ReplicaHostBuilder, ReplicaHostRuntime}
 pub use state_machine::{
     AdmissionPermit, Command, PreparedSnapshot, RaftStateMachine, SnapshotPreparation,
 };
-pub use topology::{
-    ensure_static_membership_unchanged, peer_ordinal, ClusterDims, ClusterTopology,
-};
+pub use topology::{peer_ordinal, ClusterDims, ClusterTopology};
 
 pub(crate) use host::{
     apply_ready, cold_start, decode_backpressure, persist_node, take_reply, PeerLaneQueue, Shared,

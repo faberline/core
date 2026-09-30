@@ -11,20 +11,6 @@ use anyhow::{bail, Context, Result};
 
 use crate::{Membership, NodeId};
 
-/// Guard a controller that is still backed by raft-runtime's startup-static
-/// membership. Changing the StatefulSet replica count without a replicated
-/// membership transition is unsafe: existing members and new pods would run
-/// with different quorum sets. Callers must keep the replica layer unchanged
-/// until raft-core/raft-runtime expose the joint-consensus workflow.
-pub fn ensure_static_membership_unchanged(current: u32, desired: u32) -> Result<()> {
-    if current != desired {
-        bail!(
-            "unsafe replica transition {current}->{desired}: raft-runtime membership is static; complete a replicated membership transition before changing StatefulSet replicas"
-        );
-    }
-    Ok(())
-}
-
 /// The scalar shard/replica/voter derivation from the standard downward-API
 /// quartet (`SHARD_COUNT`, `REPLICAS_PER_SHARD`, `VOTER_COUNT`, `POD_NAME`) —
 /// the piece [`ClusterTopology::from_env`] shares with a caller that only

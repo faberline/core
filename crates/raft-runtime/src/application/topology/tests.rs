@@ -1,12 +1,5 @@
 use super::*;
 
-#[test]
-fn static_membership_rejects_replica_delta() {
-    ensure_static_membership_unchanged(3, 3).unwrap();
-    let err = ensure_static_membership_unchanged(1, 3).unwrap_err();
-    assert!(err.to_string().contains("replicated membership transition"));
-}
-
 fn dims(shard_count: u32, replicas_per_shard: u32, voter_count: u32, pod: &str) -> ClusterDims {
     ClusterDims {
         shard_count,

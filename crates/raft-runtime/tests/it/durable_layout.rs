@@ -131,50 +131,6 @@ fn measurement_3_payload_byte_exactness() {
 }
 
 #[test]
-fn measurement_4_cache_footprint_bounded_and_invariant() {
-    let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
-
-    assert_eq!(store.cache_footprint(), 0);
-
-    let state_1k = PersistedState {
-        term: 1,
-        voted_for: None,
-        log: vec![],
-        commit_index: 0,
-        snapshot_index: 0,
-        snapshot_term: 0,
-        snapshot: vec![0xAA; 1024],
-        conf: None,
-    };
-    store.save(&state_1k).unwrap();
-
-    let footprint_1k = store.cache_footprint();
-    assert!(
-        footprint_1k > 0 && footprint_1k <= 128,
-        "footprint_1k is {footprint_1k}"
-    );
-
-    let state_1m = PersistedState {
-        term: 1,
-        voted_for: None,
-        log: vec![],
-        commit_index: 0,
-        snapshot_index: 0,
-        snapshot_term: 0,
-        snapshot: vec![0xBB; 1024 * 1024],
-        conf: None,
-    };
-    store.save(&state_1m).unwrap();
-
-    let footprint_1m = store.cache_footprint();
-    assert_eq!(
-        footprint_1k, footprint_1m,
-        "cache footprint must be identical for 1 KiB and 1 MiB saves"
-    );
-}
-
-#[test]
 fn measurement_5_dedup_and_fault_injection_interaction() {
     let dir = TempDir::new().unwrap();
     let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();

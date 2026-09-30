@@ -15,9 +15,9 @@
 //! Every raft_core service derives the same thing from the StatefulSet downward
 //! API: which mode to run (single-node vs replica/HA), this node's id, the
 //! group membership, and the peer URLs. [`replica_mode`], [`ClusterTopology`],
-//! [`ClusterDims`], [`peer_ordinal`], [`parse_peer_overrides`] and
-//! [`ensure_static_membership_unchanged`] centralize it so services compose it
-//! instead of hand-rolling the ordinal math + peer-DNS each time.
+//! [`ClusterDims`], [`peer_ordinal`] and [`parse_peer_overrides`] centralize it
+//! so services compose it instead of hand-rolling the ordinal math + peer-DNS
+//! each time.
 
 mod api;
 mod application;
@@ -28,9 +28,7 @@ mod interfaces;
 mod tests;
 
 pub use api::{conformance, llm};
-pub use application::{
-    ensure_static_membership_unchanged, peer_ordinal, ClusterDims, ClusterTopology,
-};
+pub use application::{peer_ordinal, ClusterDims, ClusterTopology};
 pub use application::{
     ActiveAssignment, AssignmentEpoch, AssignmentError, FenceToken, FencedAssignment,
 };

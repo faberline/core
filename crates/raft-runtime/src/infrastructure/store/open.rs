@@ -57,21 +57,6 @@ impl RaftStore {
         &self.path
     }
 
-    /// Returns the number of heap/retained bytes in the save-dedup cache.
-    pub fn cache_footprint(&self) -> usize {
-        if self
-            .cache
-            .lock()
-            .expect("raft store cache poisoned")
-            .hard_digest
-            .is_some()
-        {
-            std::mem::size_of::<[u8; 32]>()
-        } else {
-            0
-        }
-    }
-
     pub fn persistence_stats(&self) -> PersistenceStats {
         PersistenceStats {
             log_bytes_appended: self.log_bytes_appended.load(Ordering::Relaxed),
