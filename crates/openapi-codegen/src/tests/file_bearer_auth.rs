@@ -63,10 +63,7 @@ fn legacy_generation_stays_opted_out_and_targeted_auth_keeps_manifest() {
             "client.rs",
         ),
     ] {
-        let mut opts = full_opts();
-        opts.lang = lang;
-        opts.target = Some(target);
-        opts.emit_hooks = matches!(lang, Lang::Ts);
+        let opts = opts_for(lang).with_target(target);
 
         let legacy = generate(MINIMAL, &opts).unwrap();
         assert!(legacy

@@ -6,17 +6,12 @@ use crate::{FileBearerAuth, HttpClient};
 use std::path::PathBuf;
 
 fn opts() -> GenOptions {
-    GenOptions {
-        lang: crate::Lang::Ts,
-        target: None,
-        spec_path: PathBuf::new(),
-        out_dir: PathBuf::new(),
-        client_name: "createClient".to_string(),
-        http_client: HttpClient::Fetch,
-        emit_types: true,
-        emit_client: true,
-        emit_hooks: true,
-    }
+    GenOptions::new(
+        crate::Lang::Ts,
+        PathBuf::new(),
+        PathBuf::new(),
+        "createClient",
+    )
 }
 
 fn render(json: &str) -> String {

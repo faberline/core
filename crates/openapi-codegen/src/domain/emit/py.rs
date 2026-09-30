@@ -66,13 +66,13 @@ fn generate_impl(
     let ops = operations::build(&spec);
 
     let mut files = Vec::new();
-    if opts.emit_types {
+    if opts.emit_types() {
         files.push(GeneratedFile {
             rel_path: "models.py".to_string(),
             contents: models_emit::emit(&spec, &tm, target),
         });
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         files.push(GeneratedFile {
             rel_path: "h2c_runtime.py".to_string(),
             contents: runtime_emit::emit(target),
@@ -94,10 +94,10 @@ fn generate_impl(
 
 fn emit_init(opts: &GenOptions) -> String {
     let mut out = String::from(models_emit::HEADER);
-    if opts.emit_types {
+    if opts.emit_types() {
         out.push_str("from .models import *  # noqa: F401,F403\n");
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         out.push_str("from .client import AsyncClient, Client  # noqa: F401\n");
         out.push_str("from .h2c_runtime import AsyncH2CClient, AsyncH2CConnection, AsyncH2CStream, H2CClient, H2CConnection, H2CResponse, H2CStream  # noqa: F401\n");
     }

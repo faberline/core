@@ -64,23 +64,23 @@ fn generate_impl(
     let plans = plan::build(&spec, &tm);
 
     let mut files = Vec::new();
-    if opts.emit_types {
+    if opts.emit_types() {
         files.push(GeneratedFile {
             rel_path: "types.ts".to_string(),
             contents: types_emit::emit(&spec, &tm, &plans),
         });
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         files.push(GeneratedFile {
             rel_path: "runtime.ts".to_string(),
-            contents: client_emit::emit_runtime(opts.http_client, auth),
+            contents: client_emit::emit_runtime(opts.http_client(), auth),
         });
         files.push(GeneratedFile {
             rel_path: "client.ts".to_string(),
             contents: client_emit::emit_client(&plans, opts),
         });
     }
-    if opts.emit_hooks {
+    if opts.emit_hooks() {
         files.push(GeneratedFile {
             rel_path: "hooks.ts".to_string(),
             contents: hooks_emit::emit(&plans),
@@ -100,14 +100,14 @@ fn generate_impl(
 
 fn emit_index(opts: &GenOptions) -> String {
     let mut out = String::from(types_emit::HEADER);
-    if opts.emit_types {
+    if opts.emit_types() {
         out.push_str("export * from \"./types\";\n");
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         out.push_str("export * from \"./runtime\";\n");
         out.push_str("export * from \"./client\";\n");
     }
-    if opts.emit_hooks {
+    if opts.emit_hooks() {
         out.push_str("export * from \"./hooks\";\n");
     }
     out

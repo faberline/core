@@ -6,9 +6,9 @@ use crate::domain::{FileBearerAuth, GenOptions, GeneratedOutput, Lang, TargetPro
 /// Pure core: spec JSON text → generated files. No filesystem access. Dispatches
 /// to the per-language emitter selected by [`GenOptions::lang`].
 pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput> {
-    match opts.target {
+    match opts.target() {
         Some(target) => generate_for_target(spec_json, opts, target),
-        None => match opts.lang {
+        None => match opts.lang() {
             Lang::Ts => Ok(emit::ts::generate(spec_json, opts)?),
             Lang::Py => Ok(emit::py::generate(spec_json, opts)?),
             Lang::Rust => Ok(emit::rust::generate(spec_json, opts)?),
@@ -24,9 +24,9 @@ pub fn generate_with_file_bearer_auth(
     opts: &GenOptions,
     auth: &FileBearerAuth,
 ) -> Result<GeneratedOutput> {
-    match opts.target {
+    match opts.target() {
         Some(target) => generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth),
-        None => match opts.lang {
+        None => match opts.lang() {
             Lang::Ts => Ok(emit::ts::generate_with_file_bearer_auth(
                 spec_json, opts, auth,
             )?),
@@ -63,15 +63,15 @@ pub fn generate_for_target(
 }
 
 fn validate_target(opts: &GenOptions, target: TargetProfile) -> Result<()> {
-    if opts.lang != target.lang() {
+    if opts.lang() != target.lang() {
         anyhow::bail!(
             "target profile {} is for {:?}, not requested language {:?}",
             target.id(),
             target.lang(),
-            opts.lang
+            opts.lang()
         );
     }
-    if let Some(configured) = opts.target {
+    if let Some(configured) = opts.target() {
         if configured != target {
             anyhow::bail!(
                 "explicit target argument {} conflicts with GenOptions target {}",

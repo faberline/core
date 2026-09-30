@@ -18,9 +18,7 @@ fn generates_all_files() {
 
 #[test]
 fn types_only_skips_client_and_hooks() {
-    let mut opts = full_opts();
-    opts.emit_client = false;
-    opts.emit_hooks = false;
+    let opts = full_opts().with_emit_client(false).with_emit_hooks(false);
     let out = generate(MINIMAL, &opts).unwrap();
     let names: Vec<&str> = out.files.iter().map(|f| f.rel_path.as_str()).collect();
     assert_eq!(names, vec!["types.ts", "index.ts"]);
@@ -44,8 +42,7 @@ fn invalid_spec_is_an_error() {
 #[test]
 fn every_lang_generates_non_empty() {
     for lang in [Lang::Ts, Lang::Py, Lang::Rust] {
-        let mut opts = full_opts();
-        opts.lang = lang;
+        let opts = opts_for(lang);
         let out = generate(MINIMAL, &opts).expect("emitter runs");
         assert!(!out.files.is_empty(), "{lang:?} produced no files");
     }
@@ -53,8 +50,7 @@ fn every_lang_generates_non_empty() {
 
 #[test]
 fn custom_client_name() {
-    let mut opts = full_opts();
-    opts.client_name = "makeApi".to_string();
+    let opts = GenOptions::new(Lang::Ts, PathBuf::new(), PathBuf::new(), "makeApi");
     let out = generate(MINIMAL, &opts).unwrap();
     let client = out
         .files
@@ -70,8 +66,7 @@ fn custom_client_name() {
 #[test]
 fn http_backend_only_changes_runtime() {
     let fetch = generate(MINIMAL, &full_opts()).unwrap();
-    let mut axios_opts = full_opts();
-    axios_opts.http_client = HttpClient::Axios;
+    let axios_opts = full_opts().with_http_client(HttpClient::Axios);
     let axios = generate(MINIMAL, &axios_opts).unwrap();
 
     // Everything except runtime.ts is byte-identical across backends.

@@ -5,7 +5,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use openapi_codegen::{run, GenOptions, HttpClient, Lang, MANIFEST_FILE};
+use openapi_codegen::{run, GenOptions, Lang, MANIFEST_FILE};
 
 const SPEC: &str = r##"{
   "openapi": "3.1.0",
@@ -34,17 +34,7 @@ fn temp_dir(label: &str) -> PathBuf {
 }
 
 fn opts(spec_path: &Path, out_dir: &Path) -> GenOptions {
-    GenOptions {
-        lang: Lang::Ts,
-        target: None,
-        spec_path: spec_path.to_path_buf(),
-        out_dir: out_dir.to_path_buf(),
-        client_name: "createClient".to_string(),
-        http_client: HttpClient::Fetch,
-        emit_types: true,
-        emit_client: true,
-        emit_hooks: false,
-    }
+    GenOptions::new(Lang::Ts, spec_path, out_dir, "createClient").with_emit_hooks(false)
 }
 
 #[test]

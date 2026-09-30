@@ -14,7 +14,7 @@ pub fn emit_client(plans: &[OperationPlan], opts: &GenOptions) -> String {
     out.push_str(&type_import(plans));
     out.push('\n');
 
-    let factory = &opts.client_name;
+    let factory = opts.client_name();
     out.push_str(&format!(
         "export function {factory}(config: ClientConfig) {{\n"
     ));

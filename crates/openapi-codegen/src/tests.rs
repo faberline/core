@@ -11,17 +11,12 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn full_opts() -> GenOptions {
-    GenOptions {
-        lang: Lang::Ts,
-        target: None,
-        spec_path: PathBuf::new(),
-        out_dir: PathBuf::new(),
-        client_name: "createClient".to_string(),
-        http_client: HttpClient::Fetch,
-        emit_types: true,
-        emit_client: true,
-        emit_hooks: true,
-    }
+    opts_for(Lang::Ts)
+}
+
+/// Options for `lang`, with hooks only for TypeScript.
+fn opts_for(lang: Lang) -> GenOptions {
+    GenOptions::new(lang, PathBuf::new(), PathBuf::new(), "createClient")
 }
 
 const MINIMAL: &str = r##"{

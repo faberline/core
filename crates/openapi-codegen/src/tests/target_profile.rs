@@ -2,9 +2,7 @@ use super::*;
 
 #[test]
 fn python_profiles_record_requirements_and_use_their_supported_typing_syntax() {
-    let mut opts = full_opts();
-    opts.lang = Lang::Py;
-    opts.emit_hooks = false;
+    let opts = opts_for(Lang::Py);
     for (target, version, alias) in [
         (PythonTarget::Py311, "3.11", "Label = str"),
         (PythonTarget::Py312, "3.12", "type Label = str"),
@@ -25,9 +23,7 @@ fn python_profiles_record_requirements_and_use_their_supported_typing_syntax() {
 
 #[test]
 fn python_profiles_compile_with_each_available_target_interpreter() {
-    let mut opts = full_opts();
-    opts.lang = Lang::Py;
-    opts.emit_hooks = false;
+    let opts = opts_for(Lang::Py);
 
     for (interpreter, target) in [
         ("python3.11", PythonTarget::Py311),
@@ -77,9 +73,7 @@ fn python_profiles_compile_with_each_available_target_interpreter() {
 
 #[test]
 fn rust_2024_profile_escapes_gen_field_without_changing_rust_2021() {
-    let mut opts = full_opts();
-    opts.lang = Lang::Rust;
-    opts.emit_hooks = false;
+    let opts = opts_for(Lang::Rust);
     let rust_2021 = generate_for_target(
         TARGET_PROFILE_SPEC,
         &opts,

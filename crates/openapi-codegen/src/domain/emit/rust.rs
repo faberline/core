@@ -64,13 +64,13 @@ fn generate_impl(
     let ops = operations::build(&spec);
 
     let mut files = Vec::new();
-    if opts.emit_types {
+    if opts.emit_types() {
         files.push(GeneratedFile {
             rel_path: "models.rs".to_string(),
             contents: models_emit::emit(&spec, &tm, target.unwrap_or(RustTarget::Rust2021)),
         });
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         files.push(GeneratedFile {
             rel_path: "client.rs".to_string(),
             contents: client_emit::emit(&ops, &tm, auth),
@@ -88,10 +88,10 @@ fn generate_impl(
 
 fn emit_mod(opts: &GenOptions) -> String {
     let mut out = String::from(models_emit::HEADER);
-    if opts.emit_types {
+    if opts.emit_types() {
         out.push_str("pub mod models;\n");
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         out.push_str("pub mod client;\n");
     }
     out
@@ -100,7 +100,7 @@ fn emit_mod(opts: &GenOptions) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{HttpClient, Lang};
+    use crate::Lang;
     use std::path::PathBuf;
 
     const SPEC: &str = r##"{
@@ -146,17 +146,7 @@ mod tests {
     }"##;
 
     fn opts() -> GenOptions {
-        GenOptions {
-            lang: Lang::Rust,
-            target: None,
-            spec_path: PathBuf::new(),
-            out_dir: PathBuf::new(),
-            client_name: "Client".to_string(),
-            http_client: HttpClient::Fetch,
-            emit_types: true,
-            emit_client: true,
-            emit_hooks: false,
-        }
+        GenOptions::new(Lang::Rust, PathBuf::new(), PathBuf::new(), "Client")
     }
 
     fn file<'a>(out: &'a GeneratedOutput, name: &str) -> &'a str {
