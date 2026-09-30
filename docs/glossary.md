@@ -19,8 +19,9 @@ qualified name from the second table; the code keeps its current name.
 | **adapter** | An implementation of a port against real technology, or an inbound handler that turns a protocol request into a use-case call. |
 | **published language** | The types and functions a context offers to other contexts. In a layered context it is the application layer. |
 | **shared kernel** | Code every context may use without declaring a dependency. In core it is `surface`. |
-| **assembly** | Code that wires layers together and belongs to no layer: `lib.rs` and `src/compat/`. |
-| **compat facade** | A file under `src/compat/` holding only `pub use` lines, so an old public module path keeps working after its code moved. |
+| **assembly** | Code that wires layers together and belongs to no layer: `lib.rs` and `src/api/`. |
+| **api module** | A public module under `src/api/` holding only `pub use` lines. It keeps a module path whose names the crate root does not re-export. |
+| **compat facade** | P1's file under `src/compat/` holding only `pub use` lines, so an old public module path kept working after its code moved. P2 deleted each one or made it an api module. |
 | **exception** | A recorded rule break in `ddd.toml`, with the exact files and a reason. |
 
 ### Ecosystem

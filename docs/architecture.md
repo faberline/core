@@ -143,24 +143,24 @@ Two points are deliberate:
   core are async orchestration (the Raft host, lifecycle controllers, token
   refresh). Only the domain layer must stay pure.
 
-## Public API and compatibility facades
+## Public API modules
 
 Downstream repos import core by module paths such as
 `service_k8s::lease::LeaseConfig` or `cli_std::llm::v2::Topic`. Moving files
-into layers would change those paths, so P1 keeps every one of them:
+into layers would change those paths, so P1 kept every one of them: each old
+`pub mod` became a **compatibility facade**, a file at `src/compat/<old>.rs`
+holding only `pub use` lines. P2 settled every facade:
 
+- A facade whose names are all exported at the crate root, as the same items,
+  is deleted. Callers import those names from the root;
+  [the P2 migration guide](migration/ddd-p2.md) lists each deleted path.
+- Every other facade is a permanent public module at `src/api/<name>.rs` with
+  the same path. It still holds only `pub use` lines (nested public paths are
+  inline `pub mod` blocks inside it). `lib.rs` declares `mod api;` and
+  `pub use api::<name>;`.
 - Every `pub use` at a crate root stays.
-- Every old `pub mod` becomes a **compatibility facade**: a file at
-  `src/compat/<old>.rs` that contains only `pub use` lines (nested public paths
-  are inline `pub mod` blocks inside it). `lib.rs` declares `mod compat;` and
-  `pub use compat::<old>;`.
-- `src/compat` is declared under `[assembly] modules` in `ddd.toml`: it wires
+- `src/api` is declared under `[assembly] modules` in `ddd.toml`: it wires
   layers together and is not itself part of any layer.
-
-P1 therefore changes no public path. In P2 a facade is deleted when every name
-it exports is also reachable at the crate root without a clash; the rest become
-permanent public modules under `src/api/<name>.rs` with the same path, also
-listed as assembly modules.
 
 ## File size
 

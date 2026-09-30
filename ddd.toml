@@ -120,9 +120,8 @@ mod_module_files = "deny"
 [shared_kernel]
 path = "crates/surface/src"
 
-# Public path modules that hold only `pub use` lines. src/compat/<old>.rs keeps
-# an old public module path working; src/api/<name>.rs is a public module whose
-# names the crate root does not re-export.
+# Public path modules that hold only `pub use` lines: src/api/<name>.rs is a
+# public module whose names the crate root does not re-export.
 [assembly]
 modules = [
   "crates/cli-std/src/api",

@@ -146,7 +146,7 @@ threads can cite them.
   the new file.
 - **Public paths.** Every crate-root `pub use` stays, and every old `pub mod`
   becomes a compatibility facade under `src/compat/` (see
-  [architecture](../architecture.md#public-api-and-compatibility-facades)).
+  [architecture](../architecture.md#public-api-modules)).
   Special cases that the facades must preserve exactly: lumen glob-imports
   `service_k8s::lease::*`; jet re-exports `ui_runtime::*`;
   `cli_std::registry::CLI_MODULES` is a `linkme` distributed slice used through
