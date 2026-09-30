@@ -166,11 +166,7 @@ fn never() -> Result<Api, RemoteError> {
 
 #[tokio::test]
 async fn comment_dry_run_builds_no_client_and_asks_nothing() {
-    let opts = CommentOptions {
-        number: 7,
-        dry_run: true,
-        ..CommentOptions::default()
-    };
+    let opts = CommentOptions::try_new(7).unwrap().with_dry_run(true);
     let access = Access {
         courier: None,
         token: Some("tok"),
@@ -182,10 +178,7 @@ async fn comment_dry_run_builds_no_client_and_asks_nothing() {
 
 #[tokio::test]
 async fn comment_declined_stops_before_the_client_is_built() {
-    let opts = CommentOptions {
-        number: 7,
-        ..CommentOptions::default()
-    };
+    let opts = CommentOptions::try_new(7).unwrap();
     let access = Access {
         courier: None,
         token: Some("tok"),
@@ -198,11 +191,7 @@ async fn comment_declined_stops_before_the_client_is_built() {
 #[tokio::test]
 async fn comment_reopens_then_comments_with_the_github_token() {
     let api = Api::default();
-    let opts = CommentOptions {
-        number: 7,
-        yes: true,
-        ..CommentOptions::default()
-    };
+    let opts = CommentOptions::try_new(7).unwrap().with_yes(true);
     let access = Access {
         courier: None,
         token: Some("tok"),
@@ -272,7 +261,10 @@ async fn upgrade_check_lists_releases_and_installs_nothing() {
 fn public_futures_are_send() {
     fn assert_send<T: Send>(_: T) {}
     assert_send(crate::issue::create(&TOOL, CreateOptions::default()));
-    assert_send(crate::issue::comment(&TOOL, CommentOptions::default()));
+    assert_send(crate::issue::comment(
+        &TOOL,
+        CommentOptions::try_new(1).unwrap(),
+    ));
     assert_send(crate::issue::search(&TOOL, Default::default()));
     assert_send(crate::issue::view(&TOOL, 1));
     assert_send(crate::upgrade::run(&TOOL, Options::default()));

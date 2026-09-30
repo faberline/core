@@ -50,3 +50,4 @@ pub use api::connect;
 pub use api::registry;
 pub use api::{artifact, chainable, issue, llm, report_issue, upgrade};
 pub use application::tool_info::ToolInfo;
+pub use domain::issue::number::IssueNumberError;

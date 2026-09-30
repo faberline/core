@@ -52,7 +52,9 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
   follow-up comment carries. The options of each verb are `CreateOptions`,
   `CommentOptions` and `SearchOptions`. `CreateOptions::new(title)` starts the
   create flags, `with_*` builders set the rest, and getters of the same names
-  read them.
+  read them. `CommentOptions::try_new(number)` does the same for a comment and
+  rejects issue number 0 with `IssueNumberError` ("issue number must be
+  positive").
 - **connect role** — `connect::Role` (`Read`, `Write`, `Admin`) together with
   `TokenClaims`, which hold a subject and a role per collection (`*` grants
   every collection).
@@ -114,6 +116,8 @@ adapters and calls its use case. Their signatures are unchanged.
 - **Issue verbs:**
   - `issue create` always adds the `app:<project>` and `type:report` labels to
     the caller's labels.
+  - `issue comment` targets an issue number of at least 1; `CommentOptions`
+    cannot hold 0.
   - `issue comment` reopens the issue before it comments.
   - Without a GitHub token, both fall back to printing a pre-filled URL or the
     text of the comment. The token is read from `GH_TOKEN`, then
@@ -157,7 +161,7 @@ core contexts build their llm topics with it (ADR D19). The model is `Topic`,
 `assert_topics_render`.
 
 Downstream CLIs use the whole public API:
-- the crate-root `ToolInfo`;
+- the crate-root `ToolInfo` and `IssueNumberError`;
 - the public modules `issue`, `upgrade`, `llm`, `llm::v2`, `connect`,
   `chainable`, `artifact`, `registry` and `report_issue`. They keep their
   paths (`src/api/`) because the root does not re-export their names.
@@ -175,7 +179,7 @@ jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
   no exception.
 - **Tracked for P2:**
   - Public fields built with struct literals (ADR D2):
-    - `upgrade::Options`, `CommentOptions` and `SearchOptions`, in the CLIs
+    - `upgrade::Options` and `SearchOptions`, in the CLIs
       of beam, cap, courier, defer, jet, keep, loom, lumen, mamba, mesh,
       pgpool, relay, sift, tape and vat;
     - the v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, in lumen.
