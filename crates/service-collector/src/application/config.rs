@@ -37,27 +37,64 @@ impl RetryPolicy {
     }
 }
 
+/// How one collector run reads and delivers. `try_new` is the only way to
+/// build it, so every value has a positive batch size, record byte limit and
+/// follow poll interval.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct RuntimeConfig {
-    pub batch_size: usize,
-    pub max_record_bytes: usize,
-    pub retry: RetryPolicy,
-    pub follow: bool,
-    pub follow_poll_interval: Duration,
+    batch_size: usize,
+    max_record_bytes: usize,
+    retry: RetryPolicy,
+    follow: bool,
+    follow_poll_interval: Duration,
 }
 
 impl RuntimeConfig {
-    pub fn validate(self) -> Result<Self, ConfigError> {
-        if self.batch_size == 0 {
+    /// A config, or the `ConfigError` for a zero batch size, record byte
+    /// limit or follow poll interval.
+    pub fn try_new(
+        batch_size: usize,
+        max_record_bytes: usize,
+        retry: RetryPolicy,
+        follow: bool,
+        follow_poll_interval: Duration,
+    ) -> Result<Self, ConfigError> {
+        if batch_size == 0 {
             return Err(ConfigError::ZeroBatchSize);
         }
-        if self.max_record_bytes == 0 {
+        if max_record_bytes == 0 {
             return Err(ConfigError::ZeroRecordBytes);
         }
-        if self.follow_poll_interval.is_zero() {
+        if follow_poll_interval.is_zero() {
             return Err(ConfigError::ZeroFollowPoll);
         }
-        Ok(self)
+        Ok(Self {
+            batch_size,
+            max_record_bytes,
+            retry,
+            follow,
+            follow_poll_interval,
+        })
+    }
+
+    pub fn batch_size(&self) -> usize {
+        self.batch_size
+    }
+
+    pub fn max_record_bytes(&self) -> usize {
+        self.max_record_bytes
+    }
+
+    pub fn retry(&self) -> RetryPolicy {
+        self.retry
+    }
+
+    pub fn follow(&self) -> bool {
+        self.follow
+    }
+
+    pub fn follow_poll_interval(&self) -> Duration {
+        self.follow_poll_interval
     }
 }
 
@@ -85,3 +122,6 @@ pub enum DeliveryRetryMode {
     /// Permanent failures and invalid success receipts still stop the runtime.
     UntilCancelled,
 }
+
+#[cfg(test)]
+mod tests;

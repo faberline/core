@@ -33,7 +33,10 @@ downstream, sift runs its collectors on it.
   bytes and sources the source reports lost.
 - **RuntimeConfig** — the collector's `RuntimeConfig`: batch size, record
   byte limit, `RetryPolicy`, whether to follow the source, and the follow
-  poll interval. `DeliveryRetryMode` is `Bounded` or `UntilCancelled`.
+  poll interval. The fields are private: `RuntimeConfig::try_new(batch_size,
+  max_record_bytes, retry, follow, follow_poll_interval)` builds it, and
+  getters named after the fields read it. `DeliveryRetryMode` is `Bounded`
+  or `UntilCancelled`.
 - **Run report** — `RunReport`: lines read, accepted, duplicates, rejected,
   and the final progress.
 
@@ -62,9 +65,10 @@ downstream, sift runs its collectors on it.
   same batch is retried until it succeeds or the run is dropped.
 - The retry delay doubles from `initial_backoff` per attempt, at most 64
   times the initial value, and never exceeds `max_backoff`.
-- `RuntimeConfig` and `RetryPolicy` are validated before the first read:
-  batch size, record byte limit, follow poll interval and initial backoff
+- Batch size, record byte limit, follow poll interval and initial backoff
   must be positive, and `max_backoff` not below `initial_backoff`.
+  `RuntimeConfig::try_new` checks its three limits when the config is built;
+  the runtime checks the `RetryPolicy` again before the first read.
 - `Pending` or `Exhausted` ends the batch. With `follow`, the runtime sleeps
   one poll interval and refreshes the source; without it, the run ends.
 - `JsonlQuarantine` fsyncs before it returns. A JSON checkpoint is saved with
@@ -88,6 +92,6 @@ paths `service_collector::run_collector`, `service_collector::RecordDecoder`,
   application layer; the runtime and the file helpers are outside the domain.
 - **Tracked for P2:**
   - Public fields built with struct literals by sift (ADR D2):
-    `RuntimeConfig`, `SourceProgress` and `DeliveryReceipt`. `CommitStats`,
-    `RetryPolicy` and `RunReport` also expose public fields.
+    `SourceProgress` and `DeliveryReceipt`. `CommitStats`, `RetryPolicy` and
+    `RunReport` also expose public fields.
   - Bare ids: offsets and counters are `u64`.

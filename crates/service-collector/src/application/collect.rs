@@ -46,11 +46,10 @@ where
     B: BatchSink<D::Item>,
     Q: QuarantineSink<<S::Rejection as CollectorRejection>::Entry>,
 {
-    let config = config.validate()?;
     RetryPolicy::new(
-        config.retry.max_retries,
-        config.retry.initial_backoff,
-        config.retry.max_backoff,
+        config.retry().max_retries,
+        config.retry().initial_backoff,
+        config.retry().max_backoff,
     )?;
     let mut report = RunReport {
         progress: source.progress(),
@@ -58,14 +57,14 @@ where
     };
 
     loop {
-        let mut records = Vec::with_capacity(config.batch_size);
+        let mut records = Vec::with_capacity(config.batch_size());
         let mut rejections = Vec::new();
-        let mut cursors = Vec::with_capacity(config.batch_size);
+        let mut cursors = Vec::with_capacity(config.batch_size());
         let mut reached_end = false;
 
-        for _ in 0..config.batch_size {
+        for _ in 0..config.batch_size() {
             match source
-                .next_record(config.max_record_bytes)
+                .next_record(config.max_record_bytes())
                 .map_err(|error| anyhow!("collector source read failed: {error}"))?
             {
                 ReadOutcome::Record(record) => {
@@ -88,8 +87,8 @@ where
         }
 
         if cursors.is_empty() {
-            if config.follow {
-                tokio::time::sleep(config.follow_poll_interval).await;
+            if config.follow() {
+                tokio::time::sleep(config.follow_poll_interval()).await;
                 source
                     .refresh()
                     .map_err(|error| anyhow!("collector source refresh failed: {error}"))?;
@@ -98,7 +97,7 @@ where
             break;
         }
 
-        let delivered = deliver_with_retry(sink, &records, config.retry, delivery_mode).await?;
+        let delivered = deliver_with_retry(sink, &records, config.retry(), delivery_mode).await?;
         quarantine
             .append(&rejections)
             .map_err(|error| anyhow!("collector quarantine append failed: {error}"))?;
@@ -120,8 +119,8 @@ where
         report.progress = source.progress();
 
         if reached_end {
-            if config.follow {
-                tokio::time::sleep(config.follow_poll_interval).await;
+            if config.follow() {
+                tokio::time::sleep(config.follow_poll_interval()).await;
                 source
                     .refresh()
                     .map_err(|error| anyhow!("collector source refresh failed: {error}"))?;

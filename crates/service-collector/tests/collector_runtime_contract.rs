@@ -138,13 +138,14 @@ async fn generic_runtime_retries_quarantines_then_commits() {
             attempts: attempts.clone(),
         },
         &mut quarantine,
-        RuntimeConfig {
-            batch_size: 10,
-            max_record_bytes: 1024,
-            retry: RetryPolicy::new(1, Duration::from_millis(1), Duration::from_millis(1)).unwrap(),
-            follow: false,
-            follow_poll_interval: Duration::from_millis(1),
-        },
+        RuntimeConfig::try_new(
+            10,
+            1024,
+            RetryPolicy::new(1, Duration::from_millis(1), Duration::from_millis(1)).unwrap(),
+            false,
+            Duration::from_millis(1),
+        )
+        .unwrap(),
     )
     .await
     .unwrap();
@@ -185,13 +186,14 @@ async fn incomplete_success_receipt_never_commits_source_cursors() {
         &Decoder,
         &ShortReceiptSink,
         &mut quarantine,
-        RuntimeConfig {
-            batch_size: 10,
-            max_record_bytes: 1024,
-            retry: RetryPolicy::new(0, Duration::from_millis(1), Duration::from_millis(1)).unwrap(),
-            follow: false,
-            follow_poll_interval: Duration::from_millis(1),
-        },
+        RuntimeConfig::try_new(
+            10,
+            1024,
+            RetryPolicy::new(0, Duration::from_millis(1), Duration::from_millis(1)).unwrap(),
+            false,
+            Duration::from_millis(1),
+        )
+        .unwrap(),
     )
     .await
     .expect_err("a short success receipt must fail closed");
@@ -268,14 +270,14 @@ async fn original_runtime_stops_after_the_configured_retry_limit() {
             &Decoder,
             &sink,
             &mut quarantine,
-            RuntimeConfig {
-                batch_size: 2,
-                max_record_bytes: 1024,
-                retry: RetryPolicy::new(2, Duration::from_millis(1), Duration::from_millis(1))
-                    .unwrap(),
-                follow: true,
-                follow_poll_interval: Duration::from_millis(1),
-            },
+            RuntimeConfig::try_new(
+                2,
+                1024,
+                RetryPolicy::new(2, Duration::from_millis(1), Duration::from_millis(1)).unwrap(),
+                true,
+                Duration::from_millis(1),
+            )
+            .unwrap(),
         ),
     )
     .await
@@ -334,14 +336,14 @@ async fn continuous_delivery_retains_one_batch_until_ack_or_cancellation() {
             &Decoder,
             &sink,
             &mut quarantine,
-            RuntimeConfig {
-                batch_size: 2,
-                max_record_bytes: 1024,
-                retry: RetryPolicy::new(0, Duration::from_millis(1), Duration::from_millis(2))
-                    .unwrap(),
-                follow: false,
-                follow_poll_interval: Duration::from_millis(1),
-            },
+            RuntimeConfig::try_new(
+                2,
+                1024,
+                RetryPolicy::new(0, Duration::from_millis(1), Duration::from_millis(2)).unwrap(),
+                false,
+                Duration::from_millis(1),
+            )
+            .unwrap(),
             DeliveryRetryMode::UntilCancelled,
         );
         if cancel {
