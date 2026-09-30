@@ -110,7 +110,7 @@ where
         let tls = peer_tls::PeerTlsConfig::from_env(peer_tls_env_prefix)
             .context("load replicated peer mTLS material")?
             .context("replicated peer mTLS material is required")?;
-        if !tls.required {
+        if !tls.required() {
             bail!("replicated peer mTLS must be required; set {peer_tls_env_prefix}_MTLS=on");
         }
         let peer_transport =

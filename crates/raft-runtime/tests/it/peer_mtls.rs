@@ -55,12 +55,7 @@ fn material(signer: &Authority, trust: &Authority, identity: &str, expired: bool
     std::fs::write(&ca_path, trust.cert.pem()).unwrap();
     Material {
         _dir: dir,
-        config: peer_tls::PeerTlsConfig {
-            cert: cert_path,
-            key: key_path,
-            ca: ca_path,
-            required: true,
-        },
+        config: peer_tls::PeerTlsConfig::new(cert_path, key_path, ca_path, true),
     }
 }
 
@@ -149,8 +144,12 @@ async fn reload_is_atomic_and_preserves_last_known_good_on_error() {
     let transport = PeerTransport::from_config(&first.config).unwrap();
     assert_eq!(transport.generation(), 1);
 
-    let mut invalid = first.config.clone();
-    invalid.cert = PathBuf::from("/definitely/missing-peer-cert.pem");
+    let invalid = peer_tls::PeerTlsConfig::new(
+        PathBuf::from("/definitely/missing-peer-cert.pem"),
+        first.config.key(),
+        first.config.ca(),
+        first.config.required(),
+    );
     assert!(transport.reload(&invalid).is_err());
     assert_eq!(transport.generation(), 1);
     let (_, body) = request(transport.clone(), &transport).await.unwrap();
