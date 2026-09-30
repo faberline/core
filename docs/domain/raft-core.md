@@ -12,8 +12,12 @@ tape use its types through raft-runtime's re-exports.
 
 ## Model
 
-- **NodeId, Term, Index** — `u64` aliases. `Term` is the Raft term (the
-  election epoch). `Index` is 1-based; 0 means "before the first entry".
+- **NodeId, Term, Index** — newtypes over `u64`: build one with `new`, read
+  the number with `get`; each serializes and prints as the bare number.
+  `Term` is the Raft term (the election epoch); `next()` is the one step it
+  takes. `Index` is 1-based; 0 means "before the first entry". It moves with
+  `next`, `prev`, `saturating_add`, `saturating_sub` and `checked_add`, and
+  the distance between two indices is a plain `u64` count.
 - **Raft role** — `Role`: follower, candidate or leader.
 - **Log entry** — `RaftEntry`: term, index, opaque command bytes and an
   `EntryKind` (`Command` or `Config`).
@@ -21,8 +25,9 @@ tape use its types through raft-runtime's re-exports.
   term, vote and log, plus the commit index and the compaction point with its
   snapshot bytes, so a restarted node never votes twice in a term and can
   still serve lagging followers.
-- **Raft membership** — `Membership`: voters and learners of one group.
-  `auto_membership(n)` takes node ids `0..n`, makes the largest odd prefix the
+- **Raft membership** — `Membership`: voters and learners of one group,
+  built with `Membership::new(voters, learners)` and read with `voters()`,
+  `learners()` or `into_parts()`. `auto_membership(n)` takes node ids `0..n`, makes the largest odd prefix the
   voters and a trailing even node a learner; `n = 0` counts as 1.
 - **Configuration** — `ConfState`: the membership in force, the outgoing
   membership while a joint change is in flight, and the config generation, a
@@ -38,8 +43,19 @@ tape use its types through raft-runtime's re-exports.
 
 ## Ports
 
-None. A driver drains `take_outgoing` and delivers each `Outgoing` itself;
-the unused `RaftTransport` trait was deleted in P2.
+The node calls no port itself; these are the driver's two IO seams.
+
+- `RaftStorage` — durable storage for one node's `PersistedState`: `load`,
+  `save`, and `pin_committed_command`, whose `PinnedCommand` maps to a
+  `CommandLease` holding one committed command's bytes. A driver saves
+  `persisted_ref` through it before it sends messages or applies entries.
+  Implemented by raft-runtime's `RaftStore`.
+- `RaftDelivery` — sends one `RaftMsg` to a peer and returns its reply, plus
+  `install_snapshot`. A driver drains `take_outgoing` into it and feeds the
+  replies back with `handle`. Implemented by raft-runtime's HTTP peer client.
+
+The unused `RaftTransport` trait was deleted in P2; `RaftDelivery` is the
+port it was meant to be.
 
 ## Invariants
 
@@ -73,7 +89,7 @@ either crate.
 
 - **Checker exceptions (P1):** None. The crate depends only on `serde`, and
   the timing constants are not an exception (ADR D15).
-- **Tracked for P2:**
-  - `Membership` public fields, built with struct literals by defer, keep,
-    loom, lumen, relay, sift and tape (ADR D2).
-  - Bare `u64` ids: `NodeId`, `Term` and `Index` are aliases, not newtypes.
+- **Debts:** none tracked. P2 made `Membership`'s fields private (ADR D2)
+  and turned `NodeId`, `Term` and `Index` into newtypes; the downstream
+  services that built `Membership` literals or used the ids as `u64` migrate
+  when they move to the release that carries it.

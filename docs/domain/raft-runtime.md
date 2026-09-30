@@ -8,13 +8,15 @@ committed work assignment. A service supplies a `RaftStateMachine`; the host
 does the rest. No core crate depends on it; defer, keep, loom, lumen, relay,
 sift and tape each run their replicated state through it.
 
-**Form:** layered, with no domain layer: its domain is raft-core · **Depends on:** cli-std, peer-tls, raft-core, server-lifecycle, storage-durable, transport-h2c · **Crate:** [`crates/raft-runtime`](../../crates/raft-runtime)
+**Form:** layered; its consensus domain is raft-core, its own domain layer holds `GroupId` and the peer client port, and `src/app` is the composition root · **Depends on:** cli-std, peer-tls, raft-core, server-lifecycle, storage-durable, transport-h2c · **Crate:** [`crates/raft-runtime`](../../crates/raft-runtime)
 
 ## Model
 
 - **Host** — `RaftHost`: one running Raft group. `HostConfig` sets the tick,
   pump, peer RPC and propose timeouts and the `SnapshotPolicy` (`Disabled`,
-  `EveryEntries(n)` or `External`).
+  `EveryEntries(n)` or `External`); start from `HostConfig::default()` and
+  change fields with `with_tick`, `with_pump`, `with_rpc_timeout`,
+  `with_propose_timeout` and `with_snapshot`.
 - **Proposal outcome** — `ProposalOutcome`: `Completed`,
   `RejectedBeforeAdmission`, `Ambiguous` or `DurabilityFailure`. A follower
   forwards a proposal to the leader's `/raft/publish`.
@@ -30,19 +32,23 @@ sift and tape each run their replicated state through it.
   (quiesce, leadership handoff, background tasks, peer RPC drain) and returns
   a `HostShutdownReport` of `PhaseRecord`s.
 - **Store** — `RaftStore`: file-backed persistence for one node under an
-  `FsyncPolicy`. Inside it, a store generation pin keeps one log-store
+  `FsyncPolicy`, and the implementation of raft-core's `RaftStorage` port. Inside it, a store generation pin keeps one log-store
   generation's files mapped while a command lease reads one committed
   command's bytes.
-- **Group** — `GroupId` names a Raft group. `RaftRegistry` and
+- **Group** — `GroupId` names a Raft group (`GroupId::new(name)`, read with
+  `as_str()`). `RaftRegistry` and
   `GroupRegistry` serve many groups behind one `/raft/*` router and route each
   peer RPC by group id.
 - **Assignment** — `FencedAssignment` inside a state machine gives one owner a
-  `FenceToken` (owner and assignment epoch) for one application-owned key.
+  `FenceToken` (owner and `AssignmentEpoch`) for one application-owned key.
+  The epoch is a newtype over `u64` (`new`, `get`) that serializes and
+  prints as the bare number.
 - **Read consistency** — `ReadConsistency` (`Leader`, `Bounded(ms)`, `Any`),
   parsed from the `x-read-consistency` header.
-- **Topology** — `ClusterDims` and `ClusterTopology` describe shards,
-  replicas and voters. `ReplicaHostBuilder` builds the topology, peer
-  transport, store and host together.
+- **Topology** — `ClusterDims` (`ClusterDims::new` or `from_env`, read
+  through getters) and `ClusterTopology` describe shards, replicas and
+  voters. `ReplicaHostBuilder`, whose build lives in the composition root,
+  builds the topology, peer transport, store and host together.
 
 ## Ports
 
@@ -54,6 +60,14 @@ sift and tape each run their replicated state through it.
 - `MembershipPolicy` — a product check applied to the `ClusterTopology` after
   the shared topology has been read and checked. Implemented by sift. Returns
   `MembershipError`.
+- raft-core's `RaftStorage` and `RaftDelivery` — the application host holds
+  its store and its peer transport only through these. `RaftStore`
+  (infrastructure) implements `RaftStorage`. The HTTP peer client
+  (infrastructure) implements `RaftDelivery` and the crate-private domain
+  port `PeerClient`, which carries status reads, proposal forwarding and the
+  peer address book. The public `RaftHost::spawn*` constructors and
+  `DeterministicHost::open` live in `src/app`: they take the caller's
+  `RaftStore`, build the peer client, and hand both to the host as ports.
 
 Both errors wrap an implementor's own error in `Other`, built with
 `StateMachineError::other(e)` or with `?` from an `anyhow::Error`. The host
@@ -91,25 +105,19 @@ in them is at the crate root, so keep, lumen, relay and tape import
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** No B2: the crate has no domain layer.
-  - B3 `application->infrastructure`: `RaftHost` holds the concrete
-    `RaftStore` and `PeerTransport`, `propose` forwards a publish envelope to
-    the leader, and `ReplicaHostBuilder` opens the store and builds the
-    transport itself. P2 adds a raft log store port and a peer client port,
-    implemented in infrastructure and injected at spawn.
-  - B3 `infrastructure->application`: the outbound peer RPC client is an
-    `impl` block on the host's shared state and decodes `RaftStatus`,
-    `RaftStore` names its files by `GroupId`, and the environment reader builds
-    `ClusterDims` and `ClusterTopology`. P2 moves those value types to a layer
-    both sides may use, and the RPC client becomes an adapter with its own
-    state.
-  - B3 `interfaces->infrastructure`: the peer HTTP handlers and the group
-    registry decode the same wire envelopes the RPC client sends, and
-    `DeterministicHost::open` takes a `RaftStore`. P2 moves the envelopes to a
-    wire module shared by both sides, and the conformance host takes the store
-    port.
-- **Tracked for P2:**
-  - Public fields built with struct literals (ADR D2): `HostConfig` in defer,
-    keep, lumen, relay and tape; `FenceToken` in defer and relay;
-    `ClusterDims`, `PeerAddr` and `ClusterStateView` in lumen.
-  - Bare ids: `GroupId(pub String)` and `AssignmentEpoch = u64`.
+- **Checker exceptions:** none. P2 removed the three P1 B3 exceptions:
+  - `application->infrastructure`: the host reaches its store and peers
+    through the ports above instead of holding `RaftStore` and
+    `PeerTransport`, and `ReplicaHostBuilder`'s build moved to `src/app`.
+  - `infrastructure->application`: the peer RPC client is an adapter with
+    its own state, `GroupId` moved to the domain layer, and the environment
+    readers for `ClusterDims` and `ClusterTopology` moved to `src/app`.
+  - `interfaces->infrastructure`: the peer HTTP handlers and the group
+    registry decode their own copy of the wire bodies
+    (`interfaces/peer_http/wire.rs`; a test checks both copies encode the
+    same bytes), and `DeterministicHost::open` moved to `src/app`.
+- **Debts:** none tracked. P2 made the `HostConfig` and `ClusterDims` fields
+  private (ADR D2), made `GroupId`'s field private and turned
+  `AssignmentEpoch` into a newtype. `FenceToken`, `ActiveAssignment`,
+  `PeerAddr`, `ClusterStateView` and `RaftStatus` keep public fields on
+  purpose: they are wire or persisted shapes.
