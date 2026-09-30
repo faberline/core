@@ -1,6 +1,5 @@
 use raft_runtime::{
-    group::LEGACY_GROUP_ID, FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine,
-    RaftStore,
+    FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore, LEGACY_GROUP_ID,
 };
 use std::io::ErrorKind;
 use std::sync::Arc;

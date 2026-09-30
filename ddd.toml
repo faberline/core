@@ -128,7 +128,7 @@ modules = [
   "crates/cli-std/src/compat",
   "crates/compass/src/compat",
   "crates/openapi-codegen/src/compat",
-  "crates/raft-runtime/src/compat",
+  "crates/raft-runtime/src/api",
   "crates/service-auth/src/api",
   "crates/service-backup/src/compat",
   "crates/service-http/src/api",

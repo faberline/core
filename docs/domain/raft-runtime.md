@@ -72,11 +72,13 @@ sift and tape each run their replicated state through it.
 ## Published language
 
 Services import from the crate root, which re-exports every public type plus
-raft-core's `Membership`, `auto_membership`, ids and refusal enums. The old
-modules `cluster`, `conformance`, `group` and `llm` stay as compatibility
-facades. keep, lumen, relay and tape use `cluster::` paths; lumen also uses
-`llm::topic` and `conformance::DeterministicHost`, a runtime-free, socket-free,
-clock-free host for conformance tests.
+raft-core's `Membership`, `auto_membership`, ids and refusal enums. Two
+public modules keep their paths because they hold names the root does not
+re-export (`src/api/`): `conformance`, whose `DeterministicHost` is a
+runtime-free, socket-free, clock-free host for conformance tests, and `llm`.
+lumen uses both. P2 deleted the old modules `cluster` and `group`: every name
+in them is at the crate root, so keep, lumen, relay and tape import
+`replica_mode`, `ClusterTopology` and the other topology items from the root.
 
 ## Exceptions and debts
 

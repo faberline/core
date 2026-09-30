@@ -722,8 +722,8 @@ operator defaults.
 | **`crates/build-stamp`** | the **build stamp** (a `[build-dependencies]` crate): `stamp("<PREFIX>")` emits the `<PREFIX>_GIT_SHA` / `<PREFIX>_BUILT_AT` / `<PREFIX>_TARGET` rustc-env lines that feed `cli-std`'s `ToolInfo` — one implementation instead of a per-service `build.rs` copy. |
 
 **k8s-native auto-mode + discovery.** A StatefulSet-profile service defaults to
-single-node and turns on raft **only when the StatefulSet scales out** — `raft_runtime::cluster::
-replica_mode()` is `true` when `REPLICAS_PER_SHARD > 1` (a downward-API value). So
+single-node and turns on raft **only when the StatefulSet scales out** — `raft_runtime::replica_mode()`
+is `true` when `REPLICAS_PER_SHARD > 1` (a downward-API value). So
 `<svc> serve` needs **no flags or cluster env** for local/single-node dev; k8s
 scaling flips it to replica mode automatically, with node id / membership / peers
 derived from the downward API by `ClusterTopology::from_env` (a local

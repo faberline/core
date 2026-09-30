@@ -9,17 +9,25 @@
 //! Every raft_core service (lumen, keep, relay, loom) supplies a
 //! [`RaftStateMachine`] (`apply`/`snapshot`/`restore`/`applied_index`) and gets
 //! HA + the backup layer for free, instead of hand-rolling a driver.
+//!
+//! ## Cluster topology and auto-mode
+//!
+//! Every raft_core service derives the same thing from the StatefulSet downward
+//! API: which mode to run (single-node vs replica/HA), this node's id, the
+//! group membership, and the peer URLs. [`replica_mode`], [`ClusterTopology`],
+//! [`ClusterDims`], [`peer_ordinal`], [`parse_peer_overrides`] and
+//! [`ensure_static_membership_unchanged`] centralize it so services compose it
+//! instead of hand-rolling the ordinal math + peer-DNS each time.
 
+mod api;
 mod application;
-mod compat;
 mod infrastructure;
 mod interfaces;
 
 #[cfg(test)]
 mod tests;
 
-pub use compat::{cluster, conformance, group, llm};
-
+pub use api::{conformance, llm};
 pub use application::{
     ensure_static_membership_unchanged, peer_ordinal, ClusterDims, ClusterTopology,
 };

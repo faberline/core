@@ -3,8 +3,8 @@ use std::sync::Arc;
 use tempfile::TempDir;
 
 use raft_runtime::{
-    group::{GroupId, LEGACY_GROUP_ID},
-    FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore,
+    FsyncPolicy, GroupId, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore,
+    LEGACY_GROUP_ID,
 };
 
 use crate::support::cluster;

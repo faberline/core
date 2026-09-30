@@ -5,8 +5,8 @@ use tempfile::TempDir;
 
 use raft_core::VoteReq;
 use raft_runtime::{
-    group::GroupId, FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftRegistry,
-    RaftStateMachine, RaftStatus, RaftStore, RegistryError,
+    FsyncPolicy, GroupId, HostConfig, Index, Membership, RaftHost, RaftRegistry, RaftStateMachine,
+    RaftStatus, RaftStore, RegistryError,
 };
 
 use crate::support::cluster;

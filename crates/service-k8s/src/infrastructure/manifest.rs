@@ -3,7 +3,7 @@
 //! k8s objects — labels/selector/meta, ServiceAccount, headless + client
 //! Services, PodDisruptionBudget, CronJobs, and [`sharded_statefulset`]: the
 //! downward-API StatefulSet whose env feeds
-//! `raft_runtime::cluster::ClusterTopology::from_env`.
+//! `raft_runtime::ClusterTopology::from_env`.
 //!
 //! Lifted + parameterized from lumen's `service_k8s::render` helpers. A service
 //! keeps its own service-specific rendering and calls these for the shared
@@ -25,7 +25,7 @@ use crate::domain::capacity::{
 };
 
 // The downward-API env keys a sharded-HA StatefulSet injects. These MUST match
-// `raft_runtime::cluster::ClusterTopology::from_env` (the consumer) — duplicated
+// `raft_runtime::ClusterTopology::from_env` (the consumer) — duplicated
 // here (rather than depending on raft-runtime) to keep this kube-only lib free of
 // the raftcore/h2c/reqwest dep tree; the `downward_api_env_keys` test asserts
 // `sharded_statefulset` emits exactly these.

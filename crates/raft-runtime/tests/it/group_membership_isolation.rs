@@ -24,8 +24,8 @@ use tempfile::TempDir;
 
 use raft_core::ConfState;
 use raft_runtime::{
-    group::GroupId, FsyncPolicy, HostConfig, Index, Membership, MembershipPhase, RaftHost,
-    RaftRegistry, RaftStateMachine, RaftStatus, RaftStore,
+    FsyncPolicy, GroupId, HostConfig, Index, Membership, MembershipPhase, RaftHost, RaftRegistry,
+    RaftStateMachine, RaftStatus, RaftStore,
 };
 
 use crate::support::cluster;

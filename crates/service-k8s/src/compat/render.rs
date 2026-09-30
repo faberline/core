@@ -3,7 +3,7 @@
 //! k8s objects — labels/selector/meta, ServiceAccount, headless + client
 //! Services, PodDisruptionBudget, CronJobs, and [`sharded_statefulset`]: the
 //! downward-API StatefulSet whose env feeds
-//! `raft_runtime::cluster::ClusterTopology::from_env`.
+//! `raft_runtime::ClusterTopology::from_env`.
 //!
 //! Lifted + parameterized from lumen's `service_k8s::render` helpers. A service
 //! keeps its own service-specific rendering and calls these for the shared

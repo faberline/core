@@ -53,7 +53,7 @@ use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
 use raft_runtime::{
-    group::GroupId, FsyncPolicy, HostConfig, Membership, RaftHost, RaftRegistry, RaftStateMachine,
+    FsyncPolicy, GroupId, HostConfig, Membership, RaftHost, RaftRegistry, RaftStateMachine,
     RaftStatus, RaftStore, TransferRefused,
 };
 

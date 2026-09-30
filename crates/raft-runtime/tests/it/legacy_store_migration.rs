@@ -2,7 +2,7 @@ use std::io;
 use tempfile::TempDir;
 
 use raft_core::{EntryKind, PersistedState, RaftEntry};
-use raft_runtime::{group::GroupId, FsyncPolicy, RaftStore};
+use raft_runtime::{FsyncPolicy, GroupId, RaftStore};
 
 #[test]
 fn measurement_1_migrate_legacy_json_to_named_group() {
