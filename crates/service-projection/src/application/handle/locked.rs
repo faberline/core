@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
+use chrono::Utc;
 
 use super::{LiveProjection, ProjectionHandle};
 use crate::domain::{checkpoint, Projection, ProjectionLag, ProjectionRecord, RebuildComparison};
@@ -65,6 +66,7 @@ where
             generation,
             live.checkpoint.event_id.clone(),
             &state,
+            Utc::now(),
         );
         persist(&self.state_path, &checkpoint, &state)?;
         live.implementation.checkpoint_committed()?;
@@ -90,6 +92,7 @@ where
             source_generation,
             last_event_id,
             &state,
+            Utc::now(),
         );
         persist(&self.state_path, &checkpoint, &state)?;
         rebuilt.checkpoint_committed()?;

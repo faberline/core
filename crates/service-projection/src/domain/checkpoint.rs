@@ -1,4 +1,4 @@
-use chrono::{SecondsFormat, Utc};
+use chrono::{DateTime, SecondsFormat, Utc};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -18,7 +18,9 @@ pub struct ProjectionCheckpoint {
 }
 
 impl ProjectionCheckpoint {
-    pub fn empty(descriptor: &ProjectionDescriptor) -> Self {
+    /// The checkpoint of a projection with no applied records, stamped with
+    /// `now`.
+    pub fn empty(descriptor: &ProjectionDescriptor, now: DateTime<Utc>) -> Self {
         Self {
             projection: descriptor.name.clone(),
             schema_version: descriptor.schema_version,
@@ -26,7 +28,7 @@ impl ProjectionCheckpoint {
             source_generation: 0,
             event_id: None,
             state_sha256: String::new(),
-            updated_at: now(),
+            updated_at: timestamp(now),
         }
     }
 }
@@ -37,6 +39,7 @@ pub(crate) fn checkpoint(
     source_generation: u64,
     event_id: Option<String>,
     state: &[u8],
+    now: DateTime<Utc>,
 ) -> ProjectionCheckpoint {
     ProjectionCheckpoint {
         projection: descriptor.name.clone(),
@@ -45,13 +48,16 @@ pub(crate) fn checkpoint(
         source_generation,
         event_id,
         state_sha256: sha256(state),
-        updated_at: now(),
+        updated_at: timestamp(now),
     }
 }
 
-fn now() -> String {
-    Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
+/// `updated_at` text: RFC 3339 in UTC with milliseconds and a `Z` suffix.
+fn timestamp(now: DateTime<Utc>) -> String {
+    now.to_rfc3339_opts(SecondsFormat::Millis, true)
 }
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod timestamp_tests;

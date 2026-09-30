@@ -20,6 +20,9 @@ log, metric and trace projections with it.
   replaces records without moving its cursor high-water mark.
 - **Projection checkpoint** — `ProjectionCheckpoint`: name, schema version,
   cursor, source generation, last event id, state sha256 and update time.
+  The domain does not read the clock: `ProjectionCheckpoint::empty` and the
+  checkpoint builder take `now: DateTime<Utc>`, which the runtime reads, and
+  write it as RFC 3339 UTC with milliseconds (`2026-01-02T03:04:05.678Z`).
 - **Projection snapshot** — the state bytes, saved in a
   `ProjectionStateEnvelope` with a format version and the checkpoint.
 - **Projection quarantine** — a state file that failed to load, renamed aside.
@@ -87,8 +90,6 @@ test checks its own sources for `service_projection::ProjectionRegistry`.
   - B2 (`utoipa`): `ProjectionDescriptor`, `ProjectionCheckpoint` and
     `ProjectionLag` derive `ToSchema`, and sift's OpenAPI document uses those
     schema names. P2 moves the schemas to interfaces types with the same names.
-  - B2 (`chrono::Utc::now`): `ProjectionCheckpoint::empty` and the checkpoint
-    builder stamp `updated_at` from the wall clock. P2 adds a `Clock` port.
   - B3 `application->infrastructure`: `ProjectionHandle` and
     `ProjectionRegistry` call the file-state functions directly. P2 adds a
     state-store port.

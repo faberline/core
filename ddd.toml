@@ -361,12 +361,6 @@ paths = [
 reason = "Moved as-is in P1: ProjectionDescriptor, ProjectionCheckpoint and ProjectionLag derive utoipa::ToSchema, and sift's OpenAPI document uses these schema names. P2: the schemas move to interfaces body types that keep the schema names."
 
 [[exceptions]]
-rule = "B2"
-subject = "chrono::Utc::now"
-paths = ["crates/service-projection/src/domain/checkpoint.rs"]
-reason = "Moved as-is in P1: ProjectionCheckpoint::empty and the checkpoint builder stamp updated_at from the wall clock. P2: they take the time from a Clock port, which changes the empty() signature."
-
-[[exceptions]]
 rule = "B3"
 subject = "application->infrastructure"
 paths = [

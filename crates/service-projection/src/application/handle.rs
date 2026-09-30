@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use chrono::Utc;
 use tokio::sync::Notify;
 
 use super::config::ProjectionRuntimeConfig;
@@ -61,11 +62,11 @@ where
                 Err(_) => {
                     quarantine_invalid_snapshot(&state_path, &bytes)?;
                     implementation = factory()?;
-                    (ProjectionCheckpoint::empty(&descriptor), true)
+                    (ProjectionCheckpoint::empty(&descriptor, Utc::now()), true)
                 }
             }
         } else {
-            (ProjectionCheckpoint::empty(&descriptor), false)
+            (ProjectionCheckpoint::empty(&descriptor, Utc::now()), false)
         };
         let handle = Self {
             source,
@@ -171,6 +172,7 @@ where
                 source_generation,
                 last_event_id,
                 &state,
+                Utc::now(),
             );
             persist(&self.state_path, &checkpoint, &state)?;
             rebuilt.checkpoint_committed()?;
