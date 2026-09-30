@@ -68,13 +68,12 @@ other context.
 ## Exceptions and debts
 
 - **Checker exceptions (P1):**
-  - B1 (naming): the crate is not split into the kernel layout yet. It is
-    SPEC-MANAGED, so P1 leaves it untouched (ADR D18); P2 splits it after
-    confirming that nothing regenerates it (D8).
+  - B1 (naming): the shared kernel keeps its crate name while ui-runtime is
+    a whole-src domain crate. P2 has removed the SPEC-MANAGED markers and
+    split `src/` into one private module per concept (D8); the exception
+    goes when ui-runtime moves to `src/domain/`.
 
-  The single 423-line source file is a C1 size warning, not an exception; it
-  stays visible in the report until the P2 split. serde on the snapshot types
-  is allowed by policy (the snapshot is the wire format) and is not an
-  exception either.
+  serde on the snapshot types is allowed by policy (the snapshot is the wire
+  format) and is not an exception.
 - **Tracked for P2:** public fields that jet builds with struct literals,
   including in the Rust it generates from TSX: `Props` and `Component`.
