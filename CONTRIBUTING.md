@@ -796,7 +796,7 @@ Each row names what the app is allowed to keep after the move.
 | `raft.rs` — peer transport, apply loop, snapshot/compaction, topology, peer DNS | `raft-runtime` | `raft_sm.rs` |
 | `tls.rs` / `peer_tls.rs` — PEM loading, rustls builders | `peer-tls` | the env-prefix constant |
 | `metrics.rs` — registry, text encoder, the `/metrics` handler | `metrics-prometheus` + `service-http` | domain metric *declarations* |
-| `auth.rs` — bearer extraction, middleware, registry-file loading | `service-auth::role_map` | the domain `Role` mapping and resource decisions |
+| `auth.rs` — bearer extraction, middleware, registry-file loading | `service-auth` (the token-registry verifier) | the domain `Role` mapping and resource decisions |
 | `backup.rs` — sinks, upload, retention | `service-backup` | producing consistent snapshot bytes |
 | hand-rolled fsync / atomic rename / CRC framing | `storage-durable` | the domain codec |
 | a hand-rolled h2c client, or any `bind`/`listen` | `transport-h2c` / `server-http` | — |

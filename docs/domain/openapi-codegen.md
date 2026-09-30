@@ -62,8 +62,9 @@ composition root, reads the spec, calls generation and writes the output.
 - Domain errors are typed: the `emit::{ts, py, rust}` `generate*` functions
   return `SpecParseError`, `TargetProfile::from_id` and `FromStr` return
   `UnknownTargetProfile`, and `TargetPolicy::resolve` returns
-  `TargetPolicyError`. The root `generate*` functions, `run` and
-  `TargetPolicy::from_toml` keep `anyhow` and pass the text on unchanged.
+  `TargetPolicyError`. The root `generate*` functions and
+  `TargetPolicy::from_toml` keep `anyhow` and pass the text on unchanged;
+  `run` returns an exit code and prints that text.
 - `write_to_dir` refuses an absolute generated path or one with a `..`
   component before it writes any file.
 - Only `query` operations get a POST twin: the `x-post-twin` extension, else the

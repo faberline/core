@@ -126,6 +126,8 @@ cli-std: an llm topic.
   - `anyhow` in the registry loaders and the reload API. These are not
     ports, so ADR D4 does not cover them. P2 made `Registry::parse` and
     `try_merge` return `RegistryError`.
+  - `anyhow` in the `GoogleVerifier::google` and `with_sources`
+    constructors, which are not ports either.
   - `ReviewedIdentity` has public fields built with struct literals in
     lumen and sift.
   - `DelegatedAuthMetrics` exposes its counters as public fields.
