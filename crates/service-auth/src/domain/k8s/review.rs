@@ -20,16 +20,74 @@ use std::pin::Pin;
 use super::principal::ReviewedIdentity;
 
 /// What `TokenReview` said, reduced to the fields a delegating service needs.
+///
+/// A [`ReviewBackend`] builds one with [`authenticated`](Self::authenticated)
+/// or [`rejected`](Self::rejected), or with [`new`](Self::new) when it maps
+/// every field of an apiserver response as-is. `Default` is an
+/// unauthenticated outcome with no identity, audiences or error.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TokenReviewOutcome {
-    pub authenticated: bool,
-    pub identity: ReviewedIdentity,
+    authenticated: bool,
+    identity: ReviewedIdentity,
+    audiences: Vec<String>,
+    error: Option<String>,
+}
+
+impl TokenReviewOutcome {
+    /// Every field as the apiserver returned it: `status.authenticated`, the
+    /// user, `status.audiences` and `status.error`.
+    pub fn new(
+        authenticated: bool,
+        identity: ReviewedIdentity,
+        audiences: Vec<String>,
+        error: Option<String>,
+    ) -> Self {
+        Self {
+            authenticated,
+            identity,
+            audiences,
+            error,
+        }
+    }
+
+    /// The apiserver authenticated the token as `identity`, valid for
+    /// `audiences`, with no error.
+    pub fn authenticated(identity: ReviewedIdentity, audiences: Vec<String>) -> Self {
+        Self::new(true, identity, audiences, None)
+    }
+
+    /// The apiserver did not authenticate the token and explained why in
+    /// `error`. The identity and audiences are empty.
+    pub fn rejected(error: impl Into<String>) -> Self {
+        Self::new(
+            false,
+            ReviewedIdentity::default(),
+            Vec::new(),
+            Some(error.into()),
+        )
+    }
+
+    /// Whether the apiserver authenticated the token.
+    pub fn is_authenticated(&self) -> bool {
+        self.authenticated
+    }
+
+    /// Who the apiserver says the token belongs to.
+    pub fn identity(&self) -> &ReviewedIdentity {
+        &self.identity
+    }
+
     /// The audiences the apiserver confirmed the token is valid for. Empty
     /// means it returned none, which never satisfies a requested audience.
-    pub audiences: Vec<String>,
+    pub fn audiences(&self) -> &[String] {
+        &self.audiences
+    }
+
     /// `status.error`, when the apiserver explained a non-authentication.
     /// Never rendered to a caller — it is upstream diagnostic text.
-    pub error: Option<String>,
+    pub fn error(&self) -> Option<&str> {
+        self.error.as_deref()
+    }
 }
 
 /// The Kubernetes `authorization.k8s.io` resource attributes for one check.

@@ -152,10 +152,10 @@ fn id_token() -> String {
 }
 
 fn dev_claims() -> TokenClaims {
-    TokenClaims {
-        subject: "dev:lumen-dev".to_string(),
-        roles: HashMap::from([("products".to_string(), Role::Read)]),
-    }
+    TokenClaims::new(
+        "dev:lumen-dev".to_string(),
+        HashMap::from([("products".to_string(), Role::Read)]),
+    )
 }
 
 /// The registry keyed by IAM identity instead of by secret. The key is a

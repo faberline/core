@@ -132,8 +132,8 @@ impl Registry {
         let hit = |section: &'static str, entries: &HashMap<String, TokenClaims>| {
             entries
                 .iter()
-                .filter(|(_, claims)| reserved.iter().any(|r| r == &claims.subject))
-                .map(|(key, claims)| (section, key.clone(), claims.subject.clone()))
+                .filter(|(_, claims)| reserved.iter().any(|r| r == claims.subject()))
+                .map(|(key, claims)| (section, key.clone(), claims.subject().to_owned()))
                 .min()
         };
         hit(TOKENS_SECTION, &self.tokens).or_else(|| hit(IDENTITIES_SECTION, &self.identities))
@@ -155,7 +155,7 @@ fn merge_namespace(
                 RegistryError::DuplicateIdentity { identity: key }
             } else {
                 RegistryError::DuplicateToken {
-                    subject: previous.subject.clone(),
+                    subject: previous.subject().to_owned(),
                 }
             });
         }

@@ -21,13 +21,13 @@ impl RoleMapPrincipal {
             RoleMapPrincipal::Open => Ok(()),
             RoleMapPrincipal::Token(claims) => {
                 let have = claims
-                    .roles
+                    .roles()
                     .get(resource)
-                    .or_else(|| claims.roles.get(WILDCARD_RESOURCE));
+                    .or_else(|| claims.roles().get(WILDCARD_RESOURCE));
                 match have {
                     Some(r) if r.covers(needed) => Ok(()),
                     _ => Err(RoleMapDenied {
-                        subject: claims.subject.clone(),
+                        subject: claims.subject().to_owned(),
                         needed,
                         resource: resource.to_string(),
                     }),
@@ -39,7 +39,7 @@ impl RoleMapPrincipal {
     pub fn subject(&self) -> Option<&str> {
         match self {
             RoleMapPrincipal::Open => None,
-            RoleMapPrincipal::Token(c) => Some(c.subject.as_str()),
+            RoleMapPrincipal::Token(c) => Some(c.subject()),
         }
     }
 }

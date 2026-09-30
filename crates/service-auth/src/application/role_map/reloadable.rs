@@ -324,11 +324,11 @@ fn validate_entries(entries: &HashMap<String, TokenClaims>, kind: &str) -> Resul
         if key.trim().is_empty() {
             bail!("replacement registry contains an empty {kind} key");
         }
-        if claims.subject.trim().is_empty() {
+        if claims.subject().trim().is_empty() {
             bail!("replacement registry contains an empty subject");
         }
         if claims
-            .roles
+            .roles()
             .keys()
             .any(|resource| resource.trim().is_empty())
         {

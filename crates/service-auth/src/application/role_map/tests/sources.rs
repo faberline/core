@@ -50,8 +50,8 @@ fn two_files_union_into_one_registry_each_keeping_its_own_namespace() {
     )
     .expect("two sources union");
 
-    assert_eq!(registry.identities["a@b.com"].subject, "dev");
-    assert_eq!(registry.tokens["s3cret"].subject, "svc");
+    assert_eq!(registry.identities["a@b.com"].subject(), "dev");
+    assert_eq!(registry.tokens["s3cret"].subject(), "svc");
     // Still disjoint after the merge — the union is per namespace.
     assert!(!registry.identities.contains_key("s3cret"));
     assert!(!registry.tokens.contains_key("a@b.com"));
@@ -121,8 +121,8 @@ fn the_same_key_in_two_namespaces_is_not_a_collision() {
     let other =
         Registry::parse(r#"{"identities":{"shared":{"subject":"dev","roles":{}}}}"#).unwrap();
     registry.try_merge(other).expect("different namespaces");
-    assert_eq!(registry.tokens["shared"].subject, "svc");
-    assert_eq!(registry.identities["shared"].subject, "dev");
+    assert_eq!(registry.tokens["shared"].subject(), "svc");
+    assert_eq!(registry.identities["shared"].subject(), "dev");
 }
 
 /// An absent source is absent, not empty. A service configured with only

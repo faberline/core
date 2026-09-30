@@ -52,8 +52,8 @@ async fn the_kubernetes_default_profile_still_rejects_bad_identity_shapes() {
             "not_authenticated",
         ),
     ] {
-        let mut outcome = reviewed(username, &[]);
-        outcome.authenticated = authenticated;
+        let outcome =
+            TokenReviewOutcome::new(authenticated, reviewed_identity(username), Vec::new(), None);
         let backend = Arc::new(ScriptedBackend::default().with_token(Ok(outcome)));
         let auth = DelegatedAuthenticator::with_clock(
             backend,
@@ -91,11 +91,7 @@ async fn a_token_for_another_audience_is_rejected_even_though_it_is_valid() {
 #[tokio::test]
 async fn an_unauthenticated_review_is_a_401_not_a_503() {
     let backend = Arc::new(
-        ScriptedBackend::default().with_token(Ok(TokenReviewOutcome {
-            authenticated: false,
-            error: Some("token expired".into()),
-            ..Default::default()
-        })),
+        ScriptedBackend::default().with_token(Ok(TokenReviewOutcome::rejected("token expired"))),
     );
     let auth = authenticator(backend, Arc::new(ManualClock::new(0)));
 
@@ -127,16 +123,17 @@ async fn a_verified_non_service_account_is_rejected_before_any_authorization() {
 /// R4: the authorizer is entitled to everything the authenticator learned.
 #[tokio::test]
 async fn the_whole_reviewed_identity_reaches_the_access_review() {
-    let mut outcome = reviewed("system:serviceaccount:tenant-a:reader", &[AUDIENCE]);
-    outcome.identity.groups = vec![
+    let mut who = reviewed_identity("system:serviceaccount:tenant-a:reader");
+    who.groups = vec![
         "system:serviceaccounts".into(),
         "system:serviceaccounts:tenant-a".into(),
     ];
-    outcome.identity.extra = BTreeMap::from([(
+    who.extra = BTreeMap::from([(
         "authentication.kubernetes.io/pod-name".to_string(),
         vec!["client-0".to_string()],
     )]);
-    let expected = outcome.identity.clone();
+    let expected = who.clone();
+    let outcome = TokenReviewOutcome::authenticated(who, vec![AUDIENCE.to_string()]);
     let backend = Arc::new(
         ScriptedBackend::default()
             .with_token(Ok(outcome))

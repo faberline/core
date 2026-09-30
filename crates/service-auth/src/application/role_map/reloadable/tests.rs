@@ -17,10 +17,10 @@ impl AuthEventSink for RecordingSink {
 }
 
 fn claims(subject: &str, role: Role) -> TokenClaims {
-    TokenClaims {
-        subject: subject.to_owned(),
-        roles: HashMap::from([("resource".to_owned(), role)]),
-    }
+    TokenClaims::new(
+        subject.to_owned(),
+        HashMap::from([("resource".to_owned(), role)]),
+    )
 }
 
 fn headers(token: &str) -> HeaderMap {
@@ -88,7 +88,10 @@ fn rotation_can_add_identities_without_widening_the_bearer_namespace() {
         .unwrap();
 
     assert_eq!(verifier.entry_count(), 2);
-    assert_eq!(verifier.lookup_identity("a@b.com").unwrap().subject, "dev");
+    assert_eq!(
+        verifier.lookup_identity("a@b.com").unwrap().subject(),
+        "dev"
+    );
     assert!(verifier.lookup_secret("a@b.com").is_none());
     assert!(
         verifier.authenticate(&headers("a@b.com")).is_err(),
@@ -123,7 +126,10 @@ fn a_malformed_identity_rotation_leaves_the_previous_registry_serving() {
 
     assert_eq!(verifier.revision(), 0);
     assert_eq!(verifier.entry_count(), 2);
-    assert_eq!(verifier.lookup_identity("a@b.com").unwrap().subject, "dev");
+    assert_eq!(
+        verifier.lookup_identity("a@b.com").unwrap().subject(),
+        "dev"
+    );
     assert!(verifier.authenticate(&headers("s3cret")).is_ok());
 }
 

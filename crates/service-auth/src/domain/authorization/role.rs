@@ -23,8 +23,28 @@ impl Role {
 /// no more specific entry matches.
 #[derive(Debug, Clone, Deserialize)]
 pub struct TokenClaims {
-    pub subject: String,
-    /// `resource` → `Role`. The literal key `*` is a wildcard.
+    subject: String,
     #[serde(default)]
-    pub roles: HashMap<String, Role>,
+    roles: HashMap<String, Role>,
+}
+
+impl TokenClaims {
+    /// Claims for `subject`, with `roles` keyed by resource (`*` is the
+    /// wildcard).
+    pub fn new(subject: impl Into<String>, roles: HashMap<String, Role>) -> Self {
+        Self {
+            subject: subject.into(),
+            roles,
+        }
+    }
+
+    /// Who the token belongs to.
+    pub fn subject(&self) -> &str {
+        &self.subject
+    }
+
+    /// `resource` → `Role`. The literal key `*` is a wildcard.
+    pub fn roles(&self) -> &HashMap<String, Role> {
+        &self.roles
+    }
 }

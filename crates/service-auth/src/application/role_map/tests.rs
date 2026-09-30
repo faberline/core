@@ -9,13 +9,13 @@ use crate::{
 use crate::{AuthError, Verifier};
 
 fn token(roles: &[(&str, Role)]) -> TokenClaims {
-    TokenClaims {
-        subject: "tester".into(),
-        roles: roles
+    TokenClaims::new(
+        "tester",
+        roles
             .iter()
             .map(|(r, role)| (r.to_string(), *role))
             .collect(),
-    }
+    )
 }
 
 mod loading;

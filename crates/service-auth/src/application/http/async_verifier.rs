@@ -107,10 +107,10 @@ mod tests {
     use std::collections::HashMap;
 
     fn claims() -> TokenClaims {
-        TokenClaims {
-            subject: "tester".into(),
-            roles: HashMap::from([("products".to_string(), Role::Read)]),
-        }
+        TokenClaims::new(
+            "tester",
+            HashMap::from([("products".to_string(), Role::Read)]),
+        )
     }
 
     #[tokio::test]

@@ -93,18 +93,20 @@ fn config() -> DelegatedAuthConfig {
     DelegatedAuthConfig::new(vec![AUDIENCE.to_string()]).unwrap()
 }
 
-fn reviewed(username: &str, audiences: &[&str]) -> TokenReviewOutcome {
-    TokenReviewOutcome {
-        authenticated: true,
-        identity: ReviewedIdentity {
-            username: username.into(),
-            uid: "uid-1".into(),
-            groups: vec!["system:serviceaccounts".into()],
-            extra: BTreeMap::new(),
-        },
-        audiences: audiences.iter().map(|a| a.to_string()).collect(),
-        error: None,
+fn reviewed_identity(username: &str) -> ReviewedIdentity {
+    ReviewedIdentity {
+        username: username.into(),
+        uid: "uid-1".into(),
+        groups: vec!["system:serviceaccounts".into()],
+        extra: BTreeMap::new(),
     }
+}
+
+fn reviewed(username: &str, audiences: &[&str]) -> TokenReviewOutcome {
+    TokenReviewOutcome::authenticated(
+        reviewed_identity(username),
+        audiences.iter().map(|a| a.to_string()).collect(),
+    )
 }
 
 fn attributes() -> ResourceAttributes {

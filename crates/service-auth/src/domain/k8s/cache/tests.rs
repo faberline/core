@@ -50,7 +50,7 @@ fn an_expired_entry_is_reachable_only_through_the_outage_path() {
 fn past_the_stale_window_even_the_outage_path_fails_closed() {
     let policy = CachePolicy::default();
     let (cache, clock) = cache(policy);
-    cache.insert("k".into(), true, policy.allow_ttl);
+    cache.insert("k".into(), true, policy.allow_ttl());
 
     clock.advance(policy.revocation_bound());
     clock.advance(Duration::from_millis(1));
@@ -74,8 +74,8 @@ fn past_the_stale_window_even_the_outage_path_fails_closed() {
 fn a_deny_expires_far_sooner_than_an_allow() {
     let policy = CachePolicy::default();
     let (cache, clock) = cache(policy);
-    cache.insert("allow".into(), true, policy.allow_ttl);
-    cache.insert("deny".into(), false, policy.deny_ttl);
+    cache.insert("allow".into(), true, policy.allow_ttl());
+    cache.insert("deny".into(), false, policy.deny_ttl());
 
     clock.advance(Duration::from_secs(31));
     assert_eq!(cache.get(&"deny".to_string()), None);
@@ -84,26 +84,20 @@ fn a_deny_expires_far_sooner_than_an_allow() {
 
 #[test]
 fn a_zero_stale_window_removes_the_outage_path_entirely() {
-    let policy = CachePolicy {
-        stale_window: Duration::ZERO,
-        ..CachePolicy::default()
-    };
+    let policy = CachePolicy::default().with_stale_window(Duration::ZERO);
     let (cache, clock) = cache(policy);
-    cache.insert("k".into(), true, policy.allow_ttl);
-    clock.advance(policy.allow_ttl);
+    cache.insert("k".into(), true, policy.allow_ttl());
+    clock.advance(policy.allow_ttl());
     clock.advance(Duration::from_millis(1));
 
     assert_eq!(cache.get_stale(&"k".to_string()), None);
-    assert_eq!(policy.revocation_bound(), policy.allow_ttl);
+    assert_eq!(policy.revocation_bound(), policy.allow_ttl());
 }
 
 /// The key is caller-chosen, so the ceiling has to hold under a flood.
 #[test]
 fn the_entry_ceiling_holds_against_an_unbounded_key_space() {
-    let policy = CachePolicy {
-        max_entries: 16,
-        ..CachePolicy::default()
-    };
+    let policy = CachePolicy::default().with_max_entries(16);
     let (cache, _clock) = cache(policy);
     for i in 0..1_000 {
         cache.insert(format!("k{i}"), true, Duration::from_secs(300));
@@ -117,10 +111,7 @@ fn the_entry_ceiling_holds_against_an_unbounded_key_space() {
 
 #[test]
 fn eviction_prefers_entries_nothing_can_read_any_more() {
-    let policy = CachePolicy {
-        max_entries: 2,
-        ..CachePolicy::default()
-    };
+    let policy = CachePolicy::default().with_max_entries(2);
     let (cache, clock) = cache(policy);
     cache.insert("unreadable".into(), true, Duration::from_secs(1));
     clock.advance(Duration::from_secs(120));
