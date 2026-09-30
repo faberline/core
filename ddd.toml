@@ -590,16 +590,8 @@ rule = "B3"
 subject = "interfaces->domain"
 paths = [
   "crates/compass/src/interfaces/lsp/argus_server.rs",
-  "crates/compass/src/interfaces/lsp/code_actions.rs",
-  "crates/compass/src/interfaces/lsp/completion.rs",
-  "crates/compass/src/interfaces/lsp/language_server.rs",
   "crates/compass/src/interfaces/output/agent.rs",
   "crates/compass/src/interfaces/output/reporter.rs",
 ]
-reason = "Moved as-is in P1: the LSP server builds symbol tables and calls the checker registry, semantic search and refactoring engines itself, its code actions, completion and language server convert Diagnostic, Language, Type and refactoring results to lsp_types, and the agent and text reporters render FileResult, Diagnostic, ImportGraph and SymbolTable. P2: the LSP server calls application use cases instead of domain services; reading Diagnostic, Range and FileResult, which are the agent and LSP wire format (compass E2), stays as a long-term reason."
+reason = "compass E2: lsp/argus_server.rs converts the wire value objects Diagnostic, DiagnosticSeverity, Range and Position to and from lsp_types. Moved as-is in P1 and still open: output/agent.rs and output/reporter.rs render FileResult, Diagnostic, DiagnosticSeverity, ImportGraph and SymbolTable. P2: the reporters render application views; reading the E2 wire value objects stays as a long-term reason."
 
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->infrastructure"
-paths = ["crates/compass/src/interfaces/lsp/argus_server.rs"]
-reason = "Moved as-is in P1: ArgusDaemon starts the watch bridge and runs scope discovery itself, and the LSP server builds a MultiParser and a StubLoader for its documents. P2: move that wiring behind application services that take parser, stub and watch ports."

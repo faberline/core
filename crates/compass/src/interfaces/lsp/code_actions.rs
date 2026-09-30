@@ -1,12 +1,7 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
-
-use crate::type_inference::{
-    RefactorKind, RefactorOptions, RefactorRequest, SignatureChanges, Span as ArgusSpan,
-};
 
 use super::argus_server::ArgusServer;
 
@@ -18,26 +13,15 @@ impl ArgusServer {
         let uri = &params.text_document.uri;
         let request_range = params.range;
 
-        // Get document content
-        let content = {
-            let documents = self.documents.read().await;
-            documents.get(uri).map(|d| d.content.clone())
-        };
-
-        let Some(content) = content else {
-            return Ok(None);
-        };
-
-        // Get analysis with diagnostics
-        let analyses = self.analyses.read().await;
-        let Some(analysis) = analyses.get(uri) else {
+        // Get the diagnostics of the latest analysis
+        let Some(diagnostics) = self.session.diagnostics(uri.as_str()).await else {
             return Ok(None);
         };
 
         let mut actions: Vec<CodeActionOrCommand> = Vec::new();
 
         // Find diagnostics that overlap with the requested range
-        for diag in &analysis.diagnostics {
+        for diag in &diagnostics {
             let diag_range = Self::to_lsp_range(&diag.range);
 
             // Check if diagnostic overlaps with requested range
@@ -79,7 +63,7 @@ impl ArgusServer {
         }
 
         // Add refactoring actions based on selection
-        self.add_refactoring_actions(uri, &request_range, &content, &mut actions)
+        self.add_refactoring_actions(uri, &request_range, &mut actions)
             .await;
 
         if actions.is_empty() {
@@ -98,219 +82,53 @@ impl ArgusServer {
                 || (a.end.line == b.start.line && a.end.character >= b.start.character))
     }
 
-    /// Convert byte offset to LSP Position.
-    fn offset_to_position(content: &str, offset: usize) -> Position {
-        let mut line = 0;
-        let mut character = 0;
-        let mut current_offset = 0;
-
-        for ch in content.chars() {
-            if current_offset >= offset {
-                break;
-            }
-
-            if ch == '\n' {
-                line += 1;
-                character = 0;
-            } else {
-                character += 1;
-            }
-
-            current_offset += ch.len_utf8();
-        }
-
-        Position {
-            line: line as u32,
-            character: character as u32,
-        }
-    }
-
     /// Add refactoring code actions based on the selected range.
     async fn add_refactoring_actions(
         &self,
         uri: &Url,
         range: &Range,
-        content: &str,
         actions: &mut Vec<CodeActionOrCommand>,
     ) {
-        // Convert LSP range to Argus span
-        let lines: Vec<&str> = content.lines().collect();
-        let start_line = range.start.line as usize;
-        let end_line = range.end.line as usize;
+        let proposals = self
+            .session
+            .refactorings(uri.as_str(), Self::from_lsp_range(range))
+            .await;
 
-        if start_line >= lines.len() || end_line >= lines.len() {
-            return;
-        }
+        'proposals: for proposal in proposals {
+            // Convert file edits to LSP workspace edits
+            let mut changes = HashMap::new();
 
-        // Calculate byte offsets for the selection
-        let start_offset: usize = lines
-            .iter()
-            .take(start_line)
-            .map(|l| l.len() + 1)
-            .sum::<usize>()
-            + range.start.character as usize;
-        let end_offset: usize = lines
-            .iter()
-            .take(end_line)
-            .map(|l| l.len() + 1)
-            .sum::<usize>()
-            + range.end.character as usize;
+            for (file_path, edits) in proposal.edits {
+                // Convert path to URI
+                let Ok(file_uri) = Url::from_file_path(&file_path) else {
+                    continue 'proposals;
+                };
 
-        let span = ArgusSpan::new(start_offset, end_offset);
-        let file = PathBuf::from(uri.path());
-
-        // Extract Variable - if something is selected
-        if start_offset < end_offset {
-            if let Some(action) = self
-                .create_refactor_action(
-                    uri,
-                    content,
-                    RefactorKind::ExtractVariable {
-                        name: "extracted_var".to_string(),
-                    },
-                    span,
-                    file.clone(),
-                    "Extract to variable",
-                )
-                .await
-            {
-                actions.push(CodeActionOrCommand::CodeAction(action));
-            }
-
-            // Extract Function
-            if let Some(action) = self
-                .create_refactor_action(
-                    uri,
-                    content,
-                    RefactorKind::ExtractFunction {
-                        name: "extracted_function".to_string(),
-                    },
-                    span,
-                    file.clone(),
-                    "Extract to function",
-                )
-                .await
-            {
-                actions.push(CodeActionOrCommand::CodeAction(action));
-            }
-        }
-
-        // Rename Symbol - always available at cursor position
-        if let Some(action) = self
-            .create_refactor_action(
-                uri,
-                content,
-                RefactorKind::Rename {
-                    new_name: "new_name".to_string(),
-                },
-                span,
-                file.clone(),
-                "Rename symbol",
-            )
-            .await
-        {
-            actions.push(CodeActionOrCommand::CodeAction(action));
-        }
-
-        // Inline Variable - if on a variable definition
-        if let Some(action) = self
-            .create_refactor_action(
-                uri,
-                content,
-                RefactorKind::Inline,
-                span,
-                file.clone(),
-                "Inline variable",
-            )
-            .await
-        {
-            actions.push(CodeActionOrCommand::CodeAction(action));
-        }
-
-        // Change Signature - if on a function definition
-        if let Some(action) = self
-            .create_refactor_action(
-                uri,
-                content,
-                RefactorKind::ChangeSignature {
-                    changes: SignatureChanges::default(),
-                },
-                span,
-                file,
-                "Change function signature",
-            )
-            .await
-        {
-            actions.push(CodeActionOrCommand::CodeAction(action));
-        }
-    }
-
-    /// Create a refactoring code action by executing the refactoring.
-    async fn create_refactor_action(
-        &self,
-        _uri: &Url,
-        content: &str,
-        kind: RefactorKind,
-        span: ArgusSpan,
-        file: PathBuf,
-        title: &str,
-    ) -> Option<CodeAction> {
-        let request = RefactorRequest {
-            kind,
-            file,
-            span,
-            options: RefactorOptions::default(),
-        };
-
-        // Execute refactoring
-        let mut engine = self.refactoring_engine.write().await;
-        let result = engine.execute(&request, content);
-
-        // Check if refactoring succeeded
-        if result.has_errors() {
-            return None;
-        }
-
-        // Convert file edits to LSP workspace edits
-        let mut changes = HashMap::new();
-
-        for (file_path, edits) in result.file_edits {
-            // Convert path to URI
-            let file_uri = Url::from_file_path(&file_path).ok()?;
-
-            // Convert edits to LSP text edits
-            let lsp_edits: Vec<TextEdit> = edits
-                .iter()
-                .map(|edit| {
-                    let start_pos = Self::offset_to_position(content, edit.span.start);
-                    let end_pos = Self::offset_to_position(content, edit.span.end);
-
-                    TextEdit {
-                        range: Range {
-                            start: start_pos,
-                            end: end_pos,
-                        },
+                let lsp_edits: Vec<TextEdit> = edits
+                    .iter()
+                    .map(|edit| TextEdit {
+                        range: Self::to_lsp_range(&edit.range),
                         new_text: edit.new_text.clone(),
-                    }
-                })
-                .collect();
+                    })
+                    .collect();
 
-            changes.insert(file_uri, lsp_edits);
+                changes.insert(file_uri, lsp_edits);
+            }
+
+            actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                title: proposal.title,
+                kind: Some(CodeActionKind::REFACTOR),
+                diagnostics: None,
+                edit: Some(WorkspaceEdit {
+                    changes: Some(changes),
+                    document_changes: None,
+                    change_annotations: None,
+                }),
+                command: None,
+                is_preferred: Some(false),
+                disabled: None,
+                data: None,
+            }));
         }
-
-        Some(CodeAction {
-            title: title.to_string(),
-            kind: Some(CodeActionKind::REFACTOR),
-            diagnostics: None,
-            edit: Some(WorkspaceEdit {
-                changes: Some(changes),
-                document_changes: None,
-                change_annotations: None,
-            }),
-            command: None,
-            is_preferred: Some(false),
-            disabled: None,
-            data: None,
-        })
     }
 }

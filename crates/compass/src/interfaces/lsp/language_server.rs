@@ -3,9 +3,8 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::LanguageServer;
 
-use crate::syntax::Language;
-
-use super::argus_server::{ArgusServer, Document};
+use super::argus_server::ArgusServer;
+use super::completion::to_completion_item;
 
 #[tower_lsp::async_trait]
 impl LanguageServer for ArgusServer {
@@ -78,21 +77,14 @@ impl LanguageServer for ArgusServer {
         let content = params.text_document.text;
         let version = params.text_document.version;
 
-        let Some(language) = Self::detect_language(&uri) else {
-            return;
-        };
-
         // Store document
+        let path = Self::document_path(&uri);
+        if !self
+            .session
+            .open(uri.as_str(), path, content, version)
+            .await
         {
-            let mut documents = self.documents.write().await;
-            documents.insert(
-                uri.clone(),
-                Document {
-                    content,
-                    language,
-                    version,
-                },
-            );
+            return;
         }
 
         // Analyze
@@ -109,13 +101,9 @@ impl LanguageServer for ArgusServer {
         };
 
         // Update document
-        {
-            let mut documents = self.documents.write().await;
-            if let Some(doc) = documents.get_mut(&uri) {
-                doc.content = change.text;
-                doc.version = version;
-            }
-        }
+        self.session
+            .change(uri.as_str(), change.text, version)
+            .await;
 
         // Analyze
         self.analyze_document(&uri).await;
@@ -125,12 +113,7 @@ impl LanguageServer for ArgusServer {
         let uri = params.text_document.uri;
 
         // Update content if provided
-        if let Some(text) = params.text {
-            let mut documents = self.documents.write().await;
-            if let Some(doc) = documents.get_mut(&uri) {
-                doc.content = text;
-            }
-        }
+        self.session.save(uri.as_str(), params.text).await;
 
         // Re-analyze
         self.analyze_document(&uri).await;
@@ -140,14 +123,7 @@ impl LanguageServer for ArgusServer {
         let uri = params.text_document.uri;
 
         // Remove document and analysis
-        {
-            let mut documents = self.documents.write().await;
-            documents.remove(&uri);
-        }
-        {
-            let mut analyses = self.analyses.write().await;
-            analyses.remove(&uri);
-        }
+        self.session.close(uri.as_str()).await;
 
         // Clear diagnostics
         self.client.publish_diagnostics(uri, Vec::new(), None).await;
@@ -157,40 +133,21 @@ impl LanguageServer for ArgusServer {
         let uri = &params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        // Get document language
-        let language = {
-            let documents = self.documents.read().await;
-            documents.get(uri).map(|d| d.language)
-        };
-
-        let Some(language) = language else {
-            return Ok(None);
-        };
-
-        // Get analysis
-        let analyses = self.analyses.read().await;
-        let Some(analysis) = analyses.get(uri) else {
-            return Ok(None);
-        };
-
         // Find symbol at position
-        let symbol = analysis
-            .symbol_table
-            .find_at_position(position.line, position.character);
-
-        let Some(symbol) = symbol else {
+        let Some(hover) = self
+            .session
+            .hover(uri.as_str(), position.line, position.character)
+            .await
+        else {
             return Ok(None);
         };
-
-        // Generate hover content
-        let content = symbol.hover_content(language);
 
         Ok(Some(Hover {
             contents: HoverContents::Markup(MarkupContent {
                 kind: MarkupKind::Markdown,
-                value: content,
+                value: hover.markdown,
             }),
-            range: Some(Self::to_lsp_range(&symbol.location)),
+            range: Some(Self::to_lsp_range(&hover.range)),
         }))
     }
 
@@ -201,24 +158,18 @@ impl LanguageServer for ArgusServer {
         let uri = &params.text_document_position_params.text_document.uri;
         let position = params.text_document_position_params.position;
 
-        // Get analysis
-        let analyses = self.analyses.read().await;
-        let Some(analysis) = analyses.get(uri) else {
-            return Ok(None);
-        };
-
         // Find definition
-        let symbol = analysis
-            .symbol_table
-            .find_definition_at(position.line, position.character);
-
-        let Some(symbol) = symbol else {
+        let Some(range) = self
+            .session
+            .definition(uri.as_str(), position.line, position.character)
+            .await
+        else {
             return Ok(None);
         };
 
         Ok(Some(GotoDefinitionResponse::Scalar(Location {
             uri: uri.clone(),
-            range: Self::to_lsp_range(&symbol.location),
+            range: Self::to_lsp_range(&range),
         })))
     }
 
@@ -227,18 +178,16 @@ impl LanguageServer for ArgusServer {
         let position = params.text_document_position.position;
         let include_declaration = params.context.include_declaration;
 
-        // Get analysis
-        let analyses = self.analyses.read().await;
-        let Some(analysis) = analyses.get(uri) else {
-            return Ok(None);
-        };
-
         // Find references
-        let references = analysis.symbol_table.find_references_at(
-            position.line,
-            position.character,
-            include_declaration,
-        );
+        let references = self
+            .session
+            .references(
+                uri.as_str(),
+                position.line,
+                position.character,
+                include_declaration,
+            )
+            .await;
 
         if references.is_empty() {
             return Ok(None);
@@ -283,15 +232,10 @@ impl LanguageServer for ArgusServer {
             Err(_) => return Ok(None),
         };
 
-        // Get document content
-        let _content = {
-            let documents = self.documents.read().await;
-            documents.get(&uri).map(|d| d.content.clone())
-        };
-
-        let Some(_content) = _content else {
+        // The document must be open
+        if !self.session.is_open(uri.as_str()).await {
             return Ok(None);
-        };
+        }
 
         // Execute the appropriate refactoring based on command
         // This would apply the refactoring and return workspace edits
@@ -309,52 +253,25 @@ impl LanguageServer for ArgusServer {
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let uri = &params.text_document_position.text_document.uri;
         let position = params.text_document_position.position;
+        let dot_trigger = params
+            .context
+            .and_then(|c| c.trigger_character)
+            .is_some_and(|trigger| trigger == ".");
 
-        // Get document content
-        let doc_content = {
-            let documents = self.documents.read().await;
-            documents.get(uri).map(|d| (d.content.clone(), d.language))
-        };
-
-        let Some((content, language)) = doc_content else {
+        let Some(candidates) = self
+            .session
+            .completions(uri.as_str(), position.line, position.character, dot_trigger)
+            .await
+        else {
             return Ok(None);
         };
 
-        // Only provide Python completions for now
-        if language != Language::Python {
-            return Ok(None);
-        }
-
-        // Get the line and figure out what we're completing
-        let lines: Vec<&str> = content.lines().collect();
-        let line_idx = position.line as usize;
-
-        if line_idx >= lines.len() {
-            return Ok(None);
-        }
-
-        let line = lines[line_idx];
-        let col = position.character as usize;
-        let prefix = &line[..col.min(line.len())];
-
-        // Check if this is a dot completion
-        let items = if prefix.ends_with('.') {
-            // Get word before the dot
-            self.complete_attribute(prefix).await
-        } else if let Some(trigger) = params.context.and_then(|c| c.trigger_character) {
-            if trigger == "." {
-                self.complete_attribute(prefix).await
-            } else {
-                self.complete_identifiers(prefix).await
-            }
-        } else {
-            self.complete_identifiers(prefix).await
-        };
-
-        if items.is_empty() {
+        if candidates.is_empty() {
             Ok(None)
         } else {
-            Ok(Some(CompletionResponse::Array(items)))
+            Ok(Some(CompletionResponse::Array(
+                candidates.into_iter().map(to_completion_item).collect(),
+            )))
         }
     }
 }
