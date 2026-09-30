@@ -1,7 +1,6 @@
 //! The reconcile pass and its leader-gated, instrumented entry point.
 
 use std::collections::HashMap;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -28,8 +27,8 @@ pub(super) async fn reconcile_entry<S: ManagedService>(
     obj: Arc<S>,
     ctx: Arc<Ctx>,
 ) -> Result<Action, Error> {
-    if !ctx.election.is_leader.load(Ordering::Relaxed) {
-        return Ok(Action::requeue(Duration::from_secs(10)));
+    if let Some(requeue) = ctx.leadership.follower_requeue() {
+        return Ok(Action::requeue(requeue));
     }
     let started = Instant::now();
     let result = reconcile::<S>(obj, ctx.clone()).await;

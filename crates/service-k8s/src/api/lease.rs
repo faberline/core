@@ -11,4 +11,5 @@
 //! Lifted from lumen's operator; the Lease name is now a parameter (the
 //! service's `MANAGER`) so two different operators never share one Lease.
 
-pub use crate::infrastructure::lease::{spawn, Election};
+pub use crate::domain::leadership::Election;
+pub use crate::infrastructure::lease::spawn;

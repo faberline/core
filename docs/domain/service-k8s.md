@@ -24,7 +24,11 @@ and tape.
   controller's own `PruneBlocked` condition and writes the result into the
   status patch.
 - **leader lease** — the Lease named by the service's `MANAGER`, which is also
-  its field manager. `Election` records whether this replica holds it.
+  its field manager. `Election` records whether this replica holds it;
+  `may_acquire` is the rule for taking it over. A reconcile pass acts only
+  while its leadership says "leader": the operator campaigns for the Lease,
+  while a one-shot pass (`reconcile_once`) takes the caller's `Election` as
+  given and never promotes it.
 - **Termination budget** — a `LifecyclePolicy` validated into a
   `TerminationBudget` that fits inside the pod's grace period.
 - **Capacity plan** — `plan_replica_layer` scales whole replica layers (one
@@ -51,12 +55,17 @@ and tape.
 - `LeafParser` — validity and fingerprint of a stored PEM leaf, used by
   `read_state`; `X509LeafParser`.
 - `SecretStore` — a certificate's Secret; `KubernetesSecretStore`, `MemoryStore`.
+- `LeaderLease` — acquires and renews the leader Lease for an `Election`;
+  the kube Lease loop (`lease::spawn`).
 - `AccessTokenSource` — the CA Service token; GKE metadata, workload identity.
 
-The composition root, `src/app/`, keeps the public
-`Reconciler::new(scope, owner, store, issuer)`: it wires `RcgenCsrGenerator`
-and `X509LeafParser` into the certificate reconciler. Its signature is
-unchanged.
+The composition root, `src/app/`, keeps three public entry points with
+their signatures unchanged:
+- `Reconciler::new(scope, owner, store, issuer)` wires `RcgenCsrGenerator`
+  and `X509LeafParser` into the certificate reconciler.
+- The operator's `run` builds the kube client and the Lease adapter,
+  campaigns for leadership and starts the controller loop.
+- `reconcile_once` runs one pass under the caller's `Election`.
 
 ## Invariants
 
@@ -91,9 +100,6 @@ runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
     `ProbeTiming` and `LifecyclePolicy` derive `JsonSchema` because CRD specs
     and statuses embed them. P2 gives the CRD wire shapes their own schema
     types in interfaces.
-  - B3 `interfaces->infrastructure`: `run` creates the leader `Election` and
-    starts the Lease renewal loop. P2 moves leadership into domain behind a
-    Lease port.
 - **Tracked for P2:** public fields on `Election`, `InstanceScope`,
   `ReadyFacts`, `ReadinessTarget`, `PruneTarget`, `ClusterScopedChild`,
   `ReconcilePlan`, `RenderCtx`, the render `*Plan` types, `Condition`,

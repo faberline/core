@@ -37,19 +37,11 @@ impl ManagedService for CountedService {
 fn counted_ctx(client: Client, leader: bool) -> Arc<Ctx> {
     let election = Election::new("test-identity".to_string());
     election.is_leader.store(leader, Ordering::Relaxed);
-    let recorder = Recorder::new(
-        client.clone(),
-        Reporter {
-            controller: CountedService::MANAGER.to_string(),
-            instance: Some("test-identity".to_string()),
-        },
-    );
-    Arc::new(Ctx {
+    Arc::new(Ctx::new::<CountedService>(
         client,
-        election,
-        metrics: Arc::new(ControllerMetrics::new(CountedService::MANAGER)),
-        recorder,
-    })
+        Leadership::held(election),
+        Arc::new(ControllerMetrics::new(CountedService::MANAGER)),
+    ))
 }
 
 fn counted_obj() -> Arc<CountedService> {

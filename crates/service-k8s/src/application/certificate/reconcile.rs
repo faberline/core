@@ -82,8 +82,8 @@ pub struct Outcome {
 
 /// Reconciles one instance's certificate of one purpose.
 ///
-/// `Reconciler::new` (in the composition root) wires the production key
-/// generator and leaf parser; [`Reconciler::with_ports`] takes them explicitly.
+/// `Reconciler::new` wires the production key generator (`RcgenCsrGenerator`)
+/// and leaf parser (`X509LeafParser`).
 pub struct Reconciler<'a> {
     scope: &'a InstanceScope,
     owner: &'a Owner,

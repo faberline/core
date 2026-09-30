@@ -5,4 +5,5 @@
 //! generically as [`DynamicObject`]s keyed by GVK — no compile-time type per
 //! kind. Lifted from lumen's `service_k8s::reconcile`, generic over `S`.
 
-pub use crate::interfaces::operator::{reconcile_once, run, Error};
+pub use crate::app::operator::{reconcile_once, run};
+pub use crate::interfaces::operator::Error;

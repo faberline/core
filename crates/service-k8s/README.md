@@ -75,6 +75,7 @@ are future shared outcomes.
 | Crate surface | `crates/service-k8s/src/lib.rs` |
 | Managed service contract | `crates/service-k8s/src/application/operator/managed_service.rs` |
 | Controller order and failure behavior | `crates/service-k8s/src/interfaces/operator.rs` and its submodules |
+| Operator entry points and leadership | `crates/service-k8s/src/app/operator.rs`, `crates/service-k8s/src/application/operator/leadership.rs` |
 | Workload render inputs | `crates/service-k8s/src/infrastructure/manifest.rs` and its submodules |
 | Executable behavior | `cargo test -p service-k8s` |
 | Planned trust, placement, and rollout mechanisms | [ROADMAP.md](ROADMAP.md) |

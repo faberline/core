@@ -448,12 +448,6 @@ reason = "Moved as-is in P1: ReplicaLayerPolicy, ShardSplitPolicy, Condition, Pr
 
 [[exceptions]]
 rule = "B3"
-subject = "interfaces->infrastructure"
-paths = ["crates/service-k8s/src/interfaces/operator.rs"]
-reason = "Moved as-is in P1: the operator entry points run and reconcile_once create the leader Election, spawn the Lease renewal loop and keep the Election in the reconcile context, all from infrastructure::lease. P2: move the leadership rule (Election, may_acquire) into domain and start the Lease renewal from an application use case through a port that infrastructure implements."
-
-[[exceptions]]
-rule = "B3"
 subject = "application->infrastructure"
 paths = [
   "crates/raft-runtime/src/application/host.rs",

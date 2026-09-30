@@ -37,6 +37,8 @@ pub use api::resize;
 pub use api::service;
 pub use api::stateful;
 
+#[cfg(feature = "controller")]
+pub use app::operator::run;
 #[cfg(feature = "certificate")]
 pub use application::certificate::reconcile::Reconciler;
 #[cfg(feature = "controller")]
@@ -59,6 +61,8 @@ pub use domain::certificate::secret_layout::LeafParser;
 pub use domain::certificate::status::CertificateFacts;
 #[cfg(feature = "controller")]
 pub use domain::condition::{Condition, ConditionFact, ConditionStatus};
+#[cfg(feature = "controller")]
+pub use domain::leadership::Election;
 pub use domain::lifecycle::{
     LifecyclePolicy, LifecyclePolicyError, ProbeTiming, TerminationBudget,
 };
@@ -67,10 +71,8 @@ pub use infrastructure::certificate::csr::RcgenCsrGenerator;
 #[cfg(feature = "certificate")]
 pub use infrastructure::certificate::leaf_parser::X509LeafParser;
 #[cfg(feature = "controller")]
-pub use infrastructure::lease::Election;
-#[cfg(feature = "controller")]
 pub use interfaces::cluster_spec::{ClusterSpec, ResourceSpec};
 #[cfg(feature = "controller")]
 pub use interfaces::metrics::ControllerMetrics;
 #[cfg(feature = "controller")]
-pub use interfaces::operator::{run, Error};
+pub use interfaces::operator::Error;
