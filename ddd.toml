@@ -583,7 +583,7 @@ paths = [
   "crates/compass/src/domain/type_refactoring/engine/ast_cache.rs",
   "crates/compass/src/domain/type_system/annotation.rs",
 ]
-reason = "Moved as-is in P1: ParsedFile wraps a tree_sitter::Tree, Range::from_node and ArgusError's parser variant take tree-sitter types, and the lint checkers, semantic visitors, CFG builder, Python, Rust and TypeScript inference, type checker, semantic search and refactoring AST cache walk tree_sitter::Node directly (compass E1, about 20k lines on the hot path); domain/lint/css_rules.rs and html_rules.rs are undeclared files the build never compiles. P2: stays as the long-term E1 exception with the grammar crates kept in infrastructure/syntax, Range::from_node becomes an infrastructure extension trait (W7), and the two undeclared files are deleted (W1)."
+reason = "compass E1: the syntax model is tree-sitter's. ParsedFile wraps a tree_sitter::Tree, and the lint checkers, semantic visitors, CFG builder, type inference, type checker, semantic search and refactoring AST cache walk tree_sitter::Node directly on the hot path (about 20k lines). Only the core tree-sitter crate is used here; the 13 grammar crates stay in infrastructure/syntax. Long-term."
 
 [[exceptions]]
 rule = "B3"
