@@ -67,11 +67,9 @@ other context.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B1 (naming): the shared kernel keeps its crate name while ui-runtime is
-    a whole-src domain crate. P2 has removed the SPEC-MANAGED markers and
-    split `src/` into one private module per concept (D8); the exception
-    goes when ui-runtime moves to `src/domain/`.
+- **Checker exceptions:** none. P2 removed the SPEC-MANAGED markers (D8),
+  split `src/` into one private module per concept, and deleted the B1 naming
+  exception once ui-runtime moved to `src/domain/`.
 
   serde on the snapshot types is allowed by policy (the snapshot is the wire
   format) and is not an exception.

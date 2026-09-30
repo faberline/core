@@ -8,7 +8,7 @@ renderer, a native desktop backend or a test recorder. Its user is jet, whose
 WASM runtime re-exports the whole crate (`pub use ui_runtime::*`) and whose
 TSX-to-Rust transpiler emits calls to its hooks.
 
-**Form:** whole-src domain · **Depends on:** surface (kernel) · **Crate:** [`crates/ui-runtime`](../../crates/ui-runtime)
+**Form:** domain only · **Depends on:** surface (kernel) · **Crate:** [`crates/ui-runtime`](../../crates/ui-runtime)
 
 ## Model
 
@@ -58,18 +58,16 @@ None. The update scheduler is a registered callback, not a trait.
 
 ## Published language
 
-The whole public API; whole-src domain contexts have no application layer.
-Because jet re-exports it with a glob, every public name is part of jet's API,
-and any module P2 adds must be private with `pub use` re-exports.
+The whole public API; domain-only contexts have no application layer. The
+code lives in private modules under `src/domain/`, and `lib.rs` re-exports
+their public names. Because jet re-exports the crate with a glob, every public
+name is part of jet's API, so every module stays private.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B1 (naming): the crate is not split into the domain layout yet. It is
-    SPEC-MANAGED, so P1 leaves it untouched (ADR D18); P2 splits it after
-    confirming that nothing regenerates it (D8).
-
-  The single 693-line source file is a C1 size warning, not an exception; it
-  stays visible in the report until the P2 split.
+- **Checker exceptions:** none. P2 removed the SPEC-MANAGED markers (nothing
+  regenerated the crate, D8), moved the code into one private module per
+  concept under `src/domain/`, and deleted the B1 naming exception; the C1
+  size warning went with the 693-line file.
 - **Tracked for P2:** bare ids. `FiberId` exposes its `u64`, and the debug API
   takes and returns fiber ids as bare `u64` (jet's debug bridge passes one).

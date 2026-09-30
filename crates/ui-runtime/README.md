@@ -25,5 +25,5 @@ coupling to a browser or native UI backend.
 - Gate — behavior: `cargo test -p ui-runtime` - runtime hook and
   scheduling coverage
 - Gate: `cargo test -p ui-runtime`
-- Source: `crates/ui-runtime/src/lib.rs`
-- Evidence: `cargo test -p ui-runtime`; crates/ui-runtime/src/lib.rs
+- Source: `crates/ui-runtime/src/domain/`
+- Evidence: `cargo test -p ui-runtime`; crates/ui-runtime/src/domain/

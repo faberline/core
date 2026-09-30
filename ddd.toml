@@ -334,19 +334,7 @@ interfaces = "crates/transport-otlp/src"
 name = "ui-runtime"
 depends_on = []
 [contexts.layers]
-domain = "crates/ui-runtime/src"
-
-[[exceptions]]
-rule = "B1"
-subject = "surface"
-paths = ["crates/surface/Cargo.toml"]
-reason = "The shared kernel keeps its crate name while ui-runtime is a whole-src domain crate; SPEC-MANAGED, not split in P1 (ADR D18). P2: D8 moves ui-runtime to src/domain, which removes the split-crate naming rule."
-
-[[exceptions]]
-rule = "B1"
-subject = "ui-runtime"
-paths = ["crates/ui-runtime/Cargo.toml"]
-reason = "SPEC-MANAGED crate kept whole in P1 (ADR D18), so it is a whole-src domain crate without the split-crate name. P2: D8 splits it into src/domain."
+domain = "crates/ui-runtime/src/domain"
 
 [[exceptions]]
 rule = "B2"
