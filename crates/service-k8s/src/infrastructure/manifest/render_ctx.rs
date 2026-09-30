@@ -41,9 +41,10 @@ impl<'a> RenderCtx<'a> {
     }
 
     /// Set the owner reference (see [`super::owner_ref`]) that
-    /// [`Self::meta`] attaches to every child.
-    pub fn with_owner(mut self, owner: Value) -> Self {
-        self.owner = Some(owner);
+    /// [`Self::meta`] attaches to every child. Takes a `Value` or an
+    /// `Option<Value>`; `None` leaves the context without an owner.
+    pub fn with_owner(mut self, owner: impl Into<Option<Value>>) -> Self {
+        self.owner = owner.into();
         self
     }
 

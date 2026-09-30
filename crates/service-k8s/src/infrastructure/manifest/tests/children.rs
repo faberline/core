@@ -202,3 +202,17 @@ fn render_ctx_getters_return_the_constructor_arguments_in_order() {
     assert_eq!(cx.owner(), Some(&owner));
     assert_eq!(cx.meta("child", "c")["ownerReferences"], json!([owner]));
 }
+
+#[test]
+fn render_ctx_with_owner_takes_an_optional_owner() {
+    let owner = owner_ref("g.dev/v1", "Kind", "name", "uid-1");
+    let cx = RenderCtx::new("app", "manager", "g.dev/v1", "Kind", "name", "ns")
+        .with_owner(Some(owner.clone()));
+    assert_eq!(cx.owner(), Some(&owner));
+    assert_eq!(cx.meta("child", "c")["ownerReferences"], json!([owner]));
+
+    let cx = RenderCtx::new("app", "manager", "g.dev/v1", "Kind", "name", "ns")
+        .with_owner(None::<Value>);
+    assert!(cx.owner().is_none());
+    assert!(cx.meta("child", "c").get("ownerReferences").is_none());
+}
