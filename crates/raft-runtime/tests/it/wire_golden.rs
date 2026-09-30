@@ -160,7 +160,7 @@ fn named_group_state_file_name_is_pinned() {
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(7),
-        GroupId("orders".to_owned()),
+        GroupId::new("orders"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -168,7 +168,11 @@ fn named_group_state_file_name_is_pinned() {
         store.path().file_name().unwrap(),
         "raft-7-6f7264657273.state"
     );
-    pin_json(&GroupId("orders".to_owned()), r#""orders""#);
+    pin_json(&GroupId::new("orders"), r#""orders""#);
+    // Log lines print the group with `%group_id`: the bare name.
+    let group = GroupId::new("orders");
+    assert_eq!(group.to_string(), "orders");
+    assert_eq!(group.as_str(), "orders");
 }
 
 #[test]

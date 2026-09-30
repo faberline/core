@@ -69,7 +69,7 @@ fn open(dir: &TempDir, group: &str) -> RaftStore {
     RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId(group.to_string()),
+        GroupId::new(group),
         FsyncPolicy::Always,
     )
     .unwrap()
@@ -100,7 +100,7 @@ fn joint_conf() -> ConfState {
 fn spawn(group: &str, membership: Membership, store: RaftStore) -> Arc<RaftHost> {
     Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId(group.to_string()),
+        GroupId::new(group),
         membership,
         HashMap::new(),
         store,

@@ -114,7 +114,7 @@ impl HttpPeerClient {
                 .post(
                     &format!("{base}/raft/request-vote"),
                     &VoteEnvelope {
-                        group_id: self.group_id.0.clone(),
+                        group_id: self.group_id.as_str().to_owned(),
                         from: self.id,
                         req,
                     },
@@ -126,7 +126,7 @@ impl HttpPeerClient {
                 .post(
                     &format!("{base}/raft/append-entries"),
                     &AppendEnvelope {
-                        group_id: self.group_id.0.clone(),
+                        group_id: self.group_id.as_str().to_owned(),
                         from: self.id,
                         req,
                     },
@@ -143,7 +143,7 @@ impl HttpPeerClient {
                 self.post(
                     &format!("{base}/raft/timeout-now"),
                     &TimeoutNowEnvelope {
-                        group_id: self.group_id.0.clone(),
+                        group_id: self.group_id.as_str().to_owned(),
                         from: self.id,
                         req,
                     },
@@ -168,7 +168,7 @@ impl HttpPeerClient {
                 .post_with_timeout(
                     &format!("{base}/raft/install-snapshot-capable"),
                     &CapableSnapEnvelope {
-                        group_id: self.group_id.0.clone(),
+                        group_id: self.group_id.as_str().to_owned(),
                         from: self.id,
                         req,
                         snapshot_capability: required.to_string(),
@@ -203,7 +203,7 @@ impl HttpPeerClient {
             .post_with_timeout(
                 &format!("{base}/raft/install-snapshot"),
                 &SnapEnvelope {
-                    group_id: self.group_id.0.clone(),
+                    group_id: self.group_id.as_str().to_owned(),
                     from: self.id,
                     req,
                 },
@@ -245,7 +245,7 @@ impl HttpPeerClient {
             .fetch_add(1, Ordering::Relaxed);
         tracing::warn!(
             target = to.get(),
-            group = %self.group_id.0,
+            group = %self.group_id,
             "raft: discarded in-flight message to withdrawn peer address"
         );
     }

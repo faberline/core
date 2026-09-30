@@ -97,7 +97,7 @@ async fn row1_multi_group_multiplexing() {
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Always,
     )
     .unwrap();
@@ -105,14 +105,14 @@ async fn row1_multi_group_multiplexing() {
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         FsyncPolicy::Always,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
@@ -122,7 +122,7 @@ async fn row1_multi_group_multiplexing() {
 
     let host2 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
@@ -210,7 +210,7 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
         let store1 = RaftStore::open_group(
             dir.path().to_str().unwrap(),
             NodeId::new(0),
-            GroupId("alpha".to_string()),
+            GroupId::new("alpha"),
             FsyncPolicy::Always,
         )
         .unwrap();
@@ -218,14 +218,14 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
         let store2 = RaftStore::open_group(
             dir.path().to_str().unwrap(),
             NodeId::new(0),
-            GroupId("beta".to_string()),
+            GroupId::new("beta"),
             FsyncPolicy::Always,
         )
         .unwrap();
 
         let host1 = Arc::new(RaftHost::spawn_group(
             NodeId::new(0),
-            GroupId("alpha".to_string()),
+            GroupId::new("alpha"),
             Membership::new(vec![NodeId::new(0)], vec![]),
             HashMap::new(),
             store1,
@@ -235,7 +235,7 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
 
         let host2 = Arc::new(RaftHost::spawn_group(
             NodeId::new(0),
-            GroupId("beta".to_string()),
+            GroupId::new("beta"),
             Membership::new(vec![NodeId::new(0)], vec![]),
             HashMap::new(),
             store2,
@@ -310,7 +310,7 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
     let store1_fresh = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Always,
     )
     .unwrap();
@@ -318,14 +318,14 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
     let store2_fresh = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         FsyncPolicy::Always,
     )
     .unwrap();
 
     let host1_fresh = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1_fresh,
@@ -335,7 +335,7 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
 
     let host2_fresh = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2_fresh,
@@ -360,7 +360,7 @@ async fn row3_unknown_group_refusal_negative_control() {
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -368,14 +368,14 @@ async fn row3_unknown_group_refusal_negative_control() {
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
@@ -385,7 +385,7 @@ async fn row3_unknown_group_refusal_negative_control() {
 
     let host2 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
@@ -474,14 +474,14 @@ async fn row4_duplicate_registration_error() {
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
@@ -496,14 +496,14 @@ async fn row4_duplicate_registration_error() {
     let store_dup = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(1),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host_dup = Arc::new(RaftHost::spawn_group(
         NodeId::new(1),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(1)], vec![]),
         HashMap::new(),
         store_dup,
@@ -514,9 +514,7 @@ async fn row4_duplicate_registration_error() {
     let reg_err = registry.register(host_dup);
     assert_eq!(
         reg_err,
-        Err(RegistryError::AlreadyRegistered(GroupId(
-            "alpha".to_string()
-        )))
+        Err(RegistryError::AlreadyRegistered(GroupId::new("alpha")))
     );
 
     wait_leader(&host1).await;
@@ -564,7 +562,7 @@ async fn row5_registry_status_surface() {
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -572,14 +570,14 @@ async fn row5_registry_status_surface() {
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
@@ -589,7 +587,7 @@ async fn row5_registry_status_surface() {
 
     let host2 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
@@ -648,7 +646,7 @@ async fn row6_failure_isolation() {
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -656,14 +654,14 @@ async fn row6_failure_isolation() {
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
@@ -673,7 +671,7 @@ async fn row6_failure_isolation() {
 
     let host2 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
@@ -763,7 +761,7 @@ async fn row7_snapshot_compaction_isolation() {
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -771,14 +769,14 @@ async fn row7_snapshot_compaction_isolation() {
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
@@ -788,7 +786,7 @@ async fn row7_snapshot_compaction_isolation() {
 
     let host2 = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
@@ -873,14 +871,14 @@ async fn row8_foreign_group_single_host_returns_400() {
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,

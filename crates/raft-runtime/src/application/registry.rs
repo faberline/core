@@ -20,7 +20,7 @@ impl std::fmt::Display for RegistryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             RegistryError::AlreadyRegistered(gid) => {
-                write!(f, "group {:?} is already registered", gid.0)
+                write!(f, "group {:?} is already registered", gid.as_str())
             }
         }
     }
@@ -79,7 +79,7 @@ impl RaftRegistry {
 
     /// The host registered under the group id a peer envelope carries.
     pub(crate) fn host(&self, group_id: &str) -> Option<Arc<RaftHost>> {
-        self.get(&GroupId(group_id.to_string()))
+        self.get(&GroupId::new(group_id))
     }
 
     /// The only registered host, when exactly one is registered.

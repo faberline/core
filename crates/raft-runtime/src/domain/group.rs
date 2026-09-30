@@ -1,6 +1,8 @@
 //! Which raft group a store, host and registry entry belong to -- [`GroupId`] --
 //! and the one id that is a sentinel rather than a name -- [`LEGACY_GROUP_ID`].
 
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 /// The one group id that is a sentinel rather than a name.
@@ -24,9 +26,30 @@ pub const LEGACY_GROUP_ID: &str = "legacy_single_group";
 
 /// Which raft group a store, host and registry entry belong to.
 ///
+/// Build one with [`GroupId::new`] and read the name with [`GroupId::as_str`];
+/// `{}` prints the bare name.
+///
 /// `GroupId` is `#[serde(transparent)]`, so it is a bare string on the wire and
 /// in the persisted state file's `group_id` field. Widening it into a struct with
 /// fields would change that on-disk format for every existing node.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct GroupId(pub String);
+pub struct GroupId(String);
+
+impl GroupId {
+    /// The group with this name.
+    pub fn new(name: impl Into<String>) -> Self {
+        Self(name.into())
+    }
+
+    /// The bare name.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for GroupId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.0)
+    }
+}

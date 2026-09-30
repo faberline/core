@@ -34,7 +34,7 @@ pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
         format!("{:?}", n.role())
     };
     RaftStatus {
-        group_id: s.group_id.0.clone(),
+        group_id: s.group_id.as_str().to_owned(),
         id: s.id,
         role,
         term: n.current_term().get(),

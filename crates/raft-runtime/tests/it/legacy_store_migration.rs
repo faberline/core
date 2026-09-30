@@ -30,7 +30,7 @@ fn measurement_1_migrate_legacy_json_to_named_group() {
     let store = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
         NodeId::new(7),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -101,7 +101,7 @@ fn measurement_2_migrate_legacy_store_with_snapshot_artifact() {
     let store = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
         NodeId::new(7),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -161,7 +161,7 @@ fn measurement_3_open_named_group_refuses_when_legacy_state_file_exists() {
     let res = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(7),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     );
 
@@ -214,7 +214,7 @@ fn measurement_4_migrate_refuses_when_target_already_exists() {
     let res = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
         NodeId::new(7),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     );
 
@@ -236,7 +236,7 @@ fn measurement_5_migrate_refuses_when_legacy_file_corrupt() {
     let res = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
         NodeId::new(7),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     );
 
@@ -284,7 +284,7 @@ fn measurement_6_legacy_open_and_other_node_named_open_succeed() {
     let store8 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(8),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -342,7 +342,7 @@ fn measurement_7_migration_retries_after_artifacts_were_copied() {
     let store = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
         NodeId::new(7),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -365,7 +365,7 @@ fn measurement_8_migration_retries_after_target_hard_state_was_published() {
     let store = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
         NodeId::new(7),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();

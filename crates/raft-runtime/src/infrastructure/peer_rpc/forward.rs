@@ -17,7 +17,7 @@ impl HttpPeerClient {
             // proposal deadline, not the short peer transport timeout.
             .timeout(self.propose_timeout)
             .json(&PublishEnvelope {
-                group_id: self.group_id.0.clone(),
+                group_id: self.group_id.as_str().to_owned(),
                 command: command.to_vec(),
             })
             .send()

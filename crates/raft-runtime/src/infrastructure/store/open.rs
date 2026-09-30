@@ -3,7 +3,7 @@ use super::*;
 impl RaftStore {
     /// Open (creating the dir if needed) the state file `raft-<node_id>.state`.
     pub fn open(dir: &str, node_id: NodeId, fsync: FsyncPolicy) -> io::Result<RaftStore> {
-        Self::open_group(dir, node_id, GroupId(LEGACY_GROUP_ID.to_string()), fsync)
+        Self::open_group(dir, node_id, GroupId::new(LEGACY_GROUP_ID), fsync)
     }
 
     pub fn open_group(
@@ -14,23 +14,23 @@ impl RaftStore {
     ) -> io::Result<RaftStore> {
         let dir = PathBuf::from(dir);
         create_dir_all(&dir)?;
-        if group_id.0 != LEGACY_GROUP_ID {
+        if group_id.as_str() != LEGACY_GROUP_ID {
             let legacy_file = dir.join(format!("raft-{node_id}.state"));
             if legacy_file.exists() {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     format!(
                         "cannot open named group {:?} for node {node_id}: legacy state file raft-{node_id}.state exists and must be explicitly migrated",
-                        group_id.0
+                        group_id.as_str()
                     ),
                 ));
             }
         }
-        let filename = if group_id.0 == LEGACY_GROUP_ID {
+        let filename = if group_id.as_str() == LEGACY_GROUP_ID {
             format!("raft-{node_id}.state")
         } else {
             let mut s = String::new();
-            for b in group_id.0.as_bytes() {
+            for b in group_id.as_str().as_bytes() {
                 use std::fmt::Write;
                 write!(&mut s, "{:02x}", b).unwrap();
             }

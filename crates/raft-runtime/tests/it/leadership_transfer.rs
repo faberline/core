@@ -243,13 +243,13 @@ async fn the_registry_routes_a_handoff_to_the_group_it_names() {
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let host = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,

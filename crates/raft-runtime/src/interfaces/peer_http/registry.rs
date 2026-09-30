@@ -114,7 +114,7 @@ async fn raftz_demux(State(reg): State<RaftRegistry>) -> Json<BTreeMap<String, R
     let mut map = BTreeMap::new();
     for h in reg.hosts() {
         let s = host_status(&h.shared).await;
-        map.insert(h.shared.group_id.0.clone(), s);
+        map.insert(h.shared.group_id.as_str().to_owned(), s);
     }
     Json(map)
 }

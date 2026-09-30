@@ -25,14 +25,14 @@ async fn row1_request_vote_refusal() {
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,
@@ -107,14 +107,14 @@ async fn row2_append_entries_refusal() {
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
@@ -381,14 +381,14 @@ async fn row5_timeout_now_refusal() {
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
@@ -458,21 +458,21 @@ fn row4_durable_file_paths() {
     let s_alpha1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let s_beta = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("beta".to_string()),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let s_alpha2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -480,7 +480,7 @@ fn row4_durable_file_paths() {
     let s_adv = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("../../../foo".to_string()),
+        GroupId::new("../../../foo"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -509,14 +509,14 @@ async fn row6_install_snapshot_refusal() {
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
@@ -634,14 +634,14 @@ async fn row7_publish_refusal() {
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
         NodeId::new(0),
-        GroupId("alpha".to_string()),
+        GroupId::new("alpha"),
         Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,

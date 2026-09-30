@@ -26,7 +26,7 @@ impl RaftHost {
     ) -> RaftHost {
         Self::spawn_group(
             id,
-            GroupId(LEGACY_GROUP_ID.to_string()),
+            GroupId::new(LEGACY_GROUP_ID),
             membership,
             peers,
             store,
@@ -70,7 +70,7 @@ impl RaftHost {
     ) -> RaftHost {
         Self::spawn_with_peer_transport_group(
             id,
-            GroupId(LEGACY_GROUP_ID.to_string()),
+            GroupId::new(LEGACY_GROUP_ID),
             membership,
             peers,
             store,
