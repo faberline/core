@@ -108,8 +108,7 @@ function.
   - B2 `serde_yaml` (Mermaid+ frontmatter), `toml` (the TM001 syntax check),
     `tracing` (rejected custom rules), and `anyhow` with `bincode`
     (`SearchIndex` bytes).
-  - B2 `Instant::now` in `DirtyFileTracker` and the six search modes; P2 adds
-    a `Clock` port.
+  - B2 `Instant::now` in the six search modes, which time themselves.
   - B3 `application->infrastructure` and `domain->infrastructure`: use cases
     and domain engines build a `MultiParser`, load stubs, resolve imports, or
     hold the disk cache themselves; P2 adds parser, stub, cache and path

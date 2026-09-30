@@ -550,7 +550,6 @@ reason = "Moved as-is in P1: MermaidPlusGenerator writes the YAML frontmatter wi
 rule = "B2"
 subject = "std::time::Instant::now"
 paths = [
-  "crates/compass/src/domain/incremental/dirty_file_tracker.rs",
   "crates/compass/src/domain/search/query/call_hierarchy.rs",
   "crates/compass/src/domain/search/query/documentation.rs",
   "crates/compass/src/domain/search/query/implementations.rs",
