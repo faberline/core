@@ -133,7 +133,5 @@ function.
   public `.0` (`ScopeId`, `NodeId`), and two unrelated `SymbolId` types.
   `SchemaRegistry::global` is a `OnceLock` singleton. `Range::from_node` takes
   a tree-sitter node: an inherent method in P1, an extension trait in P2. Dead
-  or duplicated code (ADR D7): the `type_inference` Rust and TypeScript
-  modules have no outside users; and
-  dependencies such as `tera`, `heck`, `indexmap` and `crossterm` are never
+  or duplicated code (ADR D7): dependencies such as `tera`, `heck`, `indexmap` and `crossterm` are never
   used in source.

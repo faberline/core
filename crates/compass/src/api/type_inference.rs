@@ -1,6 +1,6 @@
 //! Type system for Argus
 //!
-//! This module provides type inference and checking for Python, TypeScript, and Rust.
+//! This module provides type inference and checking.
 
 pub(crate) mod annotation;
 mod builtins;
@@ -21,28 +21,13 @@ mod mutable_ast;
 mod narrow;
 mod package_managers;
 mod project;
-pub mod propagation;
+mod propagation;
 mod refactoring;
 mod semantic_search;
 mod stubs;
 mod ty;
 mod type_env;
 mod typeshed;
-
-// Rust-specific type system extensions
-pub mod rust_infer;
-pub mod rust_lifetimes;
-pub mod rust_symbols;
-pub mod rust_traits;
-pub mod rust_types;
-
-// TypeScript-specific type system extensions
-pub mod ts_infer;
-pub mod ts_types;
-
-// Unified multi-language extensions
-pub mod refactoring_multilang;
-pub mod semantic_search_rust;
 
 pub use cache::{AnalysisCache, CacheEntry, ContentHash};
 pub use cfg_narrow::{
@@ -113,17 +98,6 @@ pub use ty::{LiteralValue, Param, ParamKind, Type, TypeVarId, Variance};
 pub use type_env::TypeEnv;
 pub use typeshed::{TypeshedCache, TypeshedConfig};
 
-// Advanced type inference modules (R1, R2)
-pub mod rust_advanced;
-pub mod ts_advanced;
-
-// TypeScript type system exports
 pub use propagation::{
     PropagatedType, PropagationPipeline, PropagationRequest, PropagationResult, PropagationStats,
-};
-pub use ts_infer::TsTypeInferencer;
-pub use ts_types::{
-    is_assignable_to, MappedTypeModifier, TemplatePart, TsClass, TsConditionalType, TsEnum,
-    TsEnumValue, TsInterface, TsMappedType, TsProperty, TsTemplateLiteralType, TsTypeAlias,
-    TsTypeContext, TsTypeParam, Visibility,
 };
