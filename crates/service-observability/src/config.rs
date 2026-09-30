@@ -39,9 +39,9 @@ impl ServiceIdentity {
 /// Resolved observability settings independent of transport and deployment.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ObservabilityConfig {
-    pub log_level: String,
-    pub log_format: LogFormat,
-    pub otlp_endpoint: Option<String>,
+    log_level: String,
+    log_format: LogFormat,
+    otlp_endpoint: Option<String>,
 }
 
 impl ObservabilityConfig {
@@ -55,6 +55,21 @@ impl ObservabilityConfig {
             log_format,
             otlp_endpoint,
         }
+    }
+
+    /// Base log level; `RUST_LOG` still wins.
+    pub fn log_level(&self) -> &str {
+        &self.log_level
+    }
+
+    /// Log output format.
+    pub fn log_format(&self) -> LogFormat {
+        self.log_format
+    }
+
+    /// OTLP gRPC endpoint for trace export; `None` disables OTLP.
+    pub fn otlp_endpoint(&self) -> Option<&str> {
+        self.otlp_endpoint.as_deref()
     }
 }
 
@@ -78,8 +93,8 @@ mod tests {
             LogFormat::Json,
             Some("http://otel:4317".to_string()),
         );
-        assert_eq!(config.log_level, "debug");
-        assert_eq!(config.log_format, LogFormat::Json);
-        assert_eq!(config.otlp_endpoint.as_deref(), Some("http://otel:4317"));
+        assert_eq!(config.log_level(), "debug");
+        assert_eq!(config.log_format(), LogFormat::Json);
+        assert_eq!(config.otlp_endpoint(), Some("http://otel:4317"));
     }
 }

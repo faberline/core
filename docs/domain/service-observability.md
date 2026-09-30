@@ -19,7 +19,7 @@ lumen and defer use it in tests.
 - **Service identity** — `ServiceIdentity`: the name and version attached to
   every log line and exported span; neither may be blank.
 - **Observability config** — `ObservabilityConfig`: log level, log format and
-  an optional OTLP endpoint.
+  an optional OTLP endpoint. `new` takes every value; getters read them.
 - **Tracing mode** — `TracingMode` (`LoggingOnly`, `Otel`, `OtelUnavailable`
   with an `OtelFallback` of `FeatureDisabled` or `InvalidEndpoint`): what
   `tracing_mode` resolves from the config and the `otlp` feature.
