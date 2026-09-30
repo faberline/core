@@ -132,6 +132,31 @@ fn comment_payload_and_followup_body() {
 }
 
 #[test]
+fn golden_diagnostics_and_followup_bytes() {
+    let os_arch = format!("{}/{}", std::env::consts::OS, std::env::consts::ARCH);
+    let diagnostics = format!(
+        "## Diagnostics\n- lumen version: 0.4.3\n- target: aarch64-apple-darwin\n- git sha: abc1234\n- built at: 1700000000\n- os/arch: {os_arch}\n"
+    );
+    assert_eq!(render_diagnostics(&TOOL, None), diagnostics);
+    assert_eq!(
+        render_diagnostics(&TOOL, Some("node-1 ok")),
+        format!("{diagnostics}- node: node-1 ok\n")
+    );
+    assert_eq!(
+        followup_comment_body(&TOOL, Some("still broken")),
+        format!("still broken\n\n---\n{diagnostics}")
+    );
+    assert_eq!(
+        TOOL.issue_label(),
+        "app:lumen",
+        "the tracker label is part of every filed issue"
+    );
+    assert_eq!(TOOL.tag_prefix(), "lumen@");
+    assert_eq!(TOOL.asset_name(), "lumen-aarch64-apple-darwin.tar.gz");
+    assert_eq!(TOOL.inner_binary_path(), "lumen-aarch64-apple-darwin/lumen");
+}
+
+#[test]
 fn representative_issue_outputs_are_chainable() {
     for output in [
         "repo:  faberline/lumen\ntitle: lumen: bug\n---\nbody\nnext: done\n",

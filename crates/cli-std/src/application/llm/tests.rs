@@ -118,3 +118,49 @@ fn sectioned_json_format_shape() {
     assert_eq!(sections[1]["id"], "fact");
     assert_eq!(sections[1]["content"], "the sky is blue");
 }
+
+// --- golden bytes of `<tool> llm` output (pinned before P2) ---
+
+const GOLDEN_OUTLINE_MD: &str = "# lumen — agent topic outline\n\nRun `lumen llm --topic <topic>` for detail (add `--format json` for a machine-readable form).\n\n## Topics\n\n- `workflow` — how it works\n\n## Standard agent commands\n\n- `lumen llm [--topic <t>] [--format md|json]` — this self-documentation (offline)\n- `lumen upgrade [--version <tag>] [--check]` — self-update from GitHub releases\n- `lumen issue search [query]` · `view <n>` · `create [--title <t>] [message...]` · `comment <n> [message...]` — search, read, file, and comment on diagnostics-rich issues; comment ensures the issue is open\n";
+
+const GOLDEN_OUTLINE_JSON: &str = "{\n  \"project\": \"lumen\",\n  \"version\": \"0.4.3\",\n  \"topics\": [\n    {\n      \"id\": \"workflow\",\n      \"summary\": \"how it works\"\n    }\n  ]\n}";
+
+#[test]
+fn golden_topic_output_bytes() {
+    assert_eq!(
+        render("lumen", "0.4.3", T, "outline", Format::Md).unwrap(),
+        GOLDEN_OUTLINE_MD
+    );
+    assert_eq!(
+        render("lumen", "0.4.3", T, "outline", Format::Json).unwrap(),
+        GOLDEN_OUTLINE_JSON
+    );
+    assert_eq!(
+        render("lumen", "0.4.3", T, "workflow", Format::Md).unwrap(),
+        "# the body"
+    );
+    assert_eq!(
+        render("lumen", "0.4.3", T, "workflow", Format::Json).unwrap(),
+        "{\n  \"project\": \"lumen\",\n  \"topic\": \"workflow\",\n  \"summary\": \"how it works\",\n  \"body\": \"# the body\"\n}"
+    );
+}
+
+#[test]
+fn golden_sectioned_topic_output_bytes() {
+    assert_eq!(
+        render_sectioned("lumen", "0.4.3", SECTIONED, "outline", Format::Md).unwrap(),
+        GOLDEN_OUTLINE_MD
+    );
+    assert_eq!(
+        render_sectioned("lumen", "0.4.3", SECTIONED, "outline", Format::Json).unwrap(),
+        GOLDEN_OUTLINE_JSON
+    );
+    assert_eq!(
+        render_sectioned("lumen", "0.4.3", SECTIONED, "workflow", Format::Md).unwrap(),
+        "# intro prose\n\nthe sky is blue"
+    );
+    assert_eq!(
+        render_sectioned("lumen", "0.4.3", SECTIONED, "workflow", Format::Json).unwrap(),
+        "{\n  \"project\": \"lumen\",\n  \"topic\": \"workflow\",\n  \"summary\": \"how it works\",\n  \"body\": \"# intro prose\\n\\nthe sky is blue\",\n  \"sections\": [\n    {\n      \"id\": \"prose-0\",\n      \"kind\": \"prose\",\n      \"content\": \"# intro prose\"\n    },\n    {\n      \"id\": \"fact\",\n      \"kind\": \"generated\",\n      \"content\": \"the sky is blue\"\n    }\n  ]\n}"
+    );
+}
