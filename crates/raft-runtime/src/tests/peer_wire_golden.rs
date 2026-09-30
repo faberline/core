@@ -5,6 +5,7 @@
 //! These cases pin the peer HTTP handlers' copy; `peer_wire_split` checks that
 //! the HTTP peer client's copy encodes the same bytes.
 
+use crate::NodeId;
 use std::fmt::Debug;
 
 use raft_core::{AppendReq, EntryKind, InstallSnapshotReq, RaftEntry, TimeoutNowReq, VoteReq};
@@ -28,7 +29,7 @@ fn pin_json<T: Serialize + DeserializeOwned + Debug>(value: &T, json: &str) {
 fn snapshot_req() -> InstallSnapshotReq {
     InstallSnapshotReq {
         term: 3,
-        leader: 1,
+        leader: NodeId::new(1),
         snapshot_index: 8,
         snapshot_term: 2,
         data: vec![1, 2],
@@ -40,10 +41,10 @@ fn vote_append_and_timeout_envelopes_are_pinned() {
     pin_json(
         &VoteEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: VoteReq {
                 term: 3,
-                candidate: 1,
+                candidate: NodeId::new(1),
                 last_log_index: 9,
                 last_log_term: 2,
             },
@@ -53,10 +54,10 @@ fn vote_append_and_timeout_envelopes_are_pinned() {
     pin_json(
         &AppendEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: AppendReq {
                 term: 3,
-                leader: 1,
+                leader: NodeId::new(1),
                 prev_log_index: 4,
                 prev_log_term: 2,
                 entries: vec![RaftEntry {
@@ -77,8 +78,11 @@ fn vote_append_and_timeout_envelopes_are_pinned() {
     pin_json(
         &TimeoutNowEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
-            req: TimeoutNowReq { term: 3, leader: 1 },
+            from: NodeId::new(1),
+            req: TimeoutNowReq {
+                term: 3,
+                leader: NodeId::new(1),
+            },
         },
         r#"{"group_id":"orders","from":1,"req":{"term":3,"leader":1}}"#,
     );
@@ -89,7 +93,7 @@ fn snapshot_envelopes_and_capable_reply_are_pinned() {
     pin_json(
         &SnapEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: snapshot_req(),
         },
         r#"{"group_id":"orders","from":1,"req":{"term":3,"leader":1,"snapshot_index":8,"snapshot_term":2,"data":[1,2]}}"#,
@@ -97,7 +101,7 @@ fn snapshot_envelopes_and_capable_reply_are_pinned() {
     pin_json(
         &CapableSnapEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: snapshot_req(),
             snapshot_capability: "cap-v1".to_owned(),
             snapshot_nonce: 5,
@@ -131,12 +135,12 @@ fn publish_envelope_and_not_leader_reply_are_pinned() {
     let json = r#"{"error":"not-leader","leader":2}"#;
     let reply = NotLeader {
         error: "not-leader",
-        leader: Some(2),
+        leader: Some(NodeId::new(2)),
     };
     assert_eq!(serde_json::to_string(&reply).unwrap(), json);
     let decoded: NotLeader = serde_json::from_str(json).unwrap();
     assert_eq!(decoded.error, "not-leader");
-    assert_eq!(decoded.leader, Some(2));
+    assert_eq!(decoded.leader, Some(NodeId::new(2)));
     let no_leader = NotLeader {
         error: "not-leader",
         leader: None,

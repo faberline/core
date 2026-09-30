@@ -1,3 +1,4 @@
+use raft_runtime::NodeId;
 use std::{
     collections::HashMap,
     io::{Read, Write},
@@ -67,10 +68,15 @@ async fn external_compaction_uses_the_requested_applied_prefix() {
     let data = tempfile::tempdir().unwrap();
     let state_machine = IndexedSnapshotStateMachine::new();
     let host = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], Vec::new()),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], Vec::new()),
         HashMap::new(),
-        RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
+        RaftStore::open(
+            data.path().to_str().unwrap(),
+            NodeId::new(0),
+            FsyncPolicy::Always,
+        )
+        .unwrap(),
         state_machine.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
@@ -83,11 +89,15 @@ async fn external_compaction_uses_the_requested_applied_prefix() {
 
     host.shutdown().await.unwrap();
     drop(host);
-    let persisted = RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always)
-        .unwrap()
-        .load()
-        .unwrap()
-        .unwrap();
+    let persisted = RaftStore::open(
+        data.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Always,
+    )
+    .unwrap()
+    .load()
+    .unwrap()
+    .unwrap();
     assert_eq!(persisted.snapshot_index, 6);
     assert_eq!(persisted.log.len(), 4);
     assert_eq!(persisted.snapshot, 6_u64.to_le_bytes());
@@ -98,10 +108,15 @@ async fn external_compaction_rejects_an_unapplied_target() {
     let data = tempfile::tempdir().unwrap();
     let state_machine = IndexedSnapshotStateMachine::new();
     let host = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], Vec::new()),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], Vec::new()),
         HashMap::new(),
-        RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
+        RaftStore::open(
+            data.path().to_str().unwrap(),
+            NodeId::new(0),
+            FsyncPolicy::Always,
+        )
+        .unwrap(),
         state_machine as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );

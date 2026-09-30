@@ -73,7 +73,7 @@ impl Shared {
                 self.undeliverable_never_addressed
                     .fetch_add(1, Ordering::Relaxed);
                 tracing::warn!(
-                    target = o.to,
+                    target = o.to.get(),
                     group = %self.group_id.0,
                     "raft: discarded message to peer with no registered address"
                 );

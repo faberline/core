@@ -108,7 +108,7 @@ impl RaftNode {
             votes: HashSet::new(),
             election_elapsed: 0,
             // distinct per node so one voter always times out first.
-            election_timeout: ELECTION_TIMEOUT_FLOOR_TICKS + id,
+            election_timeout: ELECTION_TIMEOUT_FLOOR_TICKS + id.get(),
             heartbeat_elapsed: 0,
             leader_id: None,
             transfer_in_flight: None,

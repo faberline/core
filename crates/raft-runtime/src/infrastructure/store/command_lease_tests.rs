@@ -25,7 +25,12 @@ fn state(entries: Vec<(Index, Term, Vec<u8>)>) -> PersistedState {
 }
 
 fn store(dir: &tempfile::TempDir) -> RaftStore {
-    RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap()
+    RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Always,
+    )
+    .unwrap()
 }
 
 #[test]
@@ -178,7 +183,12 @@ fn load_cannot_truncate_concurrently_appended_published_suffix() {
     assert_eq!(loaded.unwrap().unwrap().unwrap().log[0].command, b"first");
     saved.expect("save did not finish after release").unwrap();
 
-    let reopened = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap();
+    let reopened = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Always,
+    )
+    .unwrap();
     assert_eq!(reopened.load().unwrap().unwrap().log[1].command, b"second");
     assert_eq!(
         reopened

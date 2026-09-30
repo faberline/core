@@ -2,6 +2,7 @@
 //! which `RaftHost` reads on every spawn, so a host started by any other test
 //! in the same process would inherit the 64-byte resident-log limit.
 
+use raft_core::NodeId;
 use std::{collections::HashMap, sync::Arc};
 
 use raft_core::{EntryKind, PersistedState, RaftEntry};
@@ -18,10 +19,15 @@ async fn resident_log_limit_backpressures_then_reopens_after_compaction() {
     let data = tempfile::tempdir().unwrap();
     let state_machine = TestSm::new();
     let host = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], Vec::new()),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], Vec::new()),
         HashMap::new(),
-        RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
+        RaftStore::open(
+            data.path().to_str().unwrap(),
+            NodeId::new(0),
+            FsyncPolicy::Always,
+        )
+        .unwrap(),
         state_machine as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
@@ -37,11 +43,16 @@ async fn resident_log_limit_backpressures_then_reopens_after_compaction() {
 #[tokio::test]
 async fn corrupt_referenced_v4_log_refuses_host_startup() {
     let data = tempfile::tempdir().unwrap();
-    let store = RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap();
+    let store = RaftStore::open(
+        data.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Always,
+    )
+    .unwrap();
     store
         .save(&PersistedState {
             term: 1,
-            voted_for: Some(0),
+            voted_for: Some(NodeId::new(0)),
             log: vec![RaftEntry {
                 term: 1,
                 index: 1,
@@ -75,8 +86,8 @@ async fn corrupt_referenced_v4_log_refuses_host_startup() {
 
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         RaftHost::spawn(
-            0,
-            Membership::new(vec![0], Vec::new()),
+            NodeId::new(0),
+            Membership::new(vec![NodeId::new(0)], Vec::new()),
             HashMap::new(),
             store,
             TestSm::new() as Arc<dyn RaftStateMachine>,

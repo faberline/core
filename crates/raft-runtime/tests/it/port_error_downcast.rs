@@ -7,6 +7,7 @@
 //! each must reach the caller with its type and fields intact. The snapshot
 //! rows cover a port error the host returns directly.
 
+use raft_runtime::NodeId;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -136,10 +137,15 @@ async fn leader(refusal: Refusal, snapshot_failure: SnapshotFailure) -> (RaftHos
         applied: AtomicU64::new(0),
     });
     let host = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         Default::default(),
-        RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap(),
+        RaftStore::open(
+            dir.path().to_str().unwrap(),
+            NodeId::new(0),
+            FsyncPolicy::Os,
+        )
+        .unwrap(),
         sm as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );

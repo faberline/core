@@ -285,10 +285,16 @@ mod tests {
     #[test]
     fn assignment_is_exclusive_until_explicit_release_or_expiry() {
         let mut state = FencedAssignment::idle();
-        let token = state.assign(1, 10, 20).unwrap();
-        assert_eq!(token, FenceToken { owner: 1, epoch: 1 });
+        let token = state.assign(NodeId::new(1), 10, 20).unwrap();
+        assert_eq!(
+            token,
+            FenceToken {
+                owner: NodeId::new(1),
+                epoch: 1
+            }
+        );
         assert!(matches!(
-            state.assign(2, 21, 30),
+            state.assign(NodeId::new(2), 21, 30),
             Err(AssignmentError::AlreadyAssigned(_))
         ));
         assert!(matches!(
@@ -296,16 +302,22 @@ mod tests {
             Err(AssignmentError::NotExpired { .. })
         ));
         state.expire(20).unwrap();
-        let next = state.assign(2, 20, 30).unwrap();
-        assert_eq!(next, FenceToken { owner: 2, epoch: 2 });
+        let next = state.assign(NodeId::new(2), 20, 30).unwrap();
+        assert_eq!(
+            next,
+            FenceToken {
+                owner: NodeId::new(2),
+                epoch: 2
+            }
+        );
     }
 
     #[test]
     fn stale_owner_is_rejected_after_reassignment() {
         let mut state = FencedAssignment::idle();
-        let old = state.assign(1, 0, 10).unwrap();
+        let old = state.assign(NodeId::new(1), 0, 10).unwrap();
         state.expire(10).unwrap();
-        let current = state.assign(2, 10, 20).unwrap();
+        let current = state.assign(NodeId::new(2), 10, 20).unwrap();
         assert!(matches!(
             state.validate(old, 11),
             Err(AssignmentError::StaleEpoch {
@@ -319,9 +331,16 @@ mod tests {
     #[test]
     fn renewal_requires_current_owner_epoch_and_later_expiry() {
         let mut state = FencedAssignment::idle();
-        let token = state.assign(3, 100, 200).unwrap();
+        let token = state.assign(NodeId::new(3), 100, 200).unwrap();
         assert!(matches!(
-            state.renew(FenceToken { owner: 4, ..token }, 150, 250),
+            state.renew(
+                FenceToken {
+                    owner: NodeId::new(4),
+                    ..token
+                },
+                150,
+                250
+            ),
             Err(AssignmentError::OwnerMismatch { .. })
         ));
         assert!(matches!(
@@ -334,14 +353,14 @@ mod tests {
     #[test]
     fn release_retains_epoch_and_fences_late_completion() {
         let mut state = FencedAssignment::idle();
-        let token = state.assign(5, 0, 100).unwrap();
+        let token = state.assign(NodeId::new(5), 0, 100).unwrap();
         state.release(token, 50).unwrap();
         assert_eq!(state.epoch(), 1);
         assert!(matches!(
             state.validate(token, 51),
             Err(AssignmentError::Unassigned { current_epoch: 1 })
         ));
-        assert_eq!(state.assign(5, 51, 100).unwrap().epoch, 2);
+        assert_eq!(state.assign(NodeId::new(5), 51, 100).unwrap().epoch, 2);
     }
 
     #[test]
@@ -349,10 +368,10 @@ mod tests {
         let mut a = FencedAssignment::idle();
         let mut b = FencedAssignment::idle();
         for state in [&mut a, &mut b] {
-            let first = state.assign(1, 1_000, 2_000).unwrap();
+            let first = state.assign(NodeId::new(1), 1_000, 2_000).unwrap();
             state.renew(first, 1_500, 2_500).unwrap();
             state.expire(2_500).unwrap();
-            state.assign(2, 2_500, 3_500).unwrap();
+            state.assign(NodeId::new(2), 2_500, 3_500).unwrap();
         }
         assert_eq!(a, b);
         let bytes = serde_json::to_vec(&a).unwrap();

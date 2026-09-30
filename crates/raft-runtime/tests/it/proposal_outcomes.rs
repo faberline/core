@@ -19,6 +19,7 @@
 //! 8. A forwarded request that times out returns an `Ambiguous` routing-timeout outcome.
 //! 9. Negative control: sequential proposals on a healthy host strictly increase indices.
 
+use raft_runtime::NodeId;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
@@ -40,13 +41,13 @@ async fn custom_timeout_cluster(n: u64, timeout: Duration) -> (Vec<Node>, Durati
     for id in 0..n {
         let (l, url) = bind().await;
         listeners.push(l);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
-    let voters: Vec<u64> = (0..n).collect();
+    let voters: Vec<NodeId> = (0..n).map(NodeId::new).collect();
     let cfg = HostConfig::default().with_propose_timeout(timeout);
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
-        let id = idx as u64;
+        let id = NodeId::new(idx as u64);
         let peers = peers_excluding(id, &all);
         let sm = TestSm::new();
         let dir = TempDir::new().unwrap();
@@ -165,11 +166,16 @@ async fn quiesced_host_rejects_before_admission_and_propose_preserves_error_stri
 async fn no_leader_elected_rejects_before_admission() {
     let sm = TestSm::new();
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let cfg = HostConfig::default().with_propose_timeout(Duration::from_millis(150));
     let host = RaftHost::spawn(
-        0,
-        Membership::new(vec![0, 1], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
@@ -343,7 +349,7 @@ async fn follower_forwarding_transport_timeout_is_ambiguous_with_routing_timeout
     let (listener, stalled_url) = bind().await;
     nodes[follower]
         .host
-        .upsert_peer(leader as u64, stalled_url)
+        .upsert_peer(NodeId::new(leader as u64), stalled_url)
         .await;
 
     let stalled_request = tokio::spawn(async move {
@@ -403,7 +409,7 @@ async fn follower_forwarding_malformed_admission_body_remains_ambiguous() {
     .await;
     nodes[follower]
         .host
-        .upsert_peer(leader as u64, malformed_url)
+        .upsert_peer(NodeId::new(leader as u64), malformed_url)
         .await;
 
     let outcome = nodes[follower]

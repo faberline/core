@@ -354,10 +354,13 @@ impl Engine {
             step: 0,
             message: format!("temporary store: {error}"),
         })?;
-        let membership = Membership::new((0..init.voters as NodeId).collect(), Vec::new());
+        let membership = Membership::new(
+            (0..init.voters as u64).map(NodeId::new).collect(),
+            Vec::new(),
+        );
         let mut hosts = Vec::with_capacity(init.nodes);
         let mut sms = Vec::with_capacity(init.nodes);
-        for id in 0..init.nodes as NodeId {
+        for id in (0..init.nodes as u64).map(NodeId::new) {
             let sm = Arc::new(Sm::default());
             let store = RaftStore::open(
                 dir.path().to_str().expect("temporary path is UTF-8"),
@@ -374,7 +377,7 @@ impl Engine {
                     membership.clone(),
                     store,
                     sm.clone(),
-                    id as u32,
+                    id.get() as u32,
                 )
                 .map_err(|error| ReplayFailure::Step {
                     step: 0,
@@ -420,7 +423,7 @@ impl Engine {
     }
 
     fn node_index(&self, node: NodeId) -> Result<usize, String> {
-        let index = usize::try_from(node).map_err(|_| "unknown node".to_owned())?;
+        let index = usize::try_from(node.get()).map_err(|_| "unknown node".to_owned())?;
         (index < self.hosts.len())
             .then_some(index)
             .ok_or_else(|| format!("unknown node {node}"))
@@ -736,7 +739,7 @@ impl Engine {
             membership.clone()
         };
         let sm = Arc::new(Sm::default());
-        let epoch = ((self.restarts as u32 + 1) << 16) | node as u32;
+        let epoch = ((self.restarts as u32 + 1) << 16) | node.get() as u32;
         self.hosts[index] = DeterministicHost::open_with_envelope_epoch(
             node,
             membership.clone(),
@@ -958,7 +961,7 @@ impl Engine {
     fn drain(&mut self) -> Result<(), ReplayFailure> {
         loop {
             let mut progressed = false;
-            for from in 0..self.hosts.len() as NodeId {
+            for from in (0..self.hosts.len() as u64).map(NodeId::new) {
                 let peers = self.hosts[self.node_index(from).expect("valid source")].ready_peers();
                 for to in peers {
                     while self.hosts[self.node_index(from).expect("valid source")]
@@ -979,7 +982,7 @@ impl Engine {
 
     /// This moves all host queues into the trace mailbox. It never delivers.
     fn take_all(&mut self) -> Result<(), ReplayFailure> {
-        for from in 0..self.hosts.len() as NodeId {
+        for from in (0..self.hosts.len() as u64).map(NodeId::new) {
             loop {
                 let peers = self.hosts[self.node_index(from).expect("valid source")].ready_peers();
                 if peers.is_empty() {
@@ -1038,7 +1041,7 @@ impl Engine {
     }
 
     fn elect(&mut self, candidate: NodeId) -> Result<NodeId, ReplayFailure> {
-        for _ in 0..(50 + candidate) {
+        for _ in 0..(50 + candidate.get()) {
             self.tick(candidate)?;
         }
         self.drain()?;
@@ -1112,8 +1115,8 @@ impl Engine {
                 };
                 if longer.get(..shorter.len()) != Some(shorter.as_slice()) {
                     return Err(ReplayFailure::Safety(SafetyViolation::StateMachinePrefix {
-                        first: first as NodeId,
-                        second: second as NodeId,
+                        first: NodeId::new(first as u64),
+                        second: NodeId::new(second as u64),
                     }));
                 }
             }
@@ -1179,14 +1182,23 @@ impl Engine {
             }
         }
         let expected = match self.init.template {
-            Template::ThreeToFourMembership => Some((vec![0, 1, 2, 3], Vec::<NodeId>::new(), None)),
-            Template::FourToFiveMembership => {
-                Some((vec![0, 1, 2, 3, 4], Vec::<NodeId>::new(), None))
-            }
+            Template::ThreeToFourMembership => Some((
+                (0..4).map(NodeId::new).collect::<Vec<_>>(),
+                Vec::<NodeId>::new(),
+                None,
+            )),
+            Template::FourToFiveMembership => Some((
+                (0..5).map(NodeId::new).collect::<Vec<_>>(),
+                Vec::<NodeId>::new(),
+                None,
+            )),
             Template::DemoteRemoveRecovery => {
-                let removed = if self.init.seed == SEEDS[0] { 1 } else { 0 };
+                let removed = NodeId::new(if self.init.seed == SEEDS[0] { 1 } else { 0 });
                 Some((
-                    (0..4).filter(|node| *node != removed).collect(),
+                    (0..4)
+                        .map(NodeId::new)
+                        .filter(|node| *node != removed)
+                        .collect(),
                     Vec::<NodeId>::new(),
                     Some(removed),
                 ))
@@ -1226,9 +1238,9 @@ impl Engine {
 
 fn seed_candidate(seed: u64) -> NodeId {
     if seed == SEEDS[0] {
-        0
+        NodeId::new(0)
     } else {
-        1
+        NodeId::new(1)
     }
 }
 
@@ -1258,12 +1270,12 @@ fn build_trace(
     match template {
         Template::ElectionSplit => {
             let first = candidate;
-            let second = (candidate + 1) % 3;
-            for _ in 0..(50 + first) {
+            let second = NodeId::new((candidate.get() + 1) % 3);
+            for _ in 0..(50 + first.get()) {
                 engine.tick(first)?;
             }
             engine.take_all()?;
-            for _ in 0..(50 + second) {
+            for _ in 0..(50 + second.get()) {
                 engine.tick(second)?;
             }
             engine.take_all()?;
@@ -1274,9 +1286,9 @@ fn build_trace(
         Template::ReplicationPartition => {
             let leader = engine.elect(candidate)?;
             let isolated = if seed == SEEDS[0] {
-                (leader + 1) % 3
+                NodeId::new((leader.get() + 1) % 3)
             } else {
-                (leader + 2) % 3
+                NodeId::new((leader.get() + 2) % 3)
             };
             engine.propose(leader, command(template, seed, 0))?;
             engine.take_all()?;
@@ -1291,9 +1303,9 @@ fn build_trace(
         Template::StaleAppendResp => {
             let leader = engine.elect(candidate)?;
             let follower = if seed == SEEDS[0] {
-                (leader + 1) % 3
+                NodeId::new((leader.get() + 1) % 3)
             } else {
-                (leader + 2) % 3
+                NodeId::new((leader.get() + 2) % 3)
             };
             engine.propose(leader, command(template, seed, 0))?;
             engine.take_all()?;
@@ -1340,9 +1352,9 @@ fn build_trace(
             engine.propose(leader, command(template, seed, 0))?;
             engine.release_all()?;
             let restart = if seed == SEEDS[0] {
-                (leader + 1) % 3
+                NodeId::new((leader.get() + 1) % 3)
             } else {
-                (leader + 2) % 3
+                NodeId::new((leader.get() + 2) % 3)
             };
             engine.restart(restart)?;
             engine.release_all()?;
@@ -1350,11 +1362,12 @@ fn build_trace(
         Template::LaggingSnapshot => {
             let leader = engine.elect(candidate)?;
             let isolated = if seed == SEEDS[0] {
-                (leader + 1) % 3
+                NodeId::new((leader.get() + 1) % 3)
             } else {
-                (leader + 2) % 3
+                NodeId::new((leader.get() + 2) % 3)
             };
             let helper = (0..3)
+                .map(NodeId::new)
                 .find(|node| *node != leader && *node != isolated)
                 .expect("three nodes");
             for serial in 0..4 {
@@ -1391,7 +1404,7 @@ fn build_trace(
         }
         Template::ThreeToFourMembership | Template::FourToFiveMembership => {
             let leader = engine.elect(candidate)?;
-            let newcomer = voters as NodeId;
+            let newcomer = NodeId::new(voters as u64);
             engine.add_learner(leader, newcomer)?;
             engine.release_all()?;
             for _ in 0..3 {
@@ -1400,7 +1413,7 @@ fn build_trace(
             }
             engine.promote(leader, newcomer)?;
             engine.take_all()?;
-            let old: Vec<NodeId> = (0..voters as NodeId).collect();
+            let old: Vec<NodeId> = (0..voters as u64).map(NodeId::new).collect();
             let old_supporters: Vec<_> = old
                 .iter()
                 .copied()
@@ -1475,7 +1488,7 @@ fn build_trace(
             engine.checkpoint(Checkpoint::JointOneSide {
                 leader,
                 outgoing: old,
-                incoming: (0..=newcomer).collect(),
+                incoming: (0..=newcomer.get()).map(NodeId::new).collect(),
                 acknowledged,
                 target_index,
                 append_ids,
@@ -1489,8 +1502,12 @@ fn build_trace(
             let leader = engine.elect(candidate)?;
             engine.propose(leader, command(template, seed, 0))?;
             engine.release_all()?;
-            let wanted = if seed == SEEDS[0] { 1 } else { 0 };
-            let victim = if wanted == leader { 2 } else { wanted };
+            let wanted = NodeId::new(if seed == SEEDS[0] { 1 } else { 0 });
+            let victim = if wanted == leader {
+                NodeId::new(2)
+            } else {
+                wanted
+            };
             engine.demote(leader, victim)?;
             engine.release_all()?;
             engine.remove(leader, victim)?;
@@ -1498,6 +1515,7 @@ fn build_trace(
             engine.propose(leader, command(template, seed, 1))?;
             engine.drain()?;
             let restart = (0..4)
+                .map(NodeId::new)
                 .find(|node| *node != leader && *node != victim)
                 .expect("a surviving follower");
             engine.restart(restart)?;
@@ -1522,7 +1540,7 @@ fn validate_replay(replay: &Replay) -> Result<(), ReplayFailure> {
     if replay.actions.len() > MAX_ACTIONS {
         return Err(ReplayFailure::Input("trace action limit".to_owned()));
     }
-    let known = |node: NodeId| node < replay.init.nodes as NodeId;
+    let known = |node: NodeId| node.get() < replay.init.nodes as u64;
     let mut live = BTreeSet::new();
     let mut all_taken = BTreeSet::new();
     let mut restarts = 0;
@@ -1838,7 +1856,9 @@ fn requested_safety_replay_uses_the_same_signature_reducer() {
             seed: SEEDS[0],
         },
         actions: vec![Action::Checkpoint {
-            checkpoint: Checkpoint::SnapshotDelivered { node: 0 },
+            checkpoint: Checkpoint::SnapshotDelivered {
+                node: NodeId::new(0),
+            },
         }],
     };
     let minimized = execute_requested_replay(replay)
@@ -1852,7 +1872,9 @@ fn requested_safety_replay_uses_the_same_signature_reducer() {
     let parsed: Replay = serde_json::from_slice(&bytes).expect("minimized replay parses");
     assert_eq!(
         minimized.signature,
-        FailureSignature::Safety(SafetyViolation::SnapshotNotDelivered { node: 0 })
+        FailureSignature::Safety(SafetyViolation::SnapshotNotDelivered {
+            node: NodeId::new(0)
+        })
     );
     assert!(matching_failure(&parsed, None, &minimized.signature));
 }
@@ -1869,8 +1891,8 @@ fn requested_step_replay_uses_the_same_message_signature_reducer() {
         },
         actions: vec![Action::Checkpoint {
             checkpoint: Checkpoint::ElectionSplit {
-                first: 0,
-                second: 1,
+                first: NodeId::new(0),
+                second: NodeId::new(1),
             },
         }],
     };
@@ -1944,11 +1966,19 @@ fn action_limit_refuses_before_the_193rd_host_mutation() {
     };
     let mut engine = Engine::new(init, true, None).expect("engine");
     for _ in 0..49 {
-        engine.tick(0).expect("preparation tick");
+        engine.tick(NodeId::new(0)).expect("preparation tick");
     }
-    engine.actions = vec![Action::Tick { node: 0 }; MAX_ACTIONS];
+    engine.actions = vec![
+        Action::Tick {
+            node: NodeId::new(0)
+        };
+        MAX_ACTIONS
+    ];
     let before = engine.hosts[0].view();
-    assert!(matches!(engine.tick(0), Err(ReplayFailure::Step { .. })));
+    assert!(matches!(
+        engine.tick(NodeId::new(0)),
+        Err(ReplayFailure::Step { .. })
+    ));
     assert_eq!(
         engine.hosts[0].view(),
         before,

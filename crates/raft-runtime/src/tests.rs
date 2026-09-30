@@ -97,10 +97,10 @@ async fn single_node_propose_applies_read_your_write() {
     let _ = std::fs::create_dir_all(&tmp);
     let sm = CounterSm::new();
     let host = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         std::collections::HashMap::new(),
-        store(&tmp, 0),
+        store(&tmp, NodeId::new(0)),
         sm.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
@@ -122,10 +122,10 @@ async fn restart_replays_committed_log_into_a_fresh_sm() {
     // Use Always fsync so the log is durable across the "restart".
     let mk = |sm: Arc<dyn RaftStateMachine>| {
         RaftHost::spawn(
-            0,
-            Membership::new(vec![0], vec![]),
+            NodeId::new(0),
+            Membership::new(vec![NodeId::new(0)], vec![]),
             std::collections::HashMap::new(),
-            RaftStore::open(tmp.to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
+            RaftStore::open(tmp.to_str().unwrap(), NodeId::new(0), FsyncPolicy::Always).unwrap(),
             sm,
             HostConfig::default(),
         )

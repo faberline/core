@@ -117,7 +117,7 @@ fn ready<T>(future: impl Future<Output = T>) -> T {
 fn a_node_restarts_from_what_it_saved_through_the_storage_port() {
     let membership = auto_membership(1);
     let storage: Box<dyn RaftStorage> = Box::new(MemStorage::default());
-    let mut node = RaftNode::new(0, &membership);
+    let mut node = RaftNode::new(NodeId::new(0), &membership);
     for _ in 0..100 {
         if node.is_leader() {
             break;
@@ -130,7 +130,11 @@ fn a_node_restarts_from_what_it_saved_through_the_storage_port() {
     let committed = node.take_committed();
     let entry = committed.iter().find(|e| e.index == index).unwrap();
 
-    let restored = RaftNode::from_persisted(0, &membership, storage.load().unwrap().unwrap());
+    let restored = RaftNode::from_persisted(
+        NodeId::new(0),
+        &membership,
+        storage.load().unwrap().unwrap(),
+    );
     assert_eq!(restored.persisted(), node.persisted());
     let lease = storage
         .pin_committed_command(index, entry.term)
@@ -144,15 +148,16 @@ fn a_node_restarts_from_what_it_saved_through_the_storage_port() {
 fn a_driver_elects_a_leader_through_the_delivery_port() {
     let membership = auto_membership(3);
     let delivery = Loopback {
-        from: 0,
+        from: NodeId::new(0),
         peers: Mutex::new(
             (1..3)
+                .map(NodeId::new)
                 .map(|id| (id, RaftNode::new(id, &membership)))
                 .collect(),
         ),
     };
     let delivery: &dyn RaftDelivery = &delivery;
-    let mut node = RaftNode::new(0, &membership);
+    let mut node = RaftNode::new(NodeId::new(0), &membership);
     for _ in 0..100 {
         if node.is_leader() {
             break;

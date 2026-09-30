@@ -1,5 +1,6 @@
 use super::*;
 use crate::ClusterTopology;
+use crate::NodeId;
 use std::sync::Mutex;
 
 // The standard env vars are process-global; serialize the env tests.
@@ -26,16 +27,28 @@ fn topology_from_env_with_local_override() {
     std::env::set_var("POD_NAME", "svc-1");
     std::env::set_var("SVC_PEERS", "10.0.0.0:9001,10.0.0.1:9002,10.0.0.2:9003");
     let t = ClusterTopology::from_env("svc", "svc-headless", 7000, "SVC_PEERS").unwrap();
-    assert_eq!(t.node_id, 1);
-    assert_eq!(t.membership.voters(), vec![0, 1, 2]);
+    assert_eq!(t.node_id, NodeId::new(1));
+    assert_eq!(
+        t.membership.voters(),
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+    );
     // self (id 1) excluded; peers point at the override addresses.
-    assert_eq!(t.peers.get(&0).unwrap(), "http://10.0.0.0:9001");
-    assert_eq!(t.peers.get(&2).unwrap(), "http://10.0.0.2:9003");
-    assert!(!t.peers.contains_key(&1));
+    assert_eq!(
+        t.peers.get(&NodeId::new(0)).unwrap(),
+        "http://10.0.0.0:9001"
+    );
+    assert_eq!(
+        t.peers.get(&NodeId::new(2)).unwrap(),
+        "http://10.0.0.2:9003"
+    );
+    assert!(!t.peers.contains_key(&NodeId::new(1)));
     let tls =
         ClusterTopology::from_env_with_scheme("svc", "svc-headless", 7000, "SVC_PEERS", "https")
             .unwrap();
-    assert_eq!(tls.peers.get(&0).unwrap(), "https://10.0.0.0:9001");
+    assert_eq!(
+        tls.peers.get(&NodeId::new(0)).unwrap(),
+        "https://10.0.0.0:9001"
+    );
     assert!(
         ClusterTopology::from_env_with_scheme("svc", "svc-headless", 7000, "SVC_PEERS", "ftp",)
             .is_err()
@@ -69,9 +82,9 @@ fn peer_dns_prefix_follows_the_pod_not_the_callers_binary_name() {
     std::env::remove_var("LUMEN_PEERS");
 
     let t = ClusterTopology::from_env("lumen", "quorum-headless", 7373, "LUMEN_PEERS").unwrap();
-    assert_eq!(t.node_id, 0);
+    assert_eq!(t.node_id, NodeId::new(0));
     assert_eq!(
-        t.peers.get(&1).unwrap(),
+        t.peers.get(&NodeId::new(1)).unwrap(),
         "http://quorum-1.quorum-headless:7373",
         "peer URL must name the pod's own StatefulSet, not the caller's binary"
     );
@@ -82,7 +95,7 @@ fn peer_dns_prefix_follows_the_pod_not_the_callers_binary_name() {
     std::env::set_var("POD_NAME", "lumen-0");
     let same = ClusterTopology::from_env("lumen", "lumen-headless", 7373, "LUMEN_PEERS").unwrap();
     assert_eq!(
-        same.peers.get(&1).unwrap(),
+        same.peers.get(&NodeId::new(1)).unwrap(),
         "http://lumen-1.lumen-headless:7373"
     );
 

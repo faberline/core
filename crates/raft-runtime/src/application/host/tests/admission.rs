@@ -131,10 +131,15 @@ async fn elected_single_host(sm: Arc<AdmissionSm>) -> AdmissionTestHost {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path();
     let host = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
-        RaftStore::open(path.to_str().unwrap(), 0, crate::FsyncPolicy::Os).unwrap(),
+        RaftStore::open(
+            path.to_str().unwrap(),
+            NodeId::new(0),
+            crate::FsyncPolicy::Os,
+        )
+        .unwrap(),
         sm as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
@@ -315,13 +320,13 @@ async fn forwarded_backpressure_reply_restores_typed_error_data() {
 
 #[test]
 fn conflicting_term_at_same_index_drops_only_replaced_uncommitted_permit() {
-    let membership = Membership::new(vec![0, 1], vec![]);
-    let mut node = RaftNode::new(0, &membership);
+    let membership = Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]);
+    let mut node = RaftNode::new(NodeId::new(0), &membership);
     for _ in 0..raft_core::ELECTION_TIMEOUT_FLOOR_TICKS {
         node.tick();
     }
     node.handle(
-        1,
+        NodeId::new(1),
         RaftMsg::VoteResp(VoteResp {
             term: 1,
             granted: true,
@@ -331,10 +336,10 @@ fn conflicting_term_at_same_index_drops_only_replaced_uncommitted_permit() {
     let old_term = node.current_term();
     assert_eq!(index, 1);
     node.handle(
-        1,
+        NodeId::new(1),
         RaftMsg::Append(AppendReq {
             term: old_term + 1,
-            leader: 1,
+            leader: NodeId::new(1),
             prev_log_index: 0,
             prev_log_term: 0,
             entries: vec![raft_core::RaftEntry {

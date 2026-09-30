@@ -4,7 +4,7 @@ use raft_core::{AppendReq, AppendResp, TimeoutNowReq, VoteReq, VoteResp};
 fn append(marker: u64) -> RaftMsg {
     RaftMsg::Append(AppendReq {
         term: marker,
-        leader: 7,
+        leader: NodeId::new(7),
         prev_log_index: 0,
         prev_log_term: 0,
         entries: vec![],
@@ -15,7 +15,7 @@ fn append(marker: u64) -> RaftMsg {
 fn timeout_now(marker: u64) -> RaftMsg {
     RaftMsg::TimeoutNow(TimeoutNowReq {
         term: marker,
-        leader: 7,
+        leader: NodeId::new(7),
     })
 }
 
@@ -30,7 +30,7 @@ fn assert_timeout_now(message: Option<RaftMsg>, term: u64, leader: u64) {
     match message {
         Some(RaftMsg::TimeoutNow(req)) => {
             assert_eq!(req.term, term);
-            assert_eq!(req.leader, leader);
+            assert_eq!(req.leader, NodeId::new(leader));
         }
         other => panic!("expected TimeoutNow({term}, {leader}), got {other:?}"),
     }
@@ -121,7 +121,7 @@ fn peer_lane_keeps_every_non_append_message_lossless_and_fifo() {
     let expected = vec![
         RaftMsg::Vote(VoteReq {
             term: 10,
-            candidate: 1,
+            candidate: NodeId::new(1),
             last_log_index: 2,
             last_log_term: 3,
         }),
@@ -136,7 +136,7 @@ fn peer_lane_keeps_every_non_append_message_lossless_and_fifo() {
         }),
         RaftMsg::InstallSnapshot(InstallSnapshotReq {
             term: 40,
-            leader: 1,
+            leader: NodeId::new(1),
             snapshot_index: 5,
             snapshot_term: 6,
             data: vec![7],

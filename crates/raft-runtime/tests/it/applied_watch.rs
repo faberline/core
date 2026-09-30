@@ -1,3 +1,4 @@
+use raft_runtime::NodeId;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
@@ -12,10 +13,15 @@ use cluster::*;
 async fn single_voter_late_subscriber() {
     let dir = TempDir::new().unwrap();
     let sm = TestSm::new();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let host = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,

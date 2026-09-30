@@ -7,6 +7,7 @@
 //! versions byte by byte, because after this change `RaftStore::save` can only
 //! write the current one.
 
+use raft_core::NodeId;
 use tempfile::TempDir;
 
 use raft_core::{ConfState, EntryKind, Membership, PersistedState, RaftEntry};
@@ -76,7 +77,12 @@ fn v1_record(term: u64, voted_for: Option<u64>, commands: &[&[u8]]) -> Vec<u8> {
 }
 
 fn open(dir: &TempDir) -> RaftStore {
-    RaftStore::open(dir.path().to_str().unwrap(), 7, FsyncPolicy::Os).unwrap()
+    RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(7),
+        FsyncPolicy::Os,
+    )
+    .unwrap()
 }
 
 #[test]
@@ -92,7 +98,7 @@ fn a_record_written_by_the_current_format_loads_with_no_configuration() {
         "a record written before membership was durable must load with no configuration rather than be rejected"
     );
     assert_eq!(state.term, 3);
-    assert_eq!(state.voted_for, Some(2));
+    assert_eq!(state.voted_for, Some(NodeId::new(2)));
     assert_eq!(state.commit_index, 2);
     assert_eq!(
         state.log,
@@ -133,13 +139,16 @@ fn the_oldest_record_format_still_loads() {
 fn the_configuration_and_entry_kinds_survive_the_durable_round_trip() {
     let dir = TempDir::new().unwrap();
     let conf = ConfState {
-        membership: Membership::new(vec![0, 1, 2], vec![3]),
+        membership: Membership::new(
+            vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+            vec![NodeId::new(3)],
+        ),
         outgoing: None,
         generation: 9,
     };
     let state = PersistedState {
         term: 4,
-        voted_for: Some(0),
+        voted_for: Some(NodeId::new(0)),
         log: vec![
             RaftEntry {
                 term: 4,
@@ -179,7 +188,10 @@ fn the_configuration_and_entry_kinds_survive_the_durable_round_trip() {
 fn the_record_carries_the_configuration_as_the_canonical_encoder_writes_it() {
     let dir = TempDir::new().unwrap();
     let conf = ConfState {
-        membership: Membership::new(vec![4, 5, 6], vec![7, 8]),
+        membership: Membership::new(
+            vec![NodeId::new(4), NodeId::new(5), NodeId::new(6)],
+            vec![NodeId::new(7), NodeId::new(8)],
+        ),
         outgoing: None,
         generation: 11,
     };
@@ -295,7 +307,10 @@ fn saving_after_loading_an_older_record_upgrades_the_file_in_place() {
 #[test]
 fn a_configuration_claiming_a_length_the_record_cannot_hold_is_refused() {
     let conf = ConfState {
-        membership: Membership::new(vec![4, 5, 6], vec![7, 8]),
+        membership: Membership::new(
+            vec![NodeId::new(4), NodeId::new(5), NodeId::new(6)],
+            vec![NodeId::new(7), NodeId::new(8)],
+        ),
         outgoing: None,
         generation: 11,
     };
@@ -381,7 +396,10 @@ fn a_configuration_claiming_a_length_the_record_cannot_hold_is_refused() {
 #[test]
 fn a_voters_length_claiming_one_slot_past_the_bound_is_refused() {
     let conf = ConfState {
-        membership: Membership::new(vec![4, 5, 6], vec![7, 8]),
+        membership: Membership::new(
+            vec![NodeId::new(4), NodeId::new(5), NodeId::new(6)],
+            vec![NodeId::new(7), NodeId::new(8)],
+        ),
         outgoing: None,
         generation: 11,
     };
@@ -446,7 +464,10 @@ fn a_voters_length_claiming_one_slot_past_the_bound_is_refused() {
 fn a_config_entry_whose_command_does_not_decode_is_refused() {
     let dir = TempDir::new().unwrap();
     let conf = ConfState {
-        membership: Membership::new(vec![0, 1, 2], vec![3]),
+        membership: Membership::new(
+            vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+            vec![NodeId::new(3)],
+        ),
         outgoing: None,
         generation: 9,
     };
@@ -462,7 +483,7 @@ fn a_config_entry_whose_command_does_not_decode_is_refused() {
 
     let state = PersistedState {
         term: 4,
-        voted_for: Some(0),
+        voted_for: Some(NodeId::new(0)),
         log: vec![
             RaftEntry {
                 term: 4,
@@ -509,7 +530,10 @@ fn a_config_entry_whose_command_does_not_decode_is_refused() {
 fn a_config_entry_longer_than_the_decoders_floor_is_still_judged_by_the_decoder() {
     let dir = TempDir::new().unwrap();
     let conf = ConfState {
-        membership: Membership::new(vec![0, 1, 2], vec![3]),
+        membership: Membership::new(
+            vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+            vec![NodeId::new(3)],
+        ),
         outgoing: None,
         generation: 9,
     };
@@ -533,7 +557,7 @@ fn a_config_entry_longer_than_the_decoders_floor_is_still_judged_by_the_decoder(
 
     let state = PersistedState {
         term: 4,
-        voted_for: Some(0),
+        voted_for: Some(NodeId::new(0)),
         log: vec![RaftEntry {
             term: 4,
             index: 1,

@@ -207,7 +207,12 @@ impl Bus {
 
 #[test]
 fn removing_a_voter_from_a_four_voter_group_commits_and_stops_replication_to_it() {
-    let ids = [0, 1, 2, 3];
+    let ids = [
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+    ];
     let mut bus = Bus::new(&ids, &voters(&ids));
     let leader = bus.run_until_leader();
     bus.commit(leader, b"before".to_vec());
@@ -261,7 +266,7 @@ fn removing_a_voter_from_a_four_voter_group_commits_and_stops_replication_to_it(
 
 #[test]
 fn removing_a_voter_from_a_three_voter_group_is_refused_because_tolerance_would_reach_zero() {
-    let ids = [0, 1, 2];
+    let ids = [NodeId::new(0), NodeId::new(1), NodeId::new(2)];
     let mut bus = Bus::new(&ids, &voters(&ids));
     let leader = bus.run_until_leader();
     bus.commit(leader, b"before".to_vec());
@@ -284,7 +289,7 @@ fn removing_a_voter_from_a_three_voter_group_is_refused_because_tolerance_would_
 
     assert_eq!(
         bus.nodes[&leader].conf_state().membership.voters(),
-        vec![0, 1, 2],
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
         "a refused removal must not have proposed anything"
     );
     assert!(
@@ -295,7 +300,13 @@ fn removing_a_voter_from_a_three_voter_group_is_refused_because_tolerance_would_
 
 #[test]
 fn removing_a_voter_from_a_five_voter_group_is_refused_although_four_voters_remain() {
-    let ids = [0, 1, 2, 3, 4];
+    let ids = [
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+        NodeId::new(4),
+    ];
     let mut bus = Bus::new(&ids, &voters(&ids));
     let leader = bus.run_until_leader();
     bus.commit(leader, b"before".to_vec());
@@ -325,7 +336,12 @@ fn removing_a_voter_from_a_five_voter_group_is_refused_although_four_voters_rema
 
 #[test]
 fn removing_the_leader_is_refused_and_directs_the_caller_to_transfer_first() {
-    let ids = [0, 1, 2, 3];
+    let ids = [
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+    ];
     let mut bus = Bus::new(&ids, &voters(&ids));
     let leader = bus.run_until_leader();
     bus.commit(leader, b"before".to_vec());
@@ -380,7 +396,12 @@ fn removing_the_leader_is_refused_and_directs_the_caller_to_transfer_first() {
 
 #[test]
 fn a_demoted_voter_stops_campaigning_while_the_group_still_elects() {
-    let ids = [0, 1, 2, 3];
+    let ids = [
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+    ];
     let mut bus = Bus::new(&ids, &voters(&ids));
     let leader = bus.run_until_leader();
     bus.commit(leader, b"before".to_vec());
@@ -443,7 +464,7 @@ fn a_demoted_voter_stops_campaigning_while_the_group_still_elects() {
 
 #[test]
 fn demoting_a_voter_from_a_three_voter_group_is_refused_on_the_same_arithmetic_as_removal() {
-    let ids = [0, 1, 2];
+    let ids = [NodeId::new(0), NodeId::new(1), NodeId::new(2)];
     let mut bus = Bus::new(&ids, &voters(&ids));
     let leader = bus.run_until_leader();
     bus.commit(leader, b"before".to_vec());
@@ -467,7 +488,7 @@ fn demoting_a_voter_from_a_three_voter_group_is_refused_on_the_same_arithmetic_a
 
     assert_eq!(
         bus.nodes[&leader].conf_state().membership.voters(),
-        vec![0, 1, 2],
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
         "a refused demotion must not have proposed anything"
     );
     assert!(

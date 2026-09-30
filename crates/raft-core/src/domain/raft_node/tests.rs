@@ -6,17 +6,20 @@ use crate::domain::timing::HEARTBEAT_INTERVAL_TICKS;
 #[test]
 fn new_derives_election_timeout_from_public_floor_and_node_id() {
     let membership = auto_membership(3);
-    let id = 7;
+    let id = NodeId::new(7);
 
     let node = RaftNode::new(id, &membership);
 
-    assert_eq!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + id);
+    assert_eq!(
+        node.election_timeout,
+        ELECTION_TIMEOUT_FLOOR_TICKS + id.get()
+    );
 }
 
 #[test]
 fn leader_sends_first_periodic_heartbeat_at_public_interval() {
-    let membership = Membership::new(vec![1, 2], Vec::new());
-    let mut node = RaftNode::new(1, &membership);
+    let membership = Membership::new(vec![NodeId::new(1), NodeId::new(2)], Vec::new());
+    let mut node = RaftNode::new(NodeId::new(1), &membership);
     node.become_leader();
     assert_eq!(
         node.take_outgoing().len(),
@@ -41,8 +44,8 @@ fn leader_sends_first_periodic_heartbeat_at_public_interval() {
 }
 
 fn committed_pair() -> RaftNode {
-    let membership = Membership::new(vec![1], vec![]);
-    let mut node = RaftNode::new(1, &membership);
+    let membership = Membership::new(vec![NodeId::new(1)], vec![]);
+    let mut node = RaftNode::new(NodeId::new(1), &membership);
     node.become_leader();
     assert_eq!(node.propose(vec![11]), Some(1));
     assert_eq!(node.propose(vec![22]), Some(2));
@@ -79,7 +82,7 @@ fn committed_identity_is_stable_until_exact_completion() {
 fn unfinished_committed_head_survives_durable_recovery() {
     let node = committed_pair();
     let membership = node.conf_state().membership.clone();
-    let restored = RaftNode::from_persisted(1, &membership, node.persisted());
+    let restored = RaftNode::from_persisted(NodeId::new(1), &membership, node.persisted());
     assert_eq!(
         restored.peek_next_committed_identity(),
         Some((1, node.current_term(), EntryKind::Command))
@@ -96,7 +99,7 @@ fn configuration_changes_only_when_its_exact_identity_finishes() {
     let mut next = node.conf_state().clone();
     next.generation += 1;
     let (voters, mut learners) = next.membership.into_parts();
-    learners.push(9);
+    learners.push(NodeId::new(9));
     next.membership = Membership::new(voters, learners);
     node.log.push(RaftEntry {
         index: 3,
@@ -109,11 +112,23 @@ fn configuration_changes_only_when_its_exact_identity_finishes() {
         node.peek_next_committed_identity(),
         Some((3, term, EntryKind::Config))
     );
-    assert!(!node.conf_state().membership.learners().contains(&9));
+    assert!(!node
+        .conf_state()
+        .membership
+        .learners()
+        .contains(&NodeId::new(9)));
     assert!(!node.finish_committed_identity(3, term + 1));
-    assert!(!node.conf_state().membership.learners().contains(&9));
+    assert!(!node
+        .conf_state()
+        .membership
+        .learners()
+        .contains(&NodeId::new(9)));
     assert!(node.finish_committed_identity(3, term));
-    assert!(node.conf_state().membership.learners().contains(&9));
+    assert!(node
+        .conf_state()
+        .membership
+        .learners()
+        .contains(&NodeId::new(9)));
     assert_eq!(node.peek_next_committed_identity(), None);
 }
 

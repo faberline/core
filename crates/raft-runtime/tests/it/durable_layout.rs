@@ -1,3 +1,4 @@
+use raft_core::NodeId;
 use std::io::ErrorKind;
 use tempfile::TempDir;
 
@@ -17,12 +18,17 @@ fn pseudo_random_bytes(len: usize) -> Vec<u8> {
 #[test]
 fn measurement_1_command_bytes_bounded_size() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let command = pseudo_random_bytes(1024 * 1024);
     let state = PersistedState {
         term: 1,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
             term: 1,
             index: 1,
@@ -55,12 +61,17 @@ fn measurement_1_command_bytes_bounded_size() {
 #[test]
 fn measurement_2_snapshot_bytes_bounded_size() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let snapshot = pseudo_random_bytes(1024 * 1024);
     let state = PersistedState {
         term: 1,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![],
         commit_index: 1,
         snapshot_index: 1,
@@ -97,11 +108,16 @@ fn measurement_3_payload_byte_exactness() {
 
     for payload in payloads {
         let dir = TempDir::new().unwrap();
-        let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+        let store = RaftStore::open(
+            dir.path().to_str().unwrap(),
+            NodeId::new(0),
+            FsyncPolicy::Os,
+        )
+        .unwrap();
 
         let state = PersistedState {
             term: 2,
-            voted_for: Some(3),
+            voted_for: Some(NodeId::new(3)),
             log: vec![RaftEntry {
                 term: 2,
                 index: 1,
@@ -133,11 +149,16 @@ fn measurement_3_payload_byte_exactness() {
 #[test]
 fn measurement_5_dedup_and_fault_injection_interaction() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let state_a = PersistedState {
         term: 1,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
             term: 1,
             index: 1,
@@ -164,7 +185,7 @@ fn measurement_5_dedup_and_fault_injection_interaction() {
 
     let state_b = PersistedState {
         term: 2,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
             term: 2,
             index: 1,
@@ -187,7 +208,12 @@ fn measurement_5_dedup_and_fault_injection_interaction() {
 #[test]
 fn measurement_6_legacy_json_backward_compatibility() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let legacy_json = br#"{"term":3,"voted_for":2,"log":[{"term":3,"index":1,"command":[10,20,30]}],"commit_index":1,"snapshot_index":1,"snapshot_term":2,"snapshot":[40,50,60]}"#;
     std::fs::write(store.path(), legacy_json).unwrap();
@@ -195,7 +221,7 @@ fn measurement_6_legacy_json_backward_compatibility() {
     let loaded = store.load().unwrap().expect("legacy state must load");
     let expected = PersistedState {
         term: 3,
-        voted_for: Some(2),
+        voted_for: Some(NodeId::new(2)),
         log: vec![RaftEntry {
             term: 3,
             index: 1,
@@ -215,7 +241,12 @@ fn measurement_6_legacy_json_backward_compatibility() {
 #[test]
 fn measurement_7_unrecognised_format_marker_refusal() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let future_format_bytes = b"RAFTST99\x01\x02\x03\x04\x05\x06\x07\x08";
     std::fs::write(store.path(), future_format_bytes).unwrap();
@@ -235,10 +266,15 @@ fn measurement_7_unrecognised_format_marker_refusal() {
 #[test]
 fn growing_log_is_appended_once_while_hard_state_stays_bounded() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let mut state = PersistedState {
         term: 1,
-        voted_for: Some(0),
+        voted_for: Some(NodeId::new(0)),
         log: Vec::new(),
         commit_index: 0,
         snapshot_index: 0,
@@ -285,10 +321,15 @@ fn growing_log_is_appended_once_while_hard_state_stays_bounded() {
 #[test]
 fn append_tail_faults_recover_at_the_published_hard_state_boundary() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let mut state = PersistedState {
         term: 1,
-        voted_for: Some(0),
+        voted_for: Some(NodeId::new(0)),
         log: vec![RaftEntry {
             term: 1,
             index: 1,
@@ -314,7 +355,12 @@ fn append_tail_faults_recover_at_the_published_hard_state_boundary() {
     store.inject_next_after_artifact_failure_with_kind(ErrorKind::Other);
     assert_eq!(store.save(&state).unwrap_err().kind(), ErrorKind::Other);
 
-    let recovered = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let recovered = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     assert_eq!(
         recovered.load().unwrap().unwrap(),
         published_one,
@@ -331,7 +377,12 @@ fn append_tail_faults_recover_at_the_published_hard_state_boundary() {
     state.commit_index = 3;
     recovered.inject_next_after_publish_failure_with_kind(ErrorKind::Other);
     assert_eq!(recovered.save(&state).unwrap_err().kind(), ErrorKind::Other);
-    let after_publish = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let after_publish = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     assert_eq!(
         after_publish.load().unwrap().unwrap(),
         state,

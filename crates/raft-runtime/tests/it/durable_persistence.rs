@@ -1,3 +1,4 @@
+use raft_runtime::NodeId;
 use raft_runtime::{
     FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore, LEGACY_GROUP_ID,
 };
@@ -49,10 +50,11 @@ async fn test_1_propose_refusal_and_restart() {
     drop(host);
 
     let sm2 = TestSm::new();
-    let store2 = RaftStore::open(dir_path.to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store2 =
+        RaftStore::open(dir_path.to_str().unwrap(), NodeId::new(0), FsyncPolicy::Os).unwrap();
     let _host2 = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         std::collections::HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,
@@ -191,10 +193,11 @@ async fn test_5_healthy_host() {
     drop(host);
 
     let sm2 = TestSm::new();
-    let store2 = RaftStore::open(dir_path.to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store2 =
+        RaftStore::open(dir_path.to_str().unwrap(), NodeId::new(0), FsyncPolicy::Os).unwrap();
     let _host2 = RaftHost::spawn(
-        0,
-        Membership::new(vec![0], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         std::collections::HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,

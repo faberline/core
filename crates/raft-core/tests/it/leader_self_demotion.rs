@@ -194,7 +194,12 @@ fn a_leader_demoting_itself_is_refused_by_name_where_demotion_is_otherwise_permi
     // Four voters: dropping one leaves three, and both sizes tolerate one
     // failure, so the tolerance guard permits this shrink. Any refusal here is
     // therefore about the target being the leader and nothing else.
-    let mut bus = Bus::new(&[0, 1, 2, 3]);
+    let mut bus = Bus::new(&[
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+    ]);
     let leader = bus.settled_leader();
     let before = bus.nodes[&leader].conf_state().clone();
 
@@ -218,7 +223,12 @@ fn a_leader_demoting_itself_is_refused_by_name_where_demotion_is_otherwise_permi
     // The control, on a fresh group of the same shape: naming somebody else
     // succeeds. Without it, an implementation that refuses every demotion at
     // this size passes the assertion above.
-    let mut control = Bus::new(&[0, 1, 2, 3]);
+    let mut control = Bus::new(&[
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+    ]);
     let control_leader = control.settled_leader();
     let other = control.some_other_voter(control_leader);
     assert!(
@@ -241,7 +251,7 @@ fn the_self_demotion_refusal_is_answered_before_the_tolerance_guard() {
     // receiving the tolerance answer when it named itself -- asking the wrong
     // node and asking at the wrong time are different answers, and only the
     // first tells the caller that transferring leadership is the way out.
-    let mut bus = Bus::new(&[0, 1, 2]);
+    let mut bus = Bus::new(&[NodeId::new(0), NodeId::new(1), NodeId::new(2)]);
     let leader = bus.settled_leader();
     let other = bus.some_other_voter(leader);
 
@@ -267,7 +277,7 @@ fn a_demotion_that_would_leave_no_voters_is_refused() {
     // One voter left and the leader is not it, so the self-refusal cannot
     // apply, and the tolerance arithmetic permits the shrink: at n = 1 both
     // `before` and `after` are zero. Only a floor stops this.
-    let mut bus = Bus::new(&[0, 1]);
+    let mut bus = Bus::new(&[NodeId::new(0), NodeId::new(1)]);
     let leader = bus.settled_leader();
     let last_voter = bus.some_other_voter(leader);
     bus.adopt_leader_out_of_the_voter_set(leader, &[last_voter]);
@@ -288,9 +298,9 @@ fn a_demotion_that_would_leave_no_voters_is_refused() {
     // state, with a voter left over afterwards, succeeds. This is what stops the
     // floor from being written as "a leader that is not a voter may not change
     // the membership", which refuses far more than the item asks for.
-    let mut control = Bus::new(&[0, 1, 2]);
+    let mut control = Bus::new(&[NodeId::new(0), NodeId::new(1), NodeId::new(2)]);
     let control_leader = control.settled_leader();
-    let remaining: Vec<NodeId> = [0, 1, 2]
+    let remaining: Vec<NodeId> = [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
         .into_iter()
         .filter(|id| *id != control_leader)
         .collect();
@@ -311,7 +321,7 @@ fn a_demotion_that_would_leave_no_voters_is_refused() {
 fn a_removal_that_would_leave_no_voters_is_refused() {
     // Removal carries the same floor as demotion: both shrink the voter set by
     // one, and #3572's tolerance guard is silent at this size for both.
-    let mut bus = Bus::new(&[0, 1]);
+    let mut bus = Bus::new(&[NodeId::new(0), NodeId::new(1)]);
     let leader = bus.settled_leader();
     let last_voter = bus.some_other_voter(leader);
     bus.adopt_leader_out_of_the_voter_set(leader, &[last_voter]);
@@ -330,9 +340,9 @@ fn a_removal_that_would_leave_no_voters_is_refused() {
         "a refused removal must not have entered a joint configuration",
     );
 
-    let mut control = Bus::new(&[0, 1, 2]);
+    let mut control = Bus::new(&[NodeId::new(0), NodeId::new(1), NodeId::new(2)]);
     let control_leader = control.settled_leader();
-    let remaining: Vec<NodeId> = [0, 1, 2]
+    let remaining: Vec<NodeId> = [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
         .into_iter()
         .filter(|id| *id != control_leader)
         .collect();

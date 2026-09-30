@@ -15,13 +15,16 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 fn membership() -> Membership {
-    Membership::new(vec![1, 2, 3], vec![4])
+    Membership::new(
+        vec![NodeId::new(1), NodeId::new(2), NodeId::new(3)],
+        vec![NodeId::new(4)],
+    )
 }
 
 fn joint_conf() -> ConfState {
     ConfState {
         membership: membership(),
-        outgoing: Some(vec![1, 2]),
+        outgoing: Some(vec![NodeId::new(1), NodeId::new(2)]),
         generation: 7,
     }
 }
@@ -84,7 +87,7 @@ fn raft_entry_and_persisted_state_json_are_pinned() {
     );
     let state = PersistedState {
         term: 3,
-        voted_for: Some(2),
+        voted_for: Some(NodeId::new(2)),
         log: vec![
             entry(5, EntryKind::Command, vec![9]),
             entry(6, EntryKind::Config, joint_conf().encode()),
@@ -110,7 +113,7 @@ fn raft_messages_json_are_pinned() {
     pin_json(
         &VoteReq {
             term: 3,
-            candidate: 1,
+            candidate: NodeId::new(1),
             last_log_index: 9,
             last_log_term: 2,
         },
@@ -126,7 +129,7 @@ fn raft_messages_json_are_pinned() {
     pin_json(
         &AppendReq {
             term: 3,
-            leader: 1,
+            leader: NodeId::new(1),
             prev_log_index: 4,
             prev_log_term: 2,
             entries: vec![entry(5, EntryKind::Command, vec![6])],
@@ -145,7 +148,7 @@ fn raft_messages_json_are_pinned() {
     pin_json(
         &InstallSnapshotReq {
             term: 3,
-            leader: 1,
+            leader: NodeId::new(1),
             snapshot_index: 8,
             snapshot_term: 2,
             data: vec![1, 2],
@@ -161,7 +164,10 @@ fn raft_messages_json_are_pinned() {
         r#"{"term":3,"accepted":true,"snapshot_index":8}"#,
     );
     pin_json(
-        &TimeoutNowReq { term: 3, leader: 1 },
+        &TimeoutNowReq {
+            term: 3,
+            leader: NodeId::new(1),
+        },
         r#"{"term":3,"leader":1}"#,
     );
 }
@@ -170,7 +176,7 @@ fn raft_messages_json_are_pinned() {
 fn refusals_and_node_keyed_maps_json_are_pinned() {
     pin_json(
         &TransferRefused::NotCaughtUp {
-            target: 2,
+            target: NodeId::new(2),
             matched: 4,
             last_index: 9,
         },
@@ -183,7 +189,9 @@ fn refusals_and_node_keyed_maps_json_are_pinned() {
         },
         r#"{"NotCaughtUp":{"matched":4,"target":9}}"#,
     );
-    let keyed: BTreeMap<NodeId, u64> = [(1, 5), (22, 6)].into_iter().collect();
+    let keyed: BTreeMap<NodeId, u64> = [(NodeId::new(1), 5), (NodeId::new(22), 6)]
+        .into_iter()
+        .collect();
     assert_eq!(serde_json::to_string(&keyed).unwrap(), r#"{"1":5,"22":6}"#);
     assert_eq!(
         serde_json::from_str::<BTreeMap<NodeId, u64>>(r#"{"1":5,"22":6}"#).unwrap(),
@@ -219,7 +227,7 @@ fn debug_output_is_pinned() {
         format!(
             "{:?}",
             TransferRefused::NotCaughtUp {
-                target: 2,
+                target: NodeId::new(2),
                 matched: 4,
                 last_index: 9,
             }

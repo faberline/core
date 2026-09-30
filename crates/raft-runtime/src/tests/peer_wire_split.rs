@@ -3,6 +3,7 @@
 //! bodies. Each case builds one body with both copies and checks that they
 //! encode the same bytes and decode each other's bytes.
 
+use crate::NodeId;
 use raft_core::{AppendReq, EntryKind, InstallSnapshotReq, RaftEntry, TimeoutNowReq, VoteReq};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -29,7 +30,7 @@ where
 fn vote_req() -> VoteReq {
     VoteReq {
         term: 3,
-        candidate: 1,
+        candidate: NodeId::new(1),
         last_log_index: 9,
         last_log_term: 2,
     }
@@ -38,7 +39,7 @@ fn vote_req() -> VoteReq {
 fn append_req() -> AppendReq {
     AppendReq {
         term: 3,
-        leader: 1,
+        leader: NodeId::new(1),
         prev_log_index: 4,
         prev_log_term: 2,
         entries: vec![RaftEntry {
@@ -54,7 +55,7 @@ fn append_req() -> AppendReq {
 fn snapshot_req() -> InstallSnapshotReq {
     InstallSnapshotReq {
         term: 3,
-        leader: 1,
+        leader: NodeId::new(1),
         snapshot_index: 8,
         snapshot_term: 2,
         data: vec![1, 2],
@@ -66,37 +67,43 @@ fn vote_append_and_timeout_envelopes_match() {
     same_bytes(
         &client::VoteEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: vote_req(),
         },
         &server::VoteEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: vote_req(),
         },
     );
     same_bytes(
         &client::AppendEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: append_req(),
         },
         &server::AppendEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: append_req(),
         },
     );
     same_bytes(
         &client::TimeoutNowEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
-            req: TimeoutNowReq { term: 3, leader: 1 },
+            from: NodeId::new(1),
+            req: TimeoutNowReq {
+                term: 3,
+                leader: NodeId::new(1),
+            },
         },
         &server::TimeoutNowEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
-            req: TimeoutNowReq { term: 3, leader: 1 },
+            from: NodeId::new(1),
+            req: TimeoutNowReq {
+                term: 3,
+                leader: NodeId::new(1),
+            },
         },
     );
 }
@@ -106,26 +113,26 @@ fn snapshot_envelopes_and_capable_reply_match() {
     same_bytes(
         &client::SnapEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: snapshot_req(),
         },
         &server::SnapEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: snapshot_req(),
         },
     );
     same_bytes(
         &client::CapableSnapEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: snapshot_req(),
             snapshot_capability: "cap-v1".to_owned(),
             snapshot_nonce: 5,
         },
         &server::CapableSnapEnvelope {
             group_id: "orders".to_owned(),
-            from: 1,
+            from: NodeId::new(1),
             req: snapshot_req(),
             snapshot_capability: "cap-v1".to_owned(),
             snapshot_nonce: 5,

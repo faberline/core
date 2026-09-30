@@ -1,3 +1,4 @@
+use raft_core::NodeId;
 use std::io::ErrorKind;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
@@ -38,12 +39,17 @@ fn count_artifacts(dir_path: &std::path::Path) -> usize {
 #[test]
 fn measurement_1_hard_state_size_bounded_and_independent_of_snapshot() {
     let dir1 = TempDir::new().unwrap();
-    let store1 = RaftStore::open(dir1.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store1 = RaftStore::open(
+        dir1.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let snap_1m = vec![0x11; 1024 * 1024];
     let state1 = PersistedState {
         term: 1,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
             term: 1,
             index: 2,
@@ -60,12 +66,17 @@ fn measurement_1_hard_state_size_bounded_and_independent_of_snapshot() {
     let len1 = std::fs::metadata(store1.path()).unwrap().len();
 
     let dir2 = TempDir::new().unwrap();
-    let store2 = RaftStore::open(dir2.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store2 = RaftStore::open(
+        dir2.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let snap_8m = vec![0x22; 8 * 1024 * 1024];
     let state2 = PersistedState {
         term: 1,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
             term: 1,
             index: 2,
@@ -103,12 +114,17 @@ fn measurement_1_hard_state_size_bounded_and_independent_of_snapshot() {
 #[test]
 fn measurement_2_log_append_does_not_rewrite_snapshot_artifact() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let snap = vec![0xAA; 1024 * 1024];
     let state = PersistedState {
         term: 1,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![],
         commit_index: 1,
         snapshot_index: 1,
@@ -127,7 +143,7 @@ fn measurement_2_log_append_does_not_rewrite_snapshot_artifact() {
     // Save one more 64-byte log entry with unchanged snapshot
     let state2 = PersistedState {
         term: 1,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
             term: 1,
             index: 2,
@@ -165,12 +181,17 @@ fn measurement_2_log_append_does_not_rewrite_snapshot_artifact() {
 #[test]
 fn measurement_3_fault_before_publish_recovers_last_complete_generation() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let gen1_bytes = vec![0x11; 1024];
     let state_gen1 = PersistedState {
         term: 1,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![],
         commit_index: 1,
         snapshot_index: 1,
@@ -186,7 +207,7 @@ fn measurement_3_fault_before_publish_recovers_last_complete_generation() {
     let gen2_bytes = vec![0x22; 1024];
     let state_gen2 = PersistedState {
         term: 2,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![],
         commit_index: 2,
         snapshot_index: 2,
@@ -198,7 +219,12 @@ fn measurement_3_fault_before_publish_recovers_last_complete_generation() {
     assert!(res.is_err(), "save must fail when fault is armed");
 
     // Open a fresh RaftStore on the same directory
-    let fresh_store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let fresh_store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let loaded = fresh_store
         .load()
         .unwrap()
@@ -212,13 +238,18 @@ fn measurement_3_fault_before_publish_recovers_last_complete_generation() {
 #[test]
 fn measurement_4_fault_after_publish_retains_durable_generation_and_collects_later() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let gen1_bytes = vec![0x11; 512];
     store
         .save(&PersistedState {
             term: 1,
-            voted_for: Some(1),
+            voted_for: Some(NodeId::new(1)),
             log: vec![],
             commit_index: 1,
             snapshot_index: 1,
@@ -234,7 +265,7 @@ fn measurement_4_fault_after_publish_retains_durable_generation_and_collects_lat
     let gen2_bytes = vec![0x22; 512];
     let res = store.save(&PersistedState {
         term: 2,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![],
         commit_index: 2,
         snapshot_index: 2,
@@ -256,7 +287,12 @@ fn measurement_4_fault_after_publish_retains_durable_generation_and_collects_lat
     );
 
     // A fresh store loads generation 2 because the hard-state reference was already durable
-    let fresh_store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let fresh_store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let loaded_gen2 = fresh_store
         .load()
         .unwrap()
@@ -270,7 +306,7 @@ fn measurement_4_fault_after_publish_retains_durable_generation_and_collects_lat
     fresh_store
         .save(&PersistedState {
             term: 3,
-            voted_for: Some(1),
+            voted_for: Some(NodeId::new(1)),
             log: vec![],
             commit_index: 3,
             snapshot_index: 3,
@@ -295,13 +331,18 @@ fn measurement_4_fault_after_publish_retains_durable_generation_and_collects_lat
 fn measurement_5_missing_artifact_fails_identically_regardless_of_log_size() {
     // Case A: 2-entry log
     let dir_a = TempDir::new().unwrap();
-    let store_a = RaftStore::open(dir_a.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store_a = RaftStore::open(
+        dir_a.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let snap_a = vec![0xAA; 512];
     store_a
         .save(&PersistedState {
             term: 3,
-            voted_for: Some(1),
+            voted_for: Some(NodeId::new(1)),
             log: vec![
                 RaftEntry {
                     term: 3,
@@ -327,7 +368,12 @@ fn measurement_5_missing_artifact_fails_identically_regardless_of_log_size() {
     let art_a = find_artifact(dir_a.path()).expect("artifact must exist in dir A");
     std::fs::remove_file(art_a).unwrap();
 
-    let fresh_a = RaftStore::open(dir_a.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let fresh_a = RaftStore::open(
+        dir_a.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let err_a = fresh_a.load().unwrap_err();
     assert_eq!(err_a.kind(), ErrorKind::InvalidData);
     let msg_a = err_a.to_string();
@@ -338,13 +384,18 @@ fn measurement_5_missing_artifact_fails_identically_regardless_of_log_size() {
 
     // Case B: 1 MiB log
     let dir_b = TempDir::new().unwrap();
-    let store_b = RaftStore::open(dir_b.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store_b = RaftStore::open(
+        dir_b.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let snap_b = vec![0xAA; 512];
     store_b
         .save(&PersistedState {
             term: 3,
-            voted_for: Some(1),
+            voted_for: Some(NodeId::new(1)),
             log: vec![RaftEntry {
                 term: 3,
                 index: 6,
@@ -362,7 +413,12 @@ fn measurement_5_missing_artifact_fails_identically_regardless_of_log_size() {
     let art_b = find_artifact(dir_b.path()).expect("artifact must exist in dir B");
     std::fs::remove_file(art_b).unwrap();
 
-    let fresh_b = RaftStore::open(dir_b.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let fresh_b = RaftStore::open(
+        dir_b.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let err_b = fresh_b.load().unwrap_err();
     assert_eq!(err_b.kind(), ErrorKind::InvalidData);
     let msg_b = err_b.to_string();
@@ -385,13 +441,18 @@ fn measurement_5_missing_artifact_fails_identically_regardless_of_log_size() {
 #[test]
 fn measurement_6_corrupted_content_same_length_fails_load() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let snap = vec![0x55; 1024];
     store
         .save(&PersistedState {
             term: 1,
-            voted_for: Some(1),
+            voted_for: Some(NodeId::new(1)),
             log: vec![],
             commit_index: 1,
             snapshot_index: 1,
@@ -406,7 +467,12 @@ fn measurement_6_corrupted_content_same_length_fails_load() {
     let corrupted_content = vec![0x66; 1024];
     std::fs::write(&art_path, corrupted_content).unwrap();
 
-    let fresh_store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let fresh_store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let res = fresh_store.load();
     assert!(
         res.is_err(),
@@ -422,13 +488,18 @@ fn measurement_6_corrupted_content_same_length_fails_load() {
 #[test]
 fn measurement_7_superseded_artifacts_collected_leaving_only_latest() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let gen1_bytes = vec![0x10; 256];
     store
         .save(&PersistedState {
             term: 1,
-            voted_for: Some(1),
+            voted_for: Some(NodeId::new(1)),
             log: vec![],
             commit_index: 1,
             snapshot_index: 1,
@@ -442,7 +513,7 @@ fn measurement_7_superseded_artifacts_collected_leaving_only_latest() {
     store
         .save(&PersistedState {
             term: 2,
-            voted_for: Some(1),
+            voted_for: Some(NodeId::new(1)),
             log: vec![],
             commit_index: 2,
             snapshot_index: 2,
@@ -456,7 +527,7 @@ fn measurement_7_superseded_artifacts_collected_leaving_only_latest() {
     store
         .save(&PersistedState {
             term: 3,
-            voted_for: Some(1),
+            voted_for: Some(NodeId::new(1)),
             log: vec![],
             commit_index: 3,
             snapshot_index: 3,
@@ -483,7 +554,12 @@ fn measurement_7_superseded_artifacts_collected_leaving_only_latest() {
 #[test]
 fn measurement_8_legacy_inline_snapshot_loads_without_artifact() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 1, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
 
     let snap_bytes = vec![0x42; 128];
     // Manually construct a RAFTST01 hard-state file with inline snapshot bytes (Round B format)

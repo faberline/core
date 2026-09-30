@@ -172,8 +172,8 @@ impl ClusterTopology {
             bail!("VOTER_COUNT must be in 1..=REPLICAS_PER_SHARD");
         }
         let shard_index = dims.shard_index()?;
-        let node_id = dims.replica_index()? as NodeId;
-        if node_id >= replicas_per_shard as NodeId {
+        let node_id = NodeId::new(u64::from(dims.replica_index()?));
+        if node_id.get() >= u64::from(replicas_per_shard) {
             bail!("POD_NAME ordinal resolves outside REPLICAS_PER_SHARD");
         }
 
@@ -207,7 +207,7 @@ impl ClusterTopology {
         // via headless DNS with no discovery service. `index N → replica N`.
         let mut peers = HashMap::new();
         for replica in 0..replicas_per_shard {
-            let id = replica as NodeId;
+            let id = NodeId::new(u64::from(replica));
             if id == node_id {
                 continue;
             }
@@ -223,8 +223,10 @@ impl ClusterTopology {
         }
 
         let membership = Membership::new(
-            (0..voter_count as NodeId).collect(),
-            (voter_count as NodeId..replicas_per_shard as NodeId).collect(),
+            (0..u64::from(voter_count)).map(NodeId::new).collect(),
+            (u64::from(voter_count)..u64::from(replicas_per_shard))
+                .map(NodeId::new)
+                .collect(),
         );
         Ok(Self {
             node_id,

@@ -4,16 +4,17 @@
 //! carries, and a restart recovers — so a node comes back as the member its
 //! group last agreed it was, not as the member its caller happened to name.
 
+use raft_core::NodeId;
 use raft_core::{auto_membership, ConfState, EntryKind, Membership, PersistedState, RaftNode};
 
 fn sole_voter() -> Membership {
-    Membership::new(vec![0], vec![])
+    Membership::new(vec![NodeId::new(0)], vec![])
 }
 
 /// Drive a sole voter to leadership. Its election timeout is `ELECTION_MIN + id`
 /// ticks and it is its own majority, so it elects itself without a bus.
 fn elected_sole_voter() -> RaftNode {
-    let mut node = RaftNode::new(0, &sole_voter());
+    let mut node = RaftNode::new(NodeId::new(0), &sole_voter());
     for _ in 0..60 {
         node.tick();
     }
@@ -28,10 +29,13 @@ fn elected_sole_voter() -> RaftNode {
 /// from the caller's argument and never from the recovered state.
 #[test]
 fn recovered_configuration_beats_the_callers_bootstrap_argument() {
-    let agreed = Membership::new(vec![1, 2, 3], vec![0]);
+    let agreed = Membership::new(
+        vec![NodeId::new(1), NodeId::new(2), NodeId::new(3)],
+        vec![NodeId::new(0)],
+    );
     let bootstrap = sole_voter();
 
-    let mut node = RaftNode::new(0, &bootstrap);
+    let mut node = RaftNode::new(NodeId::new(0), &bootstrap);
     assert!(
         node.is_voter(),
         "the bootstrap membership makes node 0 a voter, so a recovered learner cannot be an artefact of the starting state"
@@ -44,7 +48,7 @@ fn recovered_configuration_beats_the_callers_bootstrap_argument() {
     let state = node.persisted();
     drop(node);
 
-    let recovered = RaftNode::from_persisted(0, &bootstrap, state);
+    let recovered = RaftNode::from_persisted(NodeId::new(0), &bootstrap, state);
 
     assert_eq!(
         recovered.conf_state().membership,
@@ -76,7 +80,7 @@ fn the_bootstrap_argument_is_used_only_when_the_store_carries_no_configuration()
     let bootstrap = auto_membership(3);
     let state = PersistedState {
         term: 2,
-        voted_for: Some(1),
+        voted_for: Some(NodeId::new(1)),
         log: vec![],
         commit_index: 0,
         snapshot_index: 0,
@@ -85,7 +89,7 @@ fn the_bootstrap_argument_is_used_only_when_the_store_carries_no_configuration()
         conf: None,
     };
 
-    let node = RaftNode::from_persisted(0, &bootstrap, state);
+    let node = RaftNode::from_persisted(NodeId::new(0), &bootstrap, state);
 
     assert_eq!(node.conf_state().membership, bootstrap);
     assert_eq!(
@@ -103,9 +107,15 @@ fn the_bootstrap_argument_is_used_only_when_the_store_carries_no_configuration()
 /// A generation that is stored but never compared is a field, not a guard.
 #[test]
 fn a_configuration_that_does_not_supersede_is_refused() {
-    let mut node = RaftNode::new(0, &Membership::new(vec![0, 1, 2], vec![]));
+    let mut node = RaftNode::new(
+        NodeId::new(0),
+        &Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![]),
+    );
     let in_force = ConfState {
-        membership: Membership::new(vec![0, 1, 2], vec![3]),
+        membership: Membership::new(
+            vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+            vec![NodeId::new(3)],
+        ),
         outgoing: None,
         generation: 7,
     };
@@ -151,7 +161,7 @@ fn a_superseding_configuration_moves_the_voter_set_that_decides_a_commit() {
     );
 
     let widened = ConfState {
-        membership: Membership::new(vec![0, 1, 2], vec![]),
+        membership: Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![]),
         outgoing: None,
         generation: 1,
     };
@@ -177,7 +187,7 @@ fn a_committed_configuration_entry_is_adopted_and_withheld_from_the_consumer() {
 
     assert_eq!(node.propose(b"before".to_vec()), Some(1));
     let next = ConfState {
-        membership: Membership::new(vec![0], vec![9]),
+        membership: Membership::new(vec![NodeId::new(0)], vec![NodeId::new(9)]),
         outgoing: None,
         generation: 3,
     };
@@ -217,7 +227,7 @@ fn the_durable_state_carries_the_configuration_and_the_entry_kinds() {
     let mut node = elected_sole_voter();
     node.propose(b"cmd".to_vec()).unwrap();
     let next = ConfState {
-        membership: Membership::new(vec![0], vec![4]),
+        membership: Membership::new(vec![NodeId::new(0)], vec![NodeId::new(4)]),
         outgoing: None,
         generation: 2,
     };

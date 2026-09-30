@@ -1,3 +1,4 @@
+use raft_core::NodeId;
 use std::io;
 use tempfile::TempDir;
 
@@ -28,7 +29,7 @@ fn measurement_1_migrate_legacy_json_to_named_group() {
 
     let store = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
-        7,
+        NodeId::new(7),
         GroupId("alpha".to_string()),
         FsyncPolicy::Os,
     )
@@ -40,7 +41,7 @@ fn measurement_1_migrate_legacy_json_to_named_group() {
 
     let state = store.load().unwrap().expect("migrated state should load");
     assert_eq!(state.term, 3);
-    assert_eq!(state.voted_for, Some(2));
+    assert_eq!(state.voted_for, Some(NodeId::new(2)));
     assert_eq!(state.commit_index, 1);
     assert_eq!(state.snapshot_index, 0);
     assert_eq!(state.snapshot_term, 0);
@@ -62,11 +63,16 @@ fn measurement_2_migrate_legacy_store_with_snapshot_artifact() {
     let snap_payload = vec![100, 101, 102, 103, 104, 105, 106, 107];
 
     {
-        let store = RaftStore::open(dir.path().to_str().unwrap(), 7, FsyncPolicy::Os).unwrap();
+        let store = RaftStore::open(
+            dir.path().to_str().unwrap(),
+            NodeId::new(7),
+            FsyncPolicy::Os,
+        )
+        .unwrap();
         store
             .save(&PersistedState {
                 term: 2,
-                voted_for: Some(1),
+                voted_for: Some(NodeId::new(1)),
                 log: vec![RaftEntry {
                     term: 2,
                     index: 4,
@@ -94,7 +100,7 @@ fn measurement_2_migrate_legacy_store_with_snapshot_artifact() {
 
     let store = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
-        7,
+        NodeId::new(7),
         GroupId("alpha".to_string()),
         FsyncPolicy::Os,
     )
@@ -126,7 +132,7 @@ fn measurement_2_migrate_legacy_store_with_snapshot_artifact() {
         .unwrap()
         .expect("migrated store should load snapshot state");
     assert_eq!(state.term, 2);
-    assert_eq!(state.voted_for, Some(1));
+    assert_eq!(state.voted_for, Some(NodeId::new(1)));
     assert_eq!(state.commit_index, 4);
     assert_eq!(state.snapshot_index, 3);
     assert_eq!(state.snapshot_term, 2);
@@ -154,7 +160,7 @@ fn measurement_3_open_named_group_refuses_when_legacy_state_file_exists() {
 
     let res = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        7,
+        NodeId::new(7),
         GroupId("alpha".to_string()),
         FsyncPolicy::Os,
     );
@@ -207,7 +213,7 @@ fn measurement_4_migrate_refuses_when_target_already_exists() {
 
     let res = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
-        7,
+        NodeId::new(7),
         GroupId("alpha".to_string()),
         FsyncPolicy::Os,
     );
@@ -229,7 +235,7 @@ fn measurement_5_migrate_refuses_when_legacy_file_corrupt() {
 
     let res = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
-        7,
+        NodeId::new(7),
         GroupId("alpha".to_string()),
         FsyncPolicy::Os,
     );
@@ -261,18 +267,23 @@ fn measurement_6_legacy_open_and_other_node_named_open_succeed() {
     });
     std::fs::write(&legacy_file, serde_json::to_vec(&legacy_json).unwrap()).unwrap();
 
-    let store7 = RaftStore::open(dir.path().to_str().unwrap(), 7, FsyncPolicy::Os).unwrap();
+    let store7 = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(7),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let state7 = store7
         .load()
         .unwrap()
         .expect("node 7 legacy load should succeed");
     assert_eq!(state7.term, 3);
-    assert_eq!(state7.voted_for, Some(2));
+    assert_eq!(state7.voted_for, Some(NodeId::new(2)));
     assert_eq!(state7.commit_index, 1);
 
     let store8 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        8,
+        NodeId::new(8),
         GroupId("alpha".to_string()),
         FsyncPolicy::Os,
     )
@@ -283,7 +294,7 @@ fn measurement_6_legacy_open_and_other_node_named_open_succeed() {
 fn write_v4_legacy_store(dir: &TempDir) -> PersistedState {
     let state = PersistedState {
         term: 5,
-        voted_for: Some(7),
+        voted_for: Some(NodeId::new(7)),
         log: vec![RaftEntry {
             term: 5,
             index: 9,
@@ -296,10 +307,14 @@ fn write_v4_legacy_store(dir: &TempDir) -> PersistedState {
         snapshot: b"migration-snapshot".to_vec(),
         conf: None,
     };
-    RaftStore::open(dir.path().to_str().unwrap(), 7, FsyncPolicy::Os)
-        .unwrap()
-        .save(&state)
-        .unwrap();
+    RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(7),
+        FsyncPolicy::Os,
+    )
+    .unwrap()
+    .save(&state)
+    .unwrap();
     state
 }
 
@@ -326,7 +341,7 @@ fn measurement_7_migration_retries_after_artifacts_were_copied() {
 
     let store = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
-        7,
+        NodeId::new(7),
         GroupId("alpha".to_string()),
         FsyncPolicy::Os,
     )
@@ -349,7 +364,7 @@ fn measurement_8_migration_retries_after_target_hard_state_was_published() {
 
     let store = RaftStore::migrate_legacy_to_group(
         dir.path().to_str().unwrap(),
-        7,
+        NodeId::new(7),
         GroupId("alpha".to_string()),
         FsyncPolicy::Os,
     )

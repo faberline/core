@@ -18,6 +18,7 @@
 //!   budget for an apply-blocked proposal or status request. The bounded test
 //!   waits below are test cleanup limits, not a product performance promise.
 
+use raft_runtime::NodeId;
 use std::collections::{HashMap, HashSet};
 use std::io::ErrorKind;
 use std::sync::{Arc, Condvar, Mutex};
@@ -268,14 +269,14 @@ async fn blocking_cluster(node_count: u64) -> Vec<BlockingNode> {
     for id in 0..node_count {
         let (listener, url) = bind().await;
         listeners.push(listener);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
 
     let config = HostConfig::default().with_tick(Duration::from_millis(10));
-    let voters: Vec<u64> = (0..node_count).collect();
+    let voters: Vec<NodeId> = (0..node_count).map(NodeId::new).collect();
     let mut nodes = Vec::new();
     for (index, listener) in listeners.into_iter().enumerate() {
-        let id = index as u64;
+        let id = NodeId::new(index as u64);
         let sm = BlockingApplySm::new();
         let dir = TempDir::new().expect("temporary raft store directory");
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os)
@@ -470,12 +471,12 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
     let mut callbacks_after_restart = Vec::new();
     if stopped_cleanly {
         let restarted = RaftHost::spawn(
-            0,
-            Membership::new(vec![0], vec![]),
+            NodeId::new(0),
+            Membership::new(vec![NodeId::new(0)], vec![]),
             HashMap::new(),
             RaftStore::open(
                 restart_dir.to_str().expect("temporary directory is UTF-8"),
-                0,
+                NodeId::new(0),
                 FsyncPolicy::Os,
             )
             .expect("restart reopens the durable store"),
@@ -943,10 +944,15 @@ async fn tiny_rpc_timeout_legacy_shutdown_returns_err_naming_quiesce() {
     let (listener, url) = bind().await;
     let sm = TestSm::new();
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let host = Arc::new(RaftHost::spawn(
-        0,
-        Membership::new(vec![0], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,

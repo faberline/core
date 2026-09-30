@@ -29,7 +29,7 @@ use raft_core::{Membership, NodeId, RaftNode, Role};
 
 /// Voters 0,1,2 with no learners: the group a learner is added *to*.
 fn three_voters() -> Membership {
-    Membership::new(vec![0, 1, 2], vec![])
+    Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![])
 }
 
 struct Bus {
@@ -149,7 +149,15 @@ impl Bus {
 /// a process but is in nobody's configuration, which is the state a node is in
 /// immediately before it is added.
 fn running_group() -> (Bus, NodeId) {
-    let mut bus = Bus::new(&[0, 1, 2, 3], &three_voters());
+    let mut bus = Bus::new(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
     for i in 0..5u8 {
         bus.commit(leader, vec![i]);
@@ -167,57 +175,63 @@ fn a_learner_added_at_runtime_is_withheld_from_reads_until_it_reaches_the_record
     // majority on their own, so the configuration entry still commits and the
     // leader still adopts it — this is the window, and it is the leader that can
     // see it.
-    bus.dropped.insert(3);
+    bus.dropped.insert(NodeId::new(3));
     let at = bus
         .nodes
         .get_mut(&leader)
         .unwrap()
-        .add_learner(3)
+        .add_learner(NodeId::new(3))
         .expect("a leader admits a learner by appending a configuration entry");
     bus.pump();
 
     let node = &bus.nodes[&leader];
     assert!(
-        node.conf_state().membership.learners().contains(&3),
+        node.conf_state()
+            .membership
+            .learners()
+            .contains(&NodeId::new(3)),
         "the configuration entry at index {at} committed, but the leader's configuration is {:?}",
         node.conf_state().membership
     );
     let target = node
-        .learner_read_target(3)
+        .learner_read_target(NodeId::new(3))
         .expect("an admitted learner has a recorded read target");
     let matched = node
-        .learner_matched(3)
+        .learner_matched(NodeId::new(3))
         .expect("a leader knows how far an admitted learner has replicated");
     assert!(
         matched < target,
         "this row cannot measure anything unless the learner starts behind: matched {matched}, target {target}"
     );
     assert_eq!(
-        node.learner_read_eligible(3),
+        node.learner_read_eligible(NodeId::new(3)),
         Some(false),
         "learner 3 has replicated to {matched} and its recorded target is {target}, yet the leader reports it fit to serve a read",
     );
 
     // Now let it catch up.
-    bus.dropped.remove(&3);
+    bus.dropped.remove(&NodeId::new(3));
     bus.settle();
 
     let node = &bus.nodes[&leader];
-    let matched = node.learner_matched(3).expect("still an admitted learner");
+    let matched = node
+        .learner_matched(NodeId::new(3))
+        .expect("still an admitted learner");
     let target = node
-        .learner_read_target(3)
+        .learner_read_target(NodeId::new(3))
         .expect("still an admitted learner");
     assert!(
         matched >= target,
         "the learner was left to replicate to quiescence but only reached {matched} against a target of {target}",
     );
     assert_eq!(
-        node.learner_read_eligible(3),
+        node.learner_read_eligible(NodeId::new(3)),
         Some(true),
         "learner 3 has replicated to {matched}, at or past its recorded target of {target}, yet the leader still withholds it",
     );
     assert_eq!(
-        bus.applied[&3], bus.applied[&leader],
+        bus.applied[&NodeId::new(3)],
+        bus.applied[&leader],
         "a caught-up learner must hold the same commands as the leader",
     );
 }
@@ -230,11 +244,17 @@ fn a_learner_added_at_runtime_is_withheld_from_reads_until_it_reaches_the_record
 fn the_read_target_is_fixed_at_admission_and_does_not_follow_the_commit_index() {
     let (mut bus, leader) = running_group();
 
-    bus.nodes.get_mut(&leader).unwrap().add_learner(3).unwrap();
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .add_learner(NodeId::new(3))
+        .unwrap();
     bus.settle();
-    let target = bus.nodes[&leader].learner_read_target(3).unwrap();
+    let target = bus.nodes[&leader]
+        .learner_read_target(NodeId::new(3))
+        .unwrap();
     assert_eq!(
-        bus.nodes[&leader].learner_read_eligible(3),
+        bus.nodes[&leader].learner_read_eligible(NodeId::new(3)),
         Some(true),
         "the learner replicated to quiescence and must be eligible before this row can test anything",
     );
@@ -242,20 +262,20 @@ fn the_read_target_is_fixed_at_admission_and_does_not_follow_the_commit_index() 
     // The group keeps committing while the learner is unreachable. Its target
     // was fixed when it was admitted, so it stays eligible: it is caught up in
     // the sense the group agreed on, not in the sense of a receding horizon.
-    bus.dropped.insert(3);
+    bus.dropped.insert(NodeId::new(3));
     for i in 0..4u8 {
         bus.commit(leader, vec![100 + i]);
     }
 
     let node = &bus.nodes[&leader];
     assert_eq!(
-        node.learner_read_target(3),
+        node.learner_read_target(NodeId::new(3)),
         Some(target),
         "the recorded target moved from {target} to {:?} because the group committed more",
-        node.learner_read_target(3),
+        node.learner_read_target(NodeId::new(3)),
     );
     assert_eq!(
-        node.learner_read_eligible(3),
+        node.learner_read_eligible(NodeId::new(3)),
         Some(true),
         "the learner met its recorded target of {target} and then the group moved on without it; a target that follows the commit index is never reached on a busy group",
     );
@@ -281,30 +301,34 @@ fn a_learner_admitted_after_compaction_catches_up_through_the_snapshot_path() {
         "the leader must have compacted before a newcomer is admitted",
     );
 
-    bus.dropped.insert(3);
-    bus.nodes.get_mut(&leader).unwrap().add_learner(3).unwrap();
+    bus.dropped.insert(NodeId::new(3));
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .add_learner(NodeId::new(3))
+        .unwrap();
     bus.pump();
     assert_eq!(
-        bus.nodes[&leader].learner_read_eligible(3),
+        bus.nodes[&leader].learner_read_eligible(NodeId::new(3)),
         Some(false),
         "the learner has replicated nothing and must not be eligible before it catches up",
     );
 
-    bus.dropped.remove(&3);
+    bus.dropped.remove(&NodeId::new(3));
     bus.settle();
 
     assert_eq!(
-        bus.installed[&3], 1,
+        bus.installed[&NodeId::new(3)], 1,
         "the learner's starting point was compacted away, so it can only come forward through the snapshot path, but it was asked to load {} snapshots",
-        bus.installed[&3],
+        bus.installed[&NodeId::new(3)],
     );
     let node = &bus.nodes[&leader];
     assert_eq!(
-        node.learner_read_eligible(3),
+        node.learner_read_eligible(NodeId::new(3)),
         Some(true),
         "the learner caught up through the snapshot but the leader reports matched {:?} against target {:?}",
-        node.learner_matched(3),
-        node.learner_read_target(3),
+        node.learner_matched(NodeId::new(3)),
+        node.learner_read_target(NodeId::new(3)),
     );
     assert!(
         !applied_at_compaction.is_empty(),
@@ -317,15 +341,19 @@ fn a_learner_admitted_after_compaction_catches_up_through_the_snapshot_path() {
 fn a_caught_up_learner_still_never_votes_and_never_counts_toward_a_majority() {
     let (mut bus, leader) = running_group();
 
-    bus.nodes.get_mut(&leader).unwrap().add_learner(3).unwrap();
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .add_learner(NodeId::new(3))
+        .unwrap();
     bus.settle();
     assert_eq!(
-        bus.nodes[&leader].learner_read_eligible(3),
+        bus.nodes[&leader].learner_read_eligible(NodeId::new(3)),
         Some(true),
         "this row is about a learner that has caught up",
     );
     assert!(
-        !bus.nodes[&3].is_voter(),
+        !bus.nodes[&NodeId::new(3)].is_voter(),
         "node 3 was admitted as a learner but reports itself a voter",
     );
     assert!(
@@ -333,7 +361,7 @@ fn a_caught_up_learner_still_never_votes_and_never_counts_toward_a_majority() {
             .conf_state()
             .membership
             .voters()
-            .contains(&3),
+            .contains(&NodeId::new(3)),
         "the committed configuration made the learner a voter: {:?}",
         bus.nodes[&leader].conf_state().membership,
     );
@@ -342,8 +370,8 @@ fn a_caught_up_learner_still_never_votes_and_never_counts_toward_a_majority() {
     // out of a four-node group but only one voter out of three, so nothing may
     // commit.
     let before = bus.applied[&leader].len();
-    bus.dropped.insert(1);
-    bus.dropped.insert(2);
+    bus.dropped.insert(NodeId::new(1));
+    bus.dropped.insert(NodeId::new(2));
     bus.commit(leader, vec![200]);
     assert_eq!(
         bus.applied[&leader].len(),
@@ -357,10 +385,10 @@ fn a_caught_up_learner_still_never_votes_and_never_counts_toward_a_majority() {
         bus.pump();
     }
     assert_eq!(
-        bus.nodes[&3].role(),
+        bus.nodes[&NodeId::new(3)].role(),
         Role::Follower,
         "the learner reached {:?} after being left to time out",
-        bus.nodes[&3].role(),
+        bus.nodes[&NodeId::new(3)].role(),
     );
 }
 
@@ -370,10 +398,10 @@ fn a_caught_up_learner_still_never_votes_and_never_counts_toward_a_majority() {
 #[test]
 fn only_an_admitted_learner_has_a_read_target_and_only_a_leader_reports_eligibility() {
     let (mut bus, leader) = running_group();
-    let follower = (0..3u64).find(|id| *id != leader).unwrap();
+    let follower = (0..3u64).map(NodeId::new).find(|id| *id != leader).unwrap();
 
     assert_eq!(
-        bus.nodes[&leader].learner_read_target(3),
+        bus.nodes[&leader].learner_read_target(NodeId::new(3)),
         None,
         "node 3 is in nobody's configuration yet, so there is no target to report",
     );
@@ -383,16 +411,20 @@ fn only_an_admitted_learner_has_a_read_target_and_only_a_leader_reports_eligibil
         "node {follower} is a voter, and voter reads are not gated by this predicate",
     );
 
-    bus.nodes.get_mut(&leader).unwrap().add_learner(3).unwrap();
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .add_learner(NodeId::new(3))
+        .unwrap();
     bus.settle();
 
     assert_eq!(
-        bus.nodes[&follower].learner_matched(3),
+        bus.nodes[&follower].learner_matched(NodeId::new(3)),
         None,
         "node {follower} is not the leader and does not replicate to the learner, so it cannot report progress it does not have",
     );
     assert!(
-        bus.nodes[&leader].learner_matched(3).is_some(),
+        bus.nodes[&leader].learner_matched(NodeId::new(3)).is_some(),
         "the leader replicates to the learner and must be able to report its progress",
     );
 }
@@ -410,7 +442,16 @@ fn only_an_admitted_learner_has_a_read_target_and_only_a_leader_reports_eligibil
 /// unconditional write survived, with every row green.
 #[test]
 fn admitting_a_second_learner_does_not_move_the_first_learners_recorded_target() {
-    let mut bus = Bus::new(&[0, 1, 2, 3, 4], &three_voters());
+    let mut bus = Bus::new(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+            NodeId::new(4),
+        ],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
     for i in 0..5u8 {
         bus.commit(leader, vec![i]);
@@ -419,11 +460,11 @@ fn admitting_a_second_learner_does_not_move_the_first_learners_recorded_target()
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .add_learner(3)
+        .add_learner(NodeId::new(3))
         .expect("a leader admits the first learner");
     bus.settle();
     let first = bus.nodes[&leader]
-        .learner_read_target(3)
+        .learner_read_target(NodeId::new(3))
         .expect("the first learner has a recorded target");
 
     // The group keeps committing, and only then does a second learner arrive —
@@ -435,25 +476,25 @@ fn admitting_a_second_learner_does_not_move_the_first_learners_recorded_target()
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .add_learner(4)
+        .add_learner(NodeId::new(4))
         .expect("a leader admits a second learner while the first is caught up");
     bus.settle();
 
     let node = &bus.nodes[&leader];
     let second = node
-        .learner_read_target(4)
+        .learner_read_target(NodeId::new(4))
         .expect("the second learner has a recorded target");
     assert!(
         second > first,
         "this row cannot measure anything unless the second admission happened at a later index: first {first}, second {second}",
     );
     assert_eq!(
-        node.learner_read_target(3),
+        node.learner_read_target(NodeId::new(3)),
         Some(first),
         "learner 3 was admitted at {first} and has not been re-admitted, yet its target moved when learner 4 joined at {second}",
     );
     assert_eq!(
-        node.learner_read_eligible(3),
+        node.learner_read_eligible(NodeId::new(3)),
         Some(true),
         "learner 3 had caught up to {first} before learner 4 joined, so admitting learner 4 must not withhold it again",
     );

@@ -5,6 +5,7 @@
 //! byte-identical. The peer-wire envelopes are crate-private and are pinned by
 //! the unit tests in `src/tests/peer_wire_golden.rs`.
 
+use raft_core::NodeId;
 use std::fmt::Debug;
 use std::io::{Read, Write};
 use std::path::Path;
@@ -43,13 +44,16 @@ fn unhex(text: &str) -> Vec<u8> {
 }
 
 fn membership() -> Membership {
-    Membership::new(vec![1, 2, 3], vec![4])
+    Membership::new(
+        vec![NodeId::new(1), NodeId::new(2), NodeId::new(3)],
+        vec![NodeId::new(4)],
+    )
 }
 
 fn joint_conf() -> ConfState {
     ConfState {
         membership: membership(),
-        outgoing: Some(vec![1, 2]),
+        outgoing: Some(vec![NodeId::new(1), NodeId::new(2)]),
         generation: 7,
     }
 }
@@ -57,7 +61,7 @@ fn joint_conf() -> ConfState {
 fn persisted_state() -> PersistedState {
     PersistedState {
         term: 3,
-        voted_for: Some(2),
+        voted_for: Some(NodeId::new(2)),
         log: vec![
             RaftEntry {
                 term: 2,
@@ -116,7 +120,12 @@ fn file_names(dir: &Path) -> Vec<String> {
 #[test]
 fn durable_state_log_and_snapshot_bytes_are_pinned() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 7, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(7),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     store.save(&persisted_state()).unwrap();
     assert_eq!(
         file_names(dir.path()),
@@ -136,7 +145,12 @@ fn durable_state_log_and_snapshot_bytes_are_pinned() {
     std::fs::write(restored.path().join(STATE_FILE), unhex(STATE_HEX)).unwrap();
     std::fs::write(restored.path().join(LOG_FILE), unhex(LOG_HEX)).unwrap();
     std::fs::write(restored.path().join(SNAPSHOT_FILE), [7, 8]).unwrap();
-    let store = RaftStore::open(restored.path().to_str().unwrap(), 7, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        restored.path().to_str().unwrap(),
+        NodeId::new(7),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     assert_eq!(store.load().unwrap(), Some(persisted_state()));
 }
 
@@ -145,7 +159,7 @@ fn named_group_state_file_name_is_pinned() {
     let dir = TempDir::new().unwrap();
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        7,
+        NodeId::new(7),
         GroupId("orders".to_owned()),
         FsyncPolicy::Os,
     )
@@ -161,19 +175,19 @@ fn named_group_state_file_name_is_pinned() {
 fn raft_status_json_is_pinned() {
     let status = RaftStatus {
         group_id: "orders".to_owned(),
-        id: 1,
+        id: NodeId::new(1),
         role: "Leader".to_owned(),
         term: 3,
         commit_index: 9,
         last_index: 10,
         snapshot_index: 4,
         applied_index: 8,
-        leader: Some(1),
+        leader: Some(NodeId::new(1)),
         is_leader: true,
         durability_error: None,
-        committed_voters: vec![1, 2, 3],
-        incoming_voters: Some(vec![1, 2]),
-        learners: vec![4],
+        committed_voters: vec![NodeId::new(1), NodeId::new(2), NodeId::new(3)],
+        incoming_voters: Some(vec![NodeId::new(1), NodeId::new(2)]),
+        learners: vec![NodeId::new(4)],
         membership_phase: MembershipPhase::Joint,
         undeliverable_never_addressed: 5,
         undeliverable_withdrawn_address: 6,
@@ -202,7 +216,10 @@ fn raft_status_json_is_pinned() {
 
 #[test]
 fn assignment_and_refusal_json_are_pinned() {
-    let token = FenceToken { owner: 2, epoch: 5 };
+    let token = FenceToken {
+        owner: NodeId::new(2),
+        epoch: 5,
+    };
     pin_json(&token, r#"{"owner":2,"epoch":5}"#);
     let active = ActiveAssignment {
         token,
@@ -213,21 +230,28 @@ fn assignment_and_refusal_json_are_pinned() {
         r#"{"token":{"owner":2,"epoch":5},"expires_at_ms":1000}"#,
     );
     let mut fenced = FencedAssignment::idle();
-    fenced.assign(2, 10, 1000).unwrap();
+    fenced.assign(NodeId::new(2), 10, 1000).unwrap();
     pin_json(
         &fenced,
         r#"{"epoch":1,"active":{"token":{"owner":2,"epoch":1},"expires_at_ms":1000}}"#,
     );
     assert_eq!(
-        fenced.assign(3, 20, 2000).unwrap_err().to_string(),
+        fenced
+            .assign(NodeId::new(3), 20, 2000)
+            .unwrap_err()
+            .to_string(),
         "assignment is owned by node 2 at epoch 1 until 1000"
     );
     pin_json(
-        &AdmissionRefused::Unroutable { target: 4 },
+        &AdmissionRefused::Unroutable {
+            target: NodeId::new(4),
+        },
         r#"{"Unroutable":{"target":4}}"#,
     );
     pin_json(
-        &LeadershipHandoff::Transferred { target: 2 },
+        &LeadershipHandoff::Transferred {
+            target: NodeId::new(2),
+        },
         r#"{"Transferred":{"target":2}}"#,
     );
 }
@@ -295,10 +319,15 @@ impl RaftStateMachine for CountingSm {
 #[test]
 fn conformance_envelope_meta_and_node_view_are_pinned() {
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let mut host = DeterministicHost::open(
-        0,
-        Membership::new(vec![0, 1, 2], vec![]),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![]),
         store,
         Arc::new(CountingSm(AtomicU64::new(0))),
     )
@@ -306,7 +335,7 @@ fn conformance_envelope_meta_and_node_view_are_pinned() {
     while host.ready_peers().is_empty() {
         host.tick().unwrap();
     }
-    let envelope = host.take_next(1).unwrap();
+    let envelope = host.take_next(NodeId::new(1)).unwrap();
     assert_eq!(
         format!("{:?}", envelope.meta()),
         concat!(

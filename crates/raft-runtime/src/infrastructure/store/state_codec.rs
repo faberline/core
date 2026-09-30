@@ -7,7 +7,7 @@ impl RaftStore {
             let term = r.read_u64()?;
             let voted_for = match r.read_u8()? {
                 0 => None,
-                1 => Some(r.read_u64()?),
+                1 => Some(NodeId::new(r.read_u64()?)),
                 _ => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -89,7 +89,7 @@ impl RaftStore {
             let has_voted_for = r.read_u8()?;
             let voted_for = match has_voted_for {
                 0 => None,
-                1 => Some(r.read_u64()?),
+                1 => Some(NodeId::new(r.read_u64()?)),
                 _ => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -181,7 +181,7 @@ impl RaftStore {
             let has_voted_for = r.read_u8()?;
             let voted_for = match has_voted_for {
                 0 => None,
-                1 => Some(r.read_u64()?),
+                1 => Some(NodeId::new(r.read_u64()?)),
                 _ => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -238,7 +238,7 @@ impl RaftStore {
             let has_voted_for = r.read_u8()?;
             let voted_for = match has_voted_for {
                 0 => None,
-                1 => Some(r.read_u64()?),
+                1 => Some(NodeId::new(r.read_u64()?)),
                 _ => {
                     return Err(io::Error::new(
                         io::ErrorKind::InvalidData,
@@ -311,7 +311,7 @@ pub(super) fn encode_persisted_state_v4(
     match state.voted_for {
         Some(node_id) => {
             bytes.push(1);
-            bytes.extend_from_slice(&node_id.to_le_bytes());
+            bytes.extend_from_slice(&node_id.get().to_le_bytes());
         }
         None => bytes.push(0),
     }

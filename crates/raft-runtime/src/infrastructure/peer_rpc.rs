@@ -243,7 +243,7 @@ impl HttpPeerClient {
         self.undeliverable_withdrawn_address
             .fetch_add(1, Ordering::Relaxed);
         tracing::warn!(
-            target = to,
+            target = to.get(),
             group = %self.group_id.0,
             "raft: discarded in-flight message to withdrawn peer address"
         );

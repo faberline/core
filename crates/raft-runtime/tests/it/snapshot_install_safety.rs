@@ -1,3 +1,4 @@
+use raft_runtime::NodeId;
 use std::{
     collections::HashMap,
     sync::{atomic::Ordering, Arc},
@@ -17,10 +18,15 @@ async fn failed_state_machine_restore_keeps_the_old_snapshot_and_log() {
     let data = tempfile::tempdir().unwrap();
     let state_machine = TestSm::new();
     let host = Arc::new(RaftHost::spawn(
-        0,
-        Membership::new(vec![0], Vec::new()),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], Vec::new()),
         HashMap::new(),
-        RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
+        RaftStore::open(
+            data.path().to_str().unwrap(),
+            NodeId::new(0),
+            FsyncPolicy::Always,
+        )
+        .unwrap(),
         state_machine.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     ));
@@ -74,10 +80,15 @@ async fn equal_index_snapshot_retry_requires_the_same_identity() {
     let data = tempfile::tempdir().unwrap();
     let state_machine = TestSm::new();
     let host = Arc::new(RaftHost::spawn(
-        0,
-        Membership::new(vec![0], Vec::new()),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], Vec::new()),
         HashMap::new(),
-        RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
+        RaftStore::open(
+            data.path().to_str().unwrap(),
+            NodeId::new(0),
+            FsyncPolicy::Always,
+        )
+        .unwrap(),
         state_machine.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     ));
@@ -158,10 +169,15 @@ async fn raft_save_failure_happens_before_state_machine_restore() {
     let data = tempfile::tempdir().unwrap();
     let state_machine = TestSm::new();
     let host = Arc::new(RaftHost::spawn(
-        0,
-        Membership::new(vec![0], Vec::new()),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], Vec::new()),
         HashMap::new(),
-        RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
+        RaftStore::open(
+            data.path().to_str().unwrap(),
+            NodeId::new(0),
+            FsyncPolicy::Always,
+        )
+        .unwrap(),
         state_machine.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     ));
@@ -340,7 +356,7 @@ async fn quorum_checkpoint_does_not_wait_for_a_blackholed_voter() {
     });
     nodes[leader]
         .host
-        .upsert_peer(blackholed as u64, blackhole_url)
+        .upsert_peer(NodeId::new(blackholed as u64), blackhole_url)
         .await;
 
     let compacted = tokio::time::timeout(
@@ -608,7 +624,7 @@ async fn higher_term_snapshot_refusal_steps_the_old_leader_down_immediately() {
     });
     nodes[leader]
         .host
-        .upsert_peer(injected_voter as u64, refusal_url)
+        .upsert_peer(NodeId::new(injected_voter as u64), refusal_url)
         .await;
 
     let snapshot_result = nodes[leader]
@@ -629,7 +645,7 @@ async fn higher_term_snapshot_refusal_steps_the_old_leader_down_immediately() {
     // address prevents shutdown from depending on the disposable proxy.
     nodes[leader]
         .host
-        .upsert_peer(injected_voter as u64, original_url)
+        .upsert_peer(NodeId::new(injected_voter as u64), original_url)
         .await;
     servers.abort_all();
     while servers.join_next().await.is_some() {}
@@ -746,7 +762,7 @@ async fn shutdown_waits_for_coordinated_snapshot_reply_before_safe_peer_close() 
     });
     nodes[leader]
         .host
-        .upsert_peer(held_voter as u64, held_reply_url)
+        .upsert_peer(NodeId::new(held_voter as u64), held_reply_url)
         .await;
 
     let mut snapshots = JoinSet::new();
@@ -802,7 +818,10 @@ async fn shutdown_waits_for_coordinated_snapshot_reply_before_safe_peer_close() 
     while snapshots.join_next().await.is_some() {}
     nodes[leader]
         .host
-        .upsert_peer(held_voter as u64, nodes[held_voter].url.clone())
+        .upsert_peer(
+            NodeId::new(held_voter as u64),
+            nodes[held_voter].url.clone(),
+        )
         .await;
     servers.abort_all();
     while servers.join_next().await.is_some() {}

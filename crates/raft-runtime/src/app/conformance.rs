@@ -19,7 +19,7 @@ impl DeterministicHost {
         store: RaftStore,
         sm: Arc<dyn RaftStateMachine>,
     ) -> Result<Self, StepError> {
-        Self::open_with_envelope_epoch(id, membership, store, sm, id as u32)
+        Self::open_with_envelope_epoch(id, membership, store, sm, id.get() as u32)
     }
 
     /// Open with a trace-owned epoch.  Assign a new epoch when a trace drops

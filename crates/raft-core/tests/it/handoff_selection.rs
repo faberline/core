@@ -7,11 +7,11 @@ use raft_core::{Membership, NodeId, RaftNode};
 /// Voters 0,1,2 — at least three, so "the named node became leader" is not the
 /// same statement as "the only other node became leader".
 fn three_voters() -> Membership {
-    Membership::new(vec![0, 1, 2], vec![])
+    Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![])
 }
 
 fn single_voter() -> Membership {
-    Membership::new(vec![0], vec![])
+    Membership::new(vec![NodeId::new(0)], vec![])
 }
 
 struct Bus {
@@ -123,9 +123,15 @@ impl Bus {
 /// A node that is not the leader has no handoff candidate.
 #[test]
 fn follower_has_no_handoff_candidate() {
-    let mut bus = Bus::new(&[0, 1, 2], &three_voters());
+    let mut bus = Bus::new(
+        &[NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
-    let follower = *[0, 1, 2].iter().find(|id| **id != leader).unwrap();
+    let follower = *[NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+        .iter()
+        .find(|id| **id != leader)
+        .unwrap();
     assert_eq!(
         bus.nodes[&follower].handoff_candidate(),
         None,
@@ -136,11 +142,11 @@ fn follower_has_no_handoff_candidate() {
 /// A single-voter leader has no candidate because no other voter exists.
 #[test]
 fn sole_voter_leader_has_no_handoff_candidate() {
-    let mut bus = Bus::new(&[0], &single_voter());
+    let mut bus = Bus::new(&[NodeId::new(0)], &single_voter());
     let leader = bus.run_until_leader();
-    assert_eq!(leader, 0);
+    assert_eq!(leader, NodeId::new(0));
     assert_eq!(
-        bus.nodes[&0].handoff_candidate(),
+        bus.nodes[&NodeId::new(0)].handoff_candidate(),
         None,
         "a sole-voter leader must answer None for handoff_candidate"
     );
@@ -149,7 +155,10 @@ fn sole_voter_leader_has_no_handoff_candidate() {
 /// A settled three-voter leader selects a peer voter that is not itself.
 #[test]
 fn settled_three_voter_leader_selects_eligible_peer_voter() {
-    let mut bus = Bus::new(&[0, 1, 2], &three_voters());
+    let mut bus = Bus::new(
+        &[NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
     for i in 0..5u8 {
         bus.commit(leader, vec![i]);
@@ -164,7 +173,7 @@ fn settled_three_voter_leader_selects_eligible_peer_voter() {
         "the handoff candidate must not be the leader itself"
     );
     assert!(
-        [0, 1, 2].contains(&candidate),
+        [NodeId::new(0), NodeId::new(1), NodeId::new(2)].contains(&candidate),
         "the handoff candidate must be an admitted voter"
     );
 }
@@ -172,7 +181,10 @@ fn settled_three_voter_leader_selects_eligible_peer_voter() {
 /// Every candidate returned by `handoff_candidate` is accepted by `transfer_leadership`.
 #[test]
 fn selected_candidate_is_accepted_by_transfer_leadership() {
-    let mut bus = Bus::new(&[0, 1, 2], &three_voters());
+    let mut bus = Bus::new(
+        &[NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
     for i in 0..5u8 {
         bus.commit(leader, vec![i]);
@@ -197,14 +209,20 @@ fn selected_candidate_is_accepted_by_transfer_leadership() {
 /// delivery restores candidate selection.
 #[test]
 fn unreachable_and_behind_peers_yield_no_candidate_until_settled() {
-    let mut bus = Bus::new(&[0, 1, 2], &three_voters());
+    let mut bus = Bus::new(
+        &[NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
     for i in 0..5u8 {
         bus.commit(leader, vec![i]);
     }
     bus.settle();
 
-    let peers: Vec<NodeId> = [0, 1, 2].into_iter().filter(|id| *id != leader).collect();
+    let peers: Vec<NodeId> = [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+        .into_iter()
+        .filter(|id| *id != leader)
+        .collect();
     for &p in &peers {
         bus.dropped.insert(p);
     }

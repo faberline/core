@@ -76,7 +76,7 @@ use raft_core::{Membership, NodeId, RaftMsg, RaftNode, Role, TimeoutNowReq, Tran
 /// Voters 0,1,2 — at least three, so "the named node became leader" is not the
 /// same statement as "the only other node became leader".
 fn three_voters() -> Membership {
-    Membership::new(vec![0, 1, 2], vec![])
+    Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![])
 }
 
 struct Bus {
@@ -199,13 +199,16 @@ impl Bus {
 /// A settled three-voter group. Returns the bus, the leader, and a caught-up
 /// voter that is not the leader — the node every row below names as the target.
 fn settled_group() -> (Bus, NodeId, NodeId) {
-    let mut bus = Bus::new(&[0, 1, 2], &three_voters());
+    let mut bus = Bus::new(
+        &[NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
     for i in 0..5u8 {
         bus.commit(leader, vec![i]);
     }
     bus.settle();
-    let target = *[0, 1, 2]
+    let target = *[NodeId::new(0), NodeId::new(1), NodeId::new(2)]
         .iter()
         .find(|id| **id != leader)
         .expect("a three-voter group has a voter that is not the leader");
@@ -321,16 +324,19 @@ fn transferring_to_a_voter_that_has_not_caught_up_is_refused_with_its_match_inde
 #[test]
 fn transferring_to_a_learner_is_refused_because_a_learner_cannot_win() {
     let (mut bus, leader, _) = settled_group();
-    bus.nodes.insert(3, RaftNode::new(3, &three_voters()));
-    bus.applied.insert(3, Vec::new());
+    bus.nodes.insert(
+        NodeId::new(3),
+        RaftNode::new(NodeId::new(3), &three_voters()),
+    );
+    bus.applied.insert(NodeId::new(3), Vec::new());
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .add_learner(3)
+        .add_learner(NodeId::new(3))
         .expect("a leader admits a learner");
     bus.settle();
     assert_eq!(
-        bus.nodes[&leader].learner_read_eligible(3),
+        bus.nodes[&leader].learner_read_eligible(NodeId::new(3)),
         Some(true),
         "the learner must be caught up, so the refusal below is about it not \
          being a voter and not about it being behind"
@@ -340,11 +346,15 @@ fn transferring_to_a_learner_is_refused_because_a_learner_cannot_win() {
         .nodes
         .get_mut(&leader)
         .unwrap()
-        .transfer_leadership(3)
+        .transfer_leadership(NodeId::new(3))
         .expect_err("a leader refuses to hand off to a learner");
     match refusal {
         TransferRefused::NotAVoter { target } => {
-            assert_eq!(target, 3, "the refusal must name the target it refused");
+            assert_eq!(
+                target,
+                NodeId::new(3),
+                "the refusal must name the target it refused"
+            );
         }
         other => panic!("expected a not-a-voter refusal naming the learner, got {other:?}"),
     }
@@ -356,7 +366,7 @@ fn transferring_to_a_learner_is_refused_because_a_learner_cannot_win() {
 #[test]
 fn transferring_from_a_node_that_is_not_the_leader_is_refused_as_such() {
     let (mut bus, leader, target) = settled_group();
-    let other = *[0, 1, 2]
+    let other = *[NodeId::new(0), NodeId::new(1), NodeId::new(2)]
         .iter()
         .find(|id| **id != leader && **id != target)
         .expect("a three-voter group has a third node");
@@ -439,8 +449,11 @@ fn campaigned(node: &mut RaftNode) -> bool {
 /// adopting the term it was asked at.
 #[test]
 fn a_learner_asked_to_campaign_neither_campaigns_nor_takes_the_senders_term() {
-    let membership = Membership::new(vec![0, 1, 2], vec![3]);
-    let mut learner = RaftNode::new(3, &membership);
+    let membership = Membership::new(
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+        vec![NodeId::new(3)],
+    );
+    let mut learner = RaftNode::new(NodeId::new(3), &membership);
     assert!(
         !learner.is_voter(),
         "the node under test must be a learner of its group, or this row is \
@@ -450,10 +463,10 @@ fn a_learner_asked_to_campaign_neither_campaigns_nor_takes_the_senders_term() {
     let sender_term = term_before + 5;
 
     learner.handle(
-        0,
+        NodeId::new(0),
         RaftMsg::TimeoutNow(TimeoutNowReq {
             term: sender_term,
-            leader: 0,
+            leader: NodeId::new(0),
         }),
     );
 
@@ -479,12 +492,12 @@ fn a_learner_asked_to_campaign_neither_campaigns_nor_takes_the_senders_term() {
     // Second half: the same message, at the same term, to a voter of the same
     // group. Without it a `handle_timeout_now` that returns unconditionally
     // passes everything above.
-    let mut voter = RaftNode::new(0, &membership);
+    let mut voter = RaftNode::new(NodeId::new(0), &membership);
     voter.handle(
-        1,
+        NodeId::new(1),
         RaftMsg::TimeoutNow(TimeoutNowReq {
             term: sender_term,
-            leader: 1,
+            leader: NodeId::new(1),
         }),
     );
     assert_eq!(

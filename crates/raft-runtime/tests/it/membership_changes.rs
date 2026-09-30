@@ -9,6 +9,7 @@
 //! These rows test `promote_learner`, `demote_voter`, and `remove_member` on a
 //! running host across h2c transport, asserting on peer status endpoints.
 
+use raft_runtime::NodeId;
 use std::time::{Duration, Instant};
 
 use raft_runtime::{
@@ -73,7 +74,7 @@ async fn a_running_host_demotes_and_promotes_back_observed_on_peers() {
     let bystander = (leader + 2) % 4;
     let client = h2c_client();
 
-    let target_id = target as u64;
+    let target_id = NodeId::new(target as u64);
 
     // Demote voter `target`.
     nodes[leader]
@@ -201,7 +202,7 @@ async fn a_running_host_removes_a_member_observed_on_bystander() {
     let bystander = (leader + 2) % 4;
     let client = h2c_client();
 
-    let target_id = target as u64;
+    let target_id = NodeId::new(target as u64);
 
     nodes[leader]
         .host
@@ -239,7 +240,7 @@ async fn a_host_that_is_not_the_leader_returns_core_refusals() {
         .expect("a four-voter cluster elects a leader");
     let follower = (leader + 1) % 4;
     let other = (leader + 2) % 4;
-    let other_id = other as u64;
+    let other_id = NodeId::new(other as u64);
 
     match nodes[follower].host.promote_learner(other_id).await {
         Err(PromotionRefused::NotLeader) => {}

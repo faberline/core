@@ -1,3 +1,4 @@
+use raft_core::NodeId;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -123,7 +124,7 @@ pub async fn bind() -> (TcpListener, String) {
     (l, format!("http://127.0.0.1:{port}"))
 }
 
-pub fn peers_excluding(me: u64, all: &[(u64, String)]) -> HashMap<u64, String> {
+pub fn peers_excluding(me: NodeId, all: &[(NodeId, String)]) -> HashMap<NodeId, String> {
     all.iter()
         .filter(|(id, _)| *id != me)
         .map(|(id, url)| (*id, url.clone()))
@@ -148,12 +149,12 @@ pub async fn cluster_with_config(n: u64, cfg: HostConfig) -> Vec<Node> {
     for id in 0..n {
         let (l, url) = bind().await;
         listeners.push(l);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
-    let voters: Vec<u64> = (0..n).collect();
+    let voters: Vec<NodeId> = (0..n).map(NodeId::new).collect();
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
-        let id = idx as u64;
+        let id = NodeId::new(idx as u64);
         let peers = peers_excluding(id, &all);
         let sm = TestSm::new();
         let dir = TempDir::new().unwrap();

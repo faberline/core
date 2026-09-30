@@ -18,6 +18,7 @@
 //!
 //! Declared gate: `cargo test -p raft-runtime`.
 
+use raft_runtime::NodeId;
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -443,12 +444,12 @@ where
 {
     let data = tempfile::tempdir().expect("create raft store directory");
     let host = Arc::new(RaftHost::spawn(
-        0,
-        Membership::new(vec![0], Vec::new()),
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], Vec::new()),
         HashMap::new(),
         RaftStore::open(
             data.path().to_str().expect("temporary path is UTF-8"),
-            0,
+            NodeId::new(0),
             FsyncPolicy::Always,
         )
         .expect("open raft store"),

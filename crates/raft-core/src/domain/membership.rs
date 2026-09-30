@@ -40,5 +40,8 @@ impl Membership {
 pub fn auto_membership(n: u64) -> Membership {
     let n = n.max(1);
     let voters = if n % 2 == 1 { n } else { n - 1 };
-    Membership::new((0..voters).collect(), (voters..n).collect())
+    Membership::new(
+        (0..voters).map(NodeId::new).collect(),
+        (voters..n).map(NodeId::new).collect(),
+    )
 }

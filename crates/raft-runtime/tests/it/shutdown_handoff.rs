@@ -1,5 +1,6 @@
 //! Handing leadership to an eligible caught-up voter before shutdown stops the host (#3664).
 
+use raft_core::NodeId;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -106,11 +107,12 @@ async fn a_three_voter_leader_hands_off_leadership_to_an_eligible_voter() {
         other => panic!("expected LeadershipHandoff::Transferred, got {other:?}"),
     };
     assert_ne!(
-        target, leader as u64,
+        target,
+        NodeId::new(leader as u64),
         "the transferred target must not be the leader itself"
     );
     assert!(
-        target < 3,
+        target < NodeId::new(3),
         "the transferred target must be one of the cluster voters"
     );
 
@@ -119,7 +121,7 @@ async fn a_three_voter_leader_hands_off_leadership_to_an_eligible_voter() {
     // delivered by TimeoutNow. The wait is a generous liveness bound.
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
-        if nodes[target as usize].host.is_leader().await {
+        if nodes[target.get() as usize].host.is_leader().await {
             break;
         }
         assert!(
@@ -129,7 +131,7 @@ async fn a_three_voter_leader_hands_off_leadership_to_an_eligible_voter() {
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
     assert_eq!(
-        nodes[target as usize].host.leader().await,
+        nodes[target.get() as usize].host.leader().await,
         Some(target),
         "target node must report itself as leader"
     );
@@ -157,12 +159,12 @@ async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_bu
     for id in 0..3u64 {
         let (l, url) = bind().await;
         listeners.push(l);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
-    let voters: Vec<u64> = (0..3).collect();
+    let voters: Vec<NodeId> = (0..3).map(NodeId::new).collect();
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
-        let id = idx as u64;
+        let id = NodeId::new(idx as u64);
         let peers = peers_excluding(id, &all);
         let sm = TestSm::new();
         let dir = TempDir::new().unwrap();
@@ -248,7 +250,7 @@ async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_bu
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
     let _elapsed = arrived.expect("leadership must move to a live peer within handoff budget");
-    let new_leader_id = new_leader.expect("a live peer became leader") as u64;
+    let new_leader_id = NodeId::new(new_leader.expect("a live peer became leader") as u64);
     assert_eq!(
         nodes[new_leader.unwrap()].host.leader().await,
         Some(new_leader_id),

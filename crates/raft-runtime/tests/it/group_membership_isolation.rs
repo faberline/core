@@ -16,6 +16,7 @@
 //! configuration it reports is stable for the length of the row rather than a
 //! window a sleep has to hit.
 
+use raft_core::NodeId;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
@@ -67,7 +68,7 @@ impl RaftStateMachine for NullSm {
 fn open(dir: &TempDir, group: &str) -> RaftStore {
     RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
+        NodeId::new(0),
         GroupId(group.to_string()),
         FsyncPolicy::Always,
     )
@@ -90,15 +91,15 @@ fn seed_conf(store: &RaftStore, conf: ConfState) {
 /// joint phase does not dissolve underneath the assertions.
 fn joint_conf() -> ConfState {
     ConfState {
-        membership: Membership::new(vec![0, 1, 2], vec![]),
-        outgoing: Some(vec![0, 1]),
+        membership: Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![]),
+        outgoing: Some(vec![NodeId::new(0), NodeId::new(1)]),
         generation: 7,
     }
 }
 
 fn spawn(group: &str, membership: Membership, store: RaftStore) -> Arc<RaftHost> {
     Arc::new(RaftHost::spawn_group(
-        0,
+        NodeId::new(0),
         GroupId(group.to_string()),
         membership,
         HashMap::new(),
@@ -108,8 +109,8 @@ fn spawn(group: &str, membership: Membership, store: RaftStore) -> Arc<RaftHost>
     ))
 }
 
-fn voters(v: &[u64]) -> Vec<u64> {
-    v.to_vec()
+fn voters(v: &[u64]) -> Vec<NodeId> {
+    v.iter().copied().map(NodeId::new).collect()
 }
 
 /// Serve one registry's router on an ephemeral port and return a client plus
@@ -162,7 +163,11 @@ async fn wait_leader(host: &RaftHost) {
 async fn a_resting_group_keeps_its_own_committed_set_when_a_joint_group_joins_the_same_process() {
     let dir = TempDir::new().unwrap();
 
-    let beta = spawn("beta", Membership::new(vec![0], vec![]), open(&dir, "beta"));
+    let beta = spawn(
+        "beta",
+        Membership::new(vec![NodeId::new(0)], vec![]),
+        open(&dir, "beta"),
+    );
     let registry = RaftRegistry::new();
     registry.register(beta.clone()).unwrap();
     wait_leader(&beta).await;
@@ -176,12 +181,16 @@ async fn a_resting_group_keeps_its_own_committed_set_when_a_joint_group_joins_th
     assert_eq!(before.len(), 1, "only beta is hosted yet");
     assert_eq!(b0.committed_voters, voters(&[0]));
     assert_eq!(b0.incoming_voters, None);
-    assert_eq!(b0.learners, Vec::<u64>::new());
+    assert_eq!(b0.learners, Vec::<NodeId>::new());
     assert_eq!(b0.membership_phase, MembershipPhase::Stable);
 
     let alpha_store = open(&dir, "alpha");
     seed_conf(&alpha_store, joint_conf());
-    let alpha = spawn("alpha", Membership::new(vec![0], vec![]), alpha_store);
+    let alpha = spawn(
+        "alpha",
+        Membership::new(vec![NodeId::new(0)], vec![]),
+        alpha_store,
+    );
     registry.register(alpha.clone()).unwrap();
 
     let after = statuses(&client, &url).await;
@@ -215,7 +224,11 @@ async fn a_group_in_a_joint_configuration_reports_both_sets_and_names_the_joint_
 
     let store = open(&dir, "alpha");
     seed_conf(&store, joint_conf());
-    let alpha = spawn("alpha", Membership::new(vec![0], vec![]), store);
+    let alpha = spawn(
+        "alpha",
+        Membership::new(vec![NodeId::new(0)], vec![]),
+        store,
+    );
     let registry = RaftRegistry::new();
     registry.register(alpha.clone()).unwrap();
 
@@ -254,7 +267,7 @@ async fn a_node_that_is_a_learner_is_reported_as_a_learner_rather_than_a_followe
 
     let gamma = spawn(
         "gamma",
-        Membership::new(vec![1], vec![0]),
+        Membership::new(vec![NodeId::new(1)], vec![NodeId::new(0)]),
         open(&dir, "gamma"),
     );
     let registry = RaftRegistry::new();
@@ -264,7 +277,7 @@ async fn a_node_that_is_a_learner_is_reported_as_a_learner_rather_than_a_followe
     let status = statuses(&client, &url).await;
     let g = status.get("gamma").expect("gamma reports");
 
-    assert_eq!(g.id, 0);
+    assert_eq!(g.id, NodeId::new(0));
     assert_eq!(
         g.role, "Learner",
         "node 0 is a learner of this group and is reported as {:?}",
@@ -286,11 +299,19 @@ async fn the_multi_group_status_endpoint_gives_each_group_its_own_sets() {
 
     let alpha_store = open(&dir, "alpha");
     seed_conf(&alpha_store, joint_conf());
-    let alpha = spawn("alpha", Membership::new(vec![0], vec![]), alpha_store);
-    let beta = spawn("beta", Membership::new(vec![0], vec![]), open(&dir, "beta"));
+    let alpha = spawn(
+        "alpha",
+        Membership::new(vec![NodeId::new(0)], vec![]),
+        alpha_store,
+    );
+    let beta = spawn(
+        "beta",
+        Membership::new(vec![NodeId::new(0)], vec![]),
+        open(&dir, "beta"),
+    );
     let gamma = spawn(
         "gamma",
-        Membership::new(vec![1], vec![0]),
+        Membership::new(vec![NodeId::new(1)], vec![NodeId::new(0)]),
         open(&dir, "gamma"),
     );
 
@@ -315,12 +336,12 @@ async fn the_multi_group_status_endpoint_gives_each_group_its_own_sets() {
     assert_eq!(a.committed_voters, voters(&[0, 1]));
     assert_eq!(a.incoming_voters, Some(voters(&[0, 1, 2])));
     assert_eq!(a.membership_phase, MembershipPhase::Joint);
-    assert_eq!(a.learners, Vec::<u64>::new());
+    assert_eq!(a.learners, Vec::<NodeId>::new());
 
     assert_eq!(b.committed_voters, voters(&[0]));
     assert_eq!(b.incoming_voters, None);
     assert_eq!(b.membership_phase, MembershipPhase::Stable);
-    assert_eq!(b.learners, Vec::<u64>::new());
+    assert_eq!(b.learners, Vec::<NodeId>::new());
 
     assert_eq!(g.committed_voters, voters(&[1]));
     assert_eq!(g.incoming_voters, None);
