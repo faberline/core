@@ -14,16 +14,16 @@
 //! through [`fetch_backup_object`]. The optional `http-client` feature adds the
 //! standard authenticated admin-snapshot transport used by service backup CLIs.
 
+mod api;
 mod application;
-mod compat;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
+pub use api::llm;
 #[cfg(feature = "http-client")]
 pub use application::run_admin_snapshot_backup;
 pub use application::{run_backup_once, BackupObject, BackupRunResult};
-pub use compat::llm;
 pub use domain::{
     BackupDestination, BackupPolicy, RetentionPolicy, ScheduledBackupPolicy, SchemeInfo,
     SUPPORTED_SCHEMES,

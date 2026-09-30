@@ -130,7 +130,7 @@ modules = [
   "crates/openapi-codegen/src/api",
   "crates/raft-runtime/src/api",
   "crates/service-auth/src/api",
-  "crates/service-backup/src/compat",
+  "crates/service-backup/src/api",
   "crates/service-http/src/api",
   "crates/service-k8s/src/compat",
 ]

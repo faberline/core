@@ -95,8 +95,8 @@ the crate root, where every public name is re-exported: `run_backup_once` and
 (sift) and `SUPPORTED_SCHEMES` (tape). The one public module path is
 `service_backup::llm` (lumen, tape): the llm topic (v1) `TOPIC` and its
 sectioned form `SECTIONED_TOPICS`, whose destination section is rendered from
-`SUPPORTED_SCHEMES` at call time. P1 keeps every root re-export and the `llm`
-path.
+`SUPPORTED_SCHEMES` at call time. `llm` keeps its path (`src/api/`) because
+the root does not re-export its names.
 
 ## Exceptions and debts
 
