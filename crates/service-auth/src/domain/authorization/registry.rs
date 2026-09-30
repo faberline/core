@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{bail, Context as _, Result};
-
+use super::registry_error::RegistryError;
 use super::role::TokenClaims;
 
 /// Section name for bearer-secret-keyed entries in a namespaced registry.
@@ -69,36 +68,33 @@ impl Registry {
     }
 
     /// Parse either document shape. See the type docs for the discriminator.
-    pub fn parse(json: &str) -> Result<Self> {
+    pub fn parse(json: &str) -> Result<Self, RegistryError> {
         let doc: serde_json::Value =
-            serde_json::from_str(json).context("credential registry must be JSON")?;
+            serde_json::from_str(json).map_err(RegistryError::InvalidJson)?;
         let namespaced = {
-            let map = doc
-                .as_object()
-                .context("credential registry must be a JSON object")?;
+            let map = doc.as_object().ok_or(RegistryError::NotAnObject)?;
             map.keys()
                 .all(|key| key == TOKENS_SECTION || key == IDENTITIES_SECTION)
                 && !map.values().any(|value| value.get("subject").is_some())
         };
         if !namespaced {
-            return Ok(Self::from_tokens(serde_json::from_value(doc).context(
-                "credential registry must map each bearer secret to its claims",
-            )?));
+            return Ok(Self::from_tokens(
+                serde_json::from_value(doc).map_err(RegistryError::InvalidFlatTokens)?,
+            ));
         }
         let mut map = match doc {
             serde_json::Value::Object(map) => map,
             _ => unreachable!("checked as_object above"),
         };
-        let mut section = |name: &str, what: &str| -> Result<HashMap<String, TokenClaims>> {
+        let mut section = |name: &str| -> Result<HashMap<String, TokenClaims>, serde_json::Error> {
             match map.remove(name) {
-                Some(value) => serde_json::from_value(value)
-                    .with_context(|| format!("credential registry `{name}` must map {what}")),
+                Some(value) => serde_json::from_value(value),
                 None => Ok(HashMap::new()),
             }
         };
         Ok(Self {
-            tokens: section(TOKENS_SECTION, "each bearer secret to its claims")?,
-            identities: section(IDENTITIES_SECTION, "each verified identity to its claims")?,
+            tokens: section(TOKENS_SECTION).map_err(RegistryError::InvalidTokens)?,
+            identities: section(IDENTITIES_SECTION).map_err(RegistryError::InvalidIdentities)?,
         })
     }
 
@@ -116,7 +112,7 @@ impl Registry {
     /// being served, which is the failure mode the split was meant to avoid.
     /// The same key appearing in *different* namespaces is not a collision —
     /// they are disjoint by construction (#2678, R1).
-    pub fn try_merge(&mut self, other: Registry) -> Result<()> {
+    pub fn try_merge(&mut self, other: Registry) -> Result<(), RegistryError> {
         merge_namespace(&mut self.tokens, other.tokens, TOKENS_SECTION)?;
         merge_namespace(&mut self.identities, other.identities, IDENTITIES_SECTION)
     }
@@ -148,22 +144,20 @@ fn merge_namespace(
     into: &mut HashMap<String, TokenClaims>,
     from: HashMap<String, TokenClaims>,
     section: &str,
-) -> Result<()> {
+) -> Result<(), RegistryError> {
     for (key, claims) in from {
         if let Some(previous) = into.get(&key) {
             // An `identities` key is a public email, and naming it is the
             // difference between a fixable message and a scavenger hunt. A
             // `tokens` key IS the bearer secret, so it is named by the subject
             // it grants instead — never by the key.
-            let culprit = if section == IDENTITIES_SECTION {
-                format!("`{key}`")
+            return Err(if section == IDENTITIES_SECTION {
+                RegistryError::DuplicateIdentity { identity: key }
             } else {
-                format!("the entry granting `{}`", previous.subject)
-            };
-            bail!(
-                "credential registry sources disagree: `{section}` defines {culprit} more than \
-                 once, so there is no way to say which grants are being served"
-            );
+                RegistryError::DuplicateToken {
+                    subject: previous.subject.clone(),
+                }
+            });
         }
         into.insert(key, claims);
     }

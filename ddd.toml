@@ -415,12 +415,6 @@ paths = ["crates/service-backup/src/interfaces/llm.rs"]
 reason = "Moved as-is in P1: the LLM topic lists the supported destination schemes straight from the domain SUPPORTED_SCHEMES table so the text cannot drift from the parser. P2: the topic reads the schemes through an application query."
 
 [[exceptions]]
-rule = "B2"
-subject = "anyhow"
-paths = ["crates/service-auth/src/domain/authorization/registry.rs"]
-reason = "Moved as-is in P1: the public Registry::parse and Registry::try_merge return anyhow::Result built with bail! and Context, and the registry loaders and ReloadableRoleMapVerifier pass those errors on unchanged. P2: a thiserror RegistryError in domain, converted to anyhow::Error at the loaders."
-
-[[exceptions]]
 rule = "B3"
 subject = "infrastructure->application"
 paths = [

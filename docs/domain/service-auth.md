@@ -60,7 +60,9 @@ lumen, relay, sift and tape do.
   Google failures are 401.
 - A registry is invalid when required but empty, when a key, subject or
   resource is empty, or when an identity key lacks `@`. Merging registries
-  rejects a key that appears twice in one namespace. `load_registry` accepts
+  rejects a key that appears twice in one namespace. `Registry::parse` and
+  `Registry::try_merge` return a `RegistryError` that never names a bearer
+  secret; the loaders pass it on as `anyhow::Error`. `load_registry` accepts
   bearer tokens only.
 - A reload parses and validates before it takes the write lock, so a failure
   keeps the last known good registry; `reload_files` is all-or-nothing.
@@ -94,8 +96,6 @@ cli-std: an llm topic.
 ## Exceptions and debts
 
 - **Checker exceptions (P1):**
-  - B2 (`anyhow`): `Registry::parse` and `Registry::try_merge` return
-    `anyhow::Result`. P2 adds a `thiserror` `RegistryError` (ADR D4).
   - B3 `infrastructure->application`: the HTTP JWKS and introspection sources,
     the Kubernetes review backend and the token minter implement
     `#[async_trait]` ports that sit in the application layer, because

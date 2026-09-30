@@ -21,6 +21,8 @@ cli-std = { path = "../cli-std", default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
+# Domain errors (RegistryError, ...) are typed; callers still convert with `?`.
+thiserror = { workspace = true }
 tracing = { workspace = true }
 # `net` is the loopback proxy's listener (k8s::loopback_proxy); `rt`/`time`
 # carry the delegated cache and the token refresh clock.

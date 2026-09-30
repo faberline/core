@@ -149,7 +149,8 @@ pub use application::role_map::{
 };
 pub use domain::authorization::{
     AuditedRoleMapPrincipal, AuthEvent, AuthEventSink, AuthorizationDecision, AuthorizationReason,
-    NoopAuthEventSink, Registry, ReloadFailure, Role, RoleMapDenied, RoleMapPrincipal, TokenClaims,
+    NoopAuthEventSink, Registry, RegistryError, ReloadFailure, Role, RoleMapDenied,
+    RoleMapPrincipal, TokenClaims,
 };
 pub use domain::google::{GoogleAuthConfig, GoogleAuthError, InvalidReason};
 pub use infrastructure::{
