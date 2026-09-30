@@ -30,7 +30,8 @@ and tape do.
 - **Labeled family** — `SampleGroup`: one name, kind and HELP text over a list
   of `LabeledSample` rows, each a set of `Label` pairs and a value.
 - `Sample`, `Label`, `Bucket` and `SampleGroup` are built with a const `new`
-  and read through const getters named after their parts.
+  and read through const getters named after their parts. `LabeledSample`
+  has a plain `new(labels, value)` and getters.
 
 ## Ports
 

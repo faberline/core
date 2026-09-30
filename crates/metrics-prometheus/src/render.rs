@@ -69,13 +69,23 @@ impl<'a> Label<'a> {
 /// One value row within a labeled metric family.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LabeledSample<'a> {
-    pub labels: Vec<Label<'a>>,
-    pub value: u64,
+    labels: Vec<Label<'a>>,
+    value: u64,
 }
 
 impl<'a> LabeledSample<'a> {
     pub fn new(labels: Vec<Label<'a>>, value: u64) -> Self {
         Self { labels, value }
+    }
+
+    /// The row's labels, in the order given to `new`.
+    pub fn labels(&self) -> &[Label<'a>] {
+        &self.labels
+    }
+
+    /// The row value.
+    pub fn value(&self) -> u64 {
+        self.value
     }
 }
 
@@ -241,7 +251,8 @@ mod tests {
 # TYPE demo_active gauge\n\
 demo_active{pool=\"x\\\"y\",zone=\"a\\\\b\\nc\"} 7\n"
         );
-        assert_eq!(rows[0].labels[0].name(), "zone");
+        assert_eq!(rows[0].labels()[0].name(), "zone");
+        assert_eq!(rows[0].value(), 7);
         assert_eq!(groups[0].name(), "demo_active");
         assert_eq!(groups[0].kind(), "gauge");
         assert_eq!(groups[0].help(), "Active demo resources.");
