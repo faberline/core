@@ -15,9 +15,9 @@ use std::sync::Arc;
 use raft_core::{ConfState, EntryKind, Index, Membership, PersistedState, RaftEntry, Term};
 use raft_runtime::conformance::DeterministicHost;
 use raft_runtime::{
-    ActiveAssignment, AdmissionRefused, ClusterStateView, FenceToken, FencedAssignment,
-    FsyncPolicy, GroupId, LeadershipHandoff, MembershipPhase, PeerAddr, RaftRole, RaftStateMachine,
-    RaftStatus, RaftStore, StateMachineError,
+    ActiveAssignment, AdmissionRefused, AssignmentEpoch, ClusterStateView, FenceToken,
+    FencedAssignment, FsyncPolicy, GroupId, LeadershipHandoff, MembershipPhase, PeerAddr, RaftRole,
+    RaftStateMachine, RaftStatus, RaftStore, StateMachineError,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -218,7 +218,7 @@ fn raft_status_json_is_pinned() {
 fn assignment_and_refusal_json_are_pinned() {
     let token = FenceToken {
         owner: NodeId::new(2),
-        epoch: 5,
+        epoch: AssignmentEpoch::new(5),
     };
     pin_json(&token, r#"{"owner":2,"epoch":5}"#);
     let active = ActiveAssignment {

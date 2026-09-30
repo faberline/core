@@ -1,7 +1,7 @@
 //! Public API conformance for committed executor ownership and fencing.
 
 use raft_runtime::NodeId;
-use raft_runtime::{AssignmentError, FenceToken, FencedAssignment};
+use raft_runtime::{AssignmentEpoch, AssignmentError, FenceToken, FencedAssignment};
 
 #[test]
 fn executor_cannot_act_before_assignment_commit() {
@@ -25,14 +25,14 @@ fn expiry_and_reassignment_fence_the_previous_executor() {
         first,
         FenceToken {
             owner: NodeId::new(0),
-            epoch: 1
+            epoch: AssignmentEpoch::new(1)
         }
     );
     assert_eq!(
         second,
         FenceToken {
             owner: NodeId::new(1),
-            epoch: 2
+            epoch: AssignmentEpoch::new(2)
         }
     );
     assert!(matches!(
