@@ -25,6 +25,8 @@ event archive and catalogs on it.
   a failed build may have written, for cleanup.
 - **Archive object** — `ArchiveObject` (key, bytes, content type), written as
   an `ArchivedObject` receipt with size, sha256 and object version.
+  `ArchivedObjectVersion` is the store's version as a bare JSON string;
+  infrastructure converts storage-object's `ObjectVersion` into it.
 - **manifest** — the last object of an archive transaction. The archive
   commit writes it after every object it names; `ArchiveCommit` is the receipt.
 - **Segment error** — `SegmentError`: codec, partition, catalog, transaction
@@ -70,9 +72,6 @@ P1 keeps every root export; sift's structure test checks for the exact path
   - B3 `application->infrastructure`: `PagedCatalog` packs and stores pages,
     and `ArchiveTransaction` writes objects, through the page codec and
     `put_immutable` directly. P2 adds page-store and object-write ports.
-  - B4 (`storage-object.infrastructure`): `ArchivedObject.version` is
-    storage-object's `ObjectVersion`. P2 gives the domain its own version
-    type.
 - **Tracked for P2:**
   - `CatalogEntry` public fields, built with struct literals by sift in five
     places (ADR D2).

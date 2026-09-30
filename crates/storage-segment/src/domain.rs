@@ -7,7 +7,7 @@ mod catalog;
 mod segment;
 mod segment_error;
 
-pub use archive::{ArchiveCommit, ArchiveObject, ArchivedObject};
+pub use archive::{ArchiveCommit, ArchiveObject, ArchivedObject, ArchivedObjectVersion};
 pub(crate) use catalog::{
     child_index, lexicographic_successor, page_bounds, validate_catalog_key, validate_page_body,
     CatalogPage, CatalogPageBody, CATALOG_FORMAT_VERSION, CATALOG_PAGE_FORMAT_VERSION,
