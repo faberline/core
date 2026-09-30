@@ -19,7 +19,10 @@ and tape.
   context), `ReadinessTarget`s, a status patch, `ConditionFact`s,
   `PruneTarget`s and `ClusterScopedChild`ren.
 - **Condition** — a status condition in the metav1 shape; `project` builds
-  `Condition`s from `ConditionFact`s and a time the caller passes in.
+  `Condition`s from `ConditionFact`s and a time the caller passes in. The
+  operator's application step reads that time (`now_rfc3339`), adds the
+  controller's own `PruneBlocked` condition and writes the result into the
+  status patch.
 - **leader lease** — the Lease named by the service's `MANAGER`, which is also
   its field manager. `Election` records whether this replica holds it.
 - **Termination budget** — a `LifecyclePolicy` validated into a
@@ -40,6 +43,8 @@ and tape.
 ## Ports
 
 - `ManagedService` — implemented by each downstream operator's CRD root type.
+  It and its plan, readiness and child types sit in the application layer,
+  next to the condition step that stamps what it returns.
 - `Issuer` — signs a CSR; `EphemeralIssuer`, `CasIssuer`.
 - `KeyAndCsrGenerator` — a fresh keypair and a CSR for a profile, used by
   `IssuanceRequest::build`; `RcgenCsrGenerator`.
@@ -86,12 +91,9 @@ runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
     `ProbeTiming` and `LifecyclePolicy` derive `JsonSchema` because CRD specs
     and statuses embed them. P2 gives the CRD wire shapes their own schema
     types in interfaces.
-  - B2 (`chrono::Utc::now`): `now_rfc3339` reads the wall clock. P2 takes the
-    time from a `Clock` port or moves the call to the operator.
-  - B3 `interfaces->domain` and `interfaces->infrastructure`: the operator's
-    reconcile builds and projects conditions itself, and `run` creates the
-    leader `Election` and starts the Lease renewal loop. P2 moves the reconcile
-    sequence into an application use case behind ports.
+  - B3 `interfaces->infrastructure`: `run` creates the leader `Election` and
+    starts the Lease renewal loop. P2 moves leadership into domain behind a
+    Lease port.
 - **Tracked for P2:** public fields on `Election`, `InstanceScope`,
   `ReadyFacts`, `ReadinessTarget`, `PruneTarget`, `ClusterScopedChild`,
   `ReconcilePlan`, `RenderCtx`, the render `*Plan` types, `Condition`,

@@ -84,15 +84,6 @@ pub(super) async fn apply_object(
     Ok(())
 }
 
-/// The condition type the controller authors on its own behalf when a prune
-/// target's API is not served (#3079).
-///
-/// Named rather than inlined because it is read back off the watched object as
-/// well as written: `Patch::Merge` replaces a `conditions` array only when the
-/// array is re-sent, so the pass that recovers has to recognise the block it
-/// wrote on an earlier pass in order to clear it.
-pub(super) const PRUNE_BLOCKED: &str = "PruneBlocked";
-
 /// How one prune target's pass ended (#3079).
 ///
 /// `prune_object` used to answer `Result<(), Error>`, which folded three

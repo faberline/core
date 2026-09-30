@@ -11,13 +11,13 @@ use kube::runtime::events::{Event, EventType, Recorder, Reporter};
 use kube::runtime::watcher;
 use kube::{Client, ResourceExt};
 
+use crate::application::condition::status_patch::StatusPatchError;
+use crate::application::operator::managed_service::ManagedService;
 use crate::infrastructure::lease::{self, Election};
 use crate::interfaces::metrics::{self, ControllerMetrics};
-use managed_service::ManagedService;
 use reconcile::reconcile_entry;
 
 mod children;
-pub(crate) mod managed_service;
 mod reconcile;
 #[cfg(test)]
 mod tests;
@@ -40,6 +40,15 @@ pub enum Error {
         name: String,
         reason: String,
     },
+}
+
+impl From<StatusPatchError> for Error {
+    fn from(error: StatusPatchError) -> Self {
+        match error {
+            StatusPatchError::Missing(field) => Self::Missing(field),
+            StatusPatchError::Serde(error) => Self::Serde(error),
+        }
+    }
 }
 
 struct Ctx {

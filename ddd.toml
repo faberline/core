@@ -447,21 +447,6 @@ paths = [
 reason = "Moved as-is in P1: ReplicaLayerPolicy, ShardSplitPolicy, Condition, ProbeTiming and LifecyclePolicy derive JsonSchema because service CRD specs and statuses embed them directly. P2: keep these as plain domain values and give the CRD wire shapes their own JsonSchema types in interfaces, converting at the boundary."
 
 [[exceptions]]
-rule = "B2"
-subject = "chrono::Utc::now"
-paths = ["crates/service-k8s/src/domain/condition.rs"]
-reason = "Moved as-is in P1: now_rfc3339 reads the wall clock for the lastTransitionTime that project stamps; its only caller is the operator's reconcile, which already passes the result to project as `now`. P2: take the time from a Clock port (or move now_rfc3339 to the operator), so domain/condition.rs only receives `now`."
-
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->domain"
-paths = [
-  "crates/service-k8s/src/interfaces/operator/managed_service.rs",
-  "crates/service-k8s/src/interfaces/operator/reconcile.rs",
-]
-reason = "Moved as-is in P1: the ManagedService trait hands back Condition and ConditionFact values, and the operator's reconcile builds ConditionFacts and projects them onto the CR status with project and now_rfc3339. P2: pull the reconcile sequence into an application use case behind the ports the mapping lists, so interfaces reaches the condition rules only through application."
-
-[[exceptions]]
 rule = "B3"
 subject = "interfaces->infrastructure"
 paths = ["crates/service-k8s/src/interfaces/operator.rs"]

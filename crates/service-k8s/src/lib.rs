@@ -39,6 +39,10 @@ pub use api::stateful;
 
 #[cfg(feature = "certificate")]
 pub use application::certificate::reconcile::Reconciler;
+#[cfg(feature = "controller")]
+pub use application::operator::managed_service::{
+    ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
+};
 pub use domain::capacity::{
     plan_replica_layer, plan_shard_split, ObservedShardUsage, ObservedUtilization,
     ReplicaLayerError, ReplicaLayerPlan, ReplicaLayerPolicy, ShardSplitError, ShardSplitPlan,
@@ -68,9 +72,5 @@ pub use infrastructure::lease::Election;
 pub use interfaces::cluster_spec::{ClusterSpec, ResourceSpec};
 #[cfg(feature = "controller")]
 pub use interfaces::metrics::ControllerMetrics;
-#[cfg(feature = "controller")]
-pub use interfaces::operator::managed_service::{
-    ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
-};
 #[cfg(feature = "controller")]
 pub use interfaces::operator::{run, Error};
