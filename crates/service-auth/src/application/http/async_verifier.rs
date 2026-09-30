@@ -103,7 +103,7 @@ pub async fn async_auth_middleware<V: AsyncVerifier>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::role_map::{Role, RoleMapPrincipal, StaticRoleMapVerifier, TokenClaims};
+    use crate::{Role, RoleMapPrincipal, StaticRoleMapVerifier, TokenClaims};
     use std::collections::HashMap;
 
     fn claims() -> TokenClaims {

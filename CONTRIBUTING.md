@@ -903,7 +903,7 @@ long-running service uses `crates/service-auth` for request authentication:
 extract `Authorization: Bearer <token>`, verify it through a service-supplied
 `Verifier`, reject with the shared JSON error shape, and inject the authenticated
 principal into handlers. Services use the shared registry verifier
-(`service_auth::role_map::StaticRoleMapVerifier` — role hierarchy, wildcard
+(`service_auth::StaticRoleMapVerifier` — role hierarchy, wildcard
 grants, registry-file loader) or signed tokens through `crates/claim-token`, but
 the HTTP contract and middleware shape stay the same.
 

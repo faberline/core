@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use axum::http::HeaderMap;
 
-use crate::role_map::*;
+use crate::{
+    load_registry, load_registry_file, load_registry_files, Registry, RegistrySource, Role,
+    RoleMapPrincipal, StaticRoleMapVerifier, TokenClaims,
+};
 use crate::{AuthError, Verifier};
 
 fn token(roles: &[(&str, Role)]) -> TokenClaims {

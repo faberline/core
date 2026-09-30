@@ -55,9 +55,9 @@
 //! presents to the caller as "your credential is invalid" is an unfixable
 //! support call.
 //!
-//! [`Role`]: crate::role_map::Role
-//! [`covers`]: crate::role_map::Role::covers
-//! [`ensure`]: crate::role_map::RoleMapPrincipal::ensure
+//! [`Role`]: crate::Role
+//! [`covers`]: crate::Role::covers
+//! [`ensure`]: crate::RoleMapPrincipal::ensure
 
 pub use crate::application::google::{
     classify, AccessTokenIntrospection, Credential, GoogleVerifier, IntrospectedToken, JwksCache,

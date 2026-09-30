@@ -82,12 +82,14 @@ Most consumers import from the crate root: the middleware, `bearer_token`,
 `AuthError`, the verifier traits, the role map and registry loaders, the
 reloadable verifier with its audit types, and the Google verifier and its
 ports. The Kubernetes types are published under `k8s::` (and lumen asserts
-that path in its own sources). P1 keeps every root re-export, and the old
-modules `async_verifier`, `gcp`, `k8s` (with `cache`, `delegated`,
-`loopback_proxy`, `principal`, `projected`, `review`, `token_request` and
-`kube_backend`), `llm`, `reload`, `role_map` and `scoped` stay as
-compatibility facades. Downstream uses `role_map::Role`, `llm::topic` and
-`k8s::*` by path. `llm` is the only use of cli-std: an llm topic.
+that path in its own sources). Four public modules keep their paths because
+they hold names the root does not re-export (`src/api/`): `gcp`, `k8s` (with
+`cache`, `delegated`, `loopback_proxy`, `principal`, `projected`, `review`,
+`token_request` and `kube_backend`), `llm` and `reload`. P2 deleted the old
+modules `async_verifier`, `role_map` and `scoped`: every name in them is at
+the crate root, so `role_map::Role`, which lumen used, is now `Role`.
+Downstream uses `llm::topic` and `k8s::*` by path. `llm` is the only use of
+cli-std: an llm topic.
 
 ## Exceptions and debts
 

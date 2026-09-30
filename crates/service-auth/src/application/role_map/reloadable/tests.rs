@@ -5,7 +5,7 @@ use axum::http::header;
 
 use super::*;
 use crate::reload::*;
-use crate::role_map::Role;
+use crate::Role;
 
 #[derive(Default)]
 struct RecordingSink(Mutex<Vec<AuthEvent>>);
