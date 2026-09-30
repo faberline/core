@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 use tokio::sync::{broadcast, mpsc, RwLock};
 
 use crate::application::analysis::request_handler::RequestHandler;
-use crate::infrastructure::watch_bridge::bridge::BridgeEvent;
+use crate::domain::daemon::watch_event::BridgeEvent;
 
 /// Status of the analysis queue
 #[derive(Debug, Clone, Default)]

@@ -7,6 +7,7 @@ pub(crate) mod checker_config;
 pub(crate) mod codegen;
 pub(crate) mod config;
 pub(crate) mod cross_file;
+pub(crate) mod daemon;
 pub(crate) mod diagnostic;
 pub(crate) mod error;
 pub(crate) mod frameworks;

@@ -1,4 +1,4 @@
-use crate::application::daemon::protocol::*;
+use crate::domain::daemon::protocol::*;
 
 use super::request_handler::RequestHandler;
 use super::timestamp::format_unix_timestamp;

@@ -1,8 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use crate::application::daemon::protocol::*;
 use crate::diagnostic::Diagnostic;
+use crate::domain::daemon::protocol::*;
 use crate::semantic::{SymbolTable, SymbolTableBuilder};
 use crate::syntax::Language;
 use crate::type_inference::{build_semantic_model, ContentHash, SemanticModel};

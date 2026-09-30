@@ -35,7 +35,6 @@ pub use api::{
 pub use app::check::{check_paths, check_paths_with_propagation};
 pub use app::outline::outline;
 pub use application::analysis::request_handler::RequestHandler;
-pub use application::daemon::config::DaemonConfig;
 pub use application::outline::function_outline::{outline_parsed, FunctionDef, FunctionKind};
 pub use domain::check::file_result::FileResult;
 pub use domain::check::lint_config::LintConfig;
@@ -43,6 +42,7 @@ pub use domain::codegen::traits::{
     CodeGenerator, GenContext, GenError, GenResult, GeneratedCode, TechStack,
 };
 pub use domain::config::argus_config::{ArgusConfig, LanguageConfig};
+pub use domain::daemon::config::DaemonConfig;
 pub use domain::diagnostic::model::{
     Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range,
 };

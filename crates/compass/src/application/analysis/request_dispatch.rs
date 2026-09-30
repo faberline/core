@@ -1,5 +1,5 @@
 use crate::application::analysis::request_handler::RequestHandler;
-use crate::application::daemon::protocol::*;
+use crate::domain::daemon::protocol::*;
 
 impl RequestHandler {
     /// Handle a JSON-RPC request
@@ -27,5 +27,21 @@ impl RequestHandler {
             Ok(value) => Response::success(request.id, value),
             Err(error) => Response::error(request.id, error),
         }
+    }
+
+    /// Handle one line of the socket protocol: parse it as a JSON-RPC
+    /// request, dispatch it, and return the response as JSON.
+    ///
+    /// A line that is not a request gets a parse-error response with id 0.
+    /// Errs only if the response cannot be serialized.
+    pub(crate) async fn handle_json_line(&self, line: &str) -> Result<String, String> {
+        let response = match serde_json::from_str::<Request>(line.trim()) {
+            Ok(request) => self.handle(request).await,
+            Err(e) => Response::error(
+                RequestId::Number(0),
+                RpcError::parse_error(format!("Invalid JSON: {}", e)),
+            ),
+        };
+        serde_json::to_string(&response).map_err(|e| format!("Failed to serialize response: {}", e))
     }
 }

@@ -1,4 +1,4 @@
-use crate::application::daemon::protocol::*;
+use crate::domain::daemon::protocol::*;
 use crate::syntax::Language;
 
 use super::request_handler::RequestHandler;

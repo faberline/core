@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::net::UnixStream;
 
-use crate::application::daemon::config::DaemonConfig;
-use crate::application::daemon::protocol::{Request, Response};
+use crate::domain::daemon::config::DaemonConfig;
+use crate::domain::daemon::protocol::{Request, Response};
 
 /// Client for connecting to daemon
 pub struct DaemonClient {

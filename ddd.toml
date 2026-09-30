@@ -587,15 +587,6 @@ reason = "Moved as-is in P1: ParsedFile wraps a tree_sitter::Tree, Range::from_n
 
 [[exceptions]]
 rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/compass/src/application/daemon/background_analysis.rs",
-  "crates/compass/src/application/daemon/config.rs",
-]
-reason = "Moved as-is in P1: RequestHandler owns the on-disk DiskCache and a StubLoader and resolves its cache directories, the file cache, check_paths, the function outline and the request handler build a MultiParser, check_paths calls the source walker, the background loop consumes watch-bridge events, DaemonConfig resolves its socket path through index storage, and GeneratorRegistry dispatches over the CodeGenerator trait that E5 puts in infrastructure. P2: parser, file-walker, cache, stub and path ports in application implemented by infrastructure and injected at construction, a watch event type owned by application, and CodeGenerator moved to application as a port."
-
-[[exceptions]]
-rule = "B3"
 subject = "domain->infrastructure"
 paths = [
   "crates/compass/src/domain/python_inference/inferencer.rs",
@@ -604,12 +595,6 @@ paths = [
   "crates/compass/src/domain/type_refactoring/engine/ast_cache.rs",
 ]
 reason = "Moved as-is in P1: TypeInferencer resolves imports through ImportResolver and StubLoader, and the semantic search call graph, docstring extraction and refactoring AST cache build a MultiParser to parse source text themselves. P2: application passes parsed files and resolved modules in, or domain declares parser and module-resolver ports that infrastructure implements."
-
-[[exceptions]]
-rule = "B3"
-subject = "infrastructure->application"
-paths = ["crates/compass/src/infrastructure/daemon/client.rs"]
-reason = "Moved as-is in P1: DaemonClient reads DaemonConfig for its socket path and speaks the Request and Response protocol types defined in application/daemon. P2: move the protocol and config types to a module both sides may use, such as domain or an interfaces wire module the client adapter shares."
 
 [[exceptions]]
 rule = "B3"
@@ -627,8 +612,5 @@ reason = "Moved as-is in P1: the LSP server builds symbol tables and calls the c
 [[exceptions]]
 rule = "B3"
 subject = "interfaces->infrastructure"
-paths = [
-  "crates/compass/src/interfaces/daemon/argus_daemon.rs",
-  "crates/compass/src/interfaces/lsp/argus_server.rs",
-]
+paths = ["crates/compass/src/interfaces/lsp/argus_server.rs"]
 reason = "Moved as-is in P1: ArgusDaemon starts the watch bridge and runs scope discovery itself, and the LSP server builds a MultiParser and a StubLoader for its documents. P2: move that wiring behind application services that take parser, stub and watch ports."
