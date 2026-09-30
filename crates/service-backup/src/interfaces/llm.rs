@@ -1,10 +1,10 @@
 use crate::SUPPORTED_SCHEMES;
 
 /// Agent-facing topic describing backup destinations, sinks, and seed fetches.
-pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic {
-    id: "service-backup",
-    summary: "Shared backup destination, policy, sink, runner, and bootstrap-object contract.",
-    body: r#"# service-backup shared topic
+pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
+    "service-backup",
+    "Shared backup destination, policy, sink, runner, and bootstrap-object contract.",
+    r#"# service-backup shared topic
 
 ## Ownership boundary
 The service owns snapshot consistency, snapshot bytes, restore semantics, and
@@ -35,7 +35,7 @@ feature. GCS uses workload identity in production and
 restore or empty-PVC bootstrap. It is a cold seed path, not live replica
 synchronization.
 "#,
-};
+);
 
 /// Return the shared backup topic for CLI composition.
 pub fn topic() -> &'static cli_std::llm::Topic {
@@ -119,10 +119,10 @@ mod tests {
     #[test]
     fn llm_topic_is_nonempty() {
         let topic = super::topic();
-        assert_eq!(topic.id, "service-backup");
-        assert!(topic.body.contains("BackupDestination"));
-        assert!(topic.body.contains("fetch_backup_object"));
-        assert!(topic.body.contains("http-client"));
+        assert_eq!(topic.id(), "service-backup");
+        assert!(topic.body().contains("BackupDestination"));
+        assert!(topic.body().contains("fetch_backup_object"));
+        assert!(topic.body().contains("http-client"));
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn sectioned_topic_matches_static_topic_identity() {
-        assert_eq!(sectioned_topic().id, TOPIC.id);
-        assert_eq!(sectioned_topic().summary, TOPIC.summary);
+        assert_eq!(sectioned_topic().id, TOPIC.id());
+        assert_eq!(sectioned_topic().summary, TOPIC.summary());
     }
 }

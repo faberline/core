@@ -1,11 +1,10 @@
 //! LLM topic provider for the shared OpenAPI codegen contract.
 
 /// Agent-facing topic describing generated-client composition.
-pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic {
-    id: "openapi-codegen",
-    summary:
-        "Typed TypeScript, Python, and Rust client generation from a service OpenAPI document.",
-    body: r#"# openapi-codegen shared topic
+pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
+    "openapi-codegen",
+    "Typed TypeScript, Python, and Rust client generation from a service OpenAPI document.",
+    r#"# openapi-codegen shared topic
 
 This library owns the shared generator behavior below. Service CLIs import this
 topic and add only their own command, defaults, authentication, and endpoint
@@ -64,7 +63,7 @@ skip-verification mode.
 Services own authentication headers, base URL defaults, command naming, and
 which generated files are considered public artifacts.
 "#,
-};
+);
 
 /// Return the shared generated-client topic for CLI composition.
 pub fn topic() -> &'static cli_std::llm::Topic {
@@ -76,21 +75,21 @@ mod tests {
     #[test]
     fn llm_topic_is_nonempty() {
         let topic = super::topic();
-        assert_eq!(topic.id, "openapi-codegen");
+        assert_eq!(topic.id(), "openapi-codegen");
         assert!(topic
-            .body
+            .body()
             .contains("spec gen --lang ts|py|rust --out <dir>"));
-        assert!(topic.body.contains("GeneratedOutput"));
-        assert!(topic.body.contains("Service CLIs import this"));
-        assert!(topic.body.contains("provider text"));
-        assert!(topic.body.contains("target profile"));
-        assert!(topic.body.contains(".openapi-codegen.json"));
-        assert!(topic.body.contains("replace the public roots"));
-        assert!(topic.body.contains("skip-verification mode"));
-        assert!(topic.body.contains("This library does not"));
-        assert!(topic.body.contains("publish npm, PyPI, or crates.io"));
-        assert!(topic.body.contains("target_concurrency"));
-        assert!(topic.body.contains("max_in_flight_per_origin"));
-        assert!(topic.body.contains("pool_timeout"));
+        assert!(topic.body().contains("GeneratedOutput"));
+        assert!(topic.body().contains("Service CLIs import this"));
+        assert!(topic.body().contains("provider text"));
+        assert!(topic.body().contains("target profile"));
+        assert!(topic.body().contains(".openapi-codegen.json"));
+        assert!(topic.body().contains("replace the public roots"));
+        assert!(topic.body().contains("skip-verification mode"));
+        assert!(topic.body().contains("This library does not"));
+        assert!(topic.body().contains("publish npm, PyPI, or crates.io"));
+        assert!(topic.body().contains("target_concurrency"));
+        assert!(topic.body().contains("max_in_flight_per_origin"));
+        assert!(topic.body().contains("pool_timeout"));
     }
 }

@@ -1468,8 +1468,8 @@ search/view/create) sit behind cli-std's `online` feature — enable it in relea
 builds. Reference adopters: `apps/jet` and `apps/lumen`.
 
 - **`llm`** — `cli_std::llm::render(project, version, topics, topic, format)`. The
-  tool supplies `&[cli_std::llm::Topic]` (`id`/`summary`/`body` — the one in-code
-  source of truth) and cli-std renders the `outline` topic map + the
+  tool supplies `&[cli_std::llm::Topic]` (`Topic::new(id, summary, body)` — the
+  one in-code source of truth) and cli-std renders the `outline` topic map + the
   standard-command footer. Pure offline; always builds.
 - **`upgrade`** — `cli_std::upgrade::run(&tool, opts)`: the in-binary form of
   `projects/<project>/install.sh` — detect target (`<arch>-<os>`) → download the

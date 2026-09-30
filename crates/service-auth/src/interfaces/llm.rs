@@ -1,10 +1,10 @@
 //! LLM topic provider for the shared service-auth contract.
 
 /// Agent-facing topic describing the reusable auth primitive.
-pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic {
-    id: "service-auth",
-    summary: "Shared bearer-token role-map auth: token registry, wildcard grants, and verifier middleware.",
-    body: r#"# service-auth shared topic
+pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
+    "service-auth",
+    "Shared bearer-token role-map auth: token registry, wildcard grants, and verifier middleware.",
+    r#"# service-auth shared topic
 
 ## Runtime contract
 Services that use the static role-map shape expose service-owned env names:
@@ -61,7 +61,7 @@ Roles are `read`, `write`, or `admin`; `admin` covers `write` and `read`, and
 resources. Missing or insufficient grants should reject at the service handler
 with 403.
 "#,
-};
+);
 
 /// Return the shared auth topic for CLI composition.
 pub fn topic() -> &'static cli_std::llm::Topic {
@@ -73,8 +73,8 @@ mod tests {
     #[test]
     fn llm_topic_is_nonempty() {
         let topic = super::topic();
-        assert_eq!(topic.id, "service-auth");
-        assert!(topic.body.contains("<SVC>_TOKEN_REGISTRY_FILE"));
-        assert!(topic.body.contains("Authorization: Bearer"));
+        assert_eq!(topic.id(), "service-auth");
+        assert!(topic.body().contains("<SVC>_TOKEN_REGISTRY_FILE"));
+        assert!(topic.body().contains("Authorization: Bearer"));
     }
 }

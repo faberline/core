@@ -1,10 +1,6 @@
 use super::*;
 
-const T: &[Topic] = &[Topic {
-    id: "workflow",
-    summary: "how it works",
-    body: "# the body",
-}];
+const T: &[Topic] = &[Topic::new("workflow", "how it works", "# the body")];
 
 #[test]
 fn outline_lists_topics_and_standard_commands() {

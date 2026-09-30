@@ -29,24 +29,24 @@ impl ProtocolDocument {
     /// this document only selects the task topic that includes it.
     pub fn with_topic_provider(mut self, topic: &str, provider: &super::Topic) -> Result<Self> {
         self.topic(topic)?;
-        if provider.id.trim().is_empty() {
+        if provider.id().trim().is_empty() {
             bail!("LLM provider id cannot be empty");
         }
-        if provider.body.trim().is_empty() {
-            bail!("LLM provider `{}` markdown cannot be empty", provider.id);
+        if provider.body().trim().is_empty() {
+            bail!("LLM provider `{}` markdown cannot be empty", provider.id());
         }
 
         let providers = self.providers.entry(topic.to_string()).or_default();
-        if providers.iter().any(|entry| entry.id == provider.id) {
+        if providers.iter().any(|entry| entry.id == provider.id()) {
             bail!(
                 "duplicate LLM provider `{}` for topic `{topic}`",
-                provider.id
+                provider.id()
             );
         }
         providers.push(ProviderContent {
-            id: provider.id.to_string(),
-            summary: provider.summary.to_string(),
-            markdown: provider.body.to_string(),
+            id: provider.id().to_string(),
+            summary: provider.summary().to_string(),
+            markdown: provider.body().to_string(),
         });
         Ok(self)
     }
