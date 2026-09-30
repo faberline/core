@@ -36,8 +36,6 @@ event archive and catalogs on it.
   segment. Implemented by sift.
 - `Partitioner<Record>` — the product policy that picks a stable partition
   for a record. Implemented by sift.
-- `SegmentStore<Record>` — a durable segment boundary with no implementation
-  in core or downstream.
 
 ## Invariants
 
@@ -77,5 +75,3 @@ P1 keeps every root export; sift's structure test checks for the exact path
 - **Tracked for P2:**
   - `CatalogEntry` public fields, built with struct literals by sift in five
     places (ADR D2).
-  - The unimplemented `SegmentStore` trait (ADR D7); sift has an unrelated
-    `SegmentStore` struct of the same name.

@@ -16,5 +16,5 @@ pub use catalog::{
     CatalogEntry, CatalogMutation, CatalogPageRef, CatalogRoot, StreamingCatalogAbort,
     StreamingCatalogBuild, DEFAULT_CATALOG_PAGE_BYTES, MAX_ABORT_TRACKED_CATALOG_PAGES,
 };
-pub use segment::{Partitioner, RecordCodec, SegmentStore};
+pub use segment::{Partitioner, RecordCodec};
 pub use segment_error::{Result, SegmentError};
