@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use anyhow::{bail, Context, Result};
@@ -161,11 +161,6 @@ impl ReloadableRoleMapVerifier {
             }
         };
         self.reload_registry(registry)
-    }
-
-    /// Read, parse, validate, and atomically adopt a registry file.
-    pub fn reload_file(&self, path: impl AsRef<Path>) -> Result<u64> {
-        self.reload_files(std::slice::from_ref(&path.as_ref().to_owned()))
     }
 
     /// Re-read every file the registry is projected from, union them, and

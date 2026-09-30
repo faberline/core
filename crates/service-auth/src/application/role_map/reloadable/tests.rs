@@ -171,7 +171,9 @@ fn failed_file_reload_emits_read_failure_without_losing_registry() {
         sink.clone(),
     );
     assert!(verifier
-        .reload_file("/definitely/missing/registry.json")
+        .reload_files(&[std::path::PathBuf::from(
+            "/definitely/missing/registry.json"
+        )])
         .is_err());
     assert!(verifier.authenticate(&headers("old")).is_ok());
     assert!(sink.0.lock().unwrap().iter().any(|event| matches!(

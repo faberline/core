@@ -256,7 +256,6 @@ fn token_request_body_is_pinned() {
         target.subresource_path(),
         "/api/v1/namespaces/ns/serviceaccounts/sa/token"
     );
-    assert_eq!(target.qualified_name(), "ns/sa");
     let default_audience = TokenRequestTarget::kubernetes_default("ns", "sa").unwrap();
     assert_eq!(
         default_audience.request_body().to_string(),

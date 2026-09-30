@@ -8,8 +8,8 @@
 
 pub use crate::application::role_map::{
     spawn_registry_file_watcher, spawn_registry_file_watcher_with_interval,
-    spawn_registry_files_watcher, spawn_registry_files_watcher_with_interval,
-    ReloadableRoleMapVerifier, DEFAULT_REGISTRY_FILE_WATCH_INTERVAL,
+    spawn_registry_files_watcher_with_interval, ReloadableRoleMapVerifier,
+    DEFAULT_REGISTRY_FILE_WATCH_INTERVAL,
 };
 pub use crate::domain::authorization::{
     AuditedRoleMapPrincipal, AuthEvent, AuthEventSink, AuthorizationDecision, AuthorizationReason,

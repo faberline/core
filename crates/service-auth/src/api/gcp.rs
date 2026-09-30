@@ -63,9 +63,8 @@ pub use crate::application::google::{classify, Credential, GoogleVerifier, JwksC
 pub use crate::domain::google::{
     AccessTokenIntrospection, Clock, GoogleAuthConfig, GoogleAuthError, IntrospectedToken,
     InvalidReason, DEFAULT_INTROSPECTION_TTL_CEILING, DEFAULT_JWKS_REFETCH_MIN_INTERVAL,
-    DEFAULT_METADATA_BASE_URL, GOOGLE_ISSUERS, GOOGLE_JWKS_URL, GOOGLE_TOKENINFO_URL,
+    GOOGLE_ISSUERS, GOOGLE_JWKS_URL, GOOGLE_TOKENINFO_URL,
 };
 pub use crate::infrastructure::google::{
-    HttpAccessTokenIntrospection, HttpJwksSource, MetadataTokenError, MetadataTokenSource,
-    SystemClock,
+    HttpAccessTokenIntrospection, HttpJwksSource, SystemClock,
 };
