@@ -103,6 +103,6 @@ runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
     lumen and tape), so their generated schemas must not change, and an
     interfaces copy would duplicate the wire contract. The derive does no I/O.
 - **Tracked for P2:** public fields on `Election`, `InstanceScope`,
-  `RenderCtx`, the render `*Plan` types, `Condition`, `ClusterSpec`,
+  the render `*Plan` types, `Condition`, `ClusterSpec`,
   `ResourceSpec`; bare id `IssuerId(pub String)`; `anyhow` in
   `reconcile_plan`, `run` and `parse_storage_bytes`.

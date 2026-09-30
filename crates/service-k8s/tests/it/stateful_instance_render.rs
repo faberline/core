@@ -60,15 +60,8 @@ fn existing_claim(name: &str, mount: &str) -> ExistingClaim {
 
 #[test]
 fn both_storage_shapes_and_identity_are_complete() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "test",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "lumen",
-        owner: Some(json!({"uid":"u"})),
-    };
+    let cx = RenderCtx::new("lumen", "test", "v1", "Lumen", "lumen", "lumen")
+        .with_owner(json!({"uid":"u"}));
     let template = stateful_instance(plan(
         &cx,
         StatefulStorageAttachment::VolumeClaimTemplate(template_claim("data", "/data")),
@@ -94,15 +87,7 @@ fn both_storage_shapes_and_identity_are_complete() {
 
 #[test]
 fn collisions_and_zero_replicas_fail_closed() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "test",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "lumen",
-        owner: None,
-    };
+    let cx = RenderCtx::new("lumen", "test", "v1", "Lumen", "lumen", "lumen");
     let mut p = plan(
         &cx,
         StatefulStorageAttachment::VolumeClaimTemplate(template_claim("data", "/data")),
@@ -127,15 +112,7 @@ fn collisions_and_zero_replicas_fail_closed() {
 
 #[test]
 fn no_storage_has_no_claim_template_mount_or_volume() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "test",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "lumen",
-        owner: None,
-    };
+    let cx = RenderCtx::new("lumen", "test", "v1", "Lumen", "lumen", "lumen");
     let rendered = stateful_instance(plan_without_storage(&cx)).unwrap();
     assert!(rendered.storage.is_none());
     assert!(rendered.workload["spec"]["volumeClaimTemplates"].is_null());
@@ -147,15 +124,7 @@ fn no_storage_has_no_claim_template_mount_or_volume() {
 
 #[test]
 fn selector_extras_follow_the_pod_label_and_core_divergence_fails() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "test",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "lumen",
-        owner: None,
-    };
+    let cx = RenderCtx::new("lumen", "test", "v1", "Lumen", "lumen", "lumen");
     let mut normalized = plan_without_storage(&cx);
     normalized
         .selector
@@ -187,15 +156,7 @@ fn selector_extras_follow_the_pod_label_and_core_divergence_fails() {
 
 #[test]
 fn same_pvc_direct_child_mount_is_exact_and_ordered() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "test",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "lumen",
-        owner: None,
-    };
+    let cx = RenderCtx::new("lumen", "test", "v1", "Lumen", "lumen", "lumen");
     let mut p = plan(
         &cx,
         StatefulStorageAttachment::VolumeClaimTemplate(template_claim("raft", "/var/lib/lumen")),
@@ -223,15 +184,7 @@ fn same_pvc_direct_child_mount_is_exact_and_ordered() {
 
 #[test]
 fn same_pvc_child_mount_rejects_every_other_overlap_fail_closed() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "test",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "lumen",
-        owner: None,
-    };
+    let cx = RenderCtx::new("lumen", "test", "v1", "Lumen", "lumen", "lumen");
     let unsafe_children = vec![
         json!({"name":"raft","mountPath":"/var/lib/lumen/.","subPath":".","readOnly":false}),
         json!({"name":"raft","mountPath":"/var/lib/lumen/..","subPath":"..","readOnly":false}),

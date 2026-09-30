@@ -299,7 +299,7 @@ pub fn sharded_statefulset(p: ShardedStatefulSet) -> Value {
         replicas_per_shard: p.replicas_per_shard,
         voter_count: p.voter_count,
         headless_env_key: p.headless_env_key,
-        service_account_name: Some(p.cx.name),
+        service_account_name: Some(p.cx.name()),
         env: p.extra_env,
         env_from: vec![],
         resources: requested_resources(p.cpu, p.memory),

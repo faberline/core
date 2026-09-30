@@ -39,59 +39,18 @@ pub mod common;
 pub mod deployment;
 pub mod projected_token;
 pub mod rbac;
+mod render_ctx;
 pub mod stateful_instance;
 pub mod workload_plan;
 mod workloads;
 
+pub use render_ctx::RenderCtx;
 pub use workload_plan::*;
 pub use workloads::{
     cron_job, horizontal_pod_autoscaler, service_statefulset,
     service_statefulset_with_service_links, sharded_statefulset, CronJob, HorizontalPodAutoscaler,
     ServiceStatefulSet, ShardedStatefulSet,
 };
-
-/// Per-service render identity, threaded through the helpers.
-pub struct RenderCtx<'a> {
-    pub app: &'a str,
-    pub manager: &'a str,
-    pub api_version: &'a str,
-    pub kind: &'a str,
-    pub name: &'a str,
-    pub ns: &'a str,
-    pub owner: Option<Value>,
-}
-
-impl RenderCtx<'_> {
-    /// Recommended labels common to every child object.
-    pub fn labels(&self, component: &str) -> Value {
-        json!({
-            "app.kubernetes.io/name": self.app,
-            "app.kubernetes.io/instance": self.name,
-            "app.kubernetes.io/component": component,
-            "app.kubernetes.io/managed-by": self.manager,
-            "app.kubernetes.io/part-of": self.app,
-        })
-    }
-
-    /// Immutable selector labels (a subset of [`Self::labels`]) — workload and
-    /// Service selectors pin to these so re-applies never hit selector-immutability.
-    pub fn selector(&self, component: &str) -> Value {
-        json!({
-            "app.kubernetes.io/name": self.app,
-            "app.kubernetes.io/instance": self.name,
-            "app.kubernetes.io/component": component,
-        })
-    }
-
-    /// Assemble an object's `metadata` block (name/ns/labels + owner ref).
-    pub fn meta(&self, name: &str, component: &str) -> Value {
-        let mut m = json!({ "name": name, "namespace": self.ns, "labels": self.labels(component) });
-        if let Some(o) = &self.owner {
-            m["ownerReferences"] = json!([o]);
-        }
-        m
-    }
-}
 
 /// The owner reference that ties a child to its CR (cascading GC). `uid` comes
 /// from the live CR's metadata.
@@ -247,7 +206,7 @@ pub fn service_account(cx: &RenderCtx, component: &str) -> Value {
     json!({
         "apiVersion": "v1",
         "kind": "ServiceAccount",
-        "metadata": cx.meta(cx.name, component),
+        "metadata": cx.meta(cx.name(), component),
     })
 }
 

@@ -8,9 +8,8 @@
 
 use serde_json::{json, Value};
 use service_k8s::render::{
-    dedicated_node_affinity, service_statefulset, service_statefulset_with_service_links, RenderCtx,
-    ServiceStatefulSet,
-    WorkloadVolumeClaim,
+    dedicated_node_affinity, service_statefulset, service_statefulset_with_service_links,
+    RenderCtx, ServiceStatefulSet, WorkloadVolumeClaim,
 };
 
 fn merge_labels(target: &mut Value, labels: &Value) {
@@ -248,15 +247,15 @@ fn profile<'a>(cx: &'a RenderCtx<'a>, kind: u8) -> ServiceStatefulSet<'a> {
 
 #[test]
 fn compatibility_adapter_matches_all_lumen_statefulset_profiles() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "lumen-operator",
-        api_version: "lumen.axiom.dev/v1",
-        kind: "Lumen",
-        name: "fleet-child",
-        ns: "acme",
-        owner: Some(json!({"uid":"owner"})),
-    };
+    let cx = RenderCtx::new(
+        "lumen",
+        "lumen-operator",
+        "lumen.axiom.dev/v1",
+        "Lumen",
+        "fleet-child",
+        "acme",
+    )
+    .with_owner(json!({"uid":"owner"}));
     for kind in 0..4 {
         let expected = baseline(profile(&cx, kind));
         let actual = service_statefulset(profile(&cx, kind));
@@ -274,36 +273,25 @@ fn compatibility_adapter_matches_all_lumen_statefulset_profiles() {
 
 #[test]
 fn service_links_opt_in_only_adds_the_explicit_pod_field() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "lumen-operator",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "default",
-        owner: None,
-    };
+    let cx = RenderCtx::new("lumen", "lumen-operator", "v1", "Lumen", "lumen", "default");
     let legacy = service_statefulset(profile(&cx, 0));
     let disabled = service_statefulset_with_service_links(profile(&cx, 0), false);
     let enabled = service_statefulset_with_service_links(profile(&cx, 0), true);
     let mut expected = legacy.clone();
     expected["spec"]["template"]["spec"]["enableServiceLinks"] = json!(false);
     assert_eq!(disabled, expected);
-    assert!(legacy["spec"]["template"]["spec"].get("enableServiceLinks").is_none());
-    assert_eq!(enabled["spec"]["template"]["spec"]["enableServiceLinks"], true);
+    assert!(legacy["spec"]["template"]["spec"]
+        .get("enableServiceLinks")
+        .is_none());
+    assert_eq!(
+        enabled["spec"]["template"]["spec"]["enableServiceLinks"],
+        true
+    );
 }
 
 #[test]
 fn compatibility_adapter_preserves_safe_same_pvc_child_mount_order() {
-    let cx = RenderCtx {
-        app: "lumen",
-        manager: "lumen-operator",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "default",
-        owner: None,
-    };
+    let cx = RenderCtx::new("lumen", "lumen-operator", "v1", "Lumen", "lumen", "default");
     let mut rendered = profile(&cx, 3);
     rendered.volume_claim = Some(WorkloadVolumeClaim {
         name: "raft".into(),

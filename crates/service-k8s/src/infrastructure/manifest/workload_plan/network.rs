@@ -242,8 +242,8 @@ impl NetworkPolicyPlan {
         let selector = if self.instance_wide {
             merge_string_labels(
                 json!({
-                    "app.kubernetes.io/name": cx.app,
-                    "app.kubernetes.io/instance": cx.name,
+                    "app.kubernetes.io/name": cx.app(),
+                    "app.kubernetes.io/instance": cx.name(),
                 }),
                 &self.selector,
             )
@@ -253,12 +253,12 @@ impl NetworkPolicyPlan {
         let ingress = self
             .ingress
             .iter()
-            .map(|rule| rule.render("from", cx.ns))
+            .map(|rule| rule.render("from", cx.ns()))
             .collect::<Vec<_>>();
         let egress = self
             .egress
             .iter()
-            .map(|rule| rule.render("to", cx.ns))
+            .map(|rule| rule.render("to", cx.ns()))
             .collect::<Vec<_>>();
         json!({
             "apiVersion": "networking.k8s.io/v1",

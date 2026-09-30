@@ -9,15 +9,14 @@ use service_k8s::render::{
 };
 
 fn context() -> RenderCtx<'static> {
-    RenderCtx {
-        app: "demo",
-        manager: "demo-operator",
-        api_version: "demo.axiom.dev/v1",
-        kind: "Demo",
-        name: "sample",
-        ns: "observability",
-        owner: None,
-    }
+    RenderCtx::new(
+        "demo",
+        "demo-operator",
+        "demo.axiom.dev/v1",
+        "Demo",
+        "sample",
+        "observability",
+    )
 }
 
 #[test]

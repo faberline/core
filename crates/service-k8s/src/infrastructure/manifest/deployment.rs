@@ -65,15 +65,14 @@ mod tests {
     };
 
     fn cx() -> RenderCtx<'static> {
-        RenderCtx {
-            app: "pgpool",
-            manager: "pgpool-operator",
-            api_version: "pgpool.axiom.dev/v1alpha1",
-            kind: "Pgpool",
-            name: "pool",
-            ns: "database",
-            owner: None,
-        }
+        RenderCtx::new(
+            "pgpool",
+            "pgpool-operator",
+            "pgpool.axiom.dev/v1alpha1",
+            "Pgpool",
+            "pool",
+            "database",
+        )
     }
 
     fn pod<'a>(cx: &'a RenderCtx<'a>) -> ServicePodTemplate<'a> {
