@@ -21,7 +21,8 @@ tape and workspace do.
   result is an `AdmissionDecision` with an `AdmissionOutcome`
   (`Bypass`, `Allow`, `Deny`).
 - **Weighted admission** — `WeightedAdmission`: per-key concurrency plus a
-  weight quota per window, under `WeightedAdmissionConfig`.
+  weight quota per window, under `WeightedAdmissionConfig` (checked `new`,
+  getters).
 - **Concurrency lease** — `ConcurrencyLease`: a held slot of weighted
   admission, released on drop.
 - **Reverse proxy policy** — `ReverseProxyPolicy`: which upstream a request
@@ -36,7 +37,7 @@ tape and workspace do.
   request carries or is given, used by the service-http trace layer
   (`trace_layer`, target `http.access`) and its span makers.
 - **Content decode limits** — `ContentDecodeLimits`: compressed and decoded
-  byte caps for `decode_request_body`.
+  byte caps for `decode_request_body` (checked `new`, getters).
 - **Server timing** — `ServerTimingExt` entries and a `ServerTimingDisclosure`
   (`TotalOnly` by default, `Full` per response).
 - **HTTP config** — `HttpConfig`: bind address, log settings, grace period,
@@ -110,5 +111,4 @@ none had a known external user by path.
   `Instant::now` (the `admit_at` and `acquire_at` seams already take the time),
   and fresh trace ids hash the wall clock; P2 adds clock and id-generator
   ports. `ProjectionMetadata` public fields, built with struct literals by
-  sift. Public fields on `WeightedAdmissionConfig` and `ContentDecodeLimits`.
-  `anyhow` in `reverse_proxy_router` (ADR D4).
+  sift. `anyhow` in `reverse_proxy_router` (ADR D4).
