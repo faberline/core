@@ -12,29 +12,29 @@
 //! the shared service kit (`raft-core` + `raft-runtime` + `transport-h2c` + `service-http` +
 //! `service-backup` + `cli-std` + this).
 
+mod api;
 mod application;
-mod compat;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
 #[cfg(feature = "certificate")]
-pub use compat::certificate;
+pub use api::certificate;
 #[cfg(feature = "controller")]
-pub use compat::controller;
-pub use compat::crd;
+pub use api::controller;
+pub use api::crd;
 #[cfg(feature = "controller")]
-pub use compat::lease;
-pub use compat::lifecycle;
+pub use api::lease;
+pub use api::lifecycle;
 #[cfg(feature = "controller")]
-pub use compat::llm;
+pub use api::llm;
 #[cfg(feature = "controller")]
-pub use compat::metrics;
-pub use compat::render;
+pub use api::metrics;
+pub use api::render;
 #[cfg(feature = "controller")]
-pub use compat::resize;
-pub use compat::service;
-pub use compat::stateful;
+pub use api::resize;
+pub use api::service;
+pub use api::stateful;
 
 #[cfg(feature = "certificate")]
 pub use application::certificate::reconcile::Reconciler;

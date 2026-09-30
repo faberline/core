@@ -58,13 +58,13 @@ and tape.
 ## Published language
 
 The `ManagedService` contract, render plans, capacity and resize planners,
-lifecycle validation and certificate lifecycle. In P1 the old paths `service`,
+lifecycle validation and certificate lifecycle. The public modules `service`,
 `crd`, `resize`, `lease`, `stateful`, `render` (and submodules), `controller`,
-`certificate` (including `certificate::profile`), `lifecycle`, `metrics`, `llm`
-and the root re-exports stay as facades with their feature gates. lumen
-glob-imports `service_k8s::lease::*`, so that facade must export exactly
-`Election` and `spawn`; lumen's release CI runs `stateful_instance_render` and
-`stateful_adapter_equivalence` by name.
+`certificate` (including `certificate::profile`), `lifecycle`, `metrics` and
+`llm` keep their paths and feature gates (`src/api/`), because each holds
+names the root does not re-export. lumen glob-imports `service_k8s::lease::*`,
+so that module must export exactly `Election` and `spawn`; lumen's release CI
+runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
 
 ## Exceptions and debts
 

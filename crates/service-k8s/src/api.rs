@@ -1,4 +1,5 @@
-//! Old public module paths, kept as re-exports.
+//! Public modules that keep their paths: they hold names the crate root does
+//! not re-export.
 
 #[cfg(feature = "certificate")]
 pub mod certificate;
