@@ -18,16 +18,15 @@
 //! - `projects/conductor/` — cloud web
 //! - `sdd` — library crate re-exports compass for backward compat
 
+mod api;
 mod application;
-mod compat;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
-pub use compat::{
-    check_pipeline, checker, core, diagnostic, format, gen, graph, lens_error, lint, lsp, outline,
-    output, refactoring, schemas, search, semantic, server, spec, storage, syntax, type_inference,
-    watch,
+pub use api::{
+    check_pipeline, core, diagnostic, format, gen, graph, lens_error, lint, lsp, output,
+    refactoring, schemas, search, semantic, server, spec, storage, syntax, type_inference,
 };
 // generate/ module moved to sdd crate (consolidate-codegen)
 

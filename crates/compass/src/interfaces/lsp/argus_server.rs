@@ -6,8 +6,8 @@ use tokio::sync::RwLock;
 use tower_lsp::lsp_types::*;
 use tower_lsp::Client;
 
-use crate::checker::LintConfig;
 use crate::diagnostic::{Diagnostic as ArgusDiagnostic, DiagnosticSeverity as ArgusSeverity};
+use crate::domain::check::lint_config::LintConfig;
 use crate::lint::CheckerRegistry;
 use crate::semantic::{SymbolTable, SymbolTableBuilder};
 use crate::syntax::Language;

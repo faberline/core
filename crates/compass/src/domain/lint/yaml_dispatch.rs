@@ -2,8 +2,8 @@ use super::asyncapi::AsyncApiChecker;
 use super::openapi::OpenApiChecker;
 use super::openrpc::OpenRpcChecker;
 use super::{checker::Checker, gitlab_ci::GitlabCiChecker, kubernetes::KubernetesChecker};
-use crate::checker::LintConfig;
 use crate::diagnostic::Diagnostic;
+use crate::domain::check::lint_config::LintConfig;
 use crate::syntax::{Language, ParsedFile};
 
 /// Composite checker that dispatches YAML/JSON files to the appropriate sub-checker.

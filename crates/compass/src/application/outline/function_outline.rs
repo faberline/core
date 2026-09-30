@@ -98,6 +98,13 @@ pub fn outline_parsed(parsed: &ParsedFile) -> Vec<FunctionDef> {
 ///
 /// Convenience over [`outline_parsed`] that owns the parse. Errors if the
 /// parser cannot initialize or the grammar produces no tree.
+///
+/// This is a language-agnostic code-intelligence primitive — "what callable
+/// definitions live in this file, and where" — built directly on the
+/// tree-sitter parse. It deliberately knows nothing about *why* a caller wants
+/// the list (instrumentation, navigation, coverage, doc generation); consumers
+/// layer their own policy on top. `meter`, for example, maps each
+/// [`FunctionDef`] to a probe point.
 pub fn outline(source: &str, language: Language) -> Result<Vec<FunctionDef>> {
     let mut parser = MultiParser::new()?;
     let parsed = parser.parse(source, language).ok_or_else(|| {

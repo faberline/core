@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use super::gitlab_ci_rules;
-use crate::checker::LintConfig;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::domain::check::lint_config::LintConfig;
 use crate::syntax::{Language, ParsedFile};
 
 mod job_rules;

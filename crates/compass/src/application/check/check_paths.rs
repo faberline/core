@@ -1,3 +1,8 @@
+//! Top-level file checking orchestrator
+//!
+//! Provides the public `check_paths` API and supporting types (`FileResult`,
+//! `LintConfig`) that were formerly in `lens/mod.rs`.
+
 use crate::domain::check::file_result::FileResult;
 use crate::domain::check::lint_config::LintConfig;
 use crate::domain::import_graph::graph::ImportGraph;

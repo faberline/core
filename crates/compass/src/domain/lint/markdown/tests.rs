@@ -1,6 +1,6 @@
 use super::symbol::{MarkdownSymbol, MarkdownSymbolExtractor};
 use super::*;
-use crate::checker::LintConfig;
+use crate::domain::check::lint_config::LintConfig;
 
 fn make_file(source: &str) -> ParsedFile {
     ParsedFile::line_based(source.to_string(), Language::Markdown)

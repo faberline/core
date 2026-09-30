@@ -126,7 +126,7 @@ path = "crates/surface/src"
 [assembly]
 modules = [
   "crates/cli-std/src/compat",
-  "crates/compass/src/compat",
+  "crates/compass/src/api",
   "crates/openapi-codegen/src/api",
   "crates/raft-runtime/src/api",
   "crates/service-auth/src/api",

@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::checker::FileResult;
 use crate::diagnostic::DiagnosticSeverity;
+use crate::domain::check::file_result::FileResult;
 use crate::graph::ImportGraph;
 use crate::semantic::symbols::{SymbolKind, SymbolTable};
 

@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use tokio::sync::mpsc;
 
-use crate::watch::{FileWatcher, WatchConfig, WatchEvent};
+use crate::infrastructure::watch::file_watcher::{FileWatcher, WatchConfig, WatchEvent};
 
 /// Events from the watch bridge
 #[derive(Debug, Clone)]

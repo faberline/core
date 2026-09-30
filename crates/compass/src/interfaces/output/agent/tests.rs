@@ -1,6 +1,6 @@
 use super::*;
-use crate::checker::FileResult;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range};
+use crate::domain::check::file_result::FileResult;
 use crate::graph::ImportGraph;
 use crate::semantic::symbols::{SymbolKind, SymbolTable, TypeInfo};
 use crate::syntax::Language;

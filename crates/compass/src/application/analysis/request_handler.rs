@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use tokio::sync::RwLock;
 
-use crate::checker::LintConfig;
 use crate::diagnostic::Diagnostic;
+use crate::domain::check::lint_config::LintConfig;
 use crate::infrastructure::analysis_cache::disk_cache::DiskCache;
 use crate::lint::CheckerRegistry;
 use crate::semantic::SymbolTable;

@@ -80,15 +80,19 @@ functions it instruments.
 
 ## Published language
 
-No other core context depends on compass. guard imports `checker::{check_paths,
-LintConfig}`, `diagnostic::{DiagnosticCategory, DiagnosticSeverity}`,
+No other core context depends on compass. guard imports `check_paths` and
+`LintConfig` (by the `checker::` path, which P2 deleted),
+`diagnostic::{DiagnosticCategory, DiagnosticSeverity}`,
 `lint::detect_sql_injection` and `syntax::Language`; meter imports `outline`,
 `FunctionKind` and `syntax::Language`. The daemon's JSON-RPC 2.0 methods
 (`check`, `type_at`, `symbols`, `diagnostics`, `hover`, `definition`,
 `references`, `pdg`, `slice`, `impact`, `taint` and housekeeping) and the LSP
-server use `Diagnostic` and `Range` as wire format. P1 compat facades keep all
-22 old public modules, every crate-root re-export, and nested paths such as
-`server::incremental`, which a doctest imports.
+server use `Diagnostic` and `Range` as wire format. Nineteen public modules
+keep their paths because they hold names the root does not re-export
+(`src/api/`), with nested paths such as `server::incremental`, which a doctest
+imports. P2 deleted the old modules `checker`, `outline` and `watch`: every
+name in them is at the crate root, and `compass::outline` is now only the
+function.
 
 ## Exceptions and debts
 

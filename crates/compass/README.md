@@ -59,7 +59,7 @@ PDG-style impact analysis, and structured refactoring operations.
 - Surfaces: Rust API: `outline`, `outline_parsed`, `type_at`, `hover`,
   `SearchEngine`, `RefactoringRegistry`, `DeepTypeInferencer`,
   `PropagationPipeline`; Modules: `semantic`, `graph`, `search`,
-  `type_inference`, `refactoring`, `outline`
+  `type_inference`, `refactoring`
 - Gate — behavior: `cargo test -p compass` - configured semantic, type
   inference, search, and refactoring smoke gate
 - Gate: `cargo test -p compass`

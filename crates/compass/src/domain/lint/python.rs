@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
-use crate::checker::LintConfig;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::domain::check::lint_config::LintConfig;
 use crate::syntax::{Language, ParsedFile};
 
 mod basic_rules;

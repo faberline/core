@@ -1,5 +1,5 @@
-use crate::checker::LintConfig;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::domain::check::lint_config::LintConfig;
 use crate::syntax::{Language, ParsedFile};
 
 /// Deprecated HTML tags that should not be used in modern HTML
