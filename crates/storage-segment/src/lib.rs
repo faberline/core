@@ -1,5 +1,6 @@
 //! Shared immutable-segment and archive coordination contracts.
 
+mod app;
 mod application;
 mod domain;
 mod infrastructure;

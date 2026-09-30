@@ -1,7 +1,8 @@
 use storage_object::{ObjectStore, ObjectStoreError, PutCondition};
 
-use super::content_hash::hex_sha256;
-use crate::domain::{ArchiveObject, ArchivedObject, ArchivedObjectVersion, Result, SegmentError};
+use crate::domain::{
+    hex_sha256, ArchiveObject, ArchivedObject, ArchivedObjectVersion, Result, SegmentError,
+};
 
 pub(crate) fn put_immutable(
     store: &dyn ObjectStore,

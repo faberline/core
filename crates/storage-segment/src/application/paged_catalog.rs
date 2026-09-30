@@ -1,5 +1,7 @@
-//! The copy-on-write paged catalog over an object store. Each child module
-//! adds one group of `PagedCatalog` methods.
+//! The copy-on-write paged catalog over the write-once object store port.
+//! Each child module adds one group of `PagedCatalog` methods; the public
+//! constructors that take a storage-object `ObjectStore` live in the
+//! composition root.
 
 mod build;
 mod lookup;
@@ -12,28 +14,26 @@ mod upsert;
 
 use std::sync::Arc;
 
-use storage_object::ObjectStore;
-
 use crate::domain::{
-    CatalogRoot, Result, SegmentError, CATALOG_FORMAT_VERSION, DEFAULT_CATALOG_PAGE_BYTES,
+    CatalogRoot, ImmutableObjectStore, Result, SegmentError, CATALOG_FORMAT_VERSION,
+    DEFAULT_CATALOG_PAGE_BYTES,
 };
 
 pub use reader::{CatalogPageKeyReader, CatalogReader};
 
 #[derive(Clone)]
 pub struct PagedCatalog {
-    store: Arc<dyn ObjectStore>,
+    objects: Arc<dyn ImmutableObjectStore>,
     prefix: String,
     page_bytes_limit: usize,
 }
 
 impl PagedCatalog {
-    pub fn new(store: Arc<dyn ObjectStore>, prefix: impl Into<String>) -> Result<Self> {
-        Self::with_page_bytes(store, prefix, DEFAULT_CATALOG_PAGE_BYTES)
-    }
-
-    pub fn with_page_bytes(
-        store: Arc<dyn ObjectStore>,
+    /// A catalog under `prefix` that writes pages through `objects`. The
+    /// prefix must be a non-empty relative key path, and the page limit
+    /// 4 KiB to `DEFAULT_CATALOG_PAGE_BYTES`.
+    pub(crate) fn from_port(
+        objects: Arc<dyn ImmutableObjectStore>,
         prefix: impl Into<String>,
         page_bytes_limit: usize,
     ) -> Result<Self> {
@@ -51,7 +51,7 @@ impl PagedCatalog {
             });
         }
         Ok(Self {
-            store,
+            objects,
             prefix,
             page_bytes_limit,
         })

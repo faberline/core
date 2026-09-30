@@ -133,6 +133,7 @@ modules = [
   "crates/service-backup/src/api",
   "crates/service-http/src/api",
   "crates/service-k8s/src/api",
+  "crates/storage-segment/src/app",
 ]
 
 [[contexts]]
@@ -348,21 +349,6 @@ rule = "B2"
 subject = "jieba_rs"
 paths = ["crates/index-text/src/domain/tokenize.rs"]
 reason = "The Jieba analyzer is a persisted schema choice (Analyzer::Jieba) and jieba-rs is its segmentation algorithm over an embedded dictionary, with no I/O; it sits behind the optional `jieba` feature. Long-term."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/storage-segment/src/application/paged_catalog/packing.rs",
-  "crates/storage-segment/src/application/paged_catalog/page_store.rs",
-]
-reason = "Moved as-is in P1: PagedCatalog packs and stores pages through the page codec and put_immutable directly. P2: a CatalogPageStore port implemented in infrastructure."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = ["crates/storage-segment/src/application/archive.rs"]
-reason = "Moved as-is in P1: ArchiveTransaction writes objects with put_immutable directly. P2: it writes through a port that infrastructure implements."
 
 [[exceptions]]
 rule = "B2"

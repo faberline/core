@@ -40,6 +40,16 @@ event archive and catalogs on it.
   segment. Implemented by sift.
 - `Partitioner<Record>` — the product policy that picks a stable partition
   for a record. Implemented by sift.
+- `ImmutableObjectStore` (crate-internal) — write-once storage for catalog
+  pages and archive objects, plus page reads and cleanup deletes. The
+  infrastructure adapter implements it over a storage-object `ObjectStore`.
+
+`PagedCatalog` and `ArchiveCoordinator` hold the `ImmutableObjectStore` port.
+Their public constructors, `PagedCatalog::new`,
+`PagedCatalog::with_page_bytes` and `ArchiveCoordinator::new`, take an
+`Arc<dyn ObjectStore>`; they live in the composition root (`src/app`), which
+wraps the store in the adapter. The page codec and the SHA-256 content hash
+are pure domain functions under `domain/catalog`.
 
 ## Invariants
 
@@ -68,10 +78,7 @@ P1 keeps every root export; sift's structure test checks for the exact path
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B3 `application->infrastructure`: `PagedCatalog` packs and stores pages,
-    and `ArchiveTransaction` writes objects, through the page codec and
-    `put_immutable` directly. P2 adds page-store and object-write ports.
+- **Checker exceptions:** none.
 - **Tracked for P2:**
   - `CatalogEntry` public fields, built with struct literals by sift in five
     places (ADR D2).

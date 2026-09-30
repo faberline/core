@@ -1,12 +1,10 @@
-//! Object-store helpers: the catalog page codec, the SHA-256 content hash,
-//! the write-once put that accepts only a byte-identical retry, and the
-//! conversion of object-store errors into `SegmentError`.
+//! The storage-object adapter for the write-once object store port: the
+//! page put that accepts only a byte-identical retry, the archive put that
+//! also compares the content type, and the conversion of object-store errors
+//! into `SegmentError`.
 
-mod content_hash;
+mod object_store_adapter;
 mod object_store_error;
-mod page_codec;
 mod put_immutable;
 
-pub(crate) use content_hash::hex_sha256;
-pub(crate) use page_codec::encode_page;
-pub(crate) use put_immutable::put_immutable;
+pub(crate) use object_store_adapter::ObjectStoreAdapter;

@@ -292,7 +292,7 @@ impl PagedCatalog {
         reference: &CatalogPageRef,
     ) -> Result<()> {
         if let Err(error) = observe(reference) {
-            self.store.delete(&reference.key)?;
+            self.objects.delete(&reference.key)?;
             return Err(error);
         }
         Ok(())
