@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use server_lifecycle::{BindConfig, DrainController, LifecycleController};
 use tokio::net::TcpListener;
 
@@ -21,14 +23,14 @@ pub async fn serve_h2c_with_lifecycle(
         .local_addr()
         .unwrap_or_else(|_| BindConfig::default().socket_addr());
     let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig::from(local_addr))
-        .with_socket_options(options.socket)
+        .with_socket_options(options.socket())
         .with_drain(DrainController::from_lifecycle(lifecycle.clone()))
-        .with_connection_metrics(options.connection_metrics);
-    if let Some(budget) = options.connection_budget {
-        tcp_config = tcp_config.with_connection_budget(budget);
+        .with_connection_metrics(Arc::clone(options.connection_metrics()));
+    if let Some(budget) = options.connection_budget() {
+        tcp_config = tcp_config.with_connection_budget(budget.clone());
     }
     let connection_options = transport_h2c::ConnectionOptions {
-        max_concurrent_streams: options.max_concurrent_streams,
+        max_concurrent_streams: options.max_concurrent_streams(),
     };
     server_tcp::serve_with_report(
         listener,
@@ -96,16 +98,16 @@ pub async fn serve_h2c_with_options(
         .local_addr()
         .unwrap_or_else(|_| BindConfig::default().socket_addr());
     let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig::from(local_addr))
-        .with_socket_options(options.socket)
-        .with_drain(options.drain)
-        .with_drain_timeout(options.drain_timeout)
-        .with_connection_metrics(options.connection_metrics);
-    if let Some(budget) = options.connection_budget {
-        tcp_config = tcp_config.with_connection_budget(budget);
+        .with_socket_options(options.socket())
+        .with_drain(options.drain().clone())
+        .with_drain_timeout(options.drain_timeout())
+        .with_connection_metrics(Arc::clone(options.connection_metrics()));
+    if let Some(budget) = options.connection_budget() {
+        tcp_config = tcp_config.with_connection_budget(budget.clone());
     }
 
     let connection_options = transport_h2c::ConnectionOptions {
-        max_concurrent_streams: options.max_concurrent_streams,
+        max_concurrent_streams: options.max_concurrent_streams(),
     };
     server_tcp::serve(
         listener,

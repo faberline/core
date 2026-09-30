@@ -11,11 +11,9 @@ async fn serves_http1_and_h2c_on_one_listener_with_tunable_options() {
     let addr = listener.local_addr().expect("local addr");
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
     let app = Router::new().route("/healthz", get(|| async { "ok" }));
-    let options = HttpServerOptions {
-        max_concurrent_streams: 17,
-        drain_timeout: Duration::from_secs(1),
-        ..Default::default()
-    };
+    let options = HttpServerOptions::default()
+        .with_max_concurrent_streams(17)
+        .with_drain_timeout(Duration::from_secs(1));
 
     let server = tokio::spawn(serve_h2c_with_options(listener, app, options, async move {
         let _ = shutdown_rx.await;

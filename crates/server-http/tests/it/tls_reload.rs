@@ -198,10 +198,7 @@ async fn fixture(ca: &Authority) -> Fixture {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = listener.local_addr().unwrap();
     let metrics = TlsListenerMetrics::new();
-    let options = TlsServerOptions {
-        metrics: metrics.clone(),
-        ..Default::default()
-    };
+    let options = TlsServerOptions::default().with_metrics(metrics.clone());
     let (shutdown, rx) = tokio::sync::oneshot::channel();
     let for_listener = tls.clone();
     let server = tokio::spawn(serve_tls(
@@ -322,10 +319,7 @@ async fn tls_reload_refuses_connections_rather_than_serving_cleartext_when_mater
         listener,
         Router::new().route("/healthz", get(|| async { "ok" })),
         config_source(move || expired.server_config()),
-        TlsServerOptions {
-            metrics: metrics.clone(),
-            ..Default::default()
-        },
+        TlsServerOptions::default().with_metrics(metrics.clone()),
         async move {
             let _ = rx.await;
         },

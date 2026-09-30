@@ -15,7 +15,8 @@ downstream, pgpool serves its admin port with it.
 - **HTTP server options** — `HttpServerOptions` (older name
   `H2cServerOptions`): the HTTP/2 stream cap per connection (4096 by default),
   a drain timeout (5 s), an optional `ConnectionBudget`, a `DrainController`,
-  `TcpSocketOptions` and a `ConnectionMetrics` sink.
+  `TcpSocketOptions` and a `ConnectionMetrics` sink, set through `with_*`
+  builders on `Default` (`set_drain_timeout` changes a built value).
 - **HTTP server report** — `HttpServerReport`: the connection and stream totals
   of one lifecycle-driven run. It is a type alias of server-tcp's
   `TcpServerReport`.
@@ -23,7 +24,7 @@ downstream, pgpool serves its admin port with it.
   closure that returns the rustls `ServerConfig` active right now, or `None`
   when nothing valid is active. `config_source` wraps a closure as one.
 - **TLS server options** — `TlsServerOptions`: `HttpServerOptions` plus the
-  listener's `TlsListenerMetrics`.
+  listener's `TlsListenerMetrics`, set with `with_http` and `with_metrics`.
 - **Metrics snapshot** — `TlsListenerSnapshot`: handshakes established,
   handshake failures, and connections refused because no material was active.
 - **server-http trace layer** — `trace_layer`: a tower-http request trace layer

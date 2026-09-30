@@ -30,10 +30,7 @@ async fn ownership_stays_in_tcp_and_transport_layers() {
     let lifecycle = LifecycleController::serving();
     let control = lifecycle.clone();
     let metrics = Arc::new(Metrics::default());
-    let options = HttpServerOptions {
-        connection_metrics: metrics.clone(),
-        ..Default::default()
-    };
+    let options = HttpServerOptions::default().with_connection_metrics(metrics.clone());
     let task = tokio::spawn(serve_h2c_with_lifecycle(
         listener,
         Router::new().route("/", get(|| async { "ok" })),

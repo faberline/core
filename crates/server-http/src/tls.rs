@@ -93,8 +93,32 @@ impl TlsListenerMetrics {
 /// TLS-specific listener settings, layered over [`HttpServerOptions`].
 #[derive(Clone, Debug, Default)]
 pub struct TlsServerOptions {
-    pub http: HttpServerOptions,
-    pub metrics: TlsListenerMetrics,
+    http: HttpServerOptions,
+    metrics: TlsListenerMetrics,
+}
+
+impl TlsServerOptions {
+    /// Sets the HTTP listener options under the TLS layer.
+    pub fn with_http(mut self, http: HttpServerOptions) -> Self {
+        self.http = http;
+        self
+    }
+
+    /// Sets the counters the listener updates on each TLS accept.
+    pub fn with_metrics(mut self, metrics: TlsListenerMetrics) -> Self {
+        self.metrics = metrics;
+        self
+    }
+
+    /// The HTTP listener options under the TLS layer.
+    pub fn http(&self) -> &HttpServerOptions {
+        &self.http
+    }
+
+    /// The counters the listener updates on each TLS accept.
+    pub fn metrics(&self) -> &TlsListenerMetrics {
+        &self.metrics
+    }
 }
 
 /// Serve HTTPS on `listener`, terminating TLS with whatever `config` returns at
@@ -110,21 +134,22 @@ pub async fn serve_tls(
     options: TlsServerOptions,
     shutdown: impl std::future::Future<Output = ()> + Send + 'static,
 ) {
-    let TlsServerOptions { http, metrics } = options;
+    let http = options.http();
+    let metrics = options.metrics().clone();
     let local_addr = listener
         .local_addr()
         .unwrap_or_else(|_| BindConfig::default().socket_addr());
     let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig::from(local_addr))
-        .with_socket_options(http.socket)
-        .with_drain(http.drain)
-        .with_drain_timeout(http.drain_timeout)
-        .with_connection_metrics(http.connection_metrics);
-    if let Some(budget) = http.connection_budget {
-        tcp_config = tcp_config.with_connection_budget(budget);
+        .with_socket_options(http.socket())
+        .with_drain(http.drain().clone())
+        .with_drain_timeout(http.drain_timeout())
+        .with_connection_metrics(Arc::clone(http.connection_metrics()));
+    if let Some(budget) = http.connection_budget() {
+        tcp_config = tcp_config.with_connection_budget(budget.clone());
     }
 
     let connection_options = transport_h2c::ConnectionOptions {
-        max_concurrent_streams: http.max_concurrent_streams,
+        max_concurrent_streams: http.max_concurrent_streams(),
     };
 
     server_tcp::serve(
