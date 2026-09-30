@@ -4,11 +4,7 @@ use super::{checkpoint, ProjectionCheckpoint};
 use crate::domain::ProjectionDescriptor;
 
 fn descriptor() -> ProjectionDescriptor {
-    ProjectionDescriptor {
-        name: "logs".to_string(),
-        schema_version: 2,
-        retention: "7d".to_string(),
-    }
+    ProjectionDescriptor::try_new("logs", 2, "7d").unwrap()
 }
 
 fn at(millis: u32) -> DateTime<Utc> {

@@ -6,11 +6,7 @@ use crate::domain::{checkpoint, ProjectionDescriptor, ProjectionStateStore};
 const STATE: &[u8] = br#"{"count":1}"#;
 
 fn descriptor(schema_version: u32) -> ProjectionDescriptor {
-    ProjectionDescriptor {
-        name: "logs".to_string(),
-        schema_version,
-        retention: "7d".to_string(),
-    }
+    ProjectionDescriptor::try_new("logs", schema_version, "7d").unwrap()
 }
 
 #[test]

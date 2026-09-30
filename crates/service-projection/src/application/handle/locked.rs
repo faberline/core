@@ -152,7 +152,7 @@ where
 
     pub(super) fn lag(&self, required_cursor: u64, current_cursor: u64) -> ProjectionLag {
         ProjectionLag::new(
-            self.descriptor().name,
+            self.descriptor().name().to_string(),
             required_cursor,
             current_cursor,
             self.config.retry_after_seconds,

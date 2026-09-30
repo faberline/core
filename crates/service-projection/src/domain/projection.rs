@@ -5,11 +5,45 @@ use super::digest::sha256;
 use super::projection_error::ProjectionError;
 use super::source::ProjectionRecord;
 
+/// A projection's name, schema version and retention label. `try_new` checks
+/// the name; `Deserialize` fills the fields directly, and the runtime checks
+/// the name again when it opens the projection.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, ToSchema)]
 pub struct ProjectionDescriptor {
-    pub name: String,
-    pub schema_version: u32,
-    pub retention: String,
+    name: String,
+    schema_version: u32,
+    retention: String,
+}
+
+impl ProjectionDescriptor {
+    /// A descriptor, or `ProjectionError::InvalidName` when the name is
+    /// blank or contains `/` or NUL.
+    pub fn try_new(
+        name: impl Into<String>,
+        schema_version: u32,
+        retention: impl Into<String>,
+    ) -> Result<Self, ProjectionError> {
+        let descriptor = Self {
+            name: name.into(),
+            schema_version,
+            retention: retention.into(),
+        };
+        validate_descriptor(&descriptor)?;
+        Ok(descriptor)
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn schema_version(&self) -> u32 {
+        self.schema_version
+    }
+
+    /// A label the runtime does not interpret.
+    pub fn retention(&self) -> &str {
+        &self.retention
+    }
 }
 
 pub trait Projection<Record>: Send + Sync + 'static

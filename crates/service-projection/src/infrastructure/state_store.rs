@@ -28,8 +28,8 @@ fn validate_envelope(
             envelope.format_version
         );
     }
-    if envelope.checkpoint.projection != descriptor.name
-        || envelope.checkpoint.schema_version != descriptor.schema_version
+    if envelope.checkpoint.projection != descriptor.name()
+        || envelope.checkpoint.schema_version != descriptor.schema_version()
     {
         bail!("projection checkpoint descriptor does not match registered projection");
     }
@@ -54,7 +54,7 @@ pub(super) fn decode_snapshot(
     if sha256(&state) != envelope.checkpoint.state_sha256 {
         bail!(
             "projection {} state checksum does not match its checkpoint",
-            descriptor.name
+            descriptor.name()
         );
     }
     Ok((envelope.checkpoint, state))

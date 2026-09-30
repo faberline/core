@@ -86,7 +86,7 @@ where
             Arc::new(factory),
             self.config,
         )?);
-        let name = handle.descriptor().name;
+        let name = handle.descriptor().name().to_string();
         if self.controls.contains_key(&name) {
             bail!("projection {name} is registered more than once");
         }

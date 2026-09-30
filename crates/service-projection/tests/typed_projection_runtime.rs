@@ -235,11 +235,7 @@ impl SumProjection {
 
 impl Projection<Record> for SumProjection {
     fn descriptor(&self) -> ProjectionDescriptor {
-        ProjectionDescriptor {
-            name: "sum".to_string(),
-            schema_version: 1,
-            retention: "source-owned".to_string(),
-        }
+        ProjectionDescriptor::try_new("sum", 1, "source-owned").unwrap()
     }
 
     fn apply_idempotent(&self, record: &Record) -> Result<(), ProjectionError> {

@@ -13,7 +13,11 @@ log, metric and trace projections with it.
 ## Model
 
 - **Projection descriptor** — `ProjectionDescriptor`: a name, a schema
-  version and a retention label that the runtime does not interpret.
+  version and a retention label that the runtime does not interpret. The
+  fields are private: `ProjectionDescriptor::try_new(name, schema_version,
+  retention)` returns `InvalidName` for an invalid name, and `name()`,
+  `schema_version()` and `retention()` read it. Deserializing does not check
+  the name; the runtime checks it again when it opens a projection.
 - **Projection cursor** — the `u64` cursor of the last source record applied.
 - **Source generation** — the generation of the retained source a projection
   was built from. A source bumps it when retention or repair removes or
@@ -102,7 +106,10 @@ test checks its own sources for `service_projection::ProjectionRegistry`.
     same serde wire shape with no I/O. sift serves them as-is in its OpenAPI
     document under these schema names, so an interfaces copy would duplicate
     the wire contract.
-- **Tracked for P2:**
-  - `ProjectionDescriptor` built with struct literals by sift (ADR D2); the
-    checkpoint, envelope, lag and comparison types also have public fields.
-  - Bare ids: cursors and generations are `u64`, names and event ids `String`.
+- **Tracked for P2:** bare ids: cursors and generations are `u64`, names and
+  event ids `String`.
+- **Public fields, not changed in P2:** `ProjectionCheckpoint`,
+  `ProjectionLag` and `RebuildComparison` are built only inside this crate;
+  `ProjectionStateEnvelope` is the persisted state format.
+  `ProjectionRuntimeConfig` has public fields and a `new` that raises each
+  value to at least 1.

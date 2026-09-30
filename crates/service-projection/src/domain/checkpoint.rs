@@ -22,8 +22,8 @@ impl ProjectionCheckpoint {
     /// `now`.
     pub fn empty(descriptor: &ProjectionDescriptor, now: DateTime<Utc>) -> Self {
         Self {
-            projection: descriptor.name.clone(),
-            schema_version: descriptor.schema_version,
+            projection: descriptor.name().to_string(),
+            schema_version: descriptor.schema_version(),
             cursor: 0,
             source_generation: 0,
             event_id: None,
@@ -42,8 +42,8 @@ pub(crate) fn checkpoint(
     now: DateTime<Utc>,
 ) -> ProjectionCheckpoint {
     ProjectionCheckpoint {
-        projection: descriptor.name.clone(),
-        schema_version: descriptor.schema_version,
+        projection: descriptor.name().to_string(),
+        schema_version: descriptor.schema_version(),
         cursor,
         source_generation,
         event_id,

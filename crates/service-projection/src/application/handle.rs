@@ -52,12 +52,14 @@ where
         let mut implementation = factory()?;
         let descriptor = implementation.descriptor();
         validate_descriptor(&descriptor)?;
-        let (checkpoint, restored, rebuild_invalid_snapshot) = match store.read(&descriptor.name)? {
+        let (checkpoint, restored, rebuild_invalid_snapshot) = match store
+            .read(descriptor.name())?
+        {
             Some(bytes) => {
                 match restore_saved(store.as_ref(), &descriptor, implementation.as_ref(), &bytes) {
                     Ok(checkpoint) => (checkpoint, true, false),
                     Err(_) => {
-                        store.quarantine(&descriptor.name, &bytes)?;
+                        store.quarantine(descriptor.name(), &bytes)?;
                         implementation = factory()?;
                         (
                             ProjectionCheckpoint::empty(&descriptor, Utc::now()),
@@ -77,7 +79,7 @@ where
             source,
             factory,
             store,
-            name: descriptor.name,
+            name: descriptor.name().to_string(),
             live: Mutex::new(LiveProjection {
                 implementation,
                 persisted_cursor: checkpoint.cursor,
