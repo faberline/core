@@ -2,6 +2,8 @@
 //!
 //! Every expected value is a literal captured from the pre-P2 code. Peers of
 //! different versions exchange these bodies, so each must stay byte-identical.
+//! These cases pin the peer HTTP handlers' copy; `peer_wire_split` checks that
+//! the HTTP peer client's copy encodes the same bytes.
 
 use std::fmt::Debug;
 
@@ -9,7 +11,7 @@ use raft_core::{AppendReq, EntryKind, InstallSnapshotReq, RaftEntry, TimeoutNowR
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-use crate::infrastructure::{
+use crate::interfaces::peer_http::wire::{
     AppendEnvelope, CapableSnapEnvelope, CapableSnapshotResp, NotLeader, PublishEnvelope,
     SnapEnvelope, TimeoutNowEnvelope, VoteEnvelope,
 };

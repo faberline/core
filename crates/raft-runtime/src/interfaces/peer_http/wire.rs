@@ -1,9 +1,10 @@
-//! The peer RPC bodies the HTTP peer client sends and decodes.
+//! The peer RPC bodies this node's HTTP handlers decode and answer with.
 //!
-//! The peer HTTP handlers keep their own copy
-//! (`interfaces/peer_http/wire.rs`), which also owns the `NotLeader` reply;
-//! `src/tests/peer_wire_split.rs` checks that both copies encode the same
-//! bytes.
+//! The HTTP peer client keeps its own copy of the bodies it sends and decodes
+//! (`infrastructure/peer_wire.rs`); the `NotLeader` reply lives only here.
+//! Peers of different versions exchange these bodies, so both copies must
+//! encode the same bytes: `src/tests/peer_wire_split.rs` checks that, and
+//! `src/tests/peer_wire_golden.rs` pins this copy.
 
 use raft_core::{AppendReq, InstallSnapshotReq, NodeId, TimeoutNowReq, VoteReq};
 use serde::{Deserialize, Serialize};
@@ -55,4 +56,9 @@ pub(crate) struct TimeoutNowEnvelope {
 pub(crate) struct PublishEnvelope {
     pub(crate) group_id: String,
     pub(crate) command: Vec<u8>,
+}
+#[derive(Serialize, Deserialize)]
+pub(crate) struct NotLeader {
+    pub(crate) error: &'static str,
+    pub(crate) leader: Option<NodeId>,
 }

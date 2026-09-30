@@ -12,13 +12,13 @@ use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 
+use super::wire::{
+    AppendEnvelope, PublishEnvelope, SnapEnvelope, TimeoutNowEnvelope, VoteEnvelope,
+};
 use super::{
     append_entries, host_status, install_snapshot, publish_handler, request_vote, timeout_now,
 };
 use crate::application::{RaftHost, RaftRegistry, RaftStatus};
-use crate::infrastructure::{
-    AppendEnvelope, PublishEnvelope, SnapEnvelope, TimeoutNowEnvelope, VoteEnvelope,
-};
 
 impl RaftRegistry {
     /// Build the unified `/raft/*` router for all registered groups.

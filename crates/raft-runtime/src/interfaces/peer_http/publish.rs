@@ -6,8 +6,8 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 
+use super::wire::{NotLeader, PublishEnvelope};
 use crate::application::{decode_backpressure, ProposalOutcome, Shared};
-use crate::infrastructure::{NotLeader, PublishEnvelope};
 
 const PUBLISH_BODY_LIMIT: usize = 2 * 1024 * 1024;
 

@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 
 use super::HttpPeerClient;
 use crate::domain::{ForwardReply, PUBLISH_PATH};
-use crate::infrastructure::PublishEnvelope;
+use crate::infrastructure::peer_wire::PublishEnvelope;
 
 impl HttpPeerClient {
     /// POST `command` to the leader's publish endpoint and classify the reply.

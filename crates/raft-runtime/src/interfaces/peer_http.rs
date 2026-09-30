@@ -7,6 +7,7 @@ mod publish;
 mod registry;
 mod router;
 mod status;
+pub(crate) mod wire;
 
 pub(crate) use status::host_status;
 

@@ -6,11 +6,11 @@ use axum::response::IntoResponse;
 use axum::Json;
 use raft_core::{AppendResp, InstallSnapshotReq, InstallSnapshotResp, NodeId, RaftMsg, VoteResp};
 
-use crate::application::{take_reply, Shared, StorageFailed};
-use crate::infrastructure::{
+use super::wire::{
     AppendEnvelope, CapableSnapEnvelope, CapableSnapshotResp, SnapEnvelope, TimeoutNowEnvelope,
     VoteEnvelope,
 };
+use crate::application::{take_reply, Shared, StorageFailed};
 
 pub(crate) async fn request_vote(
     State(s): State<Arc<Shared>>,

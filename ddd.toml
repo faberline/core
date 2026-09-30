@@ -397,17 +397,6 @@ paths = [
 reason = "schemars::JsonSchema is a compile-time description of the same serde wire shape. ReplicaLayerPolicy, ShardSplitPolicy, Condition, ProbeTiming and LifecyclePolicy are embedded as-is in downstream CRD specs and statuses (for example lumen crd.rs and tape crd.rs `Vec<service_k8s::Condition>`), whose generated schemas must not change, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
 
 [[exceptions]]
-rule = "B3"
-subject = "interfaces->infrastructure"
-paths = [
-  "crates/raft-runtime/src/interfaces/conformance/deterministic_host.rs",
-  "crates/raft-runtime/src/interfaces/peer_http/handlers.rs",
-  "crates/raft-runtime/src/interfaces/peer_http/publish.rs",
-  "crates/raft-runtime/src/interfaces/peer_http/registry.rs",
-]
-reason = "Moved as-is in P1: the peer HTTP handlers and the group registry decode the same wire envelopes the outbound RPC client sends, and DeterministicHost::open takes a RaftStore. P2: the envelope DTOs move to a wire module shared by the peer_http interface and the RPC adapter, and the conformance host takes the store port."
-
-[[exceptions]]
 rule = "B2"
 subject = "serde_yaml"
 paths = ["crates/compass/src/domain/spec/statemachine/mermaid_plus.rs"]
