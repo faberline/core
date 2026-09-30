@@ -1,3 +1,5 @@
+//! The filesystem-writing CLI entry: read the spec, generate, write the files.
+
 use crate::application::generate;
 use crate::domain::{GenOptions, MANIFEST_FILE};
 

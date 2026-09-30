@@ -1,8 +1,6 @@
-//! Entry surfaces: the filesystem-writing CLI entry and the LLM topic
-//! provider.
+//! Entry surfaces: the LLM topic provider. The filesystem-writing CLI entry
+//! (`run`) is wiring and lives in the composition root, `src/app/`.
 
-mod cli;
 mod llm;
 
-pub use cli::run;
 pub use llm::{topic, TOPIC};

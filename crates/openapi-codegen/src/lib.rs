@@ -30,12 +30,14 @@
 //! is the filesystem-writing CLI entry.
 
 mod api;
+mod app;
 mod application;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
 pub use api::{emit, ir, llm};
+pub use app::run;
 pub use application::{
     generate, generate_for_target, generate_for_target_with_file_bearer_auth,
     generate_with_file_bearer_auth,
@@ -50,7 +52,6 @@ pub use domain::{
     PythonTarget, RustTarget, TargetPolicy, TargetPolicyError, TargetProfile, TargetRequirements,
     TypeScriptTarget, UnknownTargetProfile,
 };
-pub use interfaces::run;
 
 #[cfg(test)]
 mod tests;

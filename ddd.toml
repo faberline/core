@@ -129,6 +129,7 @@ modules = [
   "crates/compass/src/api",
   "crates/compass/src/app",
   "crates/openapi-codegen/src/api",
+  "crates/openapi-codegen/src/app",
   "crates/raft-runtime/src/api",
   "crates/service-auth/src/api",
   "crates/service-auth/src/app",
@@ -364,12 +365,6 @@ paths = [
   "crates/service-projection/src/domain/projection.rs",
 ]
 reason = "utoipa::ToSchema is a compile-time description of the same serde wire shape. ProjectionDescriptor, ProjectionCheckpoint and ProjectionLag are served as-is in sift's OpenAPI document under these schema names, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
-
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->domain"
-paths = ["crates/openapi-codegen/src/interfaces/cli.rs"]
-reason = "Moved as-is in P1: the CLI entry `run` builds GenOptions and prints the MANIFEST_FILE path, both domain items, around its call to application::generate. P2: let application take a CLI request (spec path, output dir, language, client name) and return the written paths, so interfaces uses application only."
 
 [[exceptions]]
 rule = "B2"
