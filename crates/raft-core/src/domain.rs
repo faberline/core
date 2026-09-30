@@ -12,7 +12,6 @@ mod raft_node;
 mod refusal;
 mod role;
 mod timing;
-mod transport;
 
 pub use conf_state::ConfState;
 pub use entry::{EntryKind, RaftEntry};
@@ -27,4 +26,3 @@ pub use raft_node::RaftNode;
 pub use refusal::{DemotionRefused, PromotionRefused, RemovalRefused, TransferRefused};
 pub use role::Role;
 pub use timing::{ELECTION_TIMEOUT_FLOOR_TICKS, HEARTBEAT_INTERVAL_TICKS};
-pub use transport::RaftTransport;

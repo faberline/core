@@ -38,8 +38,8 @@ tape use its types through raft-runtime's re-exports.
 
 ## Ports
 
-- `RaftTransport` — how a driver delivers outgoing messages. No core crate or
-  downstream repo uses it; raft-runtime drains `take_outgoing` itself.
+None. A driver drains `take_outgoing` and delivers each `Outgoing` itself;
+the unused `RaftTransport` trait was deleted in P2.
 
 ## Invariants
 
@@ -77,4 +77,3 @@ either crate.
   - `Membership` public fields, built with struct literals by defer, keep,
     loom, lumen, relay, sift and tape (ADR D2).
   - Bare `u64` ids: `NodeId`, `Term` and `Index` are aliases, not newtypes.
-  - The unused `RaftTransport` trait (ADR D7).
