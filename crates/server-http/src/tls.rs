@@ -114,14 +114,11 @@ pub async fn serve_tls(
     let local_addr = listener
         .local_addr()
         .unwrap_or_else(|_| BindConfig::default().socket_addr());
-    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig {
-        host: local_addr.ip(),
-        port: local_addr.port(),
-    })
-    .with_socket_options(http.socket)
-    .with_drain(http.drain)
-    .with_drain_timeout(http.drain_timeout)
-    .with_connection_metrics(http.connection_metrics);
+    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig::from(local_addr))
+        .with_socket_options(http.socket)
+        .with_drain(http.drain)
+        .with_drain_timeout(http.drain_timeout)
+        .with_connection_metrics(http.connection_metrics);
     if let Some(budget) = http.connection_budget {
         tcp_config = tcp_config.with_connection_budget(budget);
     }

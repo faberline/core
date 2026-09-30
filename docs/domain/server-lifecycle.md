@@ -39,7 +39,8 @@ crate.
   `ConnectionLimitExceeded`.
 - **Task supervisor** — `TaskSupervisor`: named tasks and hooks shut down over
   one controller and deadline, with their errors collected.
-- **Bind config** — `BindConfig`: the host and port a server binds.
+- **Bind config** — `BindConfig`: the host and port a server binds, built with
+  `new` or from a `SocketAddr`.
 
 ## Ports
 
@@ -69,8 +70,8 @@ crate.
 - Each hook runs in its own task, bounded by the usable time left. A panic is
   recorded as `Failed`; a timeout aborts the task and records `TimedOut`; a hook
   that starts with no usable time left is `TimedOut`.
-- `ShutdownDeadline::from_now` rejects a reserve larger than the total
-  (`ReserveExceedsTotal`).
+- `ShutdownDeadline::new` and `from_now` reject a reserve larger than the
+  total (`ReserveExceedsTotal`).
 - A `ConnectionBudget` allows at least one connection, and a
   `ConnectionPermit` returns its slot when dropped.
 
@@ -83,5 +84,4 @@ layer.
 
 - **Checker exceptions (P1):** None. Signals, the clock and task spawning are
   the job of an infrastructure crate.
-- **Tracked for P2:** public fields built with struct literals: `BindConfig` in
-  pgpool and `ShutdownDeadline` in raft-runtime.
+- **Tracked for P2:** None.

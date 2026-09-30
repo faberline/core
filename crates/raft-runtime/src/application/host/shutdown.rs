@@ -8,7 +8,7 @@ pub(super) fn shutdown_phase_cutoffs(
     deadline: ShutdownDeadline,
     started_at: tokio::time::Instant,
 ) -> [tokio::time::Instant; 4] {
-    let usable_end = deadline.expires_at - deadline.reserve;
+    let usable_end = deadline.expires_at() - deadline.reserve();
     let usable_interval = usable_end.saturating_duration_since(started_at);
     let quarter = usable_interval / 4;
 

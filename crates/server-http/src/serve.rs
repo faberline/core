@@ -20,13 +20,10 @@ pub async fn serve_h2c_with_lifecycle(
     let local_addr = listener
         .local_addr()
         .unwrap_or_else(|_| BindConfig::default().socket_addr());
-    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig {
-        host: local_addr.ip(),
-        port: local_addr.port(),
-    })
-    .with_socket_options(options.socket)
-    .with_drain(DrainController::from_lifecycle(lifecycle.clone()))
-    .with_connection_metrics(options.connection_metrics);
+    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig::from(local_addr))
+        .with_socket_options(options.socket)
+        .with_drain(DrainController::from_lifecycle(lifecycle.clone()))
+        .with_connection_metrics(options.connection_metrics);
     if let Some(budget) = options.connection_budget {
         tcp_config = tcp_config.with_connection_budget(budget);
     }
@@ -100,14 +97,11 @@ pub async fn serve_h2c_with_options(
     let local_addr = listener
         .local_addr()
         .unwrap_or_else(|_| BindConfig::default().socket_addr());
-    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig {
-        host: local_addr.ip(),
-        port: local_addr.port(),
-    })
-    .with_socket_options(options.socket)
-    .with_drain(options.drain)
-    .with_drain_timeout(options.drain_timeout)
-    .with_connection_metrics(options.connection_metrics);
+    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig::from(local_addr))
+        .with_socket_options(options.socket)
+        .with_drain(options.drain)
+        .with_drain_timeout(options.drain_timeout)
+        .with_connection_metrics(options.connection_metrics);
     if let Some(budget) = options.connection_budget {
         tcp_config = tcp_config.with_connection_budget(budget);
     }

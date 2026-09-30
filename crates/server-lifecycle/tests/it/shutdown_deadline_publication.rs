@@ -57,7 +57,7 @@ async fn first_shutdown_deadline_wins() {
         .unwrap();
     let winning_deadline = reports
         .iter()
-        .find(|report| report.as_ref().unwrap().0.total.as_secs() == winner_index + 1)
+        .find(|report| report.as_ref().unwrap().0.total().as_secs() == winner_index + 1)
         .unwrap()
         .as_ref()
         .unwrap()

@@ -313,7 +313,7 @@ impl LifecycleController {
             terminal_phase: self.observation().phase,
             started_at,
             finished_at,
-            remaining_reserve: deadline.remaining().min(deadline.reserve),
+            remaining_reserve: deadline.remaining().min(deadline.reserve()),
         }
     }
 }
