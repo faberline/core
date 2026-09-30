@@ -19,6 +19,7 @@
 //! - `sdd` — library crate re-exports compass for backward compat
 
 mod api;
+mod app;
 mod application;
 mod domain;
 mod infrastructure;
@@ -31,12 +32,11 @@ pub use api::{
 // generate/ module moved to sdd crate (consolidate-codegen)
 
 // Re-export commonly used types (matches the surface previously exposed by sdd)
+pub use app::check::{check_paths, check_paths_with_propagation};
+pub use app::outline::outline;
 pub use application::analysis::request_handler::RequestHandler;
-pub use application::check::check_paths::{check_paths, check_paths_with_propagation};
 pub use application::daemon::config::DaemonConfig;
-pub use application::outline::function_outline::{
-    outline, outline_parsed, FunctionDef, FunctionKind,
-};
+pub use application::outline::function_outline::{outline_parsed, FunctionDef, FunctionKind};
 pub use domain::check::file_result::FileResult;
 pub use domain::check::lint_config::LintConfig;
 pub use domain::codegen::traits::{
@@ -53,6 +53,7 @@ pub use domain::lint::custom::RejectedRule;
 pub use domain::lint::registry::CheckerRegistry;
 pub use domain::syntax::language::Language;
 pub use domain::syntax::parsed_file::{NodeRange, ParsedFile};
+pub use domain::syntax::source_parser::SourceParser;
 pub use infrastructure::daemon::client::DaemonClient;
 pub use infrastructure::syntax::multi_parser::MultiParser;
 pub use infrastructure::watch::file_watcher::{FileWatcher, WatchConfig, WatchEvent};

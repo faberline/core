@@ -1,6 +1,7 @@
 use crate::domain::error::argus_error::{ArgusError, Result};
 use crate::domain::syntax::language::Language;
 use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::source_parser::SourceParser;
 use std::path::Path;
 use tree_sitter::Parser;
 
@@ -109,38 +110,10 @@ impl MultiParser {
         })
     }
 
-    /// Detect language from file path (extension + filename)
+    /// Detect language from file path (extension + filename); see
+    /// [`Language::from_path`].
     pub fn detect_language(path: &Path) -> Option<Language> {
-        // Check filename first (for Dockerfile)
-        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-            if name == "Dockerfile"
-                || name.starts_with("Dockerfile.")
-                || name.ends_with(".dockerfile")
-            {
-                return Some(Language::Dockerfile);
-            }
-        }
-
-        let ext = path.extension()?.to_str()?;
-        match ext {
-            "py" | "pyi" => Some(Language::Python),
-            "ts" | "tsx" => Some(Language::TypeScript),
-            "rs" => Some(Language::Rust),
-            "js" | "jsx" => Some(Language::JavaScript),
-            "go" => Some(Language::Go),
-            "html" | "htm" => Some(Language::Html),
-            "css" => Some(Language::Css),
-            "tf" | "tfvars" => Some(Language::Hcl),
-            "yaml" | "yml" => Some(Language::Yaml),
-            "md" | "markdown" => Some(Language::Markdown),
-            "mdx" => Some(Language::Mdx),
-            "mmd" | "mermaid" => Some(Language::Mermaid),
-            "toml" => Some(Language::Toml),
-            "sql" => Some(Language::Sql),
-            "proto" => Some(Language::Proto),
-            "graphql" | "gql" => Some(Language::GraphQL),
-            _ => None,
-        }
+        Language::from_path(path)
     }
 
     /// Parse source code
@@ -174,5 +147,15 @@ impl MultiParser {
             has_errors,
             is_line_based: false,
         })
+    }
+}
+
+impl SourceParser for MultiParser {
+    fn parse(&mut self, source: &str, language: Language) -> Option<ParsedFile> {
+        MultiParser::parse(self, source, language)
+    }
+
+    fn line_based(&mut self, source: String, language: Language) -> ParsedFile {
+        ParsedFile::line_based(source, language)
     }
 }

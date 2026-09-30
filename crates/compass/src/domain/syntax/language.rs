@@ -1,3 +1,5 @@
+use std::path::Path;
+
 /// Supported languages
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Language {
@@ -21,6 +23,43 @@ pub enum Language {
 }
 
 impl Language {
+    /// Detect the language of a file from its name and extension.
+    ///
+    /// `Dockerfile`, `Dockerfile.*` and `*.dockerfile` are Dockerfiles; any
+    /// other file is matched by extension. Returns `None` for an unknown
+    /// extension or a path with none.
+    pub fn from_path(path: &Path) -> Option<Language> {
+        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+            if name == "Dockerfile"
+                || name.starts_with("Dockerfile.")
+                || name.ends_with(".dockerfile")
+            {
+                return Some(Language::Dockerfile);
+            }
+        }
+
+        let ext = path.extension()?.to_str()?;
+        match ext {
+            "py" | "pyi" => Some(Language::Python),
+            "ts" | "tsx" => Some(Language::TypeScript),
+            "rs" => Some(Language::Rust),
+            "js" | "jsx" => Some(Language::JavaScript),
+            "go" => Some(Language::Go),
+            "html" | "htm" => Some(Language::Html),
+            "css" => Some(Language::Css),
+            "tf" | "tfvars" => Some(Language::Hcl),
+            "yaml" | "yml" => Some(Language::Yaml),
+            "md" | "markdown" => Some(Language::Markdown),
+            "mdx" => Some(Language::Mdx),
+            "mmd" | "mermaid" => Some(Language::Mermaid),
+            "toml" => Some(Language::Toml),
+            "sql" => Some(Language::Sql),
+            "proto" => Some(Language::Proto),
+            "graphql" | "gql" => Some(Language::GraphQL),
+            _ => None,
+        }
+    }
+
     pub fn as_str(&self) -> &'static str {
         match self {
             Language::Python => "python",

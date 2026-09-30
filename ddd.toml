@@ -127,6 +127,7 @@ modules = [
   "crates/cli-std/src/api",
   "crates/cli-std/src/app",
   "crates/compass/src/api",
+  "crates/compass/src/app",
   "crates/openapi-codegen/src/api",
   "crates/raft-runtime/src/api",
   "crates/service-auth/src/api",
@@ -590,10 +591,8 @@ subject = "application->infrastructure"
 paths = [
   "crates/compass/src/application/analysis/file_cache.rs",
   "crates/compass/src/application/analysis/request_handler.rs",
-  "crates/compass/src/application/check/check_paths.rs",
   "crates/compass/src/application/daemon/background_analysis.rs",
   "crates/compass/src/application/daemon/config.rs",
-  "crates/compass/src/application/outline/function_outline.rs",
 ]
 reason = "Moved as-is in P1: RequestHandler owns the on-disk DiskCache and a StubLoader and resolves its cache directories, the file cache, check_paths, the function outline and the request handler build a MultiParser, check_paths calls the source walker, the background loop consumes watch-bridge events, DaemonConfig resolves its socket path through index storage, and GeneratorRegistry dispatches over the CodeGenerator trait that E5 puts in infrastructure. P2: parser, file-walker, cache, stub and path ports in application implemented by infrastructure and injected at construction, a watch event type owned by application, and CodeGenerator moved to application as a port."
 

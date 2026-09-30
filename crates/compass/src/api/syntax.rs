@@ -2,4 +2,4 @@
 
 mod parser;
 
-pub use parser::{Language, MultiParser, ParseError, ParsedFile};
+pub use parser::{Language, MultiParser, ParseError, ParsedFile, SourceParser};

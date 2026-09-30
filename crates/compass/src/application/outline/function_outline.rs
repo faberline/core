@@ -13,7 +13,7 @@
 use crate::domain::error::argus_error::{ArgusError, Result};
 use crate::domain::syntax::language::Language;
 use crate::domain::syntax::parsed_file::ParsedFile;
-use crate::infrastructure::syntax::multi_parser::MultiParser;
+use crate::domain::syntax::source_parser::SourceParser;
 use serde::{Deserialize, Serialize};
 
 /// Whether a definition is a free function or a method the grammar distinguishes.
@@ -65,7 +65,7 @@ fn function_kinds(language: Language) -> &'static [(&'static str, FunctionKind)]
 /// Enumerate the callable definitions in an already-parsed file.
 ///
 /// Pure (no parsing/IO); returns the definitions ordered by `start_line`. Use
-/// this when you already hold a [`ParsedFile`]; otherwise see [`outline`].
+/// this when you already hold a [`ParsedFile`]; otherwise see [`crate::outline`].
 pub fn outline_parsed(parsed: &ParsedFile) -> Vec<FunctionDef> {
     let kinds = function_kinds(parsed.language);
     if kinds.is_empty() {
@@ -94,10 +94,12 @@ pub fn outline_parsed(parsed: &ParsedFile) -> Vec<FunctionDef> {
     defs
 }
 
-/// Parse `source` as `language` and enumerate its callable definitions.
+/// Parse `source` as `language` with `parser` and enumerate its callable
+/// definitions.
 ///
-/// Convenience over [`outline_parsed`] that owns the parse. Errors if the
-/// parser cannot initialize or the grammar produces no tree.
+/// Convenience over [`outline_parsed`] that owns the parse; the public
+/// `compass::outline` calls it with the tree-sitter parser. Errors if the
+/// grammar produces no tree.
 ///
 /// This is a language-agnostic code-intelligence primitive — "what callable
 /// definitions live in this file, and where" — built directly on the
@@ -105,8 +107,11 @@ pub fn outline_parsed(parsed: &ParsedFile) -> Vec<FunctionDef> {
 /// the list (instrumentation, navigation, coverage, doc generation); consumers
 /// layer their own policy on top. `meter`, for example, maps each
 /// [`FunctionDef`] to a probe point.
-pub fn outline(source: &str, language: Language) -> Result<Vec<FunctionDef>> {
-    let mut parser = MultiParser::new()?;
+pub fn outline_with(
+    parser: &mut dyn SourceParser,
+    source: &str,
+    language: Language,
+) -> Result<Vec<FunctionDef>> {
     let parsed = parser.parse(source, language).ok_or_else(|| {
         ArgusError::parser(format!(
             "outline: grammar produced no tree for {}",
@@ -119,6 +124,7 @@ pub fn outline(source: &str, language: Language) -> Result<Vec<FunctionDef>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::outline;
 
     #[test]
     fn rust_functions_and_methods_have_precise_spans() {
