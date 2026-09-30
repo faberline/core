@@ -5,3 +5,6 @@ pub struct CatalogEntry {
     pub key: String,
     pub value: Vec<u8>,
 }
+
+#[cfg(test)]
+mod tests;
