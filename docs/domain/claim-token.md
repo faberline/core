@@ -13,7 +13,9 @@ drift. No core crate depends on it; downstream, keep and loom use it.
 
 - **Scope** — `Scope`: what a token authorizes. `r` is the readable input key
   (`GET /v1/inputs/{r}`), `w` is the writable result key
-  (`PUT /v1/results/{w}`), and `exp` is the expiry in Unix seconds.
+  (`PUT /v1/results/{w}`), and `exp` is the expiry in Unix seconds. The
+  fields are private: `Scope::new(r, w, exp)` builds it and `r()`, `w()` and
+  `exp()` read it. The JSON shape, and so the token bytes, are unchanged.
 - **Claim token** — the text `b64url(json(scope)) "." hex(hmac)`: the scope as
   unpadded URL-safe base64 of its JSON, then the hex HMAC-SHA256 of that
   payload.
@@ -50,7 +52,5 @@ path to keep. The behaviour contract is in
 - **Checker exceptions (P1):** B2 (`base64`): the token format is base64url,
   and `base64` is not on the domain allowlist. The encoding is part of the
   token's wire form, so this stays with a long-term reason.
-- **Tracked for P2:**
-  - `Scope` public fields, built with struct literals by keep and loom
-    (ADR D2).
-  - Bare ids: the input and result keys are `String`s and the expiry a `u64`.
+- **Tracked for P2:** bare ids: the input and result keys are `String`s and
+  the expiry a `u64`.

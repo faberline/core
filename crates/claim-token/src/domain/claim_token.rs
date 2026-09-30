@@ -20,7 +20,7 @@ pub fn verify(secret: &[u8], token: &str, now: u64) -> Option<Scope> {
         return None;
     }
     let scope: Scope = serde_json::from_slice(&B64.decode(payload).ok()?).ok()?;
-    (scope.exp >= now).then_some(scope)
+    (scope.exp() >= now).then_some(scope)
 }
 
 #[cfg(test)]
@@ -28,11 +28,7 @@ mod tests {
     use super::*;
 
     fn scope() -> Scope {
-        Scope {
-            r: "run:a:in".into(),
-            w: "run:a:result".into(),
-            exp: 1000,
-        }
+        Scope::new("run:a:in", "run:a:result", 1000)
     }
 
     #[test]
