@@ -19,8 +19,9 @@ qualified name from the second table; the code keeps its current name.
 | **adapter** | An implementation of a port against real technology, or an inbound handler that turns a protocol request into a use-case call. |
 | **published language** | The types and functions a context offers to other contexts. In a layered context it is the application layer. |
 | **shared kernel** | Code every context may use without declaring a dependency. In core it is `surface`. |
-| **assembly** | Code that wires layers together and belongs to no layer: `lib.rs` and `src/api/`. |
-| **api module** | A public module under `src/api/` holding only `pub use` lines. It keeps a module path whose names the crate root does not re-export. |
+| **assembly** | Code that wires layers together and belongs to no layer: `lib.rs`, the api modules and the composition root. `ddd.toml` lists the `src/api` and `src/app` directories under `[assembly]`. |
+| **api module** | A public module `src/api/<name>.rs` holding only `pub use` lines. It keeps a module path whose names the crate root does not re-export. |
+| **composition root** | `src/app.rs` and `src/app/`: assembly code that builds the infrastructure adapters and passes them to the application layer. Public entry points that need both live here. |
 | **compat facade** | P1's file under `src/compat/` holding only `pub use` lines, so an old public module path kept working after its code moved. P2 deleted each one or made it an api module. |
 | **exception** | A recorded rule break in `ddd.toml`, with the exact files and a reason. |
 
@@ -49,6 +50,7 @@ Each row is one word. Each meaning gets a qualified name for use in prose.
 | | **lifecycle generation** | A counter bumped on each lifecycle phase transition. | server-lifecycle |
 | | **source generation** | The generation of the source a projection was built from. | service-projection |
 | | **object generation** | GCS's object generation, surfaced as `ObjectVersion`. | storage-object |
+| | **archived object version** | `ArchivedObjectVersion`: the object store's version of an archived object, such as a GCS generation or a local content hash, in storage-segment's own type. | storage-segment |
 | snapshot | **Raft snapshot** | The state-machine image that replaces a log prefix. | raft-core, raft-runtime |
 | | **snapshot file** | A sequence-named file in a snapshot store. | storage-durable |
 | | **index snapshot** | `TextIndexSnapshot`: the versioned JSON image of a text index. | index-text |
@@ -81,14 +83,22 @@ Each row is one word. Each meaning gets a qualified name for use in prose.
 | membership | **Raft membership** | `Membership`: voters and learners. | raft-core |
 | | **membership phase** | `MembershipPhase`: where a joint-consensus change stands. | raft-runtime |
 | | **membership policy** | `MembershipPolicy`: a validator for topology changes. | raft-runtime |
-| lease | **leader lease** | A Kubernetes `Lease` used for leader election. | service-k8s |
+| lease | **leader lease** | A Kubernetes `Lease` used for leader election. `LeaderLease` is the crate-internal port that acquires and renews it for an `Election`. | service-k8s |
 | | **command lease** | `CommittedCommandLease`: read-only mapped bytes of one committed command. | raft-runtime |
 | | **connection lease** | A checked-out connection from the h2c manager. | transport-h2c |
 | | **concurrency lease** | `ConcurrencyLease`: a held slot of weighted admission. | service-http |
-| Source | — | Every `*Source` is a port that yields data: `JwksSource`, `TokenSource` (service-auth), `MaterialSource` (peer-tls), `RegistrySource`, `ServerConfigSource` (server-http), `CollectorSource` (service-collector), `ProjectionSource` (service-projection). Always use the full name. | several |
+| Source | — | Most `*Source` names are ports that yield data: `JwksSource` (service-auth), `MaterialSource` (peer-tls), `AccessTokenSource` (service-k8s), `CollectorSource` (service-collector), `ProjectionSource` (service-projection), and the crate-internal `SnapshotSource` and `BearerTokenSource` (service-backup) and `ReleaseSource` (cli-std). `ServerConfigSource` (server-http) is a closure type that yields the active TLS config. `TokenSource` (service-auth) is a token that keeps itself current, and `RegistrySource` (service-auth) names one registry file and its env var. Always use the full name. | several |
+| Parser | — | `SourceParser` (compass) parses source code into a `ParsedFile`; there, *source* means source code, not a data source. `LeafParser` (service-k8s) reads the validity and fingerprint of a PEM leaf certificate. Both are ports. | compass, service-k8s |
+| Generator | — | `CodeGenerator` (compass) emits code for a serialized spec. `KeyAndCsrGenerator` (service-k8s) makes a fresh keypair and a CSR for a certificate profile. Always use the full name. | compass, service-k8s |
+| Error | — | Each context names its own errors. A port that downstream code implements returns an error with a transparent `Other` variant, which `::other()` builds from the implementation's own error (ADR D4): `TcpHandlerError` (server-tcp), `DataRootError` (storage-durable), `ProjectionError` (service-projection), `BackupSinkError` (service-backup). `IssueNumberError` (cli-std) is a validation error: it rejects issue number 0. Always use the full name. | several |
+| node | **syntax node** | A node of a parsed syntax tree. `NodeRange` gives the source range it spans. | compass |
+| | **surface node** | `SurfaceNode`: one node of a surface snapshot. | surface |
+| | **running node** | A running service process whose `/version` and `/healthz` an issue report can include. | cli-std |
+| rule | **checker rule** | A structure or dependency rule of the DDD checker, such as B3. `ddd.toml` exceptions name them. | all |
+| | **lint rule** | A compass rule. `RuleCode` is the code of the rule behind a diagnostic, such as `PY001`. | compass |
 | fingerprint | **token fingerprint** | The first 6 bytes of a token's sha256, for logs. | service-auth |
 | | **certificate fingerprint** | The full sha256 of a leaf certificate. | peer-tls |
-| Clock | **seconds clock / millisecond clock** | service-auth has two clock ports, one per unit. Other crates will gain clock ports in P2; each is named with its context. | service-auth |
+| Clock | **seconds clock / millisecond clock** | service-auth's two clock ports, one per unit: `gcp::Clock` (seconds) for the Google verifier and its JWKS cache, and `k8s::Clock` (milliseconds) for the delegated-auth cache and `TokenSource`. No other core crate defines a clock port: an application layer reads the clock itself (ADR D5) or takes the time as an argument. | service-auth |
 | Topic | **llm topic (v1)** | `cli_std::llm::Topic`: a static help topic. | cli-std |
 | | **llm topic (v2)** | `cli_std::llm::v2::Topic`: a topic in the `cclab.llm.v2` JSON protocol. | cli-std |
 | Application | **application layer** | The DDD layer. | all |
