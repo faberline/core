@@ -27,7 +27,7 @@ pub(crate) struct Runtime {
 
 impl Runtime {
     pub(crate) fn new_fiber(&mut self) -> FiberId {
-        let id = FiberId(self.next_id);
+        let id = FiberId::new(self.next_id);
         self.next_id += 1;
         self.fibers.push(Fiber {
             id,

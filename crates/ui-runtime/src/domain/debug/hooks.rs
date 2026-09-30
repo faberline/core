@@ -1,5 +1,6 @@
 //! A summary of one fiber's hook slots.
 
+use crate::domain::fiber_id::FiberId;
 use crate::domain::hook_slot::HookSlot;
 use crate::domain::runtime::RUNTIME;
 
@@ -16,10 +17,10 @@ pub struct DebugHookSummary {
 /// Returns an empty Vec if the fiber doesn't exist (rather than
 /// panicking — `jet browser hooks <bogus-id>` should be a gentle
 /// error, not a crash).
-pub fn debug_snapshot_hooks(fiber_id: u64) -> Vec<DebugHookSummary> {
+pub fn debug_snapshot_hooks(fiber_id: FiberId) -> Vec<DebugHookSummary> {
     RUNTIME.with(|r| {
         let rt = r.borrow();
-        let Some(fiber) = rt.fibers.iter().find(|f| f.id.0 == fiber_id) else {
+        let Some(fiber) = rt.fibers.iter().find(|f| f.id == fiber_id) else {
             return Vec::new();
         };
         fiber

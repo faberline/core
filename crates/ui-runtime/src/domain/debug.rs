@@ -21,3 +21,6 @@ impl MountHandle {
         });
     }
 }
+
+#[cfg(test)]
+mod tests;

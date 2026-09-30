@@ -16,7 +16,8 @@ TSX-to-Rust transpiler emits calls to its hooks.
   hook slots, a hook cursor reset at the start of every render, and a dirty
   flag.
 - **FiberId** — the identity of a fiber, allocated in increasing order by the
-  runtime.
+  runtime. Its `u64` is private: `FiberId::new` wraps a raw id and `get`
+  returns it.
 - **hook slot** — one positional entry in a fiber: state (used by `use_state`
   and `use_reducer`), memo (`use_memo`, `use_callback`), ref (`use_ref`) or
   effect-once (`use_effect_once`).
@@ -33,7 +34,8 @@ TSX-to-Rust transpiler emits calls to its hooks.
   `set_update_scheduler`; every state write calls it so the renderer can
   coalesce dirty fibers into a frame.
 - **debug summaries** — with the `debug` feature, `debug_snapshot_fibers` and
-  `debug_snapshot_hooks` describe fibers and hook slots for tooling.
+  `debug_snapshot_hooks` describe fibers and hook slots for tooling; both
+  identify a fiber by its `FiberId`.
 
 ## Ports
 
@@ -69,5 +71,6 @@ name is part of jet's API, so every module stays private.
   regenerated the crate, D8), moved the code into one private module per
   concept under `src/domain/`, and deleted the B1 naming exception; the C1
   size warning went with the 693-line file.
-- **Tracked for P2:** bare ids. `FiberId` exposes its `u64`, and the debug API
-  takes and returns fiber ids as bare `u64` (jet's debug bridge passes one).
+- **Debts:** none tracked. P2 made the `FiberId` field private (W5), and the
+  debug API now takes and returns `FiberId`; jet's debug bridge has to
+  convert at its edge with `FiberId::new(raw)` and `id.get()`.
