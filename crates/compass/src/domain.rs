@@ -22,7 +22,6 @@ pub(crate) mod python_inference;
 pub(crate) mod refactoring;
 pub(crate) mod rust_source_scan;
 pub(crate) mod rust_type_system;
-pub(crate) mod search;
 pub(crate) mod semantic;
 pub(crate) mod semantic_model;
 pub(crate) mod semantic_search;

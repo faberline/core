@@ -87,7 +87,7 @@ No other core context depends on compass. guard imports `check_paths` and
 `FunctionKind` and `syntax::Language`. The daemon's JSON-RPC 2.0 methods
 (`check`, `type_at`, `symbols`, `diagnostics`, `hover`, `definition`,
 `references`, `pdg`, `slice`, `impact`, `taint` and housekeeping) and the LSP
-server use `Diagnostic` and `Range` as wire format. Nineteen public modules
+server use `Diagnostic` and `Range` as wire format. Eighteen public modules
 keep their paths because they hold names the root does not re-export
 (`src/api/`), with nested paths such as `server::incremental`, which a doctest
 imports. P2 deleted the old modules `checker`, `outline` and `watch`: every
@@ -105,10 +105,8 @@ function.
   - B2 `regex_lite` in custom lint rules, the config glob matcher, the import
     extractors and TypeScript template-literal matching (E6); P2 switches them
     to `regex`.
-  - B2 `serde_yaml` (Mermaid+ frontmatter), `toml` (the TM001 syntax check),
-    `tracing` (rejected custom rules), and `anyhow` with `bincode`
-    (`SearchIndex` bytes).
-  - B2 `Instant::now` in the six search modes, which time themselves.
+  - B2 `serde_yaml` (Mermaid+ frontmatter), `toml` (the TM001 syntax check)
+    and `tracing` (rejected custom rules).
   - B3 `application->infrastructure` and `domain->infrastructure`: use cases
     and domain engines build a `MultiParser`, load stubs, resolve imports, or
     hold the disk cache themselves; P2 adds parser, stub, cache and path
@@ -137,8 +135,7 @@ function.
   public `.0` (`ScopeId`, `NodeId`), and two unrelated `SymbolId` types.
   `SchemaRegistry::global` is a `OnceLock` singleton. `Range::from_node` takes
   a tree-sitter node: an inherent method in P1, an extension trait in P2. Dead
-  or duplicated code (ADR D7): `search::SearchEngine` duplicates
-  `SemanticSearchEngine` and has no callers; `RefactoringRegistry` and
+  or duplicated code (ADR D7): `RefactoringRegistry` and
   `RefactoringEngine` are two refactoring engines; an unused
   `type_inference::CodeGenerator` struct shares the port's name; `format`,
   `lint::{autofix, custom, embedded_markdown}` and `semantic::types` are

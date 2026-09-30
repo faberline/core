@@ -26,7 +26,7 @@ mod interfaces;
 
 pub use api::{
     check_pipeline, core, diagnostic, format, gen, graph, lens_error, lint, lsp, output,
-    refactoring, schemas, search, semantic, server, spec, storage, syntax, type_inference,
+    refactoring, schemas, semantic, server, spec, storage, syntax, type_inference,
 };
 // generate/ module moved to sdd crate (consolidate-codegen)
 

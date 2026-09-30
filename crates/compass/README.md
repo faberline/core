@@ -57,15 +57,15 @@ PDG-style impact analysis, and structured refactoring operations.
 
 - Root WI: none; this capability predates the tracker.
 - Surfaces: Rust API: `outline`, `outline_parsed`, `type_at`, `hover`,
-  `SearchEngine`, `RefactoringRegistry`, `DeepTypeInferencer`,
-  `PropagationPipeline`; Modules: `semantic`, `graph`, `search`,
-  `type_inference`, `refactoring`
+  `SemanticSearchEngine`, `RefactoringRegistry`, `DeepTypeInferencer`,
+  `PropagationPipeline`; Modules: `semantic`, `graph`, `type_inference`,
+  `refactoring`
 - Gate — behavior: `cargo test -p compass` - configured semantic, type
   inference, search, and refactoring smoke gate
 - Gate: `cargo test -p compass`
 - Source: `crates/compass/src/application/check/pipeline.rs`,
-  `crates/compass/src/application/search/engine.rs`,
-  `crates/compass/src/domain/search/query.rs`,
+  `crates/compass/src/domain/semantic_search/engine.rs`,
+  `crates/compass/src/domain/semantic_search/query.rs`,
   `crates/compass/src/domain/refactoring/engine.rs`,
   `crates/compass/src/domain/semantic.rs`,
   `crates/compass/src/domain/python_inference/inferencer.rs`,
@@ -74,7 +74,7 @@ PDG-style impact analysis, and structured refactoring operations.
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
 | Symbol outline and propagated type query contract | epic | - | `cargo test -p compass`; crates/compass/src/application/check/pipeline.rs; crates/compass/src/application/outline/function_outline.rs |
-| Semantic search and graph query contract | epic | - | `cargo test -p compass`; crates/compass/src/application/search/engine.rs; crates/compass/src/domain/search/query.rs; crates/compass/src/domain/semantic/pdg.rs |
+| Semantic search and graph query contract | epic | - | `cargo test -p compass`; crates/compass/src/domain/semantic_search/engine.rs; crates/compass/src/domain/semantic_search/query.rs; crates/compass/src/domain/semantic/pdg.rs |
 | Structured refactoring contract | epic | - | `cargo test -p compass`; crates/compass/src/domain/refactoring/engine.rs; crates/compass/src/domain/type_refactoring/engine.rs |
 
 ### Spec Parsing And Code Generation

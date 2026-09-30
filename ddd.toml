@@ -519,18 +519,6 @@ reason = "Moved as-is in P1: the peer HTTP handlers and the group registry decod
 
 [[exceptions]]
 rule = "B2"
-subject = "anyhow"
-paths = ["crates/compass/src/domain/search/index.rs"]
-reason = "Moved as-is in P1: SearchIndex::to_bytes and from_bytes serialise the index with bincode and return anyhow::Result. P2: move the byte (de)serialisation into an infrastructure index store with its own error type."
-
-[[exceptions]]
-rule = "B2"
-subject = "bincode"
-paths = ["crates/compass/src/domain/search/index.rs"]
-reason = "Moved as-is in P1: SearchIndex::to_bytes and from_bytes serialise the index with bincode and return anyhow::Result. P2: move the byte (de)serialisation into an infrastructure index store with its own error type."
-
-[[exceptions]]
-rule = "B2"
 subject = "regex_lite"
 paths = [
   "crates/compass/src/domain/checker_config/argus_config.rs",
@@ -545,19 +533,6 @@ rule = "B2"
 subject = "serde_yaml"
 paths = ["crates/compass/src/domain/spec/statemachine/mermaid_plus.rs"]
 reason = "Moved as-is in P1: MermaidPlusGenerator writes the YAML frontmatter with serde_yaml::to_string. P2: move the YAML serialisation behind an infrastructure adapter, or add serde_yaml to the domain allowlist."
-
-[[exceptions]]
-rule = "B2"
-subject = "std::time::Instant::now"
-paths = [
-  "crates/compass/src/domain/search/query/call_hierarchy.rs",
-  "crates/compass/src/domain/search/query/documentation.rs",
-  "crates/compass/src/domain/search/query/implementations.rs",
-  "crates/compass/src/domain/search/query/similar_code.rs",
-  "crates/compass/src/domain/search/query/type_signature.rs",
-  "crates/compass/src/domain/search/query/usages.rs",
-]
-reason = "Moved as-is in P1: DirtyFileTracker stamps changes with Instant::now and each search mode times itself for SearchStats. P2: a Clock port in domain, with application passing the clock or the timestamps in."
 
 [[exceptions]]
 rule = "B2"

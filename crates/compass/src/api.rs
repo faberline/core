@@ -13,7 +13,6 @@ pub mod lsp;
 pub mod output;
 pub mod refactoring;
 pub mod schemas;
-pub mod search;
 pub mod semantic;
 pub mod server;
 pub mod spec;
