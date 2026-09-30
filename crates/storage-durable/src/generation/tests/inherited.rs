@@ -105,7 +105,10 @@ fn inherited_current_proof_expires_after_handles_drop_or_uncertain_commit() {
         io::ErrorKind::Other,
     );
     assert_eq!(
-        store.commit_from_current(staged).unwrap_err().class(),
+        store
+            .commit_from_current_with_publication_guard(staged, || Ok(()))
+            .unwrap_err()
+            .class(),
         CommitFailureClass::CommitUncertain
     );
     assert!(store
@@ -141,7 +144,9 @@ fn inherited_current_proof_expires_after_handles_drop_or_uncertain_commit() {
 #[test]
 fn inherited_commit_skips_only_registered_current_hard_links() {
     let (_directory, injector, store, staged) = inherited_fixture();
-    store.commit_from_current(staged).unwrap();
+    store
+        .commit_from_current_with_publication_guard(staged, || Ok(()))
+        .unwrap();
     let synced: Vec<_> = injector
         .points()
         .into_iter()
@@ -234,14 +239,18 @@ fn inherited_commit_rejects_replaced_or_mutated_or_stale_current_proof() {
     let (directory, _injector, store, staged) = inherited_fixture();
     std::fs::remove_file(staged.path().join("payload")).unwrap();
     std::fs::write(staged.path().join("payload"), b"replacement").unwrap();
-    let error = store.commit_from_current(staged).unwrap_err();
+    let error = store
+        .commit_from_current_with_publication_guard(staged, || Ok(()))
+        .unwrap_err();
     assert_eq!(error.class(), CommitFailureClass::PreCommit);
     assert_eq!(error.step(), CommitStep::ValidateStaging);
     assert_eq!(current_generation(&store), "old");
 
     let (_directory, _injector, store, staged) = inherited_fixture();
     std::fs::write(staged.path().join("payload"), b"changed-in-place").unwrap();
-    let error = store.commit_from_current(staged).unwrap_err();
+    let error = store
+        .commit_from_current_with_publication_guard(staged, || Ok(()))
+        .unwrap_err();
     assert_eq!(error.class(), CommitFailureClass::PreCommit);
     assert_eq!(error.step(), CommitStep::ValidateStaging);
     assert_eq!(current_generation(&store), "old");
@@ -249,7 +258,9 @@ fn inherited_commit_rejects_replaced_or_mutated_or_stale_current_proof() {
     let (_directory, _injector, store, staged) = inherited_fixture();
     let replacement = stage_fixture(&store, "other");
     store.commit(replacement).unwrap();
-    let error = store.commit_from_current(staged).unwrap_err();
+    let error = store
+        .commit_from_current_with_publication_guard(staged, || Ok(()))
+        .unwrap_err();
     assert_eq!(error.class(), CommitFailureClass::PreCommit);
     assert_eq!(error.step(), CommitStep::ValidateCurrent);
     assert_eq!(current_generation(&store), "other");
@@ -258,7 +269,9 @@ fn inherited_commit_rejects_replaced_or_mutated_or_stale_current_proof() {
     let foreign = tempfile::tempdir().unwrap();
     seed_current(foreign.path(), "old");
     let foreign_store = GenerationStore::open(foreign.path()).unwrap();
-    let error = foreign_store.commit_from_current(staged).unwrap_err();
+    let error = foreign_store
+        .commit_from_current_with_publication_guard(staged, || Ok(()))
+        .unwrap_err();
     assert_eq!(error.class(), CommitFailureClass::PreCommit);
     assert_eq!(error.step(), CommitStep::ValidateStaging);
     assert_eq!(current_generation(&store), "old");
@@ -278,7 +291,9 @@ fn inherited_commit_keeps_fresh_and_pointer_failure_classes() {
         },
         io::ErrorKind::Other,
     );
-    let error = store.commit_from_current(staged).unwrap_err();
+    let error = store
+        .commit_from_current_with_publication_guard(staged, || Ok(()))
+        .unwrap_err();
     assert_eq!(error.class(), CommitFailureClass::PreCommit);
     assert_eq!(error.step(), CommitStep::SyncFile);
     assert_eq!(current_generation(&store), "old");
@@ -292,7 +307,9 @@ fn inherited_commit_keeps_fresh_and_pointer_failure_classes() {
         },
         io::ErrorKind::Other,
     );
-    let error = store.commit_from_current(staged).unwrap_err();
+    let error = store
+        .commit_from_current_with_publication_guard(staged, || Ok(()))
+        .unwrap_err();
     assert_eq!(error.class(), CommitFailureClass::PreCommit);
     assert_eq!(error.step(), CommitStep::SyncDirectory);
     assert_eq!(current_generation(&store), "old");
@@ -306,7 +323,9 @@ fn inherited_commit_keeps_fresh_and_pointer_failure_classes() {
         },
         io::ErrorKind::Other,
     );
-    let error = store.commit_from_current(staged).unwrap_err();
+    let error = store
+        .commit_from_current_with_publication_guard(staged, || Ok(()))
+        .unwrap_err();
     assert_eq!(error.class(), CommitFailureClass::CommitUncertain);
     assert_eq!(error.step(), CommitStep::SyncRootAfterCurrent);
     assert_eq!(current_generation(&store), "new");

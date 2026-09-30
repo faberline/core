@@ -9,12 +9,14 @@ fn every_sec_sync_plan_keeps_newer_append_dirty() {
     log.last_sync = Instant::now() - Duration::from_secs(2);
     let plan = log.begin_sync().unwrap().expect("sync plan");
     log.append(2, b"new").unwrap();
-    log.finish_sync(plan).unwrap();
+    plan.sync_off_lock().unwrap();
+    log.complete_sync(plan).unwrap();
     assert!(log.dirty, "a stale plan must not clear a newer append");
 
     log.last_sync = Instant::now() - Duration::from_secs(2);
     let next = log.begin_sync().unwrap().expect("replacement sync plan");
-    log.finish_sync(next).unwrap();
+    next.sync_off_lock().unwrap();
+    log.complete_sync(next).unwrap();
     assert!(
         !log.dirty,
         "the replacement plan clears the current revision"

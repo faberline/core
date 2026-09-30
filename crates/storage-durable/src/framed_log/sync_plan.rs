@@ -11,7 +11,7 @@ use super::observer::FramedLogTrimObserver;
 use super::writer::FramedLogWriter;
 
 /// An EverySec sync captured while the writer lock was held. The file sync is
-/// completed by [`FramedLogWriter::finish_sync`] without holding that lock.
+/// done by [`FramedLogSyncPlan::sync_off_lock`] without holding that lock.
 #[derive(Debug)]
 pub struct FramedLogSyncPlan {
     file: File,
@@ -25,7 +25,8 @@ impl FramedLogWriter {
     /// Prepare an EverySec sync while holding the writer lock.
     ///
     /// The returned file is pinned to the current inode. Callers must invoke
-    /// [`FramedLogWriter::finish_sync`] after releasing any external mutex.
+    /// the plan's `sync_off_lock` after releasing any external mutex, then
+    /// [`FramedLogWriter::complete_sync`] after reacquiring it.
     pub fn begin_sync(&mut self) -> Result<Option<FramedLogSyncPlan>> {
         if self.policy != FsyncPolicy::EverySec
             || (self.trim_observer.is_none() && !self.dirty)
@@ -57,12 +58,6 @@ impl FramedLogWriter {
             self.dirty = false;
         }
         Ok(())
-    }
-
-    /// Synchronous compatibility wrapper.
-    pub fn finish_sync(&mut self, plan: FramedLogSyncPlan) -> Result<()> {
-        plan.sync_off_lock()?;
-        self.complete_sync(plan)
     }
 }
 

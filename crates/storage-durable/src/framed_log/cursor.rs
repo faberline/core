@@ -84,37 +84,6 @@ impl FramedLogCursor {
         Ok(Some(frame))
     }
 
-    /// Read a validated frame through this cursor's pinned file and length.
-    /// The logical offset is unchanged, including when the path was replaced.
-    pub fn reread_frame_at(&mut self, offset: u64) -> Result<Option<LogFrame>> {
-        if offset
-            .checked_add(HEADER_LEN as u64)
-            .is_none_or(|end| end > self.total)
-        {
-            return Ok(None);
-        }
-        let Some(file) = self.file.as_mut() else {
-            return Ok(None);
-        };
-        read_one_frame(file, self.total, offset, &mut self.header)
-            .map(|frame| frame.map(|(seq, payload, _)| LogFrame::new(seq, payload)))
-    }
-
-    /// Reread one mapped frame without changing the replay offset.
-    pub fn reread_mapped_frame_at(&mut self, offset: u64) -> Result<Option<MappedLogFrame>> {
-        if offset
-            .checked_add(HEADER_LEN as u64)
-            .is_none_or(|end| end > self.total)
-        {
-            return Ok(None);
-        }
-        let Some(file) = self.file.as_mut() else {
-            return Ok(None);
-        };
-        read_one_mapped_frame(file, self.total, offset, &mut self.header)
-            .map(|frame| frame.map(|(frame, _)| frame))
-    }
-
     /// Reread a large mapped frame from this cursor's pinned inode and
     /// open-time length without changing the replay offset.
     pub fn reread_large_mapped_frame_at(&mut self, offset: u64) -> Result<Option<MappedLogFrame>> {
