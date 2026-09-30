@@ -4,7 +4,6 @@
 pub mod check_pipeline;
 pub mod core;
 pub mod diagnostic;
-pub mod format;
 pub mod gen;
 pub mod graph;
 pub mod lens_error;

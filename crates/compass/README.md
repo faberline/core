@@ -33,7 +33,7 @@ formats.
 - Root WI: none; this capability predates the tracker.
 - Surfaces: Rust API: `check_paths`, `check_paths_with_propagation`,
   `LintConfig`, `FileResult`, `CheckerRegistry`, `Checker`, `Diagnostic`,
-  `Reporter`; Modules: `syntax`, `lint`, `format`, `output`
+  `Reporter`; Modules: `syntax`, `lint`, `output`
 - Gate — behavior: `cargo test -p compass` - configured parser, checker,
   diagnostic, and output smoke gate
 - Gate: `cargo test -p compass`

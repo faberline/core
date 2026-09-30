@@ -1,11 +1,9 @@
 //! Language-specific checkers
 
 mod asyncapi;
-pub mod autofix;
 mod css;
 pub mod custom;
 mod dockerfile;
-pub mod embedded_markdown;
 mod gitlab_ci;
 mod gitlab_ci_rules;
 mod go;

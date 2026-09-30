@@ -85,7 +85,7 @@ No other core context depends on compass. guard imports `check_paths` and
 `FunctionKind` and `syntax::Language`. The daemon's JSON-RPC 2.0 methods
 (`check`, `type_at`, `symbols`, `diagnostics`, `hover`, `definition`,
 `references`, `pdg`, `slice`, `impact`, `taint` and housekeeping) and the LSP
-server use `Diagnostic` and `Range` as wire format. Seventeen public modules
+server use `Diagnostic` and `Range` as wire format. Sixteen public modules
 keep their paths because they hold names the root does not re-export
 (`src/api/`), with nested paths such as `server::incremental`, which a doctest
 imports. P2 deleted the old modules `checker`, `outline` and `watch`: every
@@ -133,8 +133,7 @@ function.
   public `.0` (`ScopeId`, `NodeId`), and two unrelated `SymbolId` types.
   `SchemaRegistry::global` is a `OnceLock` singleton. `Range::from_node` takes
   a tree-sitter node: an inherent method in P1, an extension trait in P2. Dead
-  or duplicated code (ADR D7): `format`,
-  `lint::{autofix, custom, embedded_markdown}` and `semantic::types` are
-  unused; the `type_inference` Rust and TypeScript modules
-  have no outside users; and dependencies such as `tera`, `heck`, `indexmap`
-  and `crossterm` are never used in source.
+  or duplicated code (ADR D7): `semantic::types` is unused; the
+  `type_inference` Rust and TypeScript modules have no outside users; and
+  dependencies such as `tera`, `heck`, `indexmap` and `crossterm` are never
+  used in source.
