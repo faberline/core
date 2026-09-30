@@ -382,12 +382,6 @@ reason = "Moved as-is in P1: BackupDestination, ScheduledBackupPolicy and Retent
 
 [[exceptions]]
 rule = "B3"
-subject = "interfaces->domain"
-paths = ["crates/service-backup/src/interfaces/llm.rs"]
-reason = "Moved as-is in P1: the LLM topic lists the supported destination schemes straight from the domain SUPPORTED_SCHEMES table so the text cannot drift from the parser. P2: the topic reads the schemes through an application query."
-
-[[exceptions]]
-rule = "B3"
 subject = "infrastructure->application"
 paths = [
   "crates/service-auth/src/infrastructure/google/http.rs",

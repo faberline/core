@@ -1,4 +1,4 @@
-use crate::SUPPORTED_SCHEMES;
+use crate::application::{destination_schemes, SinkSupport};
 
 /// Agent-facing topic describing backup destinations, sinks, and seed fetches.
 pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
@@ -45,7 +45,7 @@ pub fn topic() -> &'static cli_std::llm::Topic {
 /// Static prose companion to the `TopicSection::Generated` destination
 /// section in [`SECTIONED_TOPICS`] — everything from [`TOPIC`]'s body
 /// except the hand-copied scheme list, which the generated section below
-/// derives from [`crate::SUPPORTED_SCHEMES`] instead.
+/// derives from the `destination_schemes` query instead.
 const OWNERSHIP_BOUNDARY: &str = r#"# service-backup shared topic
 
 ## Ownership boundary
@@ -64,25 +64,28 @@ const RESTORE_AND_BOOTSTRAP: &str = r#"## Restore and bootstrap
 destination contract above) for restore or empty-PVC bootstrap. It is a cold
 seed path, not live replica synchronization."#;
 
-/// Render the `## Destination contract` section from
-/// [`crate::SUPPORTED_SCHEMES`] — the same table `BackupDestination::from_uri`
-/// and `sink_from_destination` use — instead of a hand-copied scheme list
-/// (#2494). `sink_available` reports this build's actual linked feature set
-/// via `cfg!`, so a rebuild with a different feature set changes this
-/// section's output without any hand edit.
+/// Render the `## Destination contract` section from the application's
+/// `destination_schemes` query over [`crate::SUPPORTED_SCHEMES`] — the same
+/// table `BackupDestination::from_uri` and `sink_from_destination` use —
+/// instead of a hand-copied scheme list (#2494). Each scheme's sink support
+/// reflects this build's actual linked feature set via `cfg!`, so a rebuild
+/// with a different feature set changes this section's output without any
+/// hand edit.
 fn destination_contract_section() -> String {
     let mut s = String::from(
         "## Destination contract\n\nSupported destination URI schemes in this build:\n\n",
     );
-    for info in SUPPORTED_SCHEMES {
-        let availability = if info.sink_available {
-            "sink linked into this build"
-        } else {
-            "parses, but no sink linked — uploads fail loud until rebuilt with the adapter feature"
+    for view in destination_schemes() {
+        let availability = match view.support() {
+            SinkSupport::Linked => "sink linked into this build",
+            SinkSupport::ParseOnly => {
+                "parses, but no sink linked — uploads fail loud until rebuilt with the adapter feature"
+            }
         };
         s.push_str(&format!(
             "- `{}` — {} ({availability})\n",
-            info.scheme, info.description
+            view.scheme(),
+            view.description()
         ));
     }
     s.push_str(
@@ -115,6 +118,7 @@ pub fn sectioned_topic() -> &'static cli_std::llm::SectionedTopic {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SUPPORTED_SCHEMES;
 
     #[test]
     fn llm_topic_is_nonempty() {
