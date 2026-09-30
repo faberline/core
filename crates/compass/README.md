@@ -91,13 +91,13 @@ traits and registry-backed generators for Python and Rust code targets.
 - Gate: `cargo test -p compass`
 - Source: `crates/compass/src/domain/spec/ir.rs`,
   `crates/compass/src/infrastructure/spec_import/`,
-  `crates/compass/src/infrastructure/codegen/traits.rs`,
+  `crates/compass/src/domain/codegen/traits.rs`,
   `crates/compass/src/application/codegen/registry.rs`
 
 | Work Root | Kind | WI | Gate / Evidence |
 |---|---|---:|---|
 | Spec parser and state-machine validation contract | epic | - | `cargo test -p compass`; crates/compass/src/domain/spec/ir.rs; crates/compass/src/infrastructure/spec_import/; crates/compass/src/domain/spec/statemachine.rs |
-| Python and Rust generator registry contract | epic | - | `cargo test -p compass`; crates/compass/src/infrastructure/codegen/traits.rs; crates/compass/src/application/codegen/registry.rs |
+| Python and Rust generator registry contract | epic | - | `cargo test -p compass`; crates/compass/src/domain/codegen/traits.rs; crates/compass/src/application/codegen/registry.rs |
 
 ### Daemon Watch And Incremental Analysis
 

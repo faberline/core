@@ -591,7 +591,6 @@ paths = [
   "crates/compass/src/application/analysis/file_cache.rs",
   "crates/compass/src/application/analysis/request_handler.rs",
   "crates/compass/src/application/check/check_paths.rs",
-  "crates/compass/src/application/codegen/registry.rs",
   "crates/compass/src/application/daemon/background_analysis.rs",
   "crates/compass/src/application/daemon/config.rs",
   "crates/compass/src/application/outline/function_outline.rs",

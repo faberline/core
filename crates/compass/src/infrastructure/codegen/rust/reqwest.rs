@@ -2,11 +2,11 @@
 //!
 //! Generates async HTTP client from OpenAPI specs.
 
-use crate::domain::spec::ir::{DataModelSpec, EndpointDef, HttpMethod, RestApiSpec};
-use crate::infrastructure::codegen::rust::type_to_rust;
-use crate::infrastructure::codegen::traits::{
+use crate::domain::codegen::traits::{
     CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
 };
+use crate::domain::spec::ir::{DataModelSpec, EndpointDef, HttpMethod, RestApiSpec};
+use crate::infrastructure::codegen::rust::type_to_rust;
 
 /// Reqwest (HTTP client) code generator
 pub struct ReqwestGenerator;

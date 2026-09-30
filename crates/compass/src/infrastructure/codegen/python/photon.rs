@@ -2,11 +2,11 @@
 //!
 //! Generates async HTTP client classes from OpenAPI specs.
 
-use crate::domain::spec::ir::{DataModelSpec, EndpointDef, HttpMethod, RestApiSpec};
-use crate::infrastructure::codegen::python::type_to_python;
-use crate::infrastructure::codegen::traits::{
+use crate::domain::codegen::traits::{
     CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
 };
+use crate::domain::spec::ir::{DataModelSpec, EndpointDef, HttpMethod, RestApiSpec};
+use crate::infrastructure::codegen::python::type_to_python;
 
 /// Photon (HTTP client) code generator
 pub struct PhotonGenerator;

@@ -7,7 +7,7 @@
 //! SpecIR types now live in `sdd::generate`. This registry accepts
 //! `serde_json::Value` to avoid a circular crate dependency.
 
-use crate::infrastructure::codegen::traits::{
+use crate::domain::codegen::traits::{
     CodeGenerator, GenContext, GenError, GenResult, GeneratedCode,
 };
 
@@ -107,7 +107,7 @@ mod tests {
             Ok(vec![GeneratedCode::new(
                 "stub",
                 "// generated",
-                crate::infrastructure::codegen::traits::Language::Rust,
+                crate::domain::codegen::traits::Language::Rust,
             )])
         }
 

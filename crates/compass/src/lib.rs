@@ -39,6 +39,9 @@ pub use application::outline::function_outline::{
 };
 pub use domain::check::file_result::FileResult;
 pub use domain::check::lint_config::LintConfig;
+pub use domain::codegen::traits::{
+    CodeGenerator, GenContext, GenError, GenResult, GeneratedCode, TechStack,
+};
 pub use domain::config::argus_config::{ArgusConfig, LanguageConfig};
 pub use domain::diagnostic::model::{
     Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range,
@@ -50,9 +53,6 @@ pub use domain::lint::custom::RejectedRule;
 pub use domain::lint::registry::CheckerRegistry;
 pub use domain::syntax::language::Language;
 pub use domain::syntax::parsed_file::{NodeRange, ParsedFile};
-pub use infrastructure::codegen::traits::{
-    CodeGenerator, GenContext, GenError, GenResult, GeneratedCode, TechStack,
-};
 pub use infrastructure::daemon::client::DaemonClient;
 pub use infrastructure::syntax::multi_parser::MultiParser;
 pub use infrastructure::watch::file_watcher::{FileWatcher, WatchConfig, WatchEvent};

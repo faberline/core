@@ -3,6 +3,7 @@
 pub(crate) mod ast_editing;
 pub(crate) mod check;
 pub(crate) mod checker_config;
+pub(crate) mod codegen;
 pub(crate) mod config;
 pub(crate) mod cross_file;
 pub(crate) mod diagnostic;

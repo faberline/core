@@ -2,13 +2,13 @@
 //!
 //! Generates PostgreSQL ORM models using cclab.titan.
 
+use crate::domain::codegen::traits::{
+    CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
+};
 use crate::domain::spec::ir::{
     DataModelSpec, FieldDef, ModelDef, RelationType, Relationship, StringFormat,
 };
 use crate::infrastructure::codegen::python::type_to_python;
-use crate::infrastructure::codegen::traits::{
-    CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
-};
 use crate::type_inference::Type;
 
 /// Titan (PostgreSQL ORM) code generator

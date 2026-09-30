@@ -2,11 +2,11 @@
 //!
 //! Generates BaseModel subclasses with Field constraints.
 
-use crate::domain::spec::ir::{DataModelSpec, EnumDef, FieldDef, ModelDef, StringFormat};
-use crate::infrastructure::codegen::python::{format_to_python_type, type_to_python};
-use crate::infrastructure::codegen::traits::{
+use crate::domain::codegen::traits::{
     CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
 };
+use crate::domain::spec::ir::{DataModelSpec, EnumDef, FieldDef, ModelDef, StringFormat};
+use crate::infrastructure::codegen::python::{format_to_python_type, type_to_python};
 
 /// Shield code generator
 pub struct ShieldGenerator;

@@ -2,13 +2,13 @@
 //!
 //! Generates Rust structs with serde derives.
 
+use crate::domain::codegen::traits::{
+    CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
+};
 use crate::domain::spec::ir::{
     DataModelSpec, EnumDef, EnumValue, FieldDef, ModelDef, StringFormat,
 };
 use crate::infrastructure::codegen::rust::{format_to_rust_type, type_to_rust};
-use crate::infrastructure::codegen::traits::{
-    CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
-};
 use crate::type_inference::Type;
 
 /// Serde code generator
