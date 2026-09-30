@@ -21,20 +21,12 @@ toml = "0.8"
 anyhow.workspace = true
 thiserror.workspace = true
 
-# File operations
-walkdir.workspace = true
-glob = "0.3"
-ignore = "0.4"
-dirs = "5"
-fs2 = "0.4"
-
 # Regex
 regex.workspace = true
 regex-lite = "0.1"
 
 # Async runtime (LSP server + Argus daemon)
 tokio.workspace = true
-async-trait.workspace = true
 
 # AST parsing (tree-sitter)
 tree-sitter = "0.25"
@@ -68,32 +60,11 @@ jwalk.workspace = true
 # Logging
 tracing.workspace = true
 
-# UUID
-uuid = { version = "1", features = ["v4", "serde"] }
-
 # JSON Schema (infrastructure/schema_validation/ for K8s + GitLab CI validation)
 jsonschema = "0.29"
 
-# Hashing (cache content addressing)
-sha2 = "0.10"
-
-# Terminal output
-crossterm = "0.28"
-colored = "3"
-
-# Template engine (for code generators in infrastructure/codegen/)
-tera = "1"
-heck = "0.5"
-indexmap = { version = "2", features = ["serde"] }
-
-# Markdown parsing (domain/spec/)
-pulldown-cmark = "0.12"
-
-# HTTP client (infrastructure/typeshed/ downloads + infrastructure/codegen/rust/reqwest.rs generator)
+# HTTP client (infrastructure/typeshed/ downloads)
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
-
-# Date/time
-chrono.workspace = true
 
 [dev-dependencies]
 tempfile = "3"
