@@ -4,17 +4,12 @@ use crate::{Callback, Element, Props, SurfaceSnapshot};
 fn snapshot_captures_semantic_surface_tree() {
     let surface = Element::intrinsic(
         "main",
-        Props {
-            id: Some("app".to_string()),
-            ..Default::default()
-        },
+        Props::default().with_id("app"),
         vec![Element::intrinsic(
             "button",
-            Props {
-                id: Some("save".to_string()),
-                on_click: Some(Callback::new(|_| {})),
-                ..Default::default()
-            },
+            Props::default()
+                .with_id("save")
+                .with_on_click(Callback::new(|_| {})),
             vec![Element::text("Save")],
         )],
     )

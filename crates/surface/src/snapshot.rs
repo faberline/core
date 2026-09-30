@@ -75,7 +75,7 @@ fn push_snapshot_nodes(
             props,
             children,
         } => {
-            let semantic_id = props.id.clone().unwrap_or_else(|| node_id.clone());
+            let semantic_id = props.id().map_or_else(|| node_id.clone(), str::to_string);
             let name = accessible_name(*tag, props, children);
             snapshot.nodes.push(SurfaceNode {
                 node_id: node_id.clone(),
@@ -121,9 +121,9 @@ fn push_snapshot_nodes(
                 parent_id,
                 kind: SurfaceNodeKind::Component,
                 tag: None,
-                component: Some(component.name.to_string()),
+                component: Some(component.name().to_string()),
                 role: None,
-                name: Some(component.name.to_string()),
+                name: Some(component.name().to_string()),
                 text: None,
                 props: SurfaceProps::default(),
                 bounds: None,
@@ -146,7 +146,7 @@ fn push_snapshot_nodes(
 fn role_for(tag: &str, props: &Props) -> Option<String> {
     let role = match tag {
         "button" => "button",
-        "input" if props.input_type.as_deref() == Some("checkbox") => "checkbox",
+        "input" if props.input_type() == Some("checkbox") => "checkbox",
         "input" | "textarea" => "textbox",
         "label" => "label",
         "main" => "main",
@@ -163,8 +163,8 @@ fn role_for(tag: &str, props: &Props) -> Option<String> {
 }
 
 fn accessible_name(tag: &str, props: &Props, children: &[Element]) -> Option<String> {
-    if let Some(label) = props.aria_label.as_ref().filter(|s| !s.is_empty()) {
-        return Some(label.clone());
+    if let Some(label) = props.aria_label().filter(|s| !s.is_empty()) {
+        return Some(label.to_string());
     }
     match tag {
         "button" | "label" | "td" | "th" => {
@@ -176,11 +176,10 @@ fn accessible_name(tag: &str, props: &Props, children: &[Element]) -> Option<Str
             (!text.is_empty()).then(|| text.to_string())
         }
         "input" | "textarea" => props
-            .value
-            .as_ref()
+            .value()
             .filter(|s| !s.is_empty())
-            .or_else(|| props.placeholder.as_ref().filter(|s| !s.is_empty()))
-            .cloned(),
+            .or_else(|| props.placeholder().filter(|s| !s.is_empty()))
+            .map(str::to_string),
         _ => None,
     }
 }

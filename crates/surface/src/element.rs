@@ -47,8 +47,8 @@ impl Element {
             Element::Intrinsic {
                 props, children, ..
             } => {
-                if props.id.as_deref() == Some(target_id) {
-                    return props.on_click.clone();
+                if props.id() == Some(target_id) {
+                    return props.on_click().cloned();
                 }
                 children.iter().find_map(|c| c.find_on_click(target_id))
             }

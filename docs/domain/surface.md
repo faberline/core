@@ -16,11 +16,14 @@ TSX-to-Rust output build on it.
   conditional null) or a `Fragment` (a transparent list).
 - **Props** — the host props shared by runtimes and renderers: id, class name,
   style, value, input type, placeholder, checked, ARIA label, `html_for`,
-  disabled, and three event callbacks.
+  disabled, and three event callbacks. The fields are private: callers build
+  props with `Props::default()` and `with_<field>` builders and read them with
+  getters.
 - **Callback** — `Callback<P>`, a cloneable event handler typed by its payload:
   `()` for click, `String` for change, `bool` for checked change.
 - **Component** — a named render function (`ComponentFn`) with type-erased
-  props. A framework runtime expands it into an element tree.
+  props, built with `Component::new`. A framework runtime expands it into an
+  element tree by calling `Component::render`.
 - **surface snapshot** — `SurfaceSnapshot`: a schema-versioned, serializable,
   flat list of `SurfaceNode`s captured from an element tree.
 - **SurfaceNode** — one snapshot node: its structural `node_id`, its
@@ -28,7 +31,7 @@ TSX-to-Rust output build on it.
   component), tag or component name, a11y role, accessible name, text,
   `SurfaceProps` and optional bounds.
 - **semantic id** — the key comparators and tests align nodes by: the
-  element's `props.id` when set, otherwise its structural path.
+  element's `Props::id` when set, otherwise its structural path.
 - **a11y role** — the accessibility role a snapshot derives from a tag, such as
   `button`, `checkbox`, `textbox`, `navigation` or `listitem`.
 - **SurfaceProps** — the serializable projection of `Props`; each callback is
@@ -73,5 +76,7 @@ other context.
 
   serde on the snapshot types is allowed by policy (the snapshot is the wire
   format) and is not an exception.
-- **Tracked for P2:** public fields that jet builds with struct literals,
-  including in the Rust it generates from TSX: `Props` and `Component`.
+- **Debts:** none tracked. P2 made the `Props` and `Component` fields
+  private (D2). jet, including the Rust it generates from TSX, has to build
+  them with `Props::default().with_<field>(…)` and `Component::new` instead
+  of struct literals.

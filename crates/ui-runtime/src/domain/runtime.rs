@@ -70,7 +70,7 @@ fn with_current_fiber<R>(f: impl FnOnce(&mut Fiber) -> R) -> R {
 
 pub(crate) fn render_fiber(fiber_id: FiberId, component: Component) -> Element {
     RUNTIME.with(|r| r.borrow_mut().begin_render(fiber_id));
-    let tree = (component.render)(&component.props);
+    let tree = component.render();
     RUNTIME.with(|r| r.borrow_mut().end_render());
     tree
 }

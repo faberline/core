@@ -9,7 +9,7 @@ use crate::props::Props;
 pub struct SurfaceNode {
     /// Stable structural path inside the rendered tree.
     pub node_id: String,
-    /// Comparator/test alignment key. Uses `props.id` when available,
+    /// Comparator/test alignment key. Uses `Props::id` when set,
     /// otherwise falls back to the structural path.
     pub semantic_id: String,
     pub parent_id: Option<String>,
@@ -51,19 +51,19 @@ pub struct SurfaceProps {
 impl From<&Props> for SurfaceProps {
     fn from(props: &Props) -> Self {
         Self {
-            id: props.id.clone(),
-            class_name: props.class_name.clone(),
-            style: props.style.clone(),
-            value: props.value.clone(),
-            input_type: props.input_type.clone(),
-            placeholder: props.placeholder.clone(),
-            checked: props.checked,
-            aria_label: props.aria_label.clone(),
-            html_for: props.html_for.clone(),
-            disabled: props.disabled,
-            has_on_click: props.on_click.is_some(),
-            has_on_change: props.on_change.is_some(),
-            has_on_checked_change: props.on_checked_change.is_some(),
+            id: props.id().map(str::to_string),
+            class_name: props.class_name().map(str::to_string),
+            style: props.style().map(str::to_string),
+            value: props.value().map(str::to_string),
+            input_type: props.input_type().map(str::to_string),
+            placeholder: props.placeholder().map(str::to_string),
+            checked: props.checked(),
+            aria_label: props.aria_label().map(str::to_string),
+            html_for: props.html_for().map(str::to_string),
+            disabled: props.disabled(),
+            has_on_click: props.on_click().is_some(),
+            has_on_change: props.on_change().is_some(),
+            has_on_checked_change: props.on_checked_change().is_some(),
         }
     }
 }
