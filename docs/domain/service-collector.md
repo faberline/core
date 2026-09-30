@@ -25,12 +25,16 @@ downstream, sift runs its collectors on it.
   with `save_json_checkpoint` and read with `load_json_checkpoint`.
 - **Delivery receipt** — `DeliveryReceipt`: how many records of a batch the
   sink accepted and how many it saw as duplicates.
+  `DeliveryReceipt::new(accepted, duplicates)` builds it, and `accepted()`
+  and `duplicates()` read it.
 - **Delivery failure** — `DeliveryFailure`: a message that is either
   `retryable` or `permanent`.
 - **Source commit** — acknowledging the cursors of a batch to the source,
   with `CommitStats` (accepted, duplicates, rejected).
 - **Source progress** — `SourceProgress`: start and final offsets and the
-  bytes and sources the source reports lost.
+  bytes and sources the source reports lost. `SourceProgress::new(start_offset,
+  final_offset, lost_bytes, lost_sources)` builds it, and getters named after
+  the fields read it.
 - **RuntimeConfig** — the collector's `RuntimeConfig`: batch size, record
   byte limit, `RetryPolicy`, whether to follow the source, and the follow
   poll interval. The fields are private: `RuntimeConfig::try_new(batch_size,
@@ -91,7 +95,8 @@ paths `service_collector::run_collector`, `service_collector::RecordDecoder`,
   `#[async_trait]`, which is not on the domain allowlist, so it sits in the
   application layer; the runtime and the file helpers are outside the domain.
 - **Tracked for P2:**
-  - Public fields built with struct literals by sift (ADR D2):
-    `SourceProgress` and `DeliveryReceipt`. `CommitStats`, `RetryPolicy` and
-    `RunReport` also expose public fields.
   - Bare ids: offsets and counters are `u64`.
+- **Public fields, not changed in P2:** `CommitStats` and `RunReport` are
+  built only inside this crate. `RetryPolicy` has public fields, but sift
+  builds it with `RetryPolicy::new`, and the runtime checks it again before
+  the first read.

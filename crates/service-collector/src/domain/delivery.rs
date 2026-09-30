@@ -1,7 +1,25 @@
+/// What a sink reports for one delivered batch.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct DeliveryReceipt {
-    pub accepted: u64,
-    pub duplicates: u64,
+    accepted: u64,
+    duplicates: u64,
+}
+
+impl DeliveryReceipt {
+    pub fn new(accepted: u64, duplicates: u64) -> Self {
+        Self {
+            accepted,
+            duplicates,
+        }
+    }
+
+    pub fn accepted(&self) -> u64 {
+        self.accepted
+    }
+
+    pub fn duplicates(&self) -> u64 {
+        self.duplicates
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, thiserror::Error)]

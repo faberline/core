@@ -5,12 +5,40 @@ pub struct CommitStats {
     pub rejected: u64,
 }
 
+/// Where a source started and has reached, and what it reports lost.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SourceProgress {
-    pub start_offset: u64,
-    pub final_offset: u64,
-    pub lost_bytes: u64,
-    pub lost_sources: u64,
+    start_offset: u64,
+    final_offset: u64,
+    lost_bytes: u64,
+    lost_sources: u64,
+}
+
+impl SourceProgress {
+    pub fn new(start_offset: u64, final_offset: u64, lost_bytes: u64, lost_sources: u64) -> Self {
+        Self {
+            start_offset,
+            final_offset,
+            lost_bytes,
+            lost_sources,
+        }
+    }
+
+    pub fn start_offset(&self) -> u64 {
+        self.start_offset
+    }
+
+    pub fn final_offset(&self) -> u64 {
+        self.final_offset
+    }
+
+    pub fn lost_bytes(&self) -> u64 {
+        self.lost_bytes
+    }
+
+    pub fn lost_sources(&self) -> u64 {
+        self.lost_sources
+    }
 }
 
 pub trait CollectorRecord {

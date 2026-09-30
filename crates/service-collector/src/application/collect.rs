@@ -105,16 +105,16 @@ where
             .commit(
                 &cursors,
                 CommitStats {
-                    accepted: delivered.accepted,
-                    duplicates: delivered.duplicates,
+                    accepted: delivered.accepted(),
+                    duplicates: delivered.duplicates(),
                     rejected: rejections.len() as u64,
                 },
             )
             .map_err(|error| anyhow!("collector checkpoint commit failed: {error}"))?;
 
         report.lines += cursors.len() as u64;
-        report.accepted += delivered.accepted;
-        report.duplicates += delivered.duplicates;
+        report.accepted += delivered.accepted();
+        report.duplicates += delivered.duplicates();
         report.rejected += rejections.len() as u64;
         report.progress = source.progress();
 
@@ -151,8 +151,8 @@ where
         match sink.send(records).await {
             Ok(receipt) => {
                 let covered = receipt
-                    .accepted
-                    .checked_add(receipt.duplicates)
+                    .accepted()
+                    .checked_add(receipt.duplicates())
                     .ok_or_else(|| anyhow!("collector delivery receipt counters overflowed"))?;
                 let expected = u64::try_from(records.len())
                     .map_err(|_| anyhow!("collector batch size does not fit in u64"))?;
@@ -160,8 +160,8 @@ where
                     return Err(anyhow!(
                         "collector delivery receipt covered {covered} of {expected} records \
                          (accepted={}, duplicates={}); refusing to commit source cursors",
-                        receipt.accepted,
-                        receipt.duplicates
+                        receipt.accepted(),
+                        receipt.duplicates()
                     ));
                 }
                 return Ok(receipt);

@@ -88,10 +88,7 @@ struct ShortReceiptSink;
 #[async_trait::async_trait]
 impl BatchSink<String> for ShortReceiptSink {
     async fn send(&self, _records: &[String]) -> Result<DeliveryReceipt, DeliveryFailure> {
-        Ok(DeliveryReceipt {
-            accepted: 1,
-            duplicates: 0,
-        })
+        Ok(DeliveryReceipt::new(1, 0))
     }
 }
 
@@ -103,10 +100,7 @@ impl BatchSink<String> for Sink {
         if *attempts == 1 {
             return Err(DeliveryFailure::retryable("temporary"));
         }
-        Ok(DeliveryReceipt {
-            accepted: records.len() as u64,
-            duplicates: 0,
-        })
+        Ok(DeliveryReceipt::new(records.len() as u64, 0))
     }
 }
 
@@ -231,10 +225,7 @@ impl BatchSink<String> for OutageSink {
         if attempts.len() <= self.failures {
             return Err(DeliveryFailure::retryable("unavailable"));
         }
-        Ok(DeliveryReceipt {
-            accepted: records.len() as u64,
-            duplicates: 0,
-        })
+        Ok(DeliveryReceipt::new(records.len() as u64, 0))
     }
 }
 
