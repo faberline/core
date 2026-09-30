@@ -35,17 +35,17 @@ fn fixed_fact() -> String {
     "the sky is blue".to_string()
 }
 
-const SECTIONED: &[SectionedTopic] = &[SectionedTopic {
-    id: "workflow",
-    summary: "how it works",
-    sections: &[
+const SECTIONED: &[SectionedTopic] = &[SectionedTopic::new(
+    "workflow",
+    "how it works",
+    &[
         TopicSection::Prose("# intro prose"),
         TopicSection::Generated {
             id: "fact",
             render: fixed_fact,
         },
     ],
-}];
+)];
 
 #[test]
 fn static_topic_unchanged_behavior() {
@@ -79,14 +79,14 @@ fn conformance_helper_catches_empty_generated_section() {
     fn empty() -> String {
         String::new()
     }
-    const BROKEN: &[SectionedTopic] = &[SectionedTopic {
-        id: "broken",
-        summary: "has a dead generator",
-        sections: &[TopicSection::Generated {
+    const BROKEN: &[SectionedTopic] = &[SectionedTopic::new(
+        "broken",
+        "has a dead generator",
+        &[TopicSection::Generated {
             id: "dead",
             render: empty,
         }],
-    }];
+    )];
     let result = std::panic::catch_unwind(|| assert_topics_render(BROKEN));
     assert!(
         result.is_err(),

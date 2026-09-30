@@ -31,9 +31,10 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
   release asset `<project>-<target>.tar.gz` and the binary's path inside it.
 - **llm topic (v1)** — `llm::Topic`: a static help topic with an id, a summary
   and a body, built with the `const fn` `Topic::new` and read through getters
-  of the same names. A `SectionedTopic` is made of `TopicSection`s. Each
-  section is either fixed prose or a generated section that renders at call
-  time. `Format` selects Markdown or JSON output.
+  of the same names. A `SectionedTopic` (built with the `const fn`
+  `SectionedTopic::new`) is made of `TopicSection`s. Each section is either
+  fixed prose or a generated section that renders at call time. `Format`
+  selects Markdown or JSON output.
 - **llm topic (v2)** — `llm::v2::Topic`: a `Task` paired with a `Runbook`.
   - The `Task` says when to use the topic, what it requires, reads and
     produces, its `Risk`, and its contract references.
@@ -175,8 +176,9 @@ jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
     - `upgrade::Options` and the issue option structs, in the CLIs of beam,
       cap, courier, defer, jet, keep, loom, lumen, mamba, mesh, pgpool, relay,
       sift, tape and vat;
-    - `SectionedTopic` and `TopicSection`, in tape;
     - the v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, in lumen.
+  - `TopicSection` is an enum and keeps its public variants; tape builds its
+    `Generated` variant with named fields.
   - `anyhow` in public signatures, including the `CliModule::execute` port
     that jet, mamba and meter implement (ADR D4).
   - The `issue` and `upgrade` handlers print their results directly. Moving the

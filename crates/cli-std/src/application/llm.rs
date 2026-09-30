@@ -58,9 +58,39 @@ pub enum TopicSection {
 /// static body. Render it with [`render_sectioned`], which produces the same
 /// outline/detail/JSON shapes as [`render`] does for [`Topic`].
 pub struct SectionedTopic {
-    pub id: &'static str,
-    pub summary: &'static str,
-    pub sections: &'static [TopicSection],
+    id: &'static str,
+    summary: &'static str,
+    sections: &'static [TopicSection],
+}
+
+impl SectionedTopic {
+    /// A topic with its id, one-line summary and ordered sections.
+    pub const fn new(
+        id: &'static str,
+        summary: &'static str,
+        sections: &'static [TopicSection],
+    ) -> Self {
+        Self {
+            id,
+            summary,
+            sections,
+        }
+    }
+
+    /// The id that `--topic <id>` selects.
+    pub const fn id(&self) -> &'static str {
+        self.id
+    }
+
+    /// The one-line summary shown in the outline.
+    pub const fn summary(&self) -> &'static str {
+        self.summary
+    }
+
+    /// The sections, in render order.
+    pub const fn sections(&self) -> &'static [TopicSection] {
+        self.sections
+    }
 }
 
 /// One [`TopicSection`] already resolved to owned content — the internal
@@ -95,11 +125,11 @@ impl RenderableTopic for Topic {
 
 impl RenderableTopic for SectionedTopic {
     fn topic_id(&self) -> &'static str {
-        self.id
+        self.id()
     }
 
     fn render_sections(&self) -> Vec<RenderedSection> {
-        resolve_sections(self.sections)
+        resolve_sections(self.sections())
     }
 }
 
@@ -273,7 +303,7 @@ pub fn render_sectioned(
             Format::Json => {
                 let ts: Vec<_> = topics
                     .iter()
-                    .map(|t| serde_json::json!({ "id": t.id, "summary": t.summary }))
+                    .map(|t| serde_json::json!({ "id": t.id(), "summary": t.summary() }))
                     .collect();
                 serde_json::to_string_pretty(&serde_json::json!({
                     "project": project, "version": version, "topics": ts,
@@ -281,21 +311,21 @@ pub fn render_sectioned(
             }
         });
     }
-    let Some(t) = topics.iter().find(|t| t.id == topic) else {
-        let ids: Vec<&str> = topics.iter().map(|t| t.id).collect();
+    let Some(t) = topics.iter().find(|t| t.id() == topic) else {
+        let ids: Vec<&str> = topics.iter().map(|t| t.id()).collect();
         anyhow::bail!(
             "unknown llm topic '{topic}'. Try: outline, {}",
             ids.join(", ")
         );
     };
-    let sections = resolve_sections(t.sections);
+    let sections = resolve_sections(t.sections());
     let body = join_sections(&sections);
     Ok(match format {
         Format::Md => body,
         Format::Json => serde_json::to_string_pretty(&serde_json::json!({
             "project": project,
-            "topic": t.id,
-            "summary": t.summary,
+            "topic": t.id(),
+            "summary": t.summary(),
             "body": body,
             "sections": sections
                 .iter()
@@ -308,7 +338,7 @@ pub fn render_sectioned(
 fn outline_md_sectioned(project: &str, topics: &[SectionedTopic]) -> String {
     let mut s = outline_header(project);
     for t in topics {
-        s.push_str(&format!("- `{}` — {}\n", t.id, t.summary));
+        s.push_str(&format!("- `{}` — {}\n", t.id(), t.summary()));
     }
     s.push_str(&standard_commands_footer(project));
     s

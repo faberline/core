@@ -94,10 +94,10 @@ fn destination_contract_section() -> String {
 /// [`cli_std::llm::SectionedTopic`] form of [`TOPIC`] (#2494). One topic per
 /// slice element, matching the `&[SectionedTopic]` shape
 /// `cli_std::llm::render_sectioned`/`assert_topics_render` expect.
-pub const SECTIONED_TOPICS: &[cli_std::llm::SectionedTopic] = &[cli_std::llm::SectionedTopic {
-    id: "service-backup",
-    summary: "Shared backup destination, policy, sink, runner, and bootstrap-object contract.",
-    sections: &[
+pub const SECTIONED_TOPICS: &[cli_std::llm::SectionedTopic] = &[cli_std::llm::SectionedTopic::new(
+    "service-backup",
+    "Shared backup destination, policy, sink, runner, and bootstrap-object contract.",
+    &[
         cli_std::llm::TopicSection::Prose(OWNERSHIP_BOUNDARY),
         cli_std::llm::TopicSection::Generated {
             id: "destination-contract",
@@ -105,7 +105,7 @@ pub const SECTIONED_TOPICS: &[cli_std::llm::SectionedTopic] = &[cli_std::llm::Se
         },
         cli_std::llm::TopicSection::Prose(RESTORE_AND_BOOTSTRAP),
     ],
-}];
+)];
 
 /// Return the shared backup topic in [`cli_std::llm::SectionedTopic`] form.
 pub fn sectioned_topic() -> &'static cli_std::llm::SectionedTopic {
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn sectioned_topic_matches_static_topic_identity() {
-        assert_eq!(sectioned_topic().id, TOPIC.id());
-        assert_eq!(sectioned_topic().summary, TOPIC.summary());
+        assert_eq!(sectioned_topic().id(), TOPIC.id());
+        assert_eq!(sectioned_topic().summary(), TOPIC.summary());
     }
 }
