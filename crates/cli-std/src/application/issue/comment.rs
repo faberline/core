@@ -43,7 +43,7 @@ pub struct CommentOptions {
 impl CommentOptions {
     /// Flags for a comment on issue `number`, with every other flag unset.
     /// Rejects 0, which names no issue.
-    pub fn try_new(number: u64) -> Result<Self, IssueNumberError> {
+    pub fn try_new(number: u64) -> std::result::Result<Self, IssueNumberError> {
         Ok(Self {
             number: check_issue_number(number)?,
             message: None,
