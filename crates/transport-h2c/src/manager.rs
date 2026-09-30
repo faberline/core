@@ -37,6 +37,7 @@ use tokio::sync::{OwnedSemaphorePermit, RwLock, Semaphore};
 
 use crate::conn::ManagedConn;
 use crate::error::{H2cError, Result};
+use crate::http_method::is_safe_method;
 use slots::connect_tracked;
 use supervisor::supervise;
 
@@ -291,13 +292,6 @@ impl H2cManager {
     async fn grow_one(&self) -> Result<Arc<ManagedConn>> {
         connect_tracked(&self.inner).await
     }
-}
-
-fn is_safe_method(method: &Method) -> bool {
-    matches!(
-        *method,
-        Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE
-    )
 }
 
 /// An in-flight reservation on a connection. Holds the connection alive for the

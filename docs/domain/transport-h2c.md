@@ -66,6 +66,5 @@ the crate's llm topic through `llm::topic`.
 ## Exceptions and debts
 
 - **Checker exceptions (P1):** None.
-- **Tracked for P2:** the safe-method check exists twice, `is_safe_method` in
-  both the manager and the server side (ADR D7). server-http builds
-  `ConnectionOptions` with struct literals.
+- **Tracked for P2:** server-http builds `ConnectionOptions` with struct
+  literals.
