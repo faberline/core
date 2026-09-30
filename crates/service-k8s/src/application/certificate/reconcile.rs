@@ -22,9 +22,7 @@ use crate::domain::certificate::issuer::{
     IssuanceRequest, Issuer, IssuerError, IssuerId, KeyAndCsrGenerator,
 };
 use crate::domain::certificate::profile::{CertificateProfile, InstanceScope};
-use crate::domain::certificate::projection::{
-    Owner, TrustBundle, CERT_KEY, PRIVATE_KEY_KEY, TRUST_BUNDLE_KEY,
-};
+use crate::domain::certificate::projection::{Owner, TrustBundle};
 use crate::domain::certificate::secret_layout::{
     material_secret, read_state, trust_bundle_secret, LeafParser,
 };
@@ -267,6 +265,3 @@ fn requeue_for(action: &Action, now: DateTime<Utc>, failures: u32) -> Duration {
         _ => retry_after(failures),
     }
 }
-
-/// Keys a caller should expect to find in a fully projected Secret.
-pub const PROJECTED_KEYS: [&str; 3] = [CERT_KEY, PRIVATE_KEY_KEY, TRUST_BUNDLE_KEY];

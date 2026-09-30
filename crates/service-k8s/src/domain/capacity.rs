@@ -108,12 +108,6 @@ pub struct ShardSplitPlan {
     pub max_shards_reached: bool,
 }
 
-impl ShardSplitPlan {
-    pub fn requires_split(self) -> bool {
-        self.desired_shard_count > self.current_shard_count
-    }
-}
-
 /// A valid whole-layer capacity decision.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ReplicaLayerPlan {
@@ -122,15 +116,6 @@ pub struct ReplicaLayerPlan {
     pub desired_replicas_per_shard: u32,
     pub current_total_pods: u32,
     pub desired_total_pods: u32,
-}
-
-impl ReplicaLayerPlan {
-    /// A replica-layer change is also a Raft membership change. Callers must
-    /// not apply the StatefulSet replica delta before the membership workflow
-    /// has admitted/promoted or demoted/removed the affected members.
-    pub fn requires_membership_change(self) -> bool {
-        self.current_replicas_per_shard != self.desired_replicas_per_shard
-    }
 }
 
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]

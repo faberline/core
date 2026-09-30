@@ -45,10 +45,6 @@ impl NetworkPeerPlan {
         Self::Any
     }
 
-    pub fn same_namespace() -> Self {
-        Self::SameNamespace
-    }
-
     pub fn same_namespace_pods(selector: LabelSet) -> Self {
         Self::Pods {
             namespace: None,
@@ -68,13 +64,6 @@ impl NetworkPeerPlan {
             cidr: cidr.into(),
             except: Vec::new(),
         }
-    }
-
-    pub fn with_except(mut self, cidr: impl Into<String>) -> Self {
-        if let Self::IpBlock { except, .. } = &mut self {
-            except.push(cidr.into());
-        }
-        self
     }
 
     fn render(&self, namespace: &str) -> Value {

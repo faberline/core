@@ -54,9 +54,6 @@ pub const LIFECYCLE_LABEL_KEYS: [&str; 3] = [
     "app.kubernetes.io/component",
 ];
 
-/// Alias for `StoreError` to maintain module compatibility.
-pub type KubernetesStoreError = StoreError;
-
 /// Classify a `kube::Error` into a typed `StoreError`.
 pub fn classify_kube_error(err: &kube::Error) -> StoreError {
     match err {

@@ -47,9 +47,9 @@ pub mod issuer {
 }
 pub mod kubernetes_store {
     pub use crate::infrastructure::certificate::kubernetes_store::{
-        classify_kube_error, prepare_ssa_patch, KubernetesSecretStore, KubernetesStoreError,
-        FIELD_MANAGER, LIFECYCLE_ANNOTATION_KEYS, LIFECYCLE_DATA_KEYS, LIFECYCLE_LABEL_KEYS,
-        RBAC_VERBS, REQUIRED_RBAC_VERBS,
+        classify_kube_error, prepare_ssa_patch, KubernetesSecretStore, FIELD_MANAGER,
+        LIFECYCLE_ANNOTATION_KEYS, LIFECYCLE_DATA_KEYS, LIFECYCLE_LABEL_KEYS, RBAC_VERBS,
+        REQUIRED_RBAC_VERBS,
     };
 }
 pub mod profile {
@@ -70,7 +70,7 @@ pub mod projection {
 }
 pub mod reconcile {
     pub use crate::application::certificate::reconcile::{
-        Outcome, ReconcileError, Reconciler, RuntimeReport, PROJECTED_KEYS,
+        Outcome, ReconcileError, Reconciler, RuntimeReport,
     };
     pub use crate::domain::certificate::secret_store::{
         SecretStore, StoreError, StoreErrorKind, StoredSecret,
@@ -101,8 +101,8 @@ pub use issuer::{
     RcgenCsrGenerator,
 };
 pub use kubernetes_store::{
-    classify_kube_error, prepare_ssa_patch, KubernetesSecretStore, KubernetesStoreError,
-    FIELD_MANAGER, RBAC_VERBS, REQUIRED_RBAC_VERBS,
+    classify_kube_error, prepare_ssa_patch, KubernetesSecretStore, FIELD_MANAGER, RBAC_VERBS,
+    REQUIRED_RBAC_VERBS,
 };
 pub use profile::{
     CertificateIdentity, CertificateProfile, ExtendedUsage, InstanceScope, ProfileError, Purpose,

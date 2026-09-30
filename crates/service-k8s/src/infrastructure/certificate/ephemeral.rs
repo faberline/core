@@ -89,11 +89,6 @@ impl EphemeralIssuer {
         *self.fail_next.lock().expect("issuer failure switch") = Some(reason.into());
     }
 
-    /// The root's PEM — what verifiers need in order to accept its leaves.
-    pub fn anchor_pem(&self) -> String {
-        self.root.pem()
-    }
-
     fn sign(&self, request: IssuanceRequest) -> Result<IssuedMaterial, IssuerError> {
         if let Some(reason) = self.fail_next.lock().expect("issuer failure switch").take() {
             return Err(IssuerError::Upstream(reason));

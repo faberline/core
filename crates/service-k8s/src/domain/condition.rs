@@ -49,15 +49,6 @@ impl ConditionStatus {
             Self::Unknown => "Unknown",
         }
     }
-
-    /// `True`/`False` from a plain predicate — the common case.
-    pub fn from_bool(value: bool) -> Self {
-        if value {
-            Self::True
-        } else {
-            Self::False
-        }
-    }
 }
 
 /// A condition as a service computes it: everything except the clock.

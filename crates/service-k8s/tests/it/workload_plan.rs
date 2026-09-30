@@ -43,7 +43,7 @@ fn one_typed_plan_renders_service_deployment_and_default_deny_network_policy() {
     plan.add_network_policy(
         NetworkPolicyPlan::new("sample-query", "query", selector).with_ingress(
             NetworkRulePlan::new(
-                vec![NetworkPeerPlan::same_namespace()],
+                vec![NetworkPeerPlan::SameNamespace],
                 vec![NetworkPortPlan::tcp(7380)],
             ),
         ),
