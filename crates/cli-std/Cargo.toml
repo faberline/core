@@ -11,6 +11,8 @@ path = "src/lib.rs"
 [dependencies]
 anyhow = { workspace = true }
 serde_json = { workspace = true }
+# The typed errors of the domain ports.
+thiserror = { workspace = true }
 semver = { workspace = true }
 # Pure decode/verify (no openssl); always available so the offline paths build.
 sha2 = "0.10"

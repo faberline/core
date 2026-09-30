@@ -3,11 +3,14 @@ use anyhow::Result;
 use crate::ToolInfo;
 
 #[cfg(feature = "online")]
-use super::{client::http_client, repo::split_repo_owner_name};
+use super::repo::split_repo_owner_name;
 #[cfg(feature = "online")]
-use crate::{
-    domain::issue::url::{courier_search_url, github_search_url},
-    infrastructure::issue::courier_api::courier_get,
+use crate::domain::{
+    issue::{
+        tracker::{CourierApi, GitHubApi, TrackerAccess},
+        url::{courier_search_url, github_search_url},
+    },
+    remote::RemoteError,
 };
 
 /// Flags for `issue search`.
@@ -31,14 +34,23 @@ impl Default for SearchOptions {
     }
 }
 
-/// `issue search` — list/search this tool's issues (filtered to `app:<name>`).
+/// `issue search` — list/search this tool's issues (filtered to
+/// `app:<name>`). `open` builds the HTTP client; `access` says whether to go
+/// through courier.
 #[cfg(feature = "online")]
-pub async fn search(tool: &ToolInfo, opts: SearchOptions) -> Result<()> {
-    use anyhow::Context;
+pub(crate) async fn search<A>(
+    tool: &ToolInfo,
+    opts: SearchOptions,
+    access: &impl TrackerAccess,
+    open: impl FnOnce() -> Result<A, RemoteError>,
+) -> Result<()>
+where
+    A: GitHubApi + CourierApi,
+{
     let label = tool.issue_label();
-    let client = http_client(tool)?;
+    let api = open()?;
 
-    let v: serde_json::Value = if let Some(courier_url) = crate::resolve_courier_url() {
+    let v: serde_json::Value = if let Some(courier_url) = access.courier_url() {
         let (owner, name) = split_repo_owner_name(tool.repo)?;
         let mut q = format!("label:\"{label}\"");
         if let Some(text) = opts.query.as_deref() {
@@ -48,11 +60,8 @@ pub async fn search(tool: &ToolInfo, opts: SearchOptions) -> Result<()> {
             }
         }
         let url = courier_search_url(&courier_url, owner, name, &opts.state, &q, opts.limit);
-        courier_get(&client, &url)
+        api.courier_get_json(&url, "courier issue search response")
             .await?
-            .json()
-            .await
-            .context("parse courier issue search response")?
     } else {
         let mut q = format!("repo:{} is:issue label:\"{}\"", tool.repo, label);
         if opts.state != "all" {
@@ -65,11 +74,7 @@ pub async fn search(tool: &ToolInfo, opts: SearchOptions) -> Result<()> {
             }
         }
         let url = github_search_url(&q, opts.limit);
-        crate::github_get(&client, &url)
-            .await?
-            .json()
-            .await
-            .context("parse issue search response")?
+        api.get_json(&url, "issue search response").await?
     };
 
     let items = v.get("items").and_then(|i| i.as_array());

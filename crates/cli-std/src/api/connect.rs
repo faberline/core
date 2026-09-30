@@ -8,7 +8,7 @@
 //! `apps/lumen/src/bin/lumen.rs`'s `connect`/`resolve_token` for the
 //! reference thin adapter.
 
-pub use crate::application::connect::{resolve_cr_tokens_secret, resolve_token};
+pub use crate::app::connect::{resolve_cr_tokens_secret, resolve_token};
 pub use crate::domain::connect::{
     cr_tokens_secret, select_token, Role, TokenClaims, TOKEN_REGISTRY_SECRET_KEY,
 };

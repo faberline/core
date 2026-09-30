@@ -1,8 +1,6 @@
 //! The issue verbs (create, comment, search, view), their flags, and the
 //! diagnostics, labels and terminal output they share.
 
-#[cfg(feature = "online")]
-mod client;
 pub(crate) mod comment;
 pub(crate) mod create;
 pub(crate) mod diagnostics;

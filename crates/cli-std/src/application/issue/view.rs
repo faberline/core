@@ -3,34 +3,37 @@ use anyhow::Result;
 use crate::ToolInfo;
 
 #[cfg(feature = "online")]
-use super::{client::http_client, repo::split_repo_owner_name};
+use super::repo::split_repo_owner_name;
 #[cfg(feature = "online")]
-use crate::{
-    domain::issue::url::{courier_view_url, github_view_url},
-    infrastructure::issue::courier_api::courier_get,
+use crate::domain::{
+    issue::{
+        tracker::{CourierApi, GitHubApi, TrackerAccess},
+        url::{courier_view_url, github_view_url},
+    },
+    remote::RemoteError,
 };
 
-/// `issue view` — print a single issue by number.
+/// `issue view` — print a single issue by number. `open` builds the HTTP
+/// client; `access` says whether to go through courier.
 #[cfg(feature = "online")]
-pub async fn view(tool: &ToolInfo, number: u64) -> Result<()> {
-    use anyhow::Context;
-    let client = http_client(tool)?;
+pub(crate) async fn view<A>(
+    tool: &ToolInfo,
+    number: u64,
+    access: &impl TrackerAccess,
+    open: impl FnOnce() -> Result<A, RemoteError>,
+) -> Result<()>
+where
+    A: GitHubApi + CourierApi,
+{
+    let api = open()?;
 
-    let v: serde_json::Value = if let Some(courier_url) = crate::resolve_courier_url() {
+    let v: serde_json::Value = if let Some(courier_url) = access.courier_url() {
         let (owner, name) = split_repo_owner_name(tool.repo)?;
         let url = courier_view_url(&courier_url, owner, name, number);
-        courier_get(&client, &url)
-            .await?
-            .json()
-            .await
-            .context("parse courier issue response")?
+        api.courier_get_json(&url, "courier issue response").await?
     } else {
         let url = github_view_url(tool.repo, number);
-        crate::github_get(&client, &url)
-            .await?
-            .json()
-            .await
-            .context("parse issue response")?
+        api.get_json(&url, "issue response").await?
     };
 
     let state = v.get("state").and_then(|s| s.as_str()).unwrap_or("?");

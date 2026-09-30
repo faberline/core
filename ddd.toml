@@ -125,6 +125,7 @@ path = "crates/surface/src"
 [assembly]
 modules = [
   "crates/cli-std/src/api",
+  "crates/cli-std/src/app",
   "crates/compass/src/api",
   "crates/openapi-codegen/src/api",
   "crates/raft-runtime/src/api",
@@ -460,19 +461,6 @@ rule = "B3"
 subject = "interfaces->domain"
 paths = ["crates/service-backup/src/interfaces/llm.rs"]
 reason = "Moved as-is in P1: the LLM topic lists the supported destination schemes straight from the domain SUPPORTED_SCHEMES table so the text cannot drift from the parser. P2: the topic reads the schemes through an application query."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/cli-std/src/application/connect.rs",
-  "crates/cli-std/src/application/issue/comment.rs",
-  "crates/cli-std/src/application/issue/create.rs",
-  "crates/cli-std/src/application/issue/search.rs",
-  "crates/cli-std/src/application/issue/view.rs",
-  "crates/cli-std/src/application/upgrade.rs",
-]
-reason = "Moved as-is in P1: the connect, issue and upgrade use cases call the kubectl, GitHub, courier, terminal-prompt and self-install adapters directly. P2: define ports in domain that infrastructure implements, and inject them into the use cases."
 
 [[exceptions]]
 rule = "B2"

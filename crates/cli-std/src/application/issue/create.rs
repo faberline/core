@@ -11,17 +11,18 @@ use crate::ToolInfo;
 use super::output::note_offline_build;
 #[cfg(feature = "online")]
 use super::{
-    client::http_client,
     output::{note_no_credential, print_created_issue},
     repo::split_repo_owner_name,
 };
 #[cfg(feature = "online")]
-use crate::{
-    domain::issue::{payload::issue_payload, url::courier_create_url},
-    infrastructure::issue::{
-        courier_api::submit_issue_via_courier, github_api::submit_issue,
-        node_status::fetch_node_status,
+use crate::domain::{
+    issue::{
+        payload::issue_payload,
+        tracker::{CourierApi, GitHubApi, NodeProbe, TrackerAccess},
+        url::courier_create_url,
     },
+    prompt::Confirm,
+    remote::RemoteError,
 };
 
 /// Flags for `issue create`.
@@ -38,15 +39,26 @@ pub struct CreateOptions {
     pub yes: bool,
 }
 
-/// `issue create` — file (or preview) a structured issue.
+/// `issue create` — file (or preview) a structured issue. `open` builds the
+/// HTTP client; `access` says whether to go through courier and which GitHub
+/// token to use; `prompt` asks before filing.
 #[cfg(feature = "online")]
-pub async fn create(tool: &ToolInfo, opts: CreateOptions) -> Result<()> {
+pub(crate) async fn create<A>(
+    tool: &ToolInfo,
+    opts: CreateOptions,
+    access: &impl TrackerAccess,
+    prompt: &impl Confirm,
+    open: impl FnOnce() -> Result<A, RemoteError>,
+) -> Result<()>
+where
+    A: GitHubApi + CourierApi + NodeProbe,
+{
     let repo = resolve_repo(tool, opts.repo.as_deref()).to_string();
     let labels = report_labels(tool, &opts.label);
-    let client = http_client(tool)?;
+    let api = open()?;
 
     let node = match opts.url.as_deref() {
-        Some(url) => Some(fetch_node_status(&client, url).await),
+        Some(url) => Some(api.node_status(url).await),
         None => None,
     };
     let body = assemble_body(
@@ -59,35 +71,31 @@ pub async fn create(tool: &ToolInfo, opts: CreateOptions) -> Result<()> {
         return Ok(());
     }
 
-    if let Some(courier_url) = crate::resolve_courier_url() {
-        if !opts.yes && !crate::confirm(&format!("file this issue to {repo}?"))? {
+    if let Some(courier_url) = access.courier_url() {
+        if !opts.yes && !prompt.confirm(&format!("file this issue to {repo}?"))? {
             println!("aborted");
             println!("next: done");
             return Ok(());
         }
         let (owner, name) = split_repo_owner_name(&repo)?;
         let url = courier_create_url(&courier_url, owner, name);
-        let created =
-            submit_issue_via_courier(&client, &url, &issue_payload(&opts.title, &body, &labels))
-                .await?;
+        let created = api
+            .submit_issue_via_courier(&url, &issue_payload(&opts.title, &body, &labels))
+            .await?;
         print_created_issue(&created, &labels);
         return Ok(());
     }
 
-    match crate::resolve_github_token() {
+    match access.github_token() {
         Some(token) => {
-            if !opts.yes && !crate::confirm(&format!("file this issue to {repo}?"))? {
+            if !opts.yes && !prompt.confirm(&format!("file this issue to {repo}?"))? {
                 println!("aborted");
                 println!("next: done");
                 return Ok(());
             }
-            let created = submit_issue(
-                &client,
-                &repo,
-                &token,
-                &issue_payload(&opts.title, &body, &labels),
-            )
-            .await?;
+            let created = api
+                .submit_issue(&repo, &token, &issue_payload(&opts.title, &body, &labels))
+                .await?;
             print_created_issue(&created, &labels);
         }
         None => {

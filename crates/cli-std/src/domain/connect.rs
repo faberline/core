@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
+pub(crate) mod kubectl;
+
 /// The `token-registry.json` key every token-registry Secret stores its
 /// payload under (see `lumen llm --topic auth`'s Secret shape).
 pub const TOKEN_REGISTRY_SECRET_KEY: &str = "token-registry.json";
@@ -63,4 +65,50 @@ pub fn select_token(
             .is_some_and(|granted| granted.covers(role))
             .then(|| token.clone())
     })
+}
+
+/// The bearer-secret half of a token-registry document, whichever shape it is
+/// written in.
+///
+/// A registry may be namespaced — `{"tokens": {…}, "identities": {…}}` — or the
+/// older flat map of secret to claims. Only `tokens` is a presentable
+/// credential: an `identities` entry names an email an external provider
+/// vouches for, and a CLI cannot present an email as a bearer token.
+///
+/// The discriminator has to match `service_auth::Registry::parse` exactly, or a
+/// registry the server reads one way is read the other way here. It is
+/// duplicated rather than shared because `service-auth` depends on `cli-std`,
+/// not the reverse; the two are pinned together by
+/// `both_registry_shapes_resolve_the_same_token`.
+pub(crate) fn bearer_secrets(
+    bytes: &[u8],
+) -> Result<HashMap<String, TokenClaims>, TokenRegistryError> {
+    let doc: serde_json::Value =
+        serde_json::from_slice(bytes).map_err(TokenRegistryError::Parse)?;
+    let map = doc.as_object().ok_or(TokenRegistryError::NotAnObject)?;
+    // Namespaced only when every key is a section name AND no top-level value
+    // is itself a claims object — otherwise a flat registry whose single secret
+    // is literally spelled `tokens` would be misread as a section.
+    let namespaced = map.keys().all(|key| key == "tokens" || key == "identities")
+        && !map.values().any(|value| value.get("subject").is_some());
+    let tokens = if namespaced {
+        map.get("tokens").cloned().unwrap_or(serde_json::json!({}))
+    } else {
+        doc
+    };
+    serde_json::from_value(tokens).map_err(TokenRegistryError::BearerSecrets)
+}
+
+/// A token-registry document that could not be read.
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum TokenRegistryError {
+    /// The document is not JSON.
+    #[error("parse token-registry.json")]
+    Parse(#[source] serde_json::Error),
+    /// The document is JSON, but not an object.
+    #[error("token-registry.json must be a JSON object")]
+    NotAnObject,
+    /// The bearer secrets do not have the claims shape.
+    #[error("parse token-registry.json bearer secrets")]
+    BearerSecrets(#[source] serde_json::Error),
 }

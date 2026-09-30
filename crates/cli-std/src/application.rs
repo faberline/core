@@ -11,3 +11,6 @@ pub(crate) mod llm;
 pub(crate) mod registry;
 pub(crate) mod tool_info;
 pub(crate) mod upgrade;
+
+#[cfg(all(test, feature = "online"))]
+mod port_tests;

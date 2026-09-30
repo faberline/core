@@ -27,12 +27,21 @@
 //! exact request shape each verb hands to those builders, never by a live
 //! round trip. A case that needs a real response does not belong in this crate.
 
-pub use crate::application::issue::comment::{comment, CommentOptions};
-pub use crate::application::issue::create::{create, CreateOptions};
+#[cfg(feature = "online")]
+pub use crate::app::issue::{comment, create, search, view};
+#[cfg(not(feature = "online"))]
+pub use crate::application::issue::comment::comment;
+pub use crate::application::issue::comment::CommentOptions;
+#[cfg(not(feature = "online"))]
+pub use crate::application::issue::create::create;
+pub use crate::application::issue::create::CreateOptions;
 pub use crate::application::issue::diagnostics::{followup_comment_body, render_diagnostics};
 pub use crate::application::issue::labels::report_labels;
 pub use crate::application::issue::repo::resolve_repo;
-pub use crate::application::issue::search::{search, SearchOptions};
+#[cfg(not(feature = "online"))]
+pub use crate::application::issue::search::search;
+pub use crate::application::issue::search::SearchOptions;
+#[cfg(not(feature = "online"))]
 pub use crate::application::issue::view::view;
 pub use crate::domain::issue::body::assemble_body;
 pub use crate::domain::issue::payload::{comment_payload, issue_payload};

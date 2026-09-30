@@ -65,6 +65,33 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
 - **`RenderableTopic`** — how a v1 topic renders its sections. `Topic` and
   `SectionedTopic` implement it.
 
+The connect, issue and upgrade use cases reach the outside through ports that
+the domain defines and infrastructure implements. They are crate-internal: no
+downstream code implements them.
+- **`Kubectl`** (`k8s`) — reads a cluster object as JSON, and the decoded data
+  of a Secret key. `KubectlCli` runs the `kubectl` binary.
+- **`TrackerAccess`** (`online`) — the courier URL and the GitHub token, read
+  when a verb needs them. `EnvTracker` reads the environment and
+  `gh auth token`.
+- **`GitHubApi`**, **`CourierApi`** and **`NodeProbe`** (`online`) — the GitHub
+  issue endpoints, courier's `/v1/issues/...` endpoints, and the status of a
+  running node.
+- **`ReleaseSource`** (`online`) — the tool's GitHub releases and their asset
+  downloads. `HttpClient` implements it and the three ports above.
+- **`Confirm`** (`online`) — the yes-or-no question before a verb changes
+  anything. `TerminalPrompt` asks on the terminal.
+- **`SelfInstall`** (`online`) — replaces the running binary. `SelfReplace`
+  writes a sibling file and renames it over the executable.
+
+The port errors (`KubectlError`, `TokenRegistryError`, `RemoteError`,
+`PromptError`, `InstallError`) keep the messages of the `anyhow` context they
+replace; the public entry points still return `anyhow::Result`.
+
+The composition root, `src/app/`, holds the public entry points
+(`issue::{create, comment, search, view}`, `upgrade::run`,
+`connect::{resolve_token, resolve_cr_tokens_secret}`): each builds the
+adapters and calls its use case. Their signatures are unchanged.
+
 ## Invariants
 
 - **Version selection:**
@@ -137,12 +164,9 @@ jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** B3 `application->infrastructure`: the connect,
-  issue and upgrade use cases call the kubectl, GitHub, courier,
-  terminal-prompt and self-install adapters directly. P2 defines ports in the
-  domain and injects the adapters. The upgrade version rules use `semver`,
-  which is not on the domain allowlist, so they sit in the application layer
-  and need no exception.
+- **Checker exceptions:** none. The upgrade version rules use `semver`, which
+  is not on the domain allowlist, so they sit in the application layer and need
+  no exception.
 - **Tracked for P2:**
   - Public fields built with struct literals (ADR D2):
     - `ToolInfo`, `llm::Topic`, `upgrade::Options` and the issue option

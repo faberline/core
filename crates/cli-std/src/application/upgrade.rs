@@ -3,6 +3,13 @@ use anyhow::{bail, Context, Result};
 use semver::Version;
 use std::io::Read;
 
+#[cfg(feature = "online")]
+use crate::domain::{
+    prompt::Confirm,
+    release::{ReleaseSource, SelfInstall},
+    remote::RemoteError,
+};
+
 /// Flags for an upgrade run.
 #[derive(Clone, Debug, Default)]
 pub struct Options {
@@ -104,18 +111,22 @@ fn check_next_command(tool: &ToolInfo, current: &Version, selected: &Version) ->
     }
 }
 
-/// Run `<tool> upgrade`. Offline builds (no `online` feature) only support the
-/// install path through a clear error; `--check` still degrades clearly.
+/// Run `<tool> upgrade`. `open` builds the HTTP client once the installed
+/// version parses; `prompt` asks before installing; `installer` replaces the
+/// running binary.
 #[cfg(feature = "online")]
-pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
+pub(crate) async fn run<A: ReleaseSource>(
+    tool: &ToolInfo,
+    opts: Options,
+    prompt: &impl Confirm,
+    installer: &impl SelfInstall,
+    open: impl FnOnce() -> Result<A, RemoteError>,
+) -> Result<()> {
     let prefix = tool.tag_prefix();
     let current = Version::parse(tool.version).context("parse current version")?;
-    let client = reqwest::Client::builder()
-        .user_agent(format!("{}-upgrade/{}", tool.project, tool.version))
-        .build()
-        .context("build HTTP client")?;
+    let api = open()?;
 
-    let tags = list_release_tags(&client, tool.repo).await?;
+    let tags = list_release_tags(&api, tool.repo).await?;
     let Some((tag, selected)) = select_version(&tags, &prefix, opts.tag.as_deref()) else {
         if opts.check && opts.tag.is_none() {
             println!("current: {current}");
@@ -164,17 +175,18 @@ pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
     }
 
     let asset = tool.asset_name();
-    let (tar_url, sha_url) = asset_urls(&client, tool.repo, &tag, &asset).await?;
+    let (tar_url, sha_url) = asset_urls(&api, tool.repo, &tag, &asset).await?;
 
-    if !opts.yes && !crate::confirm(&format!("upgrade {} {current} → {selected}?", tool.project))?
+    if !opts.yes && !prompt.confirm(&format!("upgrade {} {current} → {selected}?", tool.project))?
     {
         println!("aborted");
         println!("next: done");
         return Ok(());
     }
 
-    let tar_bytes = crate::download_bytes(&client, &tar_url).await?;
-    let expected = crate::download_text(&client, &sha_url)
+    let tar_bytes = api.download_bytes(&tar_url).await?;
+    let expected = api
+        .download_text(&sha_url)
         .await?
         .split_whitespace()
         .next()
@@ -185,7 +197,7 @@ pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
     }
 
     let bin = extract_binary(&tar_bytes, &tool.inner_binary_path())?;
-    crate::install_over_self(&bin, &format!("{}-upgrade", tool.project))?;
+    installer.install_over_self(&bin, &format!("{}-upgrade", tool.project))?;
     println!("upgraded {current} → {selected}");
     println!("next: done");
     Ok(())
@@ -208,13 +220,8 @@ pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
 }
 
 #[cfg(feature = "online")]
-async fn list_release_tags(client: &reqwest::Client, repo: &str) -> Result<Vec<String>> {
-    let url = format!("https://api.github.com/repos/{repo}/releases?per_page=100");
-    let value: serde_json::Value = crate::github_get(client, &url)
-        .await?
-        .json()
-        .await
-        .context("parse releases")?;
+async fn list_release_tags(api: &impl ReleaseSource, repo: &str) -> Result<Vec<String>> {
+    let value = api.releases(repo).await?;
     Ok(value
         .as_array()
         .map(|arr| {
@@ -227,17 +234,12 @@ async fn list_release_tags(client: &reqwest::Client, repo: &str) -> Result<Vec<S
 
 #[cfg(feature = "online")]
 async fn asset_urls(
-    client: &reqwest::Client,
+    api: &impl ReleaseSource,
     repo: &str,
     tag: &str,
     asset: &str,
 ) -> Result<(String, String)> {
-    let url = format!("https://api.github.com/repos/{repo}/releases/tags/{tag}");
-    let value: serde_json::Value = crate::github_get(client, &url)
-        .await?
-        .json()
-        .await
-        .context("parse release")?;
+    let value = api.release(repo, tag).await?;
     let assets = value.get("assets").and_then(|a| a.as_array());
     let find = |name: &str| -> Option<String> {
         assets?.iter().find_map(|a| {

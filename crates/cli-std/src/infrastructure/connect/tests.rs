@@ -1,6 +1,10 @@
+use std::collections::HashMap;
+
 use super::*;
-use crate::application::connect::resolve_token;
-use crate::domain::connect::{cr_tokens_secret, select_token, Role, TOKEN_REGISTRY_SECRET_KEY};
+use crate::connect::resolve_token;
+use crate::domain::connect::{
+    bearer_secrets, cr_tokens_secret, select_token, Role, TokenClaims, TOKEN_REGISTRY_SECRET_KEY,
+};
 
 #[test]
 fn role_covers_hierarchy() {

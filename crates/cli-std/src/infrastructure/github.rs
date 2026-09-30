@@ -1,3 +1,10 @@
+#[cfg(feature = "online")]
+use super::http::HttpClient;
+#[cfg(feature = "online")]
+use crate::domain::release::ReleaseSource;
+#[cfg(feature = "online")]
+use crate::domain::remote::RemoteError;
+
 /// Resolve a GitHub token the way `gh` itself does, in order: `$GH_TOKEN`,
 /// then `$GITHUB_TOKEN`, then the `gh` CLI credential store (`gh auth token`,
 /// which reads the OS keyring / `hosts.yml`). Returns `None` when no credential
@@ -42,12 +49,13 @@ fn gh_auth_token() -> Option<String> {
     (!token.is_empty()).then_some(token)
 }
 
+/// `GET` against the GitHub API, with the token from
+/// [`resolve_github_token`] when there is one.
 #[cfg(feature = "online")]
-pub(crate) async fn github_get(
+pub(in crate::infrastructure) async fn github_get(
     client: &reqwest::Client,
     url: &str,
-) -> anyhow::Result<reqwest::Response> {
-    use anyhow::Context;
+) -> Result<reqwest::Response, RemoteError> {
     let mut req = client
         .get(url)
         .header("Accept", "application/vnd.github+json");
@@ -56,35 +64,74 @@ pub(crate) async fn github_get(
     }
     req.send()
         .await
-        .with_context(|| format!("GET {url}"))?
+        .map_err(|e| RemoteError::Send {
+            method: "GET",
+            target: url.to_string(),
+            source: Box::new(e),
+        })?
         .error_for_status()
-        .with_context(|| format!("GitHub API error for {url}"))
+        .map_err(|e| RemoteError::Status {
+            service: "GitHub API",
+            url: url.to_string(),
+            source: Box::new(e),
+        })
 }
 
+/// Parse a JSON response body; `what` names the body in the error.
 #[cfg(feature = "online")]
-pub(crate) async fn download_bytes(client: &reqwest::Client, url: &str) -> anyhow::Result<Vec<u8>> {
-    use anyhow::Context;
-    let resp = client
+pub(in crate::infrastructure) async fn parse_json(
+    resp: reqwest::Response,
+    what: &'static str,
+) -> Result<serde_json::Value, RemoteError> {
+    resp.json().await.map_err(|e| RemoteError::Parse {
+        what,
+        source: Box::new(e),
+    })
+}
+
+/// `GET` a download URL, failing on an error status.
+#[cfg(feature = "online")]
+async fn download(client: &reqwest::Client, url: &str) -> Result<reqwest::Response, RemoteError> {
+    let failed = |e: reqwest::Error| RemoteError::Download {
+        url: url.to_string(),
+        source: Box::new(e),
+    };
+    client
         .get(url)
         .send()
         .await
-        .with_context(|| format!("download {url}"))?
+        .map_err(failed)?
         .error_for_status()
-        .with_context(|| format!("download {url}"))?;
-    Ok(resp.bytes().await.context("read download body")?.to_vec())
+        .map_err(failed)
 }
 
 #[cfg(feature = "online")]
-pub(crate) async fn download_text(client: &reqwest::Client, url: &str) -> anyhow::Result<String> {
-    use anyhow::Context;
-    let resp = client
-        .get(url)
-        .send()
-        .await
-        .with_context(|| format!("download {url}"))?
-        .error_for_status()
-        .with_context(|| format!("download {url}"))?;
-    resp.text().await.context("read download body")
+impl ReleaseSource for HttpClient {
+    async fn releases(&self, repo: &str) -> Result<serde_json::Value, RemoteError> {
+        let url = format!("https://api.github.com/repos/{repo}/releases?per_page=100");
+        parse_json(github_get(&self.client, &url).await?, "releases").await
+    }
+
+    async fn release(&self, repo: &str, tag: &str) -> Result<serde_json::Value, RemoteError> {
+        let url = format!("https://api.github.com/repos/{repo}/releases/tags/{tag}");
+        parse_json(github_get(&self.client, &url).await?, "release").await
+    }
+
+    async fn download_bytes(&self, url: &str) -> Result<Vec<u8>, RemoteError> {
+        let resp = download(&self.client, url).await?;
+        let bytes = resp
+            .bytes()
+            .await
+            .map_err(|e| RemoteError::Body(Box::new(e)))?;
+        Ok(bytes.to_vec())
+    }
+
+    async fn download_text(&self, url: &str) -> Result<String, RemoteError> {
+        let resp = download(&self.client, url).await?;
+        resp.text()
+            .await
+            .map_err(|e| RemoteError::Body(Box::new(e)))
+    }
 }
 
 #[cfg(all(test, feature = "online"))]
