@@ -79,7 +79,7 @@ impl std::fmt::Debug for H2cManager {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("H2cManager")
             .field("authority", &self.inner.authority)
-            .field("max_connections", &self.inner.cfg.max_connections)
+            .field("max_connections", &self.inner.cfg.max_connections())
             .finish_non_exhaustive()
     }
 }
@@ -96,7 +96,7 @@ impl H2cManager {
         let authority = authority_of(endpoint);
         let inner = Arc::new(Inner {
             authority,
-            admission: Arc::new(Semaphore::new(cfg.max_in_flight_per_origin.max(1))),
+            admission: Arc::new(Semaphore::new(cfg.max_in_flight_per_origin().max(1))),
             cfg,
             conns: RwLock::new(Vec::new()),
             slots: AtomicUsize::new(0),
@@ -108,7 +108,7 @@ impl H2cManager {
         let mgr = H2cManager { inner };
 
         // Open the warm minimum eagerly so the first request is fast.
-        for _ in 0..mgr.inner.cfg.min_connections.max(1) {
+        for _ in 0..mgr.inner.cfg.min_connections().max(1) {
             mgr.grow_one().await?;
         }
 
@@ -143,7 +143,7 @@ impl H2cManager {
     /// connection; safe reads retry once on a fresh connection. Mutations are
     /// never replayed after dispatch because their outcome may be ambiguous.
     pub async fn request(&self, req: Request<Bytes>) -> Result<Response<Bytes>> {
-        let timeout = self.inner.cfg.request_timeout;
+        let timeout = self.inner.cfg.request_timeout();
         let mut last_err: Option<H2cError> = None;
         let safe = is_safe_method(req.method());
         for attempt in 0..if safe { 2 } else { 1 } {
@@ -242,14 +242,14 @@ impl H2cManager {
         }
         let cfg = &self.inner.cfg;
         let admission = match tokio::time::timeout(
-            cfg.pool_timeout,
+            cfg.pool_timeout(),
             self.inner.admission.clone().acquire_owned(),
         )
         .await
         {
             Ok(Ok(permit)) => permit,
             Ok(Err(_)) => return Err(H2cError::Shutdown),
-            Err(_) => return Err(H2cError::Timeout(cfg.pool_timeout)),
+            Err(_) => return Err(H2cError::Timeout(cfg.pool_timeout())),
         };
         let (best, total) = {
             let conns = self.inner.conns.read().await;
@@ -263,7 +263,7 @@ impl H2cManager {
 
         let should_grow = match &best {
             None => true, // no healthy connection
-            Some(c) => c.in_flight() >= cfg.grow_threshold && total < cfg.max_connections,
+            Some(c) => c.in_flight() >= cfg.grow_threshold() && total < cfg.max_connections(),
         };
         let chosen = if should_grow {
             match self.grow_one().await {

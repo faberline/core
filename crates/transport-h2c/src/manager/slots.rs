@@ -12,16 +12,17 @@ pub(super) async fn connect_tracked(inner: &Arc<Inner>) -> Result<Arc<ManagedCon
     let cfg = &inner.cfg;
     // Claim a slot up front; back out if it would breach the cap.
     let prev = inner.slots.fetch_add(1, Ordering::AcqRel);
-    if prev >= cfg.max_connections {
+    if prev >= cfg.max_connections() {
         inner.slots.fetch_sub(1, Ordering::AcqRel);
         return Err(H2cError::NoConnection(format!(
             "{} at max_connections ({})",
-            inner.authority, cfg.max_connections
+            inner.authority,
+            cfg.max_connections()
         )));
     }
     let id = inner.next_id.fetch_add(1, Ordering::Relaxed);
     let connect = ManagedConn::connect(id, &inner.authority, cfg.conn_config());
-    let conn = match tokio::time::timeout(cfg.connect_timeout, connect).await {
+    let conn = match tokio::time::timeout(cfg.connect_timeout(), connect).await {
         Ok(Ok(c)) => c,
         Ok(Err(e)) => {
             inner.slots.fetch_sub(1, Ordering::AcqRel);
@@ -29,7 +30,7 @@ pub(super) async fn connect_tracked(inner: &Arc<Inner>) -> Result<Arc<ManagedCon
         }
         Err(_) => {
             inner.slots.fetch_sub(1, Ordering::AcqRel);
-            return Err(H2cError::Timeout(cfg.connect_timeout));
+            return Err(H2cError::Timeout(cfg.connect_timeout()));
         }
     };
     inner.conns.write().await.push(conn.clone());

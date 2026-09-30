@@ -11,7 +11,7 @@ use crate::conn::ManagedConn;
 /// to `min_connections`. Exits when the manager is fully dropped or shut down.
 pub(super) async fn supervise(weak: Weak<Inner>) {
     let interval = match weak.upgrade() {
-        Some(inner) => inner.cfg.ping_interval,
+        Some(inner) => inner.cfg.ping_interval(),
         None => return,
     };
     let mut tick = tokio::time::interval(interval);
@@ -39,8 +39,8 @@ pub(super) async fn supervise(weak: Weak<Inner>) {
         // 2. Evict dead + shrink one idle connection above the minimum.
         {
             let mut conns = inner.conns.write().await;
-            let min = inner.cfg.min_connections;
-            let max_idle = inner.cfg.max_keepalive_connections.max(min);
+            let min = inner.cfg.min_connections();
+            let max_idle = inner.cfg.max_keepalive_connections().max(min);
             conns.retain(|c| {
                 let keep = c.is_healthy();
                 if !keep {
@@ -51,7 +51,7 @@ pub(super) async fn supervise(weak: Weak<Inner>) {
             if conns.len() > min {
                 if let Some(pos) = conns.iter().position(|c| {
                     c.in_flight() == 0
-                        && (conns.len() > max_idle || c.idle() >= inner.cfg.idle_timeout)
+                        && (conns.len() > max_idle || c.idle() >= inner.cfg.idle_timeout())
                 }) {
                     let c = conns.remove(pos);
                     retire(&inner, &c);
@@ -63,7 +63,7 @@ pub(super) async fn supervise(weak: Weak<Inner>) {
         // 3. Replenish to the warm minimum.
         let deficit = inner
             .cfg
-            .min_connections
+            .min_connections()
             .saturating_sub(inner.conns.read().await.len());
         for _ in 0..deficit {
             if let Err(e) = connect_tracked(&inner).await {

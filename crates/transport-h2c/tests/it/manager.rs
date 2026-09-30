@@ -122,16 +122,14 @@ impl TestServer {
 
 /// A manager config with short, test-friendly timeouts.
 fn cfg(min: usize, max: usize, grow_threshold: usize) -> ManagerConfig {
-    ManagerConfig {
-        min_connections: min,
-        max_connections: max,
-        grow_threshold,
-        connect_timeout: Duration::from_secs(1),
-        request_timeout: Some(Duration::from_secs(2)),
-        ping_interval: Duration::from_millis(150),
-        idle_timeout: Duration::from_millis(200),
-        ..ManagerConfig::default()
-    }
+    ManagerConfig::default()
+        .with_min_connections(min)
+        .with_max_connections(max)
+        .with_grow_threshold(grow_threshold)
+        .with_connect_timeout(Duration::from_secs(1))
+        .with_request_timeout(Some(Duration::from_secs(2)))
+        .with_ping_interval(Duration::from_millis(150))
+        .with_idle_timeout(Duration::from_millis(200))
 }
 
 // ---------------------------------------------------------------------------
@@ -196,9 +194,9 @@ async fn concurrency_grows_the_pool_least_loaded() {
 #[tokio::test]
 async fn admission_queue_times_out_when_in_flight_cap_is_full() {
     let server = TestServer::start().await;
-    let mut config = cfg(1, 1, 128);
-    config.max_in_flight_per_origin = 1;
-    config.pool_timeout = Duration::from_millis(20);
+    let config = cfg(1, 1, 128)
+        .with_max_in_flight_per_origin(1)
+        .with_pool_timeout(Duration::from_millis(20));
     let mgr = H2cManager::with_config(&server.authority(), config)
         .await
         .unwrap();

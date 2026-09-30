@@ -60,5 +60,4 @@ The crate root also re-exports server-lifecycle as `core` and server-tcp as
 ## Exceptions and debts
 
 - **Checker exceptions (P1):** None.
-- **Tracked for P2:** server-http builds transport-h2c's `ConnectionOptions`
-  with struct literals.
+- **Tracked for P2:** None.

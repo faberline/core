@@ -29,9 +29,8 @@ pub async fn serve_h2c_with_lifecycle(
     if let Some(budget) = options.connection_budget() {
         tcp_config = tcp_config.with_connection_budget(budget.clone());
     }
-    let connection_options = transport_h2c::ConnectionOptions {
-        max_concurrent_streams: options.max_concurrent_streams(),
-    };
+    let connection_options =
+        transport_h2c::ConnectionOptions::new(options.max_concurrent_streams());
     server_tcp::serve_with_report(
         listener,
         tcp_config,
@@ -106,9 +105,8 @@ pub async fn serve_h2c_with_options(
         tcp_config = tcp_config.with_connection_budget(budget.clone());
     }
 
-    let connection_options = transport_h2c::ConnectionOptions {
-        max_concurrent_streams: options.max_concurrent_streams(),
-    };
+    let connection_options =
+        transport_h2c::ConnectionOptions::new(options.max_concurrent_streams());
     server_tcp::serve(
         listener,
         tcp_config,

@@ -7,34 +7,34 @@ use crate::recommended_h2c_connections;
 #[derive(Clone, Debug)]
 pub struct ManagerConfig {
     /// Connections kept warm at all times (opened eagerly at connect).
-    pub min_connections: usize,
+    min_connections: usize,
     /// Hard ceiling on h2 connections (adaptive growth stops here).
-    pub max_connections: usize,
+    max_connections: usize,
     /// Idle h2 connections retained after bursts. HTTP/2 normally stays below
     /// this because connection count is logarithmic in target concurrency.
-    pub max_keepalive_connections: usize,
+    max_keepalive_connections: usize,
     /// Hard cap on requests admitted into this manager at once. Additional
     /// callers queue until a slot is released or `pool_timeout` elapses.
-    pub max_in_flight_per_origin: usize,
+    max_in_flight_per_origin: usize,
     /// Grow a new connection when the least-loaded healthy one has at least this
     /// many in-flight streams (and we're under `max_connections`).
-    pub grow_threshold: usize,
+    grow_threshold: usize,
     /// Deadline for waiting on an admission slot.
-    pub pool_timeout: Duration,
+    pool_timeout: Duration,
     /// Deadline for a single TCP connect + handshake.
-    pub connect_timeout: Duration,
+    connect_timeout: Duration,
     /// Per-request deadline (`None` disables it).
-    pub request_timeout: Option<Duration>,
+    request_timeout: Option<Duration>,
     /// Supervisor cadence: liveness ping + prune/shrink/replenish sweep.
-    pub ping_interval: Duration,
+    ping_interval: Duration,
     /// Shrink a connection idle longer than this (above `min_connections`).
-    pub idle_timeout: Duration,
+    idle_timeout: Duration,
     /// h2 per-stream receive window.
-    pub stream_window: u32,
+    stream_window: u32,
     /// h2 whole-connection receive window.
-    pub conn_window: u32,
+    conn_window: u32,
     /// h2 max frame size.
-    pub max_frame: u32,
+    max_frame: u32,
 }
 
 impl Default for ManagerConfig {
@@ -66,6 +66,149 @@ impl ManagerConfig {
         c.max_connections = recommended_h2c_connections(concurrency).max(c.min_connections);
         c.max_in_flight_per_origin = concurrency.max(1);
         c
+    }
+
+    /// Sets the connections kept warm at all times.
+    pub fn with_min_connections(mut self, min_connections: usize) -> Self {
+        self.min_connections = min_connections;
+        self
+    }
+
+    /// Sets the hard ceiling on h2 connections.
+    pub fn with_max_connections(mut self, max_connections: usize) -> Self {
+        self.max_connections = max_connections;
+        self
+    }
+
+    /// Sets the idle h2 connections retained after bursts.
+    pub fn with_max_keepalive_connections(mut self, max_keepalive_connections: usize) -> Self {
+        self.max_keepalive_connections = max_keepalive_connections;
+        self
+    }
+
+    /// Sets the hard cap on requests admitted at once.
+    pub fn with_max_in_flight_per_origin(mut self, max_in_flight_per_origin: usize) -> Self {
+        self.max_in_flight_per_origin = max_in_flight_per_origin;
+        self
+    }
+
+    /// Sets the in-flight streams that trigger growth.
+    pub fn with_grow_threshold(mut self, grow_threshold: usize) -> Self {
+        self.grow_threshold = grow_threshold;
+        self
+    }
+
+    /// Sets the deadline for waiting on an admission slot.
+    pub fn with_pool_timeout(mut self, pool_timeout: Duration) -> Self {
+        self.pool_timeout = pool_timeout;
+        self
+    }
+
+    /// Sets the deadline for a single TCP connect and handshake.
+    pub fn with_connect_timeout(mut self, connect_timeout: Duration) -> Self {
+        self.connect_timeout = connect_timeout;
+        self
+    }
+
+    /// Sets the per-request deadline; `None` disables it.
+    pub fn with_request_timeout(mut self, request_timeout: Option<Duration>) -> Self {
+        self.request_timeout = request_timeout;
+        self
+    }
+
+    /// Sets the supervisor cadence.
+    pub fn with_ping_interval(mut self, ping_interval: Duration) -> Self {
+        self.ping_interval = ping_interval;
+        self
+    }
+
+    /// Sets how long a connection may idle before it is shrunk.
+    pub fn with_idle_timeout(mut self, idle_timeout: Duration) -> Self {
+        self.idle_timeout = idle_timeout;
+        self
+    }
+
+    /// Sets the h2 per-stream receive window.
+    pub fn with_stream_window(mut self, stream_window: u32) -> Self {
+        self.stream_window = stream_window;
+        self
+    }
+
+    /// Sets the h2 whole-connection receive window.
+    pub fn with_conn_window(mut self, conn_window: u32) -> Self {
+        self.conn_window = conn_window;
+        self
+    }
+
+    /// Sets the h2 max frame size.
+    pub fn with_max_frame(mut self, max_frame: u32) -> Self {
+        self.max_frame = max_frame;
+        self
+    }
+
+    /// Connections kept warm at all times.
+    pub fn min_connections(&self) -> usize {
+        self.min_connections
+    }
+
+    /// The hard ceiling on h2 connections.
+    pub fn max_connections(&self) -> usize {
+        self.max_connections
+    }
+
+    /// Idle h2 connections retained after bursts.
+    pub fn max_keepalive_connections(&self) -> usize {
+        self.max_keepalive_connections
+    }
+
+    /// The hard cap on requests admitted at once.
+    pub fn max_in_flight_per_origin(&self) -> usize {
+        self.max_in_flight_per_origin
+    }
+
+    /// In-flight streams on the least-loaded connection that trigger growth.
+    pub fn grow_threshold(&self) -> usize {
+        self.grow_threshold
+    }
+
+    /// The deadline for waiting on an admission slot.
+    pub fn pool_timeout(&self) -> Duration {
+        self.pool_timeout
+    }
+
+    /// The deadline for a single TCP connect and handshake.
+    pub fn connect_timeout(&self) -> Duration {
+        self.connect_timeout
+    }
+
+    /// The per-request deadline; `None` disables it.
+    pub fn request_timeout(&self) -> Option<Duration> {
+        self.request_timeout
+    }
+
+    /// The supervisor cadence.
+    pub fn ping_interval(&self) -> Duration {
+        self.ping_interval
+    }
+
+    /// How long a connection above `min_connections` may idle before it is shrunk.
+    pub fn idle_timeout(&self) -> Duration {
+        self.idle_timeout
+    }
+
+    /// The h2 per-stream receive window.
+    pub fn stream_window(&self) -> u32 {
+        self.stream_window
+    }
+
+    /// The h2 whole-connection receive window.
+    pub fn conn_window(&self) -> u32 {
+        self.conn_window
+    }
+
+    /// The h2 max frame size.
+    pub fn max_frame(&self) -> u32 {
+        self.max_frame
     }
 
     pub(super) fn conn_config(&self) -> ConnConfig {

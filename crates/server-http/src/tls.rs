@@ -148,9 +148,7 @@ pub async fn serve_tls(
         tcp_config = tcp_config.with_connection_budget(budget.clone());
     }
 
-    let connection_options = transport_h2c::ConnectionOptions {
-        max_concurrent_streams: http.max_concurrent_streams(),
-    };
+    let connection_options = transport_h2c::ConnectionOptions::new(http.max_concurrent_streams());
 
     server_tcp::serve(
         listener,
