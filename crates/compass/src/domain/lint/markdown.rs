@@ -8,7 +8,6 @@ use crate::syntax::{Language, ParsedFile};
 mod line_rules;
 mod link_rules;
 mod structure_rules;
-pub(crate) mod symbol;
 
 // ============================================================================
 // MarkdownChecker
