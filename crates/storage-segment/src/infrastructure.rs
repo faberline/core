@@ -1,7 +1,9 @@
 //! Object-store helpers: the catalog page codec, the SHA-256 content hash,
-//! and the write-once put that accepts only a byte-identical retry.
+//! the write-once put that accepts only a byte-identical retry, and the
+//! conversion of object-store errors into `SegmentError`.
 
 mod content_hash;
+mod object_store_error;
 mod page_codec;
 mod put_immutable;
 

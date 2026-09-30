@@ -28,7 +28,9 @@ event archive and catalogs on it.
 - **manifest** — the last object of an archive transaction. The archive
   commit writes it after every object it names; `ArchiveCommit` is the receipt.
 - **Segment error** — `SegmentError`: codec, partition, catalog, transaction
-  and wrapped `ObjectStoreError` failures.
+  and object-store failures. `SegmentError::ObjectStore` boxes the
+  underlying error; infrastructure converts storage-object's
+  `ObjectStoreError` into it, and the message is that error's own.
 
 ## Ports
 
@@ -68,9 +70,8 @@ P1 keeps every root export; sift's structure test checks for the exact path
   - B3 `application->infrastructure`: `PagedCatalog` packs and stores pages,
     and `ArchiveTransaction` writes objects, through the page codec and
     `put_immutable` directly. P2 adds page-store and object-write ports.
-  - B4 (`storage-object.infrastructure`): `SegmentError::ObjectStore` wraps
-    storage-object's `ObjectStoreError`, and `ArchivedObject.version` is its
-    `ObjectVersion`. P2 gives the domain its own error variant and version
+  - B4 (`storage-object.infrastructure`): `ArchivedObject.version` is
+    storage-object's `ObjectVersion`. P2 gives the domain its own version
     type.
 - **Tracked for P2:**
   - `CatalogEntry` public fields, built with struct literals by sift in five

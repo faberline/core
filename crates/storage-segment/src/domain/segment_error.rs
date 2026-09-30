@@ -1,4 +1,3 @@
-use storage_object::ObjectStoreError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -27,8 +26,10 @@ pub enum SegmentError {
     CorruptCatalog { message: String },
     #[error("catalog serialization failed: {message}")]
     Serialization { message: String },
+    /// The object store failed. Infrastructure wraps storage-object's
+    /// `ObjectStoreError` here, and the message is that error's own.
     #[error(transparent)]
-    ObjectStore(#[from] ObjectStoreError),
+    ObjectStore(Box<dyn std::error::Error + Send + Sync>),
 }
 
 pub type Result<T> = std::result::Result<T, SegmentError>;

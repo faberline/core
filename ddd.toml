@@ -367,12 +367,6 @@ reason = "Moved as-is in P1: ArchiveTransaction writes objects with put_immutabl
 [[exceptions]]
 rule = "B4"
 subject = "storage-object.infrastructure"
-paths = ["crates/storage-segment/src/domain/segment_error.rs"]
-reason = "Moved as-is in P1: SegmentError::ObjectStore wraps ObjectStoreError via #[from]. P2: a domain-owned error variant, converted at the infrastructure boundary."
-
-[[exceptions]]
-rule = "B4"
-subject = "storage-object.infrastructure"
 paths = ["crates/storage-segment/src/domain/archive.rs"]
 reason = "Moved as-is in P1: ArchivedObject.version is storage-object's ObjectVersion. P2: a domain-owned version type, or ObjectVersion moves into the shared kernel."
 
