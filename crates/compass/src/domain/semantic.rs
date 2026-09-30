@@ -1,9 +1,8 @@
-//! Semantic analysis: symbols, scopes, program dependence graphs and Go types.
+//! Semantic analysis: symbols, scopes and program dependence graphs.
 
 pub(crate) mod pdg;
 pub(crate) mod scope;
 pub(crate) mod symbols;
-pub(crate) mod types;
 
 #[cfg(test)]
 mod tests;

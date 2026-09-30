@@ -596,8 +596,6 @@ paths = [
   "crates/compass/src/domain/semantic/symbols/rust/type_defs.rs",
   "crates/compass/src/domain/semantic/symbols/terraform.rs",
   "crates/compass/src/domain/semantic/symbols/typescript.rs",
-  "crates/compass/src/domain/semantic/types/go.rs",
-  "crates/compass/src/domain/semantic/types/go/type_nodes.rs",
   "crates/compass/src/domain/semantic_model/builder.rs",
   "crates/compass/src/domain/semantic_model/builder/params.rs",
   "crates/compass/src/domain/semantic_model/builder/visit.rs",

@@ -3,7 +3,6 @@
 pub mod pdg;
 pub mod scope;
 pub mod symbols;
-pub mod types;
 
 pub use pdg::{
     detect_taint_sinks,
