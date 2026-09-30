@@ -281,7 +281,7 @@ impl RaftHost {
     /// prevents active HTTP/2 streams from being torn down with the Tokio
     /// runtime.
     pub async fn shutdown(&self) -> Result<()> {
-        let timeout = self.shared.cfg.rpc_timeout + self.shared.cfg.rpc_timeout;
+        let timeout = self.shared.cfg.rpc_timeout() + self.shared.cfg.rpc_timeout();
         let deadline =
             ShutdownDeadline::from_now(timeout, Duration::ZERO).map_err(|e| anyhow!("{e}"))?;
         let report = self.shutdown_within(deadline).await;

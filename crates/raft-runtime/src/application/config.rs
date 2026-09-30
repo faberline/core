@@ -16,18 +16,73 @@ pub enum SnapshotPolicy {
 }
 
 /// Host timing + snapshot policy.
+///
+/// Start from [`HostConfig::default`] and change what you need with the
+/// `with_*` builders.
 #[derive(Clone, Copy, Debug)]
 pub struct HostConfig {
+    tick: Duration,
+    pump: Duration,
+    rpc_timeout: Duration,
+    propose_timeout: Duration,
+    snapshot: SnapshotPolicy,
+}
+
+impl HostConfig {
     /// Logical tick (election/heartbeat clock).
-    pub tick: Duration,
+    pub fn tick(&self) -> Duration {
+        self.tick
+    }
+
     /// Fast outbox pump (ships replies-driven work under the election timeout).
-    pub pump: Duration,
+    pub fn pump(&self) -> Duration {
+        self.pump
+    }
+
     /// Peer RPC timeout.
-    pub rpc_timeout: Duration,
+    pub fn rpc_timeout(&self) -> Duration {
+        self.rpc_timeout
+    }
+
     /// How long `propose` waits for its entry to apply before erroring.
-    pub propose_timeout: Duration,
+    pub fn propose_timeout(&self) -> Duration {
+        self.propose_timeout
+    }
+
     /// Auto-compaction policy.
-    pub snapshot: SnapshotPolicy,
+    pub fn snapshot(&self) -> SnapshotPolicy {
+        self.snapshot
+    }
+
+    /// Set the logical tick.
+    pub fn with_tick(mut self, tick: Duration) -> Self {
+        self.tick = tick;
+        self
+    }
+
+    /// Set the outbox pump interval.
+    pub fn with_pump(mut self, pump: Duration) -> Self {
+        self.pump = pump;
+        self
+    }
+
+    /// Set the peer RPC timeout.
+    pub fn with_rpc_timeout(mut self, rpc_timeout: Duration) -> Self {
+        self.rpc_timeout = rpc_timeout;
+        self
+    }
+
+    /// Set how long `propose` waits for its entry to apply.
+    pub fn with_propose_timeout(mut self, propose_timeout: Duration) -> Self {
+        self.propose_timeout = propose_timeout;
+        self
+    }
+
+    /// Set the auto-compaction policy.
+    pub fn with_snapshot(mut self, snapshot: SnapshotPolicy) -> Self {
+        self.snapshot = snapshot;
+        self
+    }
 }
 
 impl Default for HostConfig {

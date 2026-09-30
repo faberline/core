@@ -271,10 +271,7 @@ async fn blocking_cluster(node_count: u64) -> Vec<BlockingNode> {
         all.push((id, url));
     }
 
-    let config = HostConfig {
-        tick: Duration::from_millis(10),
-        ..HostConfig::default()
-    };
+    let config = HostConfig::default().with_tick(Duration::from_millis(10));
     let voters: Vec<u64> = (0..node_count).collect();
     let mut nodes = Vec::new();
     for (index, listener) in listeners.into_iter().enumerate() {
@@ -483,10 +480,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
             )
             .expect("restart reopens the durable store"),
             sm.clone() as Arc<dyn RaftStateMachine>,
-            HostConfig {
-                tick: Duration::from_millis(10),
-                ..HostConfig::default()
-            },
+            HostConfig::default().with_tick(Duration::from_millis(10)),
         );
         restart_applied = tokio::time::timeout(JOIN_LIMIT, async {
             while sm.applied_index() < 2 {
@@ -956,10 +950,7 @@ async fn tiny_rpc_timeout_legacy_shutdown_returns_err_naming_quiesce() {
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
-        HostConfig {
-            rpc_timeout: Duration::from_nanos(1),
-            ..Default::default()
-        },
+        HostConfig::default().with_rpc_timeout(Duration::from_nanos(1)),
     ));
     let router = host.router();
     let serve = tokio::spawn(async move {

@@ -112,7 +112,7 @@ impl Shared {
     }
 
     fn capture_periodic_snapshot(&self) -> Result<()> {
-        let SnapshotPolicy::EveryEntries(every) = self.cfg.snapshot else {
+        let SnapshotPolicy::EveryEntries(every) = self.cfg.snapshot() else {
             return Ok(());
         };
         let applied = self.sm.applied_index();

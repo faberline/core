@@ -43,8 +43,7 @@ async fn custom_timeout_cluster(n: u64, timeout: Duration) -> (Vec<Node>, Durati
         all.push((id, url));
     }
     let voters: Vec<u64> = (0..n).collect();
-    let mut cfg = HostConfig::default();
-    cfg.propose_timeout = timeout;
+    let cfg = HostConfig::default().with_propose_timeout(timeout);
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
         let id = idx as u64;
@@ -80,7 +79,7 @@ async fn custom_timeout_cluster(n: u64, timeout: Duration) -> (Vec<Node>, Durati
             _dir: dir,
         });
     }
-    (nodes, cfg.tick)
+    (nodes, cfg.tick())
 }
 
 async fn publish_response_stub(status: StatusCode, body: serde_json::Value) -> String {
@@ -167,8 +166,7 @@ async fn no_leader_elected_rejects_before_admission() {
     let sm = TestSm::new();
     let dir = TempDir::new().unwrap();
     let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
-    let mut cfg = HostConfig::default();
-    cfg.propose_timeout = Duration::from_millis(150);
+    let cfg = HostConfig::default().with_propose_timeout(Duration::from_millis(150));
     let host = RaftHost::spawn(
         0,
         Membership::new(vec![0, 1], vec![]),

@@ -9,10 +9,7 @@ async fn concurrent() {
     // Index contiguity is under test, not latency. The first of 256 queued
     // proposals can outlast the default 10s propose budget when other clusters
     // share the CPU, which fails them as Ambiguous although every entry applies.
-    let cfg = HostConfig {
-        propose_timeout: Duration::from_secs(60),
-        ..HostConfig::default()
-    };
+    let cfg = HostConfig::default().with_propose_timeout(Duration::from_secs(60));
     let nodes = cluster_with_config(3, cfg).await;
     let leader = await_leader(&nodes).await.expect("a leader is elected");
 

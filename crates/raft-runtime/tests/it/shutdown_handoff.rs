@@ -145,13 +145,12 @@ async fn a_three_voter_leader_hands_off_leadership_to_an_eligible_voter() {
 async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_budget() {
     // We configure an explicit HostConfig so the spontaneous election floor
     // (in tick units) and the handoff budget stretch together under load.
-    let cfg = HostConfig {
-        tick: Duration::from_millis(60),
-        pump: Duration::from_millis(5),
-        rpc_timeout: Duration::from_millis(200),
-        propose_timeout: Duration::from_secs(10),
-        snapshot: SnapshotPolicy::Disabled,
-    };
+    let cfg = HostConfig::default()
+        .with_tick(Duration::from_millis(60))
+        .with_pump(Duration::from_millis(5))
+        .with_rpc_timeout(Duration::from_millis(200))
+        .with_propose_timeout(Duration::from_secs(10))
+        .with_snapshot(SnapshotPolicy::Disabled);
 
     let mut listeners = Vec::new();
     let mut all = Vec::new();
@@ -197,7 +196,7 @@ async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_bu
         });
     }
 
-    let leader = await_leader_with_tick(&nodes, cfg.tick)
+    let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
         .expect("a three-voter cluster elects a leader");
     settle_cluster(&nodes, leader).await;
@@ -231,7 +230,7 @@ async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_bu
         .expect("raft-core heartbeat interval must remain below its election timeout floor");
     let handoff_budget_ticks = HANDOFF_DELIVERY_BUDGET_TICKS;
     assert!(handoff_budget_ticks < election_floor_ticks);
-    let handoff_budget = cfg.tick * handoff_budget_ticks as u32;
+    let handoff_budget = cfg.tick() * handoff_budget_ticks as u32;
 
     let mut arrived = None;
     let mut new_leader = None;

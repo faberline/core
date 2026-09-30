@@ -38,10 +38,7 @@ async fn cluster_with_long_rpc_timeout() -> (Vec<Node>, Duration) {
         all.push((id, url));
     }
     let voters: Vec<u64> = (0..3).collect();
-    let cfg = HostConfig {
-        rpc_timeout: Duration::from_secs(30),
-        ..HostConfig::default()
-    };
+    let cfg = HostConfig::default().with_rpc_timeout(Duration::from_secs(30));
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
         let id = idx as u64;
@@ -76,7 +73,7 @@ async fn cluster_with_long_rpc_timeout() -> (Vec<Node>, Duration) {
             _dir: dir,
         });
     }
-    (nodes, cfg.tick)
+    (nodes, cfg.tick())
 }
 
 fn h2c_client() -> reqwest::Client {

@@ -76,7 +76,7 @@ impl Shared {
             return Some(ProposalOutcome::Completed { index });
         }
         let mut rx = self.applied_tx.subscribe();
-        let deadline = Instant::now() + self.cfg.propose_timeout;
+        let deadline = Instant::now() + self.cfg.propose_timeout();
         loop {
             {
                 let mut n = self.node.lock().await;
@@ -143,7 +143,7 @@ impl RaftHost {
                 failure: err,
             };
         }
-        let deadline = Instant::now() + s.cfg.propose_timeout;
+        let deadline = Instant::now() + s.cfg.propose_timeout();
         let mut last_route_error = None;
         loop {
             let route = {
@@ -230,7 +230,7 @@ impl RaftHost {
         };
         // Wait for our own apply (the leader's commit propagates via AppendEntries).
         let mut rx = self.shared.applied_tx.subscribe();
-        let deadline = Instant::now() + self.shared.cfg.propose_timeout;
+        let deadline = Instant::now() + self.shared.cfg.propose_timeout();
         while self.shared.completed_applied_index() < seq {
             tokio::select! {
                 _ = rx.changed() => {}

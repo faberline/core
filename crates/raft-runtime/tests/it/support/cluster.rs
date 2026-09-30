@@ -190,7 +190,7 @@ pub async fn cluster_with_config(n: u64, cfg: HostConfig) -> Vec<Node> {
 }
 
 pub async fn await_leader(nodes: &[Node]) -> Option<usize> {
-    await_leader_with_tick(nodes, HostConfig::default().tick).await
+    await_leader_with_tick(nodes, HostConfig::default().tick()).await
 }
 
 /// Wait for a leader using the actual tick configured for these hosts.

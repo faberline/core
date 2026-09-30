@@ -87,7 +87,7 @@ impl RaftHost {
             })
             .map(Duration::from_secs)
             .unwrap_or(Duration::from_secs(600))
-            .max(cfg.rpc_timeout);
+            .max(cfg.rpc_timeout());
         assert!(
             max_resident_log_bytes > 0,
             "RAFT_RUNTIME_MAX_RESIDENT_LOG_BYTES must be greater than zero"
@@ -96,8 +96,8 @@ impl RaftHost {
             id,
             group_id: group_id.clone(),
             peers,
-            rpc_timeout: cfg.rpc_timeout,
-            propose_timeout: cfg.propose_timeout,
+            rpc_timeout: cfg.rpc_timeout(),
+            propose_timeout: cfg.propose_timeout(),
             snapshot_rpc_timeout,
         });
         let shared = Arc::new(Shared {
@@ -132,7 +132,7 @@ impl RaftHost {
         let tick = tokio::spawn(async move {
             let mut first_tick = true;
             loop {
-                tokio::time::sleep(s.cfg.tick).await;
+                tokio::time::sleep(s.cfg.tick()).await;
                 {
                     let mut n = s.node.lock().await;
                     if tick_then_maybe_persist(
@@ -150,7 +150,7 @@ impl RaftHost {
         let p = Arc::clone(&shared);
         let pump = tokio::spawn(async move {
             loop {
-                tokio::time::sleep(p.cfg.pump).await;
+                tokio::time::sleep(p.cfg.pump()).await;
                 p.flush().await;
             }
         });
