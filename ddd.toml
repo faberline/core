@@ -578,12 +578,10 @@ subject = "tree_sitter"
 paths = [
   "crates/compass/src/domain/diagnostic/model.rs",
   "crates/compass/src/domain/error/argus_error.rs",
-  "crates/compass/src/domain/lint/css_rules.rs",
   "crates/compass/src/domain/lint/custom.rs",
   "crates/compass/src/domain/lint/go/function_rules.rs",
   "crates/compass/src/domain/lint/go/import_rules.rs",
   "crates/compass/src/domain/lint/html.rs",
-  "crates/compass/src/domain/lint/html_rules.rs",
   "crates/compass/src/domain/lint/python/import_rules.rs",
   "crates/compass/src/domain/lint/python/inspection_rules.rs",
   "crates/compass/src/domain/lint/python/pydantic_rules.rs",
