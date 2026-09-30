@@ -65,9 +65,11 @@ No other core context depends on openapi-codegen. Downstream CLIs import from
 the crate root: `generate` or `generate_for_target` with `GenOptions`, `Lang`,
 `HttpClient`, `TargetPolicy` and `MANIFEST_FILE`; lumen also uses
 `generate_for_target_with_file_bearer_auth`, `FileBearerAuth` and
-`llm::topic`. P1 keeps every root re-export, and the old modules `ir`, `emit`,
-`llm` and `target` stay as compatibility facades; `ir` and `emit` have no known
-external users. `llm` is the only use of cli-std: an llm topic (v1).
+`llm::topic`. Three public modules keep their paths because they hold names
+the root does not re-export (`src/api/`): `ir`, `emit` and `llm`; `ir` and
+`emit` have no known external users. P2 deleted the old module `target`: every
+name in it is at the crate root. `llm` is the only use of cli-std: an llm
+topic (v1).
 
 ## Exceptions and debts
 
