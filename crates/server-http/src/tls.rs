@@ -169,8 +169,8 @@ pub async fn serve_tls(
                     // downgraded here would answer the same port with the same
                     // routes and no encryption, and nothing downstream could
                     // tell the difference.
-                    return Err(anyhow::anyhow!(
-                        "no valid TLS material is active; refusing the connection"
+                    return Err(server_tcp::TcpHandlerError::other(
+                        "no valid TLS material is active; refusing the connection",
                     ));
                 };
                 let accepted = tokio_rustls::TlsAcceptor::from(active).accept(stream).await;
@@ -181,12 +181,14 @@ pub async fn serve_tls(
                     }
                     Err(error) => {
                         counters.handshake_failures.fetch_add(1, Ordering::Relaxed);
-                        return Err(anyhow::anyhow!("tls handshake failed: {error}"));
+                        return Err(server_tcp::TcpHandlerError::other(format!(
+                            "tls handshake failed: {error}"
+                        )));
                     }
                 };
                 transport_h2c::server::serve_io_with_options(tls_stream, app, connection_options)
                     .await
-                    .map_err(|error| anyhow::anyhow!(error.to_string()))
+                    .map_err(|error| server_tcp::TcpHandlerError::other(error.to_string()))
             }
         },
         shutdown,

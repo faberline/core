@@ -5074,7 +5074,6 @@ dependencies = [
 name = "server-http"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "axum 0.8.9",
  "bytes",
  "http 1.4.0",
@@ -5111,6 +5110,7 @@ dependencies = [
  "anyhow",
  "server-lifecycle",
  "socket2 0.6.3",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
 ]

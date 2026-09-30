@@ -12,8 +12,11 @@ path = "src/lib.rs"
 server-lifecycle = { path = "../server-lifecycle" }
 tokio = { workspace = true }
 tracing = { workspace = true }
-anyhow = { workspace = true }
 socket2 = "0.6"
+thiserror = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
 
 [lints]
 workspace = true

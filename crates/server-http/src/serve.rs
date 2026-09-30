@@ -116,7 +116,7 @@ pub async fn serve_h2c_with_options(
                 let _ = cx;
                 transport_h2c::serve_connection_with_options(stream, app, connection_options)
                     .await
-                    .map_err(|error| anyhow::anyhow!(error.to_string()))
+                    .map_err(|error| server_tcp::TcpHandlerError::other(error.to_string()))
             }
         },
         shutdown,

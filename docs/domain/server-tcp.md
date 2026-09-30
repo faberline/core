@@ -31,8 +31,13 @@ handlers.
 ## Ports
 
 - `TcpHandler` — serve one accepted `TcpStream` with its `ConnectionContext`;
-  its future resolves to `anyhow::Result<()>`. A blanket impl covers closures.
-  pgpool implements it for its session, transaction and pool handlers.
+  its future resolves to `Result<(), TcpHandlerError>`. A blanket impl covers
+  closures. pgpool implements it for its session, transaction and pool
+  handlers.
+- `TcpHandlerError` — a handler's failure. Its one variant, `Other`, wraps the
+  handler's own error through `TcpHandlerError::other` (an `anyhow::Error`, a
+  `String` or any std error) and displays that error's text, so the loop's
+  `%error` log line reads as before.
 
 ## Invariants
 
@@ -59,4 +64,3 @@ Its entry points are `bind`, `serve`, `serve_arc` and `serve_with_report`.
 ## Exceptions and debts
 
 - **Checker exceptions (P1):** None.
-- **Tracked for P2:** `anyhow` in the `TcpHandler` port (ADR D4).

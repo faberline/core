@@ -14,6 +14,6 @@ mod serve;
 
 pub use config::{TcpServerConfig, TcpSocketOptions};
 pub use connection::{ConnectionContext, TcpConnectionResult, TcpConnectionTerminal};
-pub use handler::TcpHandler;
+pub use handler::{TcpHandler, TcpHandlerError};
 pub use report::TcpServerReport;
 pub use serve::{bind, serve, serve_arc, serve_with_report};
