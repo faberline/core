@@ -52,7 +52,7 @@ impl FramedLogCursor {
             return Ok(None);
         };
         self.offset = next;
-        Ok(Some(LogFrame { seq, payload }))
+        Ok(Some(LogFrame::new(seq, payload)))
     }
 
     /// Return the next validated frame without creating an owned payload Vec.
@@ -97,7 +97,7 @@ impl FramedLogCursor {
             return Ok(None);
         };
         read_one_frame(file, self.total, offset, &mut self.header)
-            .map(|frame| frame.map(|(seq, payload, _)| LogFrame { seq, payload }))
+            .map(|frame| frame.map(|(seq, payload, _)| LogFrame::new(seq, payload)))
     }
 
     /// Reread one mapped frame without changing the replay offset.

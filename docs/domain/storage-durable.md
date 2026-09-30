@@ -21,7 +21,9 @@ lumen, sift and tape use it directly.
   treat a directory that cannot be opened for fsync as success.
 - **Framed log** — `FramedLogWriter` and `FramedLogReader`: frames of a
   16-byte header (`seq`, `len`, CRC-32 of the payload) and the payload, read
-  back as `LogFrame` or memory-mapped `MappedLogFrame`.
+  back as `LogFrame` or memory-mapped `MappedLogFrame`. A `LogFrame` is built
+  with `LogFrame::new(seq, payload)` and read with `seq()`, `payload()` and
+  `into_payload()`.
 - **Snapshot file** — `SnapshotFile`: a file named `{prefix}-{seq}.{ext}` in
   a `SnapshotFileStore`.
 - **Directory generation** — an immutable child directory of a
@@ -81,7 +83,6 @@ layer. Every export is at the crate root and has no old module path to keep.
 
 - **Checker exceptions (P1):** None. File-system access is the job of an
   infrastructure crate.
-- **Tracked for P2:**
-  - Public fields built with struct literals (ADR D2): `LogFrame`, in lumen's
-    tests. `SnapshotFile`, `MappedLogFrame` and `CapacityError` also expose
-    public fields.
+- **Public fields, not changed in P2:** `SnapshotFile`, `MappedLogFrame`
+  (its `seq`) and `CapacityError` are built only inside this crate; nothing
+  downstream builds them with a struct literal.

@@ -34,7 +34,7 @@ fn append_replay_truncate_and_reopen() {
     log.sync().unwrap();
 
     let frames = FramedLogReader::read_frames(&path, 0).unwrap();
-    let seqs: Vec<u64> = frames.iter().map(|frame| frame.seq).collect();
+    let seqs: Vec<u64> = frames.iter().map(LogFrame::seq).collect();
     assert_eq!(seqs, vec![2, 3, 4]);
 }
 
@@ -79,8 +79,5 @@ fn bounded_reader_pages_without_returning_skipped_frames() {
     log.sync().unwrap();
 
     let page = FramedLogReader::read_frames_bounded(&path, 2, 2).unwrap();
-    assert_eq!(
-        page.iter().map(|frame| frame.seq).collect::<Vec<_>>(),
-        [3, 4]
-    );
+    assert_eq!(page.iter().map(LogFrame::seq).collect::<Vec<_>>(), [3, 4]);
 }

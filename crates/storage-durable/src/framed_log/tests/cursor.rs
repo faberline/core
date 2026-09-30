@@ -22,9 +22,9 @@ fn mapped_cursor_keeps_original_file_alive_after_path_replacement() {
     std::fs::rename(&replacement, &path).unwrap();
     drop(cursor);
 
-    assert_eq!(view.seq, owned.seq);
-    assert_eq!(view.payload(), owned.payload.as_slice());
-    assert_eq!(FramedLogReader::read_frames(&path, 0).unwrap()[0].seq, 8);
+    assert_eq!(view.seq, owned.seq());
+    assert_eq!(view.payload(), owned.payload());
+    assert_eq!(FramedLogReader::read_frames(&path, 0).unwrap()[0].seq(), 8);
     assert_eq!(view.payload(), payload);
 }
 
@@ -151,7 +151,7 @@ fn cursor_rereads_pinned_frame_after_compaction_without_advancing() {
     let first = cursor.next_frame().unwrap().unwrap();
     let next = cursor.byte_offset();
     log.truncate_through(10).unwrap();
-    assert_eq!(FramedLogReader::read_frames(&path, 0).unwrap()[0].seq, 20);
+    assert_eq!(FramedLogReader::read_frames(&path, 0).unwrap()[0].seq(), 20);
     assert_eq!(
         cursor.reread_frame_at(start).unwrap(),
         Some(first),
@@ -162,7 +162,7 @@ fn cursor_rereads_pinned_frame_after_compaction_without_advancing() {
         next,
         "reread must leave normal replay progression unchanged"
     );
-    assert_eq!(cursor.next_frame().unwrap().unwrap().seq, 20);
+    assert_eq!(cursor.next_frame().unwrap().unwrap().seq(), 20);
     assert!(cursor.next_frame().unwrap().is_none());
 }
 
