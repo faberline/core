@@ -96,10 +96,12 @@ test checks its own sources for `service_projection::ProjectionRegistry`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B2 (`utoipa`): `ProjectionDescriptor`, `ProjectionCheckpoint` and
-    `ProjectionLag` derive `ToSchema`, and sift's OpenAPI document uses those
-    schema names. P2 moves the schemas to interfaces types with the same names.
+- **Checker exceptions:**
+  - B2 (`utoipa`), long-term: `ProjectionDescriptor`, `ProjectionCheckpoint`
+    and `ProjectionLag` derive `ToSchema`, a compile-time description of the
+    same serde wire shape with no I/O. sift serves them as-is in its OpenAPI
+    document under these schema names, so an interfaces copy would duplicate
+    the wire contract.
 - **Tracked for P2:**
   - `ProjectionDescriptor` built with struct literals by sift (ADR D2); the
     checkpoint, envelope, lag and comparison types also have public fields.

@@ -359,7 +359,7 @@ paths = [
   "crates/service-projection/src/domain/lag.rs",
   "crates/service-projection/src/domain/projection.rs",
 ]
-reason = "Moved as-is in P1: ProjectionDescriptor, ProjectionCheckpoint and ProjectionLag derive utoipa::ToSchema, and sift's OpenAPI document uses these schema names. P2: the schemas move to interfaces body types that keep the schema names."
+reason = "utoipa::ToSchema is a compile-time description of the same serde wire shape. ProjectionDescriptor, ProjectionCheckpoint and ProjectionLag are served as-is in sift's OpenAPI document under these schema names, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
 
 [[exceptions]]
 rule = "B2"
