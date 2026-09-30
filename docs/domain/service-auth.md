@@ -19,7 +19,8 @@ lumen, relay, sift and tape do.
 - **Auth role** — `Role`: `Read`, `Write`, `Admin`; a higher role covers a
   lower one.
 - **Token claims** — `TokenClaims`: a subject and its role per resource, where
-  `*` matches any resource.
+  `*` matches any resource. Built with `TokenClaims::new(subject, roles)` (or
+  deserialized) and read through `subject()` and `roles()`.
 - **Registry** — `Registry`: bearer tokens and identities in two disjoint
   namespaces, each mapped to `TokenClaims`, loaded from one or more
   `RegistrySource` files.
@@ -32,8 +33,10 @@ lumen, relay, sift and tape do.
 - **Google credential** — `Credential`: a Google ID token or an opaque access
   token, verified by `GoogleVerifier` under `GoogleAuthConfig`.
 - **Delegated authentication** — `DelegatedAuthenticator`: TokenReview and
-  SubjectAccessReview behind a `TtlCache` governed by a `CachePolicy`, admitting
-  only a `ServiceAccountPrincipal`.
+  SubjectAccessReview behind a `TtlCache` governed by a `CachePolicy`
+  (`Default` plus `with_*` builders), admitting only a
+  `ServiceAccountPrincipal`. A review answer is a `TokenReviewOutcome`, built
+  with `authenticated`, `rejected` or `new`.
 - **Token fingerprint** — `fingerprint`: the first 6 bytes of a token's sha256,
   for correlating audit lines.
 - **Workload tokens** — `ProjectedTokenFile` (a mounted ServiceAccount token),
@@ -45,13 +48,26 @@ lumen, relay, sift and tape do.
 - `Verifier`, `AsyncVerifier`, `ScopedAuthorization` — implemented by services:
   keep, lumen and sift respectively.
 - `AuthEventSink` — audit output; `NoopAuthEventSink`, `TracingAuthEventSink`.
-- `JwksSource`, `AccessTokenIntrospection` — Google key sets and access-token
-  introspection; `HttpJwksSource`, `HttpAccessTokenIntrospection`.
-- `ReviewBackend` — TokenReview and SubjectAccessReview; `KubeReviewBackend`
-  (feature `k8s`), and fakes in lumen and sift.
-- `TokenMinter` — the TokenRequest API; `KubeTokenMinter` (feature `k8s`).
+- `AccessTokenIntrospection` (domain) — Google access-token introspection;
+  `HttpAccessTokenIntrospection`.
+- `ReviewBackend` (domain, with its outcome, attribute and error types) —
+  TokenReview and SubjectAccessReview; `KubeReviewBackend` (feature `k8s`),
+  and fakes in lumen and sift.
+- The two domain ports are written by hand in the form `#[async_trait]`
+  expands to, so they stay dyn-compatible and an `#[async_trait]` impl
+  compiles unchanged.
+- `JwksSource` (application, `#[async_trait]`) — Google key sets;
+  `HttpJwksSource`. It stays in application because it returns
+  `jsonwebtoken::jwk::JwkSet`, which the domain may not name.
+- `TokenMinter` (application, `#[async_trait]`) — the TokenRequest API;
+  `KubeTokenMinter` (feature `k8s`). It stays in application because the
+  interfaces `LoopbackProxy::next_fatal` names its `TokenRequestError`.
 - Two clocks: the seconds clock `gcp::Clock` and the millisecond clock
-  `k8s::Clock` (with `ManualClock` for tests), each with a `SystemClock`.
+  `k8s::Clock` (with `ManualClock` for tests), each with a `SystemClock`
+  adapter in infrastructure. The constructors that default to a
+  `SystemClock` or wire the HTTPS sources (`DelegatedAuthenticator::new`,
+  `TokenSource::new`, `GoogleVerifier::google`) live in the `src/app`
+  composition root.
 
 ## Invariants
 
@@ -95,18 +111,18 @@ cli-std: an llm topic.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B3 `infrastructure->application`: the HTTP JWKS and introspection sources,
-    the Kubernetes review backend and the token minter implement
-    `#[async_trait]` ports that sit in the application layer, because
-    `async-trait` and `jsonwebtoken` are not on the domain allowlist. P2 moves
-    the ports to the domain as native async-fn traits.
+- **Checker exceptions:**
+  - B3 `infrastructure->application`, narrowed by P2 to two files:
+    `google/http.rs` (`HttpJwksSource` implements the application
+    `JwksSource`) and `k8s/kube_token_minter.rs` (`KubeTokenMinter`
+    implements the application `TokenMinter`). See Ports for why those two
+    ports stay in application. P2 moved `ReviewBackend` and
+    `AccessTokenIntrospection` to the domain, which cleared
+    `k8s/kube_backend.rs`.
   - Other contexts: `bearer_token` is in the application layer, so service-mcp
-    uses it without an exception. service-backup's use of the infrastructure
-    item `k8s::ProjectedTokenFile` is a B4 exception on the service-backup
-    side; P2 publishes a token source through the application layer.
-- **Tracked for P2:** `anyhow` in the registry loaders and the reload API (ADR
-  D4). Public fields built with struct literals: `TokenClaims` in sift,
-  `TokenReviewOutcome` and `ReviewedIdentity` in lumen and sift, and
-  `CachePolicy` in a lumen test. `DelegatedAuthMetrics` exposes its counters as
-  public fields. The two clock ports stay separate.
+    uses it without an exception. service-backup reads `k8s::ProjectedTokenFile`
+    only from its own `src/app` composition root, so it needs no exception.
+- **Tracked:** `anyhow` in the registry loaders and the reload API (ADR D4).
+  `ReviewedIdentity` has public fields built with struct literals in lumen
+  and sift. `DelegatedAuthMetrics` exposes its counters as public fields. The
+  two clock ports stay separate.
