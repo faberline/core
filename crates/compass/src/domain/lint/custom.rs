@@ -4,7 +4,7 @@ use serde::Deserialize;
 use tree_sitter::StreamingIterator;
 
 use crate::diagnostic::{
-    Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, QuickFix, Range,
+    Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, QuickFix, Range, RuleCode,
 };
 use crate::syntax::ParsedFile;
 
@@ -47,8 +47,8 @@ fn default_severity() -> String {
 
 impl CustomRuleConfig {
     /// Returns the canonical diagnostic code: `CUSTOM_<ID>`
-    pub fn code(&self) -> String {
-        format!("CUSTOM_{}", self.id)
+    pub fn code(&self) -> RuleCode {
+        RuleCode::from(format!("CUSTOM_{}", self.id))
     }
 
     /// Parses the `severity` string into `DiagnosticSeverity`
@@ -143,8 +143,8 @@ impl CustomLintEngine {
     }
 
     /// All custom rule codes exposed by this engine (`CUSTOM_<ID>`).
-    pub fn rule_codes(&self) -> Vec<String> {
-        let mut codes: Vec<String> = self.regex_rules.iter().map(|r| r.config.code()).collect();
+    pub fn rule_codes(&self) -> Vec<RuleCode> {
+        let mut codes: Vec<RuleCode> = self.regex_rules.iter().map(|r| r.config.code()).collect();
         codes.extend(self.query_rules.iter().map(|r| r.config.code()));
         codes
     }

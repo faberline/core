@@ -13,7 +13,7 @@ fn check(source: &str) -> Vec<String> {
     checker
         .check(&file, &config)
         .iter()
-        .map(|d| d.code.clone())
+        .map(|d| d.code.to_string())
         .collect()
 }
 

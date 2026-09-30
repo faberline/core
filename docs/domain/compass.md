@@ -20,7 +20,8 @@ functions it instruments.
   language, whether the parse had errors, and whether it is line-based.
 - **Diagnostics** — `Diagnostic` is one finding: a `Range` of two `Position`s,
   a `DiagnosticSeverity` (Error, Warning, Information, Hint, numbered 1–4 as in
-  LSP), a rule code, a `DiagnosticCategory` (Syntax, Type, Names, Logic,
+  LSP), a `RuleCode` (the rule's code, such as `PY001`, serialized as a bare
+  string), a `DiagnosticCategory` (Syntax, Type, Names, Logic,
   Security, Style, Custom), a message, and `QuickFix`es made of `TextEdit`s.
 - **Checking** — a `Checker` lints one language; `CheckerRegistry` holds them.
   `LintConfig` selects languages, path exclusions and a minimum severity;
@@ -129,8 +130,9 @@ function.
 - **Tracked for P2:** `CodeGenerator` takes `serde_json::Value` to avoid a
   circular crate dependency. Public fields on `Position`, `Range`, `TextEdit`,
   `Diagnostic`, `LintConfig` and the `SpecIR` structs. Bare identities:
-  `PathBuf` as file identity, the rule code as a `String`, id newtypes with a
-  public `.0` (`ScopeId`, `NodeId`), and two unrelated `SymbolId` types.
+  `PathBuf` as file identity, `NodeId` with a public `.0`, and two unrelated
+  `SymbolId` types. The semantic model's `ScopeId` and `SymbolId` keep their
+  value private (`new`/`get`), and the rule code is a `RuleCode`.
   `SchemaRegistry::global` is a `OnceLock` singleton. The diagnostic model no
   longer names tree-sitter: a node's range comes from the `NodeRange`
   extension trait (`node.to_range()`) in `domain/syntax/parsed_file.rs`.

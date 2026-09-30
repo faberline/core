@@ -43,6 +43,7 @@ pub use domain::config::argus_config::{ArgusConfig, LanguageConfig};
 pub use domain::diagnostic::model::{
     Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range,
 };
+pub use domain::diagnostic::rule_code::RuleCode;
 pub use domain::error::argus_error::ArgusError;
 pub use domain::lint::checker::Checker;
 pub use domain::lint::registry::CheckerRegistry;

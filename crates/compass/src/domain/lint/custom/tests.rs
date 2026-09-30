@@ -173,5 +173,5 @@ message = "a"
 "#,
     );
     let codes = engine.rule_codes();
-    assert!(codes.contains(&"CUSTOM_ALPHA".to_string()));
+    assert!(codes.contains(&RuleCode::from("CUSTOM_ALPHA")));
 }

@@ -220,7 +220,7 @@ impl RequestHandler {
                 end_line: d.range.end.line,
                 end_column: d.range.end.character,
                 severity: format!("{:?}", d.severity).to_lowercase(),
-                code: d.code.clone(),
+                code: d.code.to_string(),
                 message: d.message.clone(),
             })
             .collect()

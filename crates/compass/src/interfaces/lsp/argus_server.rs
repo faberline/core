@@ -172,7 +172,7 @@ impl ArgusServer {
                 },
             },
             severity: Some(self.to_lsp_severity(diag.severity)),
-            code: Some(NumberOrString::String(diag.code.clone())),
+            code: Some(NumberOrString::String(diag.code.to_string())),
             code_description: None,
             source: Some("cclab_lens".to_string()),
             message: diag.message.clone(),

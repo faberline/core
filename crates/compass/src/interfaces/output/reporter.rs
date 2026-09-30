@@ -232,11 +232,11 @@ impl Reporter {
 
             for diag in &file_result.diagnostics {
                 // Register rule if not seen yet
-                let rule_idx = if let Some(&idx) = rule_ids.get(&diag.code) {
+                let rule_idx = if let Some(&idx) = rule_ids.get(diag.code.as_str()) {
                     idx
                 } else {
                     let idx = rules.len();
-                    rule_ids.insert(diag.code.clone(), idx);
+                    rule_ids.insert(diag.code.to_string(), idx);
                     rules.push(json!({
                         "id": diag.code,
                         "shortDescription": { "text": diag.code },

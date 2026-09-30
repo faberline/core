@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::domain::diagnostic::rule_code::RuleCode;
+
 /// Diagnostic severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum DiagnosticSeverity {
@@ -107,7 +109,7 @@ pub struct TextEdit {
 pub struct Diagnostic {
     pub range: Range,
     pub severity: DiagnosticSeverity,
-    pub code: String,
+    pub code: RuleCode,
     pub category: DiagnosticCategory,
     pub message: String,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -118,7 +120,7 @@ impl Diagnostic {
     pub fn new(
         range: Range,
         severity: DiagnosticSeverity,
-        code: impl Into<String>,
+        code: impl Into<RuleCode>,
         category: DiagnosticCategory,
         message: impl Into<String>,
     ) -> Self {
@@ -134,7 +136,7 @@ impl Diagnostic {
 
     pub fn error(
         range: Range,
-        code: impl Into<String>,
+        code: impl Into<RuleCode>,
         category: DiagnosticCategory,
         message: impl Into<String>,
     ) -> Self {
@@ -143,7 +145,7 @@ impl Diagnostic {
 
     pub fn warning(
         range: Range,
-        code: impl Into<String>,
+        code: impl Into<RuleCode>,
         category: DiagnosticCategory,
         message: impl Into<String>,
     ) -> Self {

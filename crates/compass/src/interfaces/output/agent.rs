@@ -155,7 +155,7 @@ impl<'a> AgentOutputBuilder<'a> {
                     symbol: symbol_name,
                     file: rel_path.clone(),
                     line: diag.range.start.line + 1, // 0-indexed to 1-indexed
-                    code: diag.code.clone(),
+                    code: diag.code.to_string(),
                     message: diag.message.clone(),
                 });
             }
