@@ -373,7 +373,7 @@ paths = [
   "crates/service-backup/src/domain/destination.rs",
   "crates/service-backup/src/domain/policy.rs",
 ]
-reason = "Moved as-is in P1: BackupDestination, ScheduledBackupPolicy and RetentionPolicy derive schemars::JsonSchema because downstream CRDs embed them and their generated schemas must not change. P2: the schema derive moves to interfaces CRD body types, or stays as a documented long-term exception."
+reason = "schemars::JsonSchema is a compile-time description of the same serde wire shape. BackupDestination, ScheduledBackupPolicy, BackupPolicy and RetentionPolicy are embedded as-is in downstream CRD specs (lumen, tape, relay, defer, keep), whose generated schemas must not change, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
 
 [[exceptions]]
 rule = "B3"
