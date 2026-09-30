@@ -75,10 +75,8 @@ runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
     types in interfaces.
   - B2 (`chrono::Utc::now`): `now_rfc3339` reads the wall clock. P2 takes the
     time from a `Clock` port or moves the call to the operator.
-  - B2 (`futures`, `rcgen`): the certificate `Issuer` and `SecretStore` ports
-    return `BoxFuture`, and `IssuanceRequest::build` generates the key and CSR
-    with `rcgen`. P2 uses std's boxed future and moves key generation behind an
-    infrastructure port.
+  - B2 (`rcgen`): `IssuanceRequest::build` generates the key and CSR with
+    `rcgen`. P2 moves key generation behind an infrastructure port.
   - B3 `application->infrastructure`: the certificate `Reconciler` reads and
     builds the Secret layout directly. P2 puts the layout behind a port.
   - B3 `interfaces->domain` and `interfaces->infrastructure`: the operator's

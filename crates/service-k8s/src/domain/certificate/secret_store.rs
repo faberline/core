@@ -2,6 +2,8 @@
 //! errors that port reports.
 
 use std::collections::BTreeMap;
+use std::future::Future;
+use std::pin::Pin;
 
 use serde_json::Value;
 
@@ -24,7 +26,7 @@ pub trait SecretStore: Send + Sync {
         &'a self,
         namespace: &'a str,
         name: &'a str,
-    ) -> futures::future::BoxFuture<'a, Result<Option<StoredSecret>, StoreError>>;
+    ) -> Pin<Box<dyn Future<Output = Result<Option<StoredSecret>, StoreError>> + Send + 'a>>;
 
     /// Apply `object` with merge semantics. Trust-only projection widens
     /// `ca.crt` without deleting live leaf keys; the Kubernetes store
@@ -32,7 +34,7 @@ pub trait SecretStore: Send + Sync {
     fn apply<'a>(
         &'a self,
         object: Value,
-    ) -> futures::future::BoxFuture<'a, Result<(), StoreError>>;
+    ) -> Pin<Box<dyn Future<Output = Result<(), StoreError>> + Send + 'a>>;
 }
 
 /// Classification of errors arising from a [`SecretStore`].

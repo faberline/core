@@ -15,10 +15,11 @@
 //! the other side.
 
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use futures::future::BoxFuture;
 
 use super::profile::{CertificateProfile, ExtendedUsage, InstanceScope, Purpose};
 
@@ -174,7 +175,7 @@ impl std::error::Error for IssuerError {}
 
 /// Anything that can turn a CSR into a leaf.
 ///
-/// `BoxFuture` rather than `async fn` because the reconciler holds issuers
+/// A boxed future rather than `async fn` because the reconciler holds issuers
 /// behind a trait object: a service configures one at startup, and which one it
 /// is must not leak into the type of everything downstream.
 pub trait Issuer: Send + Sync {
@@ -186,7 +187,7 @@ pub trait Issuer: Send + Sync {
     fn issue<'a>(
         &'a self,
         request: IssuanceRequest,
-    ) -> BoxFuture<'a, Result<IssuedMaterial, IssuerError>>;
+    ) -> Pin<Box<dyn Future<Output = Result<IssuedMaterial, IssuerError>> + Send + 'a>>;
 
     /// The anchor a verifier needs in order to accept leaves from this issuer.
     ///
@@ -195,7 +196,9 @@ pub trait Issuer: Send + Sync {
     /// *before* the first leaf it signed appears, and at that moment there is no
     /// leaf to read a chain out of. Public material, by definition — it is what
     /// verifiers are meant to already hold.
-    fn trust_anchor_pem<'a>(&'a self) -> BoxFuture<'a, Result<String, IssuerError>>;
+    fn trust_anchor_pem<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = Result<String, IssuerError>> + Send + 'a>>;
 }
 
 /// Generate an in-memory P-256 keypair and a CSR carrying the profile's names.
@@ -275,8 +278,7 @@ mod tests {
     #[test]
     fn a_csr_carries_the_requested_names() {
         let (request, _key) = IssuanceRequest::build(&scope(), &peer_profile()).unwrap();
-        let parsed =
-            rcgen::CertificateSigningRequestParams::from_pem(&request.csr_pem).unwrap();
+        let parsed = rcgen::CertificateSigningRequestParams::from_pem(&request.csr_pem).unwrap();
         let names: Vec<String> = parsed
             .params
             .subject_alt_names
@@ -297,8 +299,7 @@ mod tests {
     #[test]
     fn a_csr_never_asks_to_be_a_ca() {
         let (request, _key) = IssuanceRequest::build(&scope(), &peer_profile()).unwrap();
-        let parsed =
-            rcgen::CertificateSigningRequestParams::from_pem(&request.csr_pem).unwrap();
+        let parsed = rcgen::CertificateSigningRequestParams::from_pem(&request.csr_pem).unwrap();
         assert_eq!(parsed.params.is_ca, rcgen::IsCa::NoCa);
         assert!(!parsed
             .params
