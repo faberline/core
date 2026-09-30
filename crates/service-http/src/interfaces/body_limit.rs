@@ -158,7 +158,7 @@ fn oversized_response() -> Response {
 ///
 /// ```ignore
 /// let data_plane = my_routes()
-///     .layer(service_http::body_limit_layer(cfg.body_limit_bytes));
+///     .layer(service_http::body_limit_layer(cfg.body_limit_bytes()));
 /// let app = service_http::standard_probe_routes(readiness, None, openapi)
 ///     .merge(data_plane);
 /// ```

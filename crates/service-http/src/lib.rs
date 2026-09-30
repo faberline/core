@@ -45,7 +45,7 @@
 //!     .layer(axum::middleware::from_fn(server_timing_middleware));
 //!
 //! let listener = tokio::net::TcpListener::bind(cfg.bind_addr()).await?;
-//! let grace = Duration::from_secs(cfg.grace_secs);
+//! let grace = Duration::from_secs(cfg.grace_secs());
 //! let trigger = LifecycleShutdownTrigger::new(lifecycle.clone(), grace, std::time::Duration::ZERO)?;
 //! let signal_task = tokio::spawn(run_signal_bridge(trigger.clone(), async {
 //!     tokio::signal::ctrl_c().await.expect("signal");

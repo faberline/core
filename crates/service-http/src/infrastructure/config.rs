@@ -14,24 +14,24 @@ pub use service_observability::{LogFormat, ServiceIdentity};
 #[derive(Clone, Debug)]
 pub struct HttpConfig {
     /// Bind host. k8s passes `0.0.0.0`; local dev defaults to `127.0.0.1`.
-    pub host: String,
+    host: String,
     /// Bind port.
-    pub port: u16,
+    port: u16,
     /// Base log level (`trace|debug|info|warn|error`). `RUST_LOG` still wins.
-    pub log_level: String,
+    log_level: String,
     /// Log output format.
-    pub log_format: LogFormat,
+    log_format: LogFormat,
     /// Graceful-drain window (seconds) held after SIGTERM before the listener
     /// closes, so k8s stops routing while `/readyz` reports 503.
-    pub grace_secs: u64,
+    grace_secs: u64,
     /// Max request body size (bytes) for the data plane. The probe routes carry
     /// no body limit regardless.
-    pub body_limit_bytes: usize,
+    body_limit_bytes: usize,
     /// OTLP gRPC endpoint for trace export, e.g. `http://otel-collector:4317`.
     /// Opt-in: when `None`, no OTLP wiring is attempted. With the `otlp`
     /// feature, `logging::init_tracing_with_identity` exports traces; invalid
     /// configuration safely retains structured logging.
-    pub otlp_endpoint: Option<String>,
+    otlp_endpoint: Option<String>,
 }
 
 impl HttpConfig {
@@ -56,6 +56,41 @@ impl HttpConfig {
             body_limit_bytes,
             otlp_endpoint,
         }
+    }
+
+    /// Bind host.
+    pub fn host(&self) -> &str {
+        &self.host
+    }
+
+    /// Bind port.
+    pub fn port(&self) -> u16 {
+        self.port
+    }
+
+    /// Base log level (`trace|debug|info|warn|error`).
+    pub fn log_level(&self) -> &str {
+        &self.log_level
+    }
+
+    /// Log output format.
+    pub fn log_format(&self) -> LogFormat {
+        self.log_format
+    }
+
+    /// Graceful-drain window in seconds, held after SIGTERM.
+    pub fn grace_secs(&self) -> u64 {
+        self.grace_secs
+    }
+
+    /// Max request body size in bytes for the data plane.
+    pub fn body_limit_bytes(&self) -> usize {
+        self.body_limit_bytes
+    }
+
+    /// OTLP gRPC endpoint for trace export; `None` disables OTLP.
+    pub fn otlp_endpoint(&self) -> Option<&str> {
+        self.otlp_endpoint.as_deref()
     }
 
     /// `host:port` bind string for `TcpListener::bind`.
@@ -89,13 +124,13 @@ mod tests {
             8 * 1024 * 1024,
             Some("http://otel:4317".to_string()),
         );
-        assert_eq!(cfg.host, "0.0.0.0");
-        assert_eq!(cfg.port, 7373);
-        assert_eq!(cfg.log_level, "debug");
-        assert_eq!(cfg.log_format, LogFormat::Json);
-        assert_eq!(cfg.grace_secs, 45);
-        assert_eq!(cfg.body_limit_bytes, 8 * 1024 * 1024);
-        assert_eq!(cfg.otlp_endpoint.as_deref(), Some("http://otel:4317"));
+        assert_eq!(cfg.host(), "0.0.0.0");
+        assert_eq!(cfg.port(), 7373);
+        assert_eq!(cfg.log_level(), "debug");
+        assert_eq!(cfg.log_format(), LogFormat::Json);
+        assert_eq!(cfg.grace_secs(), 45);
+        assert_eq!(cfg.body_limit_bytes(), 8 * 1024 * 1024);
+        assert_eq!(cfg.otlp_endpoint(), Some("http://otel:4317"));
         assert_eq!(cfg.bind_addr(), "0.0.0.0:7373");
         assert_eq!(
             cfg.observability_config(),

@@ -40,7 +40,7 @@ tape and workspace do.
 - **Server timing** — `ServerTimingExt` entries and a `ServerTimingDisclosure`
   (`TotalOnly` by default, `Full` per response).
 - **HTTP config** — `HttpConfig`: bind address, log settings, grace period,
-  body limit and OTLP endpoint.
+  body limit and OTLP endpoint. `new` takes every value; getters read them.
 - **Shutdown trigger** — `LifecycleShutdownTrigger`: turns a signal into a
   server-lifecycle shutdown with a validated total and reserve.
 
@@ -110,5 +110,5 @@ none had a known external user by path.
   `Instant::now` (the `admit_at` and `acquire_at` seams already take the time),
   and fresh trace ids hash the wall clock; P2 adds clock and id-generator
   ports. `ProjectionMetadata` public fields, built with struct literals by
-  sift. Public fields on `WeightedAdmissionConfig`, `ContentDecodeLimits` and
-  `HttpConfig`. `anyhow` in `reverse_proxy_router` (ADR D4).
+  sift. Public fields on `WeightedAdmissionConfig` and `ContentDecodeLimits`.
+  `anyhow` in `reverse_proxy_router` (ADR D4).
