@@ -1,4 +1,6 @@
-use std::{fmt, path::Path, time::Duration};
+use std::{fmt, sync::Arc, time::Duration};
+
+use crate::domain::BearerTokenSource;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const OPERATION_TIMEOUT: Duration = Duration::from_secs(2 * 60 * 60);
@@ -82,7 +84,7 @@ impl Default for AdminSnapshotTransportConfig {
 enum AdminCredential {
     None,
     Static(String),
-    Projected(service_auth::k8s::ProjectedTokenFile),
+    Projected(Arc<dyn BearerTokenSource>),
 }
 
 /// Per-request product policy for a shared admin snapshot call.
@@ -104,17 +106,12 @@ impl AdminSnapshotRequest {
         self
     }
 
-    /// Store only the file descriptor policy. The file is opened and checked
-    /// immediately before every request so kubelet token rotation is observed.
-    pub fn with_projected_bearer(
-        mut self,
-        path: impl AsRef<Path>,
-        audience: impl Into<String>,
-    ) -> Self {
-        self.credential = AdminCredential::Projected(service_auth::k8s::ProjectedTokenFile::new(
-            path.as_ref(),
-            audience,
-        ));
+    /// Ask `source` for the bearer immediately before every request, so a
+    /// rotated token is observed. A failure is reported as
+    /// [`AdminSnapshotRequestError::CredentialFailed`], without the token or
+    /// the source's error.
+    pub(crate) fn with_bearer_source(mut self, source: Arc<dyn BearerTokenSource>) -> Self {
+        self.credential = AdminCredential::Projected(source);
         self
     }
 
@@ -271,11 +268,11 @@ impl AdminSnapshotTransport {
                 AdminCredential::Static(token) => {
                     request = request.bearer_auth(token);
                 }
-                AdminCredential::Projected(file) => {
-                    let token = file
-                        .read()
+                AdminCredential::Projected(source) => {
+                    let token = source
+                        .bearer_token()
                         .map_err(|_| AdminSnapshotRequestError::CredentialFailed { operation })?;
-                    request = request.bearer_auth(token.expose());
+                    request = request.bearer_auth(token);
                 }
             }
             let mut response = request

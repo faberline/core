@@ -2,6 +2,8 @@
 
 #[cfg(feature = "http-client")]
 mod admin_snapshot_backup;
+#[cfg(feature = "http-client")]
+mod projected_bearer;
 mod sink_from_destination;
 
 #[cfg(feature = "http-client")]
