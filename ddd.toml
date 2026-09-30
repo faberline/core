@@ -550,7 +550,6 @@ rule = "B2"
 subject = "tree_sitter"
 paths = [
   "crates/compass/src/domain/diagnostic/model.rs",
-  "crates/compass/src/domain/error/argus_error.rs",
   "crates/compass/src/domain/lint/custom.rs",
   "crates/compass/src/domain/lint/go/function_rules.rs",
   "crates/compass/src/domain/lint/go/import_rules.rs",

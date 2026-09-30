@@ -40,10 +40,6 @@ pub enum ArgusError {
     #[error("JSON serialization error: {0}")]
     Json(#[from] serde_json::Error),
 
-    /// Tree-sitter language error
-    #[error("Tree-sitter language error: {0}")]
-    TreeSitterLanguage(#[from] tree_sitter::LanguageError),
-
     /// Generic error with message
     #[error("{0}")]
     Other(String),

@@ -95,9 +95,9 @@ function.
 ## Exceptions and debts
 
 - **Checker exceptions (P1):**
-  - B2 `tree_sitter` in 72 domain files: `ParsedFile` holds a tree,
-    `ArgusError` wraps its language error, and the checkers, semantic visitors,
-    type inference, search and refactoring walk nodes directly. This is a
+  - B2 `tree_sitter` in domain files: `ParsedFile` holds a tree, and the
+    checkers, semantic visitors, type inference, search and refactoring walk
+    nodes directly. This is a
     long-term exception (E1); the grammar crates stay in
     `infrastructure/syntax`.
   - B2 `regex_lite` in custom lint rules, the config glob matcher, the import
