@@ -1495,9 +1495,8 @@ implementation home is `cli_std::connect`
 (`crates/cli-std/src/{domain,application,infrastructure}/connect.rs`, behind
 the `k8s` feature): the port-forward process lifecycle (`ChildGuard`,
 `free_local_port`, `wait_for_local_port_ready`) and the token-registry Secret
-resolution chain (`kubectl_get_json`, `cr_tokens_secret`,
-`resolve_cr_tokens_secret`, `secret_data_bytes`, `select_token`,
-`resolve_token`) are universal to any k8s-native service CLI — a tool adopts
+resolution chain (`cr_tokens_secret`, `resolve_cr_tokens_secret`,
+`select_token`, `resolve_token`) are universal to any k8s-native service CLI — a tool adopts
 `connect` by supplying only its own flag surface, its CR-kind lookup
 convention (the `resource_kind` string passed to `resolve_cr_tokens_secret`),
 and a role mapping into `cli_std::connect::Role`. `apps/lumen`

@@ -21,9 +21,6 @@
 //!   text — a fixed trailing stdout line `next: <cmd>` / `next: done`.
 //!
 //! An output matching none of these is a chainable-output defect: the agent
-//! has no way to know what happens next. [`assert_chainable`] is the check;
-//! [`assert_command_chainable`] wraps invoking a binary under test around it.
+//! has no way to know what happens next. [`assert_chainable`] is the check.
 
-pub use crate::application::chainable::{
-    assert_chainable, assert_command_chainable, ChainableViolation,
-};
+pub use crate::application::chainable::{assert_chainable, ChainableViolation};

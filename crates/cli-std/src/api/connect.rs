@@ -12,6 +12,4 @@ pub use crate::app::connect::{resolve_cr_tokens_secret, resolve_token};
 pub use crate::domain::connect::{
     cr_tokens_secret, select_token, Role, TokenClaims, TOKEN_REGISTRY_SECRET_KEY,
 };
-pub use crate::infrastructure::connect::{
-    free_local_port, kubectl_get_json, secret_data_bytes, wait_for_local_port_ready, ChildGuard,
-};
+pub use crate::infrastructure::connect::{free_local_port, wait_for_local_port_ready, ChildGuard};

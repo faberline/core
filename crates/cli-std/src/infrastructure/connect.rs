@@ -54,23 +54,6 @@ pub fn wait_for_local_port_ready(port: u16, timeout: Duration) -> Result<()> {
     }
 }
 
-/// Run `kubectl get <resource> <name> -n <namespace> -o json` (optionally
-/// through `--context`) and parse the result.
-pub fn kubectl_get_json(
-    context: Option<&str>,
-    resource: &str,
-    name: &str,
-    namespace: &str,
-) -> Result<serde_json::Value> {
-    Ok(run_kubectl_get(context, resource, name, namespace)?)
-}
-
-/// Pure: decode a Kubernetes Secret's `data.<key>` (base64) field into raw
-/// bytes. `kubectl get secret -o json` always base64-encodes `.data`.
-pub fn secret_data_bytes(secret_json: &serde_json::Value, key: &str) -> Result<Vec<u8>> {
-    Ok(decode_secret_data(secret_json, key)?)
-}
-
 /// The [`Kubectl`] port over the `kubectl` binary on `PATH`.
 pub(crate) struct KubectlCli;
 
@@ -97,6 +80,8 @@ impl Kubectl for KubectlCli {
     }
 }
 
+/// Runs `kubectl get <resource> <name> -n <namespace> -o json` (optionally
+/// through `--context`) and parses the result.
 fn run_kubectl_get(
     context: Option<&str>,
     resource: &str,
@@ -129,6 +114,8 @@ fn run_kubectl_get(
     })
 }
 
+/// Decodes a Kubernetes Secret's `data.<key>` (base64) field into raw bytes.
+/// `kubectl get secret -o json` always base64-encodes `.data`.
 fn decode_secret_data(secret_json: &serde_json::Value, key: &str) -> Result<Vec<u8>, KubectlError> {
     use base64::Engine;
     let encoded = secret_json["data"][key]
