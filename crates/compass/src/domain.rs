@@ -19,7 +19,6 @@ pub(crate) mod narrowing;
 pub(crate) mod package;
 pub(crate) mod python_env;
 pub(crate) mod python_inference;
-pub(crate) mod refactoring;
 pub(crate) mod rust_source_scan;
 pub(crate) mod rust_type_system;
 pub(crate) mod semantic;

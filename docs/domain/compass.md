@@ -37,7 +37,7 @@ functions it instruments.
   analysis the disk cache persists.
 - **Search and refactoring** — `SemanticSearchEngine` runs semantic code
   search. A `RefactorKind` (rename, extract, inline, move definition, change
-  signature) is applied by `RefactoringEngine` or `RefactoringRegistry`.
+  signature) is applied by `RefactoringEngine`.
 - **Incremental analysis** — `DirtyFileTracker` records each file's
   `FileChangeKind`; `DependencyGraph` records imports;
   `IncrementalUpdateManager` combines them into the files to re-analyze.
@@ -54,8 +54,6 @@ functions it instruments.
   (`PythonChecker`, `RustChecker`, …, `YamlDispatcher` for YAML).
 - `CodeGenerator` — emits code for a serialized spec; implemented by ten stack
   generators such as `AxumGenerator`, `SqlxGenerator` and `SerdeGenerator`.
-- `RefactoringOp` — applies one refactor request; implemented by the rename,
-  extract, inline, move-definition and signature engines.
 - `FrameworkTypeProvider` — types of framework attributes and methods; Django,
   FastAPI and Pydantic providers implement it.
 
@@ -87,7 +85,7 @@ No other core context depends on compass. guard imports `check_paths` and
 `FunctionKind` and `syntax::Language`. The daemon's JSON-RPC 2.0 methods
 (`check`, `type_at`, `symbols`, `diagnostics`, `hover`, `definition`,
 `references`, `pdg`, `slice`, `impact`, `taint` and housekeeping) and the LSP
-server use `Diagnostic` and `Range` as wire format. Eighteen public modules
+server use `Diagnostic` and `Range` as wire format. Seventeen public modules
 keep their paths because they hold names the root does not re-export
 (`src/api/`), with nested paths such as `server::incremental`, which a doctest
 imports. P2 deleted the old modules `checker`, `outline` and `watch`: every
@@ -135,8 +133,7 @@ function.
   public `.0` (`ScopeId`, `NodeId`), and two unrelated `SymbolId` types.
   `SchemaRegistry::global` is a `OnceLock` singleton. `Range::from_node` takes
   a tree-sitter node: an inherent method in P1, an extension trait in P2. Dead
-  or duplicated code (ADR D7): `RefactoringRegistry` and
-  `RefactoringEngine` are two refactoring engines; an unused
+  or duplicated code (ADR D7): an unused
   `type_inference::CodeGenerator` struct shares the port's name; `format`,
   `lint::{autofix, custom, embedded_markdown}` and `semantic::types` are
   unused; the `type_inference` Rust and TypeScript modules

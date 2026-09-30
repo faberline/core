@@ -57,16 +57,15 @@ PDG-style impact analysis, and structured refactoring operations.
 
 - Root WI: none; this capability predates the tracker.
 - Surfaces: Rust API: `outline`, `outline_parsed`, `type_at`, `hover`,
-  `SemanticSearchEngine`, `RefactoringRegistry`, `DeepTypeInferencer`,
-  `PropagationPipeline`; Modules: `semantic`, `graph`, `type_inference`,
-  `refactoring`
+  `SemanticSearchEngine`, `RefactoringEngine`, `DeepTypeInferencer`,
+  `PropagationPipeline`; Modules: `semantic`, `graph`, `type_inference`
 - Gate — behavior: `cargo test -p compass` - configured semantic, type
   inference, search, and refactoring smoke gate
 - Gate: `cargo test -p compass`
 - Source: `crates/compass/src/application/check/pipeline.rs`,
   `crates/compass/src/domain/semantic_search/engine.rs`,
   `crates/compass/src/domain/semantic_search/query.rs`,
-  `crates/compass/src/domain/refactoring/engine.rs`,
+  `crates/compass/src/domain/type_refactoring/engine.rs`,
   `crates/compass/src/domain/semantic.rs`,
   `crates/compass/src/domain/python_inference/inferencer.rs`,
   `crates/compass/src/domain/cross_file/inferencer.rs`
@@ -75,7 +74,7 @@ PDG-style impact analysis, and structured refactoring operations.
 |---|---|---:|---|
 | Symbol outline and propagated type query contract | epic | - | `cargo test -p compass`; crates/compass/src/application/check/pipeline.rs; crates/compass/src/application/outline/function_outline.rs |
 | Semantic search and graph query contract | epic | - | `cargo test -p compass`; crates/compass/src/domain/semantic_search/engine.rs; crates/compass/src/domain/semantic_search/query.rs; crates/compass/src/domain/semantic/pdg.rs |
-| Structured refactoring contract | epic | - | `cargo test -p compass`; crates/compass/src/domain/refactoring/engine.rs; crates/compass/src/domain/type_refactoring/engine.rs |
+| Structured refactoring contract | epic | - | `cargo test -p compass`; crates/compass/src/domain/type_refactoring/engine.rs |
 
 ### Spec Parsing And Code Generation
 

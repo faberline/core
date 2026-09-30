@@ -11,7 +11,6 @@ pub mod lens_error;
 pub mod lint;
 pub mod lsp;
 pub mod output;
-pub mod refactoring;
 pub mod schemas;
 pub mod semantic;
 pub mod server;
