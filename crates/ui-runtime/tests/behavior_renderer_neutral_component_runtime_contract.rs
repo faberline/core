@@ -1,5 +1,3 @@
-// SPEC-MANAGED: crates/ui-runtime/docs/contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract
-// CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec renderer-neutral-component-runtime-contract
 // @capability renderer-neutral-component-runtime
@@ -68,4 +66,3 @@ fn aw_ec_parse_cargo_running_test_count(line: &str) -> Option<usize> {
         .or_else(|| rest.strip_suffix(" test"))?;
     number.trim().parse().ok()
 }
-// CODEGEN-END

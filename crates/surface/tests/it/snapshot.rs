@@ -1,5 +1,3 @@
-// SPEC-MANAGED: crates/surface/tech-design/semantic/source/libs-surface-tests-snapshot-rs.md#rust-source-unit
-// CODEGEN-BEGIN
 use surface::{Element, Props, SurfaceRect};
 
 #[test]
@@ -46,4 +44,3 @@ fn snapshot_serializes_stable_structural_tree() {
     assert_eq!(json["nodes"][2]["name"], "aw");
     assert_eq!(json["nodes"][2]["bounds"]["w"], 120.0);
 }
-// CODEGEN-END

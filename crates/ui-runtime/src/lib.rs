@@ -1,5 +1,3 @@
-// SPEC-MANAGED: crates/ui-runtime/tech-design/semantic/source/libs-ui-runtime-src-lib-rs.md#rust-source-unit
-// CODEGEN-BEGIN
 //! Renderer-neutral component runtime: fiber tree + hooks + mount/flush loop.
 //!
 //! The runtime owns React-like authoring semantics without depending on React
@@ -23,7 +21,6 @@ use std::rc::Rc;
 /// `useState` / `useEffect` into a positional slot lookup that
 /// points into this `Vec`. React's "rules of hooks" (call in the
 /// same order every render) enforce the positional contract.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 #[derive(Default)]
 pub(crate) struct Fiber {
     pub id: FiberId,
@@ -36,7 +33,6 @@ pub(crate) struct Fiber {
     pub dirty: bool,
 }
 
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default)]
 pub struct FiberId(pub u64);
 
@@ -47,7 +43,6 @@ pub struct FiberId(pub u64);
 /// Variant = hook kind. A rules-of-hooks violation (conditional
 /// hook call that re-orders slots across renders) produces a
 /// variant mismatch at access time and panics with a clear message.
-// @spec hooks-runtime#H6
 pub(crate) enum HookSlot {
     /// `use_state`: the cell value.
     State(Box<dyn std::any::Any>),
@@ -74,7 +69,6 @@ pub(crate) enum HookSlot {
 /// into `u64` at the call site so the slot doesn't need to carry
 /// arbitrary types. The transpiler emits `hash_dep(x)` for each
 /// dep the TSX source passes.
-/// @spec crates/ui-runtime/tech-design/semantic/source/libs-ui-runtime-src-lib-rs.md#source
 pub type MemoDepHash = u64;
 
 // ── Thread-local scheduler / runtime ────────────────────────────────────────
@@ -95,7 +89,6 @@ struct Runtime {
     next_id: u64,
 }
 
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 impl Runtime {
     fn new_fiber(&mut self) -> FiberId {
         let id = FiberId(self.next_id);
@@ -150,7 +143,6 @@ fn with_current_fiber<R>(f: impl FnOnce(&mut Fiber) -> R) -> R {
 /// value. For v0 we only support the direct-value form — the
 /// functional form lands when we implement `useReducer` (same
 /// shape).
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn use_state<T: Clone + 'static>(initial: T) -> (T, StateSetter<T>) {
     RUNTIME.with(|r| {
         let mut rt = r.borrow_mut();
@@ -185,7 +177,6 @@ pub fn use_state<T: Clone + 'static>(initial: T) -> (T, StateSetter<T>) {
 /// Setter handle returned from `use_state`. Clone-friendly so it can
 /// be moved into event-handler closures; updating schedules a
 /// re-render of the owning fiber.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub struct StateSetter<T: Clone + 'static> {
     fiber_id: FiberId,
     idx: usize,
@@ -222,7 +213,6 @@ impl<T: Clone + 'static> StateSetter<T> {
 /// transpiler uses it for side effects that start browser host
 /// capabilities such as `fetch`; dependency-aware reruns will use a
 /// richer effect slot later.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn use_effect_once<F: FnOnce() + 'static>(effect: F) {
     let should_run = RUNTIME.with(|r| {
         let mut rt = r.borrow_mut();
@@ -257,7 +247,6 @@ pub fn use_effect_once<F: FnOnce() + 'static>(effect: F) {
 // ── use_reducer ────────────────────────────────────────────────────────────
 
 /// Dispatch handle returned from `use_reducer`.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub struct DispatchHandle<S: Clone + 'static, A: 'static> {
     fiber_id: FiberId,
     idx: usize,
@@ -301,7 +290,6 @@ impl<S: Clone + 'static, A: 'static> DispatchHandle<S, A> {
 /// Register the renderer-side async update scheduler. State setters
 /// are framework-level primitives, but only the mounted renderer knows
 /// how to coalesce dirty fibers into an actual frame.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn set_update_scheduler(scheduler: Option<Rc<dyn Fn()>>) {
     UPDATE_SCHEDULER.with(|slot| {
         *slot.borrow_mut() = scheduler;
@@ -318,7 +306,6 @@ fn notify_update_scheduled() {
 
 /// `useReducer` — same slot as `useState`, but transitions driven
 /// by a pure reducer. Reducer is stable across renders.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn use_reducer<S: Clone + 'static, A: 'static, F: Fn(&S, A) -> S + 'static>(
     reducer: F,
     initial: S,
@@ -356,7 +343,6 @@ pub fn use_reducer<S: Clone + 'static, A: 'static, F: Fn(&S, A) -> S + 'static>(
 
 /// Persistent mutable cell that survives re-renders. Mutating a
 /// ref does NOT trigger a re-render.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub struct RefHandle<T: 'static> {
     cell: Rc<RefCell<Box<dyn std::any::Any>>>,
     _marker: std::marker::PhantomData<T>,
@@ -396,7 +382,6 @@ impl<T: 'static> RefHandle<T> {
 }
 
 /// `useRef` — stable mutable container across renders.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn use_ref<T: 'static>(initial: T) -> RefHandle<T> {
     RUNTIME.with(|r| {
         let mut rt = r.borrow_mut();
@@ -427,7 +412,6 @@ pub fn use_ref<T: 'static>(initial: T) -> RefHandle<T> {
 // ── use_memo / use_callback ────────────────────────────────────────────────
 
 /// `useMemo` — recompute `compute()` only when `deps` change.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn use_memo<T: Clone + 'static, F: FnOnce() -> T>(compute: F, deps: Vec<MemoDepHash>) -> T {
     RUNTIME.with(|r| {
         let mut rt = r.borrow_mut();
@@ -466,7 +450,6 @@ pub fn use_memo<T: Clone + 'static, F: FnOnce() -> T>(compute: F, deps: Vec<Memo
 
 /// `useCallback` — stable-identity callback that rebinds iff deps
 /// change. Sugar over `use_memo`.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn use_callback<P: Clone + 'static, F: Fn(P) + 'static>(
     f: F,
     deps: Vec<MemoDepHash>,
@@ -476,7 +459,6 @@ pub fn use_callback<P: Clone + 'static, F: Fn(P) + 'static>(
 
 /// Hash any `Hash + ?Sized` value into a `MemoDepHash`. The
 /// transpiler emits `hash_dep(x)` per dep expression.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn hash_dep<H: std::hash::Hash + ?Sized>(v: &H) -> MemoDepHash {
     use std::hash::{DefaultHasher, Hasher};
     let mut h = DefaultHasher::new();
@@ -489,7 +471,6 @@ pub fn hash_dep<H: std::hash::Hash + ?Sized>(v: &H) -> MemoDepHash {
 /// Mount point — runs a component once and returns its initial
 /// rendered tree + a handle for subsequent event dispatch and
 /// updates.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub fn mount(component: Component) -> MountHandle {
     let fiber_id = RUNTIME.with(|r| r.borrow_mut().new_fiber());
     let tree = render_fiber(fiber_id, component.clone());
@@ -502,14 +483,12 @@ pub fn mount(component: Component) -> MountHandle {
 
 /// Returned from `mount`. Holds the live fiber + the last rendered
 /// tree so tests / the WebGPU renderer can inspect it.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 pub struct MountHandle {
     pub fiber_id: FiberId,
     pub component: Component,
     pub tree: RefCell<Element>,
 }
 
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 impl MountHandle {
     /// Returns a clone of the currently-mounted element tree.
     pub fn snapshot(&self) -> Element {
@@ -538,7 +517,6 @@ impl MountHandle {
     }
 }
 
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 impl MountHandle {
     /// Debug-only: force the root fiber dirty so the next `flush()`
     /// re-renders even when no state changed. Used by `JetDebug::force_rerender`.
@@ -554,7 +532,6 @@ impl MountHandle {
 /// Debug-only summary of a fiber's storage. Feature-gated to keep
 /// the `pub(crate)` visibility of `Fiber` intact — we expose just
 /// enough shape for `JetDebug` to serialize.
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 #[cfg(feature = "debug")]
 pub struct DebugFiberMeta {
     pub id: u64,
@@ -562,7 +539,6 @@ pub struct DebugFiberMeta {
     pub dirty: bool,
 }
 
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 #[cfg(feature = "debug")]
 pub fn debug_snapshot_fibers() -> Vec<DebugFiberMeta> {
     RUNTIME.with(|r| {
@@ -581,7 +557,6 @@ pub fn debug_snapshot_fibers() -> Vec<DebugFiberMeta> {
 /// One hook slot's value rendered for debug. `value_json` is `None`
 /// when the runtime can't cheaply read it (non-primitive `State`,
 /// `Memo` / `Ref` body, or `Context` placeholder).
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 #[cfg(feature = "debug")]
 pub struct DebugHookSummary {
     pub kind: &'static str,
@@ -593,7 +568,6 @@ pub struct DebugHookSummary {
 /// Returns an empty Vec if the fiber doesn't exist (rather than
 /// panicking — `jet browser hooks <bogus-id>` should be a gentle
 /// error, not a crash).
-/// @spec .aw/tech-design/projects/jet/semantic/jet-wasm-src-react.md#schema
 #[cfg(feature = "debug")]
 pub fn debug_snapshot_hooks(fiber_id: u64) -> Vec<DebugHookSummary> {
     RUNTIME.with(|r| {
@@ -690,4 +664,3 @@ fn render_fiber(fiber_id: FiberId, component: Component) -> Element {
     RUNTIME.with(|r| r.borrow_mut().end_render());
     tree
 }
-// CODEGEN-END
