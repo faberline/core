@@ -23,3 +23,6 @@ impl TextDocument {
         self
     }
 }
+
+#[cfg(test)]
+mod tests;

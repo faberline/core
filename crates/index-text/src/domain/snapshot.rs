@@ -32,3 +32,6 @@ impl TextIndexSnapshot {
         })
     }
 }
+
+#[cfg(test)]
+mod tests;
