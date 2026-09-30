@@ -1,3 +1,4 @@
+mod error_display;
 mod file_bearer_auth;
 mod generation;
 mod output;
