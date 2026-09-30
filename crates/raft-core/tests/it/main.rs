@@ -9,3 +9,4 @@ mod learner_freshness;
 mod membership_durability;
 mod snapshot;
 mod source_ownership;
+mod wire_golden;
