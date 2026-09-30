@@ -245,10 +245,7 @@ async fn create_without_a_credential_submits_nothing_and_asks_nothing() {
 #[tokio::test]
 async fn upgrade_check_lists_releases_and_installs_nothing() {
     let api = Api::default();
-    let opts = Options {
-        check: true,
-        ..Options::default()
-    };
+    let opts = Options::default().with_check(true);
     let open = || Ok(api.clone());
     run(&TOOL, opts, &Prompt(None), &NoInstall, open)
         .await

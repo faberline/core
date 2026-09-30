@@ -10,17 +10,67 @@ use crate::domain::{
     remote::RemoteError,
 };
 
-/// Flags for an upgrade run.
+/// Flags for an upgrade run; `Default` leaves every flag unset.
+///
+/// ```
+/// let opts = cli_std::upgrade::Options::default()
+///     .with_tag("1.2.3".to_string())
+///     .with_yes(true);
+/// assert_eq!(opts.tag(), Some("1.2.3"));
+/// assert!(opts.yes() && !opts.check() && !opts.force());
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct Options {
-    /// Report current vs latest without changing the binary.
-    pub check: bool,
-    /// Install this exact version (`X.Y.Z` or `<project>@X.Y.Z`).
-    pub tag: Option<String>,
-    /// Reinstall even when already on the selected version.
-    pub force: bool,
-    /// Skip the confirmation prompt.
-    pub yes: bool,
+    check: bool,
+    tag: Option<String>,
+    force: bool,
+    yes: bool,
+}
+
+impl Options {
+    /// Reports current vs latest without changing the binary.
+    pub fn with_check(mut self, check: bool) -> Self {
+        self.check = check;
+        self
+    }
+
+    /// Installs this exact version (`X.Y.Z` or `<project>@X.Y.Z`).
+    pub fn with_tag(mut self, tag: impl Into<Option<String>>) -> Self {
+        self.tag = tag.into();
+        self
+    }
+
+    /// Reinstalls even when already on the selected version.
+    pub fn with_force(mut self, force: bool) -> Self {
+        self.force = force;
+        self
+    }
+
+    /// Skips the confirmation prompt.
+    pub fn with_yes(mut self, yes: bool) -> Self {
+        self.yes = yes;
+        self
+    }
+
+    /// Whether the run only reports.
+    pub fn check(&self) -> bool {
+        self.check
+    }
+
+    /// The pinned version, if any.
+    pub fn tag(&self) -> Option<&str> {
+        self.tag.as_deref()
+    }
+
+    /// Whether the run reinstalls the selected version.
+    pub fn force(&self) -> bool {
+        self.force
+    }
+
+    /// Whether the confirmation prompt is skipped.
+    pub fn yes(&self) -> bool {
+        self.yes
+    }
 }
 
 /// Decision after comparing the installed and selected versions.
@@ -127,8 +177,8 @@ pub(crate) async fn run<A: ReleaseSource>(
     let api = open()?;
 
     let tags = list_release_tags(&api, tool.repo()).await?;
-    let Some((tag, selected)) = select_version(&tags, &prefix, opts.tag.as_deref()) else {
-        if opts.check && opts.tag.is_none() {
+    let Some((tag, selected)) = select_version(&tags, &prefix, opts.tag()) else {
+        if opts.check() && opts.tag().is_none() {
             println!("current: {current}");
             println!("latest:  none");
             println!(
@@ -139,7 +189,7 @@ pub(crate) async fn run<A: ReleaseSource>(
             println!("next: done");
             return Ok(());
         }
-        match opts.tag.as_deref() {
+        match opts.tag() {
             Some(t) => bail!(
                 "no {} release matching `{t}` (scanned {} tags)",
                 tool.project(),
@@ -153,7 +203,7 @@ pub(crate) async fn run<A: ReleaseSource>(
         }
     };
 
-    if opts.check {
+    if opts.check() {
         println!("current: {current}");
         println!("latest:  {selected} ({tag})");
         println!(
@@ -168,7 +218,7 @@ pub(crate) async fn run<A: ReleaseSource>(
         return Ok(());
     }
 
-    if decide_action(&current, &selected, opts.force) == Action::UpToDate {
+    if decide_action(&current, &selected, opts.force()) == Action::UpToDate {
         println!("already up to date ({current})");
         println!("next: done");
         return Ok(());
@@ -177,7 +227,7 @@ pub(crate) async fn run<A: ReleaseSource>(
     let asset = tool.asset_name();
     let (tar_url, sha_url) = asset_urls(&api, tool.repo(), &tag, &asset).await?;
 
-    if !opts.yes
+    if !opts.yes()
         && !prompt.confirm(&format!(
             "upgrade {} {current} → {selected}?",
             tool.project()
@@ -210,7 +260,7 @@ pub(crate) async fn run<A: ReleaseSource>(
 /// Without the `online` feature the HTTP client is not linked.
 #[cfg(not(feature = "online"))]
 pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
-    if opts.check {
+    if opts.check() {
         println!("current: {}", tool.version());
         println!("latest:  unavailable (this build has no `online` feature)");
         println!("→ rebuild with self-update support to query GitHub releases");

@@ -45,7 +45,8 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
   topic from a shared library can be attached to a v2 topic as
   `ProviderContent`.
 - **upgrade decision** — `upgrade::Options` holds the check, pinned tag, force
-  and yes flags. Comparing the installed and selected versions gives an
+  and yes flags: `Options::default()` leaves them unset, `with_*` builders set
+  them and getters of the same names read them. Comparing the installed and selected versions gives an
   `Action`: `UpToDate` or `Install`.
 - **issue report** — the diagnostics block (tool identity, OS and architecture,
   and optionally the status of a running node) and the body that an issue or a
@@ -180,11 +181,9 @@ jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
   is not on the domain allowlist, so they sit in the application layer and need
   no exception.
 - **Tracked for P2:**
-  - Public fields built with struct literals (ADR D2):
-    - `upgrade::Options`, in the CLIs
-      of beam, cap, courier, defer, jet, keep, loom, lumen, mamba, mesh,
-      pgpool, relay, sift, tape and vat;
-    - the v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, in lumen.
+  - Public fields built with struct literals (ADR D2): the v2 `Topic`,
+    `Task`, `Runbook`, `Step` and `Input`, in lumen. They are wire types, so
+    P2 leaves them as they are.
   - `TopicSection` is an enum and keeps its public variants; tape builds its
     `Generated` variant with named fields.
   - `anyhow` in public signatures, including the `CliModule::execute` port
