@@ -5,5 +5,5 @@ mod admin_snapshot_backup;
 mod runner;
 
 #[cfg(feature = "http-client")]
-pub use admin_snapshot_backup::run_admin_snapshot_backup;
+pub(crate) use admin_snapshot_backup::run_snapshot_backup;
 pub use runner::{run_backup_once, BackupObject, BackupRunResult};

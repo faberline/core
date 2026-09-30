@@ -69,7 +69,7 @@ pub enum BackupDestination {
 
 /// One backup destination scheme [`BackupDestination::from_uri`] accepts,
 /// paired with a human-readable description and whether a live upload sink
-/// is linked into this build (see `sink_from_destination` in `sink.rs`).
+/// is linked into this build (see `sink_from_destination` in `src/app/`).
 ///
 /// This is the canonical scheme inventory: CLI `llm` topics render it at
 /// call time (`cli_std::llm::TopicSection::Generated`) instead of

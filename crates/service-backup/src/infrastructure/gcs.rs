@@ -8,7 +8,7 @@ use anyhow::{bail, Context, Result};
 use chrono::{DateTime, Utc};
 use storage_object::{GcsObjectStore, ObjectStore, PutCondition};
 
-use crate::{BackupDestination, BackupSink};
+use crate::domain::{BackupDestination, BackupSink, BackupSinkError};
 
 #[derive(Clone)]
 pub struct GcsSink {
@@ -99,23 +99,24 @@ impl GcsSink {
 }
 
 impl BackupSink for GcsSink {
-    fn put(&self, timestamp: SystemTime, payload: &[u8]) -> Result<String> {
+    fn put(&self, timestamp: SystemTime, payload: &[u8]) -> Result<String, BackupSinkError> {
         let seconds = timestamp
             .duration_since(SystemTime::UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
         let key = format!("{}-{seconds}.json", self.prefix);
-        self.put_object(&key, payload, "application/json")?;
+        self.put_object(&key, payload, "application/json")
+            .map_err(BackupSinkError::other)?;
         Ok(key)
     }
 
-    fn prune(&self, max_age_seconds: u64) -> Result<usize> {
+    fn prune(&self, max_age_seconds: u64) -> Result<usize, BackupSinkError> {
         let max_age_seconds = i64::try_from(max_age_seconds).unwrap_or(i64::MAX);
         let cutoff = Utc::now() - chrono::Duration::seconds(max_age_seconds);
         let mut removed = 0;
-        for (key, updated) in self.list_objects()? {
+        for (key, updated) in self.list_objects().map_err(BackupSinkError::other)? {
             if updated < cutoff {
-                self.delete_object(&key)?;
+                self.delete_object(&key).map_err(BackupSinkError::other)?;
                 removed += 1;
             }
         }

@@ -15,6 +15,7 @@
 //! standard authenticated admin-snapshot transport used by service backup CLIs.
 
 mod api;
+mod app;
 mod application;
 mod domain;
 mod infrastructure;
@@ -22,19 +23,17 @@ mod interfaces;
 
 pub use api::llm;
 #[cfg(feature = "http-client")]
-pub use application::run_admin_snapshot_backup;
+pub use app::run_admin_snapshot_backup;
+pub use app::sink_from_destination;
 pub use application::{run_backup_once, BackupObject, BackupRunResult};
 pub use domain::{
-    BackupDestination, BackupPolicy, DestinationError, PolicyError, RetentionPolicy,
-    ScheduledBackupPolicy, SchemeInfo, SUPPORTED_SCHEMES,
+    BackupDestination, BackupPolicy, BackupSink, BackupSinkError, DestinationError, PolicyError,
+    RetentionPolicy, ScheduledBackupPolicy, SchemeInfo, SUPPORTED_SCHEMES,
 };
+pub use infrastructure::{fetch_backup_object, GcsSink, LocalFsSink, UnsupportedCloudSink};
 #[cfg(feature = "http-client")]
 pub use infrastructure::{
-    fetch_admin_snapshot, AdminSnapshotDiagnostic, AdminSnapshotOperation, AdminSnapshotRequest,
+    AdminSnapshotDiagnostic, AdminSnapshotOperation, AdminSnapshotRequest,
     AdminSnapshotRequestError, AdminSnapshotTransport, AdminSnapshotTransportConfig,
     AdminSnapshotTransportError,
-};
-pub use infrastructure::{
-    fetch_backup_object, sink_from_destination, BackupSink, GcsSink, LocalFsSink,
-    UnsupportedCloudSink,
 };

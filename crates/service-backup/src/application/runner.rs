@@ -24,7 +24,7 @@ use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{BackupSink, RetentionPolicy};
+use crate::domain::{BackupSink, RetentionPolicy};
 
 /// Object written by one backup run.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]

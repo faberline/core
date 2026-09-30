@@ -133,6 +133,7 @@ modules = [
   "crates/service-auth/src/api",
   "crates/service-auth/src/app",
   "crates/service-backup/src/api",
+  "crates/service-backup/src/app",
   "crates/service-http/src/api",
   "crates/service-k8s/src/api",
   "crates/service-k8s/src/app",
@@ -378,15 +379,6 @@ paths = [
   "crates/service-backup/src/domain/policy.rs",
 ]
 reason = "Moved as-is in P1: BackupDestination, ScheduledBackupPolicy and RetentionPolicy derive schemars::JsonSchema because downstream CRDs embed them and their generated schemas must not change. P2: the schema derive moves to interfaces CRD body types, or stays as a documented long-term exception."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/service-backup/src/application/admin_snapshot_backup.rs",
-  "crates/service-backup/src/application/runner.rs",
-]
-reason = "Moved as-is in P1: run_backup_once takes &dyn BackupSink and run_admin_snapshot_backup calls fetch_admin_snapshot and sink_from_destination, all defined in infrastructure. P2: the BackupSink port and a snapshot source port move to domain, and the lenient fetch_admin_snapshot is deleted (W1)."
 
 [[exceptions]]
 rule = "B3"
