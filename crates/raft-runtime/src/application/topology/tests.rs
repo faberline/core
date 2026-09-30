@@ -1,12 +1,7 @@
 use super::*;
 
 fn dims(shard_count: u32, replicas_per_shard: u32, voter_count: u32, pod: &str) -> ClusterDims {
-    ClusterDims {
-        shard_count,
-        replicas_per_shard,
-        voter_count,
-        pod_name: pod.into(),
-    }
+    ClusterDims::new(shard_count, replicas_per_shard, voter_count, pod)
 }
 
 #[test]

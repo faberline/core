@@ -9,12 +9,12 @@ use crate::infrastructure::parse_peer_overrides;
 impl ClusterDims {
     /// Read the standard downward-API quartet.
     pub fn from_env() -> Result<Self> {
-        Ok(Self {
-            shard_count: parse_env("SHARD_COUNT")?,
-            replicas_per_shard: parse_env("REPLICAS_PER_SHARD")?,
-            voter_count: parse_env("VOTER_COUNT")?,
-            pod_name: std::env::var("POD_NAME").context("POD_NAME not set")?,
-        })
+        Ok(Self::new(
+            parse_env("SHARD_COUNT")?,
+            parse_env("REPLICAS_PER_SHARD")?,
+            parse_env("VOTER_COUNT")?,
+            std::env::var("POD_NAME").context("POD_NAME not set")?,
+        ))
     }
 }
 

@@ -16,15 +16,54 @@ use crate::{Membership, NodeId};
 /// the piece [`ClusterTopology::from_env`] shares with a caller that only
 /// needs the scalars, not peer URLs (e.g. lumen's `ClusterConfig`, which
 /// stays compiled outside the `raft-wal` feature; #1002).
+///
+/// Build one with [`ClusterDims::new`], or read it from the process
+/// environment with [`ClusterDims::from_env`].
 #[derive(Debug, Clone)]
 pub struct ClusterDims {
-    pub shard_count: u32,
-    pub replicas_per_shard: u32,
-    pub voter_count: u32,
-    pub pod_name: String,
+    shard_count: u32,
+    replicas_per_shard: u32,
+    voter_count: u32,
+    pod_name: String,
 }
 
 impl ClusterDims {
+    /// The quartet as given; nothing is validated here
+    /// ([`ClusterTopology`] validates when it derives a topology).
+    pub fn new(
+        shard_count: u32,
+        replicas_per_shard: u32,
+        voter_count: u32,
+        pod_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            shard_count,
+            replicas_per_shard,
+            voter_count,
+            pod_name: pod_name.into(),
+        }
+    }
+
+    /// `SHARD_COUNT`: how many shards the StatefulSet's pods are spread over.
+    pub fn shard_count(&self) -> u32 {
+        self.shard_count
+    }
+
+    /// `REPLICAS_PER_SHARD`: how many replicas each shard's raft group has.
+    pub fn replicas_per_shard(&self) -> u32 {
+        self.replicas_per_shard
+    }
+
+    /// `VOTER_COUNT`: how many of a shard's replicas vote.
+    pub fn voter_count(&self) -> u32 {
+        self.voter_count
+    }
+
+    /// `POD_NAME`: this pod's StatefulSet name, `<sts>-<ordinal>`.
+    pub fn pod_name(&self) -> &str {
+        &self.pod_name
+    }
+
     /// The trailing `-<N>` ordinal in `pod_name` — the StatefulSet identity.
     pub fn pod_ordinal(&self) -> Result<u32> {
         let (_, suffix) = self
