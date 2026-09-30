@@ -27,6 +27,9 @@ log, metric and trace projections with it.
   with the required and current cursors and a retry-after in seconds.
 - **Rebuild comparison** — `RebuildComparison`: the live and rebuilt semantic
   digests at one source cursor, and whether they are equal.
+- **Projection error** — `ProjectionError`: `InvalidName` ("projection name
+  is invalid") and `Other`, which wraps an implementation's error with its
+  message unchanged. The registry and handle keep returning `anyhow::Result`.
 - **Registry and handle** — `ProjectionRegistry` binds one source to named
   projections; `ProjectionHandle` is the typed handle of one.
   `ProjectionRuntimeConfig::new` raises batch size, snapshot interval and
@@ -34,7 +37,9 @@ log, metric and trace projections with it.
 
 ## Ports
 
-sift implements all four. Every fallible method returns `anyhow::Result`.
+sift implements all four. Every fallible method returns
+`Result<_, ProjectionError>`; an implementation wraps its own error, such as
+an `anyhow::Error`, with `ProjectionError::other`.
 
 - `ProjectionRecord` — a source record's cursor and event id.
 - `ProjectionSource<Record>` — the current cursor, `read_after`, and
@@ -79,9 +84,6 @@ test checks its own sources for `service_projection::ProjectionRegistry`.
 ## Exceptions and debts
 
 - **Checker exceptions (P1):**
-  - B2 (`anyhow`): the `Projection`, `ProjectionSource` and
-    `ProjectionReadSession` ports return `anyhow::Result`, and sift implements
-    them. P2 returns a `thiserror` error (ADR D4).
   - B2 (`utoipa`): `ProjectionDescriptor`, `ProjectionCheckpoint` and
     `ProjectionLag` derive `ToSchema`, and sift's OpenAPI document uses those
     schema names. P2 moves the schemas to interfaces types with the same names.
@@ -91,8 +93,6 @@ test checks its own sources for `service_projection::ProjectionRegistry`.
     `ProjectionRegistry` call the file-state functions directly. P2 adds a
     state-store port.
 - **Tracked for P2:**
-  - `anyhow` in `ProjectionSource`, `ProjectionReadSession` and `Projection`
-    (ADR D4).
   - `ProjectionDescriptor` built with struct literals by sift (ADR D2); the
     checkpoint, envelope, lag and comparison types also have public fields.
   - Bare ids: cursors and generations are `u64`, names and event ids `String`.

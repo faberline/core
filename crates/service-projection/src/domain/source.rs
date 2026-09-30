@@ -1,4 +1,4 @@
-use anyhow::Result;
+use super::projection_error::ProjectionError;
 
 pub trait ProjectionRecord: Clone + Send + Sync + 'static {
     fn projection_cursor(&self) -> u64;
@@ -14,7 +14,7 @@ pub trait ProjectionReadSession<Record>: Send
 where
     Record: ProjectionRecord,
 {
-    fn read_next(&mut self, limit: usize) -> Result<Vec<Record>>;
+    fn read_next(&mut self, limit: usize) -> Result<Vec<Record>, ProjectionError>;
 }
 
 pub trait ProjectionSource<Record>: Send + Sync + 'static
@@ -22,14 +22,14 @@ where
     Record: ProjectionRecord,
 {
     fn current_cursor(&self) -> u64;
-    fn read_after(&self, after: u64, limit: usize) -> Result<Vec<Record>>;
+    fn read_after(&self, after: u64, limit: usize) -> Result<Vec<Record>, ProjectionError>;
 
     /// Open a stateful forward scan when the source can avoid stateless page
     /// restarts. Existing sources keep the default and use `read_after`.
     fn open_read_session(
         &self,
         _after: u64,
-    ) -> Result<Option<Box<dyn ProjectionReadSession<Record>>>> {
+    ) -> Result<Option<Box<dyn ProjectionReadSession<Record>>>, ProjectionError> {
         Ok(None)
     }
 

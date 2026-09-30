@@ -352,15 +352,6 @@ reason = "The Jieba analyzer is a persisted schema choice (Analyzer::Jieba) and 
 
 [[exceptions]]
 rule = "B2"
-subject = "anyhow"
-paths = [
-  "crates/service-projection/src/domain/projection.rs",
-  "crates/service-projection/src/domain/source.rs",
-]
-reason = "Moved as-is in P1: the Projection, ProjectionSource and ProjectionReadSession ports return anyhow::Result, sift implements them, and validate_descriptor uses bail!. P2: the ports return a thiserror error (W3)."
-
-[[exceptions]]
-rule = "B2"
 subject = "utoipa"
 paths = [
   "crates/service-projection/src/domain/checkpoint.rs",

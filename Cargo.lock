@@ -5285,6 +5285,7 @@ dependencies = [
  "sha2 0.10.9",
  "storage-durable",
  "tempfile",
+ "thiserror 2.0.18",
  "tokio",
  "utoipa",
 ]

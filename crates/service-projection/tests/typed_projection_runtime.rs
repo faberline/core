@@ -3,10 +3,9 @@ use std::sync::{
     Arc, Mutex,
 };
 
-use anyhow::Result;
 use service_projection::{
-    Projection, ProjectionDescriptor, ProjectionReadSession, ProjectionRecord, ProjectionRegistry,
-    ProjectionRuntimeConfig, ProjectionSource,
+    Projection, ProjectionDescriptor, ProjectionError, ProjectionReadSession, ProjectionRecord,
+    ProjectionRegistry, ProjectionRuntimeConfig, ProjectionSource,
 };
 
 #[derive(Clone)]
@@ -41,7 +40,7 @@ impl ProjectionSource<Record> for Source {
             .map_or(0, |record| record.cursor)
     }
 
-    fn read_after(&self, after: u64, limit: usize) -> Result<Vec<Record>> {
+    fn read_after(&self, after: u64, limit: usize) -> Result<Vec<Record>, ProjectionError> {
         Ok(self
             .records
             .lock()
@@ -69,7 +68,7 @@ struct SessionReader {
 }
 
 impl ProjectionReadSession<Record> for SessionReader {
-    fn read_next(&mut self, limit: usize) -> Result<Vec<Record>> {
+    fn read_next(&mut self, limit: usize) -> Result<Vec<Record>, ProjectionError> {
         let end = self.offset.saturating_add(limit).min(self.records.len());
         let page = self.records[self.offset..end].to_vec();
         self.offset = end;
@@ -82,14 +81,14 @@ impl ProjectionSource<Record> for SessionSource {
         self.records.last().map_or(0, |record| record.cursor)
     }
 
-    fn read_after(&self, _after: u64, _limit: usize) -> Result<Vec<Record>> {
+    fn read_after(&self, _after: u64, _limit: usize) -> Result<Vec<Record>, ProjectionError> {
         panic!("stateful projection source must not fall back to stateless paging")
     }
 
     fn open_read_session(
         &self,
         after: u64,
-    ) -> Result<Option<Box<dyn ProjectionReadSession<Record>>>> {
+    ) -> Result<Option<Box<dyn ProjectionReadSession<Record>>>, ProjectionError> {
         self.opened.fetch_add(1, Ordering::AcqRel);
         Ok(Some(Box::new(SessionReader {
             records: self
@@ -243,17 +242,18 @@ impl Projection<Record> for SumProjection {
         }
     }
 
-    fn apply_idempotent(&self, record: &Record) -> Result<()> {
+    fn apply_idempotent(&self, record: &Record) -> Result<(), ProjectionError> {
         *self.0.lock().unwrap() += record.value;
         Ok(())
     }
 
-    fn snapshot(&self) -> Result<Vec<u8>> {
+    fn snapshot(&self) -> Result<Vec<u8>, ProjectionError> {
         Ok(self.value().to_le_bytes().to_vec())
     }
 
-    fn restore(&self, state: &[u8]) -> Result<()> {
-        *self.0.lock().unwrap() = u64::from_le_bytes(state.try_into()?);
+    fn restore(&self, state: &[u8]) -> Result<(), ProjectionError> {
+        *self.0.lock().unwrap() =
+            u64::from_le_bytes(state.try_into().map_err(ProjectionError::other)?);
         Ok(())
     }
 }

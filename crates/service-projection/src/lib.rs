@@ -9,7 +9,7 @@ mod infrastructure;
 
 pub use application::{ProjectionHandle, ProjectionRegistry, ProjectionRuntimeConfig};
 pub use domain::{
-    Projection, ProjectionCheckpoint, ProjectionDescriptor, ProjectionLag, ProjectionReadSession,
-    ProjectionRecord, ProjectionSource, RebuildComparison,
+    Projection, ProjectionCheckpoint, ProjectionDescriptor, ProjectionError, ProjectionLag,
+    ProjectionReadSession, ProjectionRecord, ProjectionSource, RebuildComparison,
 };
 pub use infrastructure::{ProjectionStateEnvelope, PROJECTION_STATE_FORMAT_VERSION};

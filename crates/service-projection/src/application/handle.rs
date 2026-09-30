@@ -111,7 +111,7 @@ where
     }
 
     pub fn semantic_digest(&self) -> Result<String> {
-        self.projection().semantic_digest()
+        Ok(self.projection().semantic_digest()?)
     }
 
     pub fn catch_up(&self) -> Result<u64> {
