@@ -33,13 +33,13 @@ pub(crate) fn validate_page_body(body: &CatalogPageBody) -> Result<()> {
         CatalogPageBody::Leaf { entries } => {
             let mut previous: Option<&str> = None;
             for entry in entries {
-                validate_catalog_key(&entry.key)?;
-                if previous.is_some_and(|key| key >= entry.key.as_str()) {
+                validate_catalog_key(entry.key())?;
+                if previous.is_some_and(|key| key >= entry.key()) {
                     return Err(SegmentError::CorruptCatalog {
                         message: "leaf keys are not strictly sorted".to_string(),
                     });
                 }
-                previous = Some(&entry.key);
+                previous = Some(entry.key());
             }
         }
         CatalogPageBody::Branch { children } => {

@@ -7,7 +7,7 @@ use crate::domain::{
 impl PagedCatalog {
     pub fn upsert(&self, root: &CatalogRoot, entry: CatalogEntry) -> Result<CatalogMutation> {
         self.validate_root(root)?;
-        self.validate_entry_key(&entry.key)?;
+        self.validate_entry_key(entry.key())?;
         let inserted = self.insert_page(&root.root, entry)?;
         let (root_ref, height) = if inserted.pages.len() == 1 {
             (inserted.pages[0].clone(), root.height)
@@ -52,7 +52,7 @@ impl PagedCatalog {
         match self.load_page(reference)? {
             CatalogPageBody::Leaf { mut entries } => {
                 let (inserted, changed) =
-                    match entries.binary_search_by(|current| current.key.cmp(&entry.key)) {
+                    match entries.binary_search_by(|current| current.key().cmp(entry.key())) {
                         Ok(index) if entries[index] == entry => (false, false),
                         Ok(index) => {
                             entries[index] = entry;
@@ -86,7 +86,7 @@ impl PagedCatalog {
                 })
             }
             CatalogPageBody::Branch { mut children } => {
-                let index = child_index(&children, &entry.key)?;
+                let index = child_index(&children, entry.key())?;
                 let child = self.insert_page(&children[index], entry)?;
                 if child.written.is_empty() {
                     return Ok(InsertPage {

@@ -11,7 +11,11 @@ event archive and catalogs on it.
 
 ## Model
 
-- **Catalog entry** — `CatalogEntry`: a key and opaque value bytes.
+- **Catalog entry** — `CatalogEntry`: a key and opaque value bytes. The
+  fields are private: `CatalogEntry::try_new(key, value)` rejects a key that
+  is empty, longer than 1024 bytes or contains a NUL, and `key()`, `value()`
+  and `into_parts()` read it. Deserializing does not check the key; the
+  catalog checks every key when it builds or loads a page.
 - **Catalog page** — a JSON leaf of entries or branch of child references.
   `CatalogPageRef` names a page by key and records its sha256, size, entry
   count and first and last keys.
@@ -79,6 +83,3 @@ P1 keeps every root export; sift's structure test checks for the exact path
 ## Exceptions and debts
 
 - **Checker exceptions:** none.
-- **Tracked for P2:**
-  - `CatalogEntry` public fields, built with struct literals by sift in five
-    places (ADR D2).

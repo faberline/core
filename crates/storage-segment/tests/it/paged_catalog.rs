@@ -95,9 +95,12 @@ impl ObjectStore for MemoryStore {
 }
 
 fn entries(count: usize) -> impl Iterator<Item = CatalogEntry> {
-    (0..count).map(|index| CatalogEntry {
-        key: format!("segment/{index:09}"),
-        value: (index as u64).to_le_bytes().to_vec(),
+    (0..count).map(|index| {
+        CatalogEntry::try_new(
+            format!("segment/{index:09}"),
+            (index as u64).to_le_bytes().to_vec(),
+        )
+        .unwrap()
     })
 }
 
@@ -129,10 +132,7 @@ fn compatibility_abort_cleanup_has_a_fixed_page_key_limit() {
     let catalog =
         PagedCatalog::with_page_bytes(store.clone(), "bounded/catalog", 4 * 1024).unwrap();
     let input = (0..MAX_ABORT_TRACKED_CATALOG_PAGES + 10).map(|index| {
-        Ok(CatalogEntry {
-            key: format!("segment/{index:09}"),
-            value: vec![b'x'; 700],
-        })
+        Ok(CatalogEntry::try_new(format!("segment/{index:09}"), vec![b'x'; 700]).unwrap())
     });
     let abort = catalog.build_sorted_with_abort(input).unwrap_err();
     assert!(
@@ -155,10 +155,11 @@ fn keys_that_cannot_guarantee_three_way_fanout_are_rejected_before_upload() {
     let store = Arc::new(MemoryStore::default());
     let catalog = PagedCatalog::with_page_bytes(store.clone(), "fanout/catalog", 4 * 1024).unwrap();
     let error = catalog
-        .build_sorted(std::iter::once(Ok(CatalogEntry {
-            key: "x".repeat(1_000),
-            value: vec![1],
-        })))
+        .build_sorted(std::iter::once(Ok(CatalogEntry::try_new(
+            "x".repeat(1_000),
+            vec![1],
+        )
+        .unwrap())))
         .unwrap_err();
     assert!(matches!(error, SegmentError::CatalogPageTooLarge { .. }));
     assert_eq!(store.len(), 0);
@@ -175,10 +176,7 @@ fn million_entry_catalog_keeps_a_small_root_logarithmic_append_and_bounded_reade
     let _ = catalog
         .upsert(
             &small.root,
-            CatalogEntry {
-                key: "segment/999999998".into(),
-                value: vec![1],
-            },
+            CatalogEntry::try_new("segment/999999998", vec![1]).unwrap(),
         )
         .unwrap();
     let small_append_reads = store.gets();
@@ -200,10 +198,7 @@ fn million_entry_catalog_keeps_a_small_root_logarithmic_append_and_bounded_reade
     let appended = catalog
         .upsert(
             &large.root,
-            CatalogEntry {
-                key: "segment/999999999".into(),
-                value: vec![2],
-            },
+            CatalogEntry::try_new("segment/999999999", vec![2]).unwrap(),
         )
         .unwrap();
     let large_append_reads = store.gets();
@@ -280,15 +275,16 @@ fn last_prefix_lookup_reads_only_one_tree_path() {
     let store = Arc::new(MemoryStore::default());
     let catalog = PagedCatalog::new(store.clone(), "archive/catalog").unwrap();
     let entries = (0..10_000).flat_map(|index| {
-        ["log", "metric", "span"]
-            .into_iter()
-            .map(move |signal| CatalogEntry {
-                key: format!("segment/{signal}/{index:09}"),
-                value: (index as u64).to_le_bytes().to_vec(),
-            })
+        ["log", "metric", "span"].into_iter().map(move |signal| {
+            CatalogEntry::try_new(
+                format!("segment/{signal}/{index:09}"),
+                (index as u64).to_le_bytes().to_vec(),
+            )
+            .unwrap()
+        })
     });
     let mut entries = entries.collect::<Vec<_>>();
-    entries.sort_by(|left, right| left.key.cmp(&right.key));
+    entries.sort_by(|left, right| left.key().cmp(right.key()));
     let root = catalog
         .build_sorted(entries.into_iter().map(Ok))
         .unwrap()
@@ -300,7 +296,7 @@ fn last_prefix_lookup_reads_only_one_tree_path() {
             .last_with_prefix(&root, &format!("segment/{signal}/"))
             .unwrap()
             .unwrap();
-        assert_eq!(entry.key, format!("segment/{signal}/000009999"));
+        assert_eq!(entry.key(), format!("segment/{signal}/000009999"));
         assert!(store.gets() <= root.height as u64 + 1);
     }
     assert!(catalog
@@ -310,18 +306,9 @@ fn last_prefix_lookup_reads_only_one_tree_path() {
 
     let unicode_root = catalog
         .build([
-            CatalogEntry {
-                key: "unicode/prefix/a".into(),
-                value: vec![1],
-            },
-            CatalogEntry {
-                key: format!("unicode/prefix/{}tail", '\u{10ffff}'),
-                value: vec![2],
-            },
-            CatalogEntry {
-                key: "unicode/q".into(),
-                value: vec![3],
-            },
+            CatalogEntry::try_new("unicode/prefix/a", vec![1]).unwrap(),
+            CatalogEntry::try_new(format!("unicode/prefix/{}tail", '\u{10ffff}'), vec![2]).unwrap(),
+            CatalogEntry::try_new("unicode/q", vec![3]).unwrap(),
         ])
         .unwrap()
         .root;
@@ -330,7 +317,7 @@ fn last_prefix_lookup_reads_only_one_tree_path() {
             .last_with_prefix(&unicode_root, "unicode/prefix/")
             .unwrap()
             .unwrap()
-            .key,
+            .key(),
         format!("unicode/prefix/{}tail", '\u{10ffff}')
     );
 }
@@ -343,14 +330,8 @@ fn a_small_page_rejects_keys_that_cannot_form_a_two_child_branch() {
     let key = "k".repeat(950);
     let error = catalog
         .build([
-            CatalogEntry {
-                key: format!("a{key}"),
-                value: vec![1],
-            },
-            CatalogEntry {
-                key: format!("b{key}"),
-                value: vec![2],
-            },
+            CatalogEntry::try_new(format!("a{key}"), vec![1]).unwrap(),
+            CatalogEntry::try_new(format!("b{key}"), vec![2]).unwrap(),
         ])
         .unwrap_err();
     assert!(error.to_string().contains("page"));

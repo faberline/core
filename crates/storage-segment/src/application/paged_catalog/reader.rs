@@ -89,7 +89,7 @@ impl CatalogReader {
         let leaf = self
             .leaf
             .iter()
-            .map(|entry| entry.key.len() + entry.value.len())
+            .map(|entry| entry.key().len() + entry.value().len())
             .sum::<usize>();
         self.peak_buffer_bytes = self
             .peak_buffer_bytes
@@ -121,7 +121,7 @@ impl Iterator for CatalogReader {
             match self.catalog.load_page(&reference) {
                 Ok(CatalogPageBody::Leaf { mut entries }) => {
                     if let Some(after) = &self.after_key {
-                        let first = entries.partition_point(|entry| entry.key <= *after);
+                        let first = entries.partition_point(|entry| entry.key() <= after.as_str());
                         entries.drain(..first);
                     }
                     self.leaf = entries.into();

@@ -65,8 +65,7 @@ impl PagedCatalog {
     fn remove_page(&self, reference: &CatalogPageRef, key: &str) -> Result<RemovePage> {
         match self.load_page(reference)? {
             CatalogPageBody::Leaf { mut entries } => {
-                let Ok(index) = entries.binary_search_by(|entry| entry.key.as_str().cmp(key))
-                else {
+                let Ok(index) = entries.binary_search_by(|entry| entry.key().cmp(key)) else {
                     return Ok(RemovePage {
                         pages: vec![reference.clone()],
                         removed: false,

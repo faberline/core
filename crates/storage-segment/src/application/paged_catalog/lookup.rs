@@ -13,7 +13,7 @@ impl PagedCatalog {
             match self.load_page(&reference)? {
                 CatalogPageBody::Leaf { entries } => {
                     return Ok(entries
-                        .binary_search_by(|entry| entry.key.as_str().cmp(key))
+                        .binary_search_by(|entry| entry.key().cmp(key))
                         .ok()
                         .map(|index| entries[index].clone()));
                 }
@@ -39,7 +39,7 @@ impl PagedCatalog {
             Some(upper) => self.last_before(root, &upper)?,
             None => self.last_entry(root)?,
         };
-        Ok(candidate.filter(|entry| entry.key.starts_with(prefix)))
+        Ok(candidate.filter(|entry| entry.key().starts_with(prefix)))
     }
 
     fn last_before(&self, root: &CatalogRoot, upper: &str) -> Result<Option<CatalogEntry>> {
@@ -47,7 +47,7 @@ impl PagedCatalog {
         loop {
             match self.load_page(&reference)? {
                 CatalogPageBody::Leaf { entries } => {
-                    let index = entries.partition_point(|entry| entry.key.as_str() < upper);
+                    let index = entries.partition_point(|entry| entry.key() < upper);
                     return Ok(index.checked_sub(1).map(|index| entries[index].clone()));
                 }
                 CatalogPageBody::Branch { children } => {
