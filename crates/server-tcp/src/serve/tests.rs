@@ -11,12 +11,11 @@ use tokio::sync::oneshot;
 #[tokio::test]
 async fn bind_uses_configured_socket_options() {
     // @spec apps/agentic-workflow/tech-design/logic/shared-server-substrate-performance-layers.md#unit-test
-    let cfg =
-        TcpServerConfig::new(BindConfig::localhost(0)).with_socket_options(TcpSocketOptions {
-            backlog: 128,
-            reuse_addr: true,
-            nodelay: true,
-        });
+    let cfg = TcpServerConfig::new(BindConfig::localhost(0))
+        .with_socket_options(TcpSocketOptions::default().with_backlog(128));
+    assert_eq!(cfg.socket().backlog(), 128);
+    assert!(cfg.socket().reuse_addr());
+    assert!(cfg.socket().nodelay());
     let listener = bind(&cfg).await.expect("bind");
     assert!(listener.local_addr().unwrap().port() > 0);
 }

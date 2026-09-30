@@ -55,15 +55,13 @@ pub async fn serve_h2c_with_lifecycle(
                         server_tcp::TcpConnectionTerminal::Completed
                     }
                 };
-                server_tcp::TcpConnectionResult {
-                    terminal,
-                    streams_admitted: connection.admitted as u64,
-                    streams_active_at_drain: connection.active_at_drain as u64,
-                    streams_completed: connection.completed as u64,
-                    streams_refused: connection.refused as u64,
-                    streams_timed_out: connection.timed_out as u64,
-                    streams_ambiguous: connection.ambiguous as u64,
-                }
+                server_tcp::TcpConnectionResult::new(terminal)
+                    .with_streams_admitted(connection.admitted as u64)
+                    .with_streams_active_at_drain(connection.active_at_drain as u64)
+                    .with_streams_completed(connection.completed as u64)
+                    .with_streams_refused(connection.refused as u64)
+                    .with_streams_timed_out(connection.timed_out as u64)
+                    .with_streams_ambiguous(connection.ambiguous as u64)
             }
         },
         lifecycle,

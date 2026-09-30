@@ -20,19 +20,19 @@ impl Drop for ConnectionCloseGuard {
 
 pub async fn bind(config: &TcpServerConfig) -> std::io::Result<TcpListener> {
     // @spec apps/agentic-workflow/tech-design/logic/shared-server-substrate-performance-layers.md#logic
-    let addr = config.bind.socket_addr();
+    let addr = config.bind().socket_addr();
     let domain = if addr.is_ipv6() {
         Domain::IPV6
     } else {
         Domain::IPV4
     };
     let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP))?;
-    if config.socket.reuse_addr {
+    if config.socket().reuse_addr() {
         socket.set_reuse_address(true)?;
     }
     socket.set_nonblocking(true)?;
     socket.bind(&addr.into())?;
-    socket.listen(config.socket.backlog)?;
+    socket.listen(config.socket().backlog())?;
     TcpListener::from_std(std::net::TcpListener::from(socket))
 }
 
@@ -64,10 +64,7 @@ pub async fn serve_arc<H, S>(
                     Ok(()) => TcpConnectionResult::default(),
                     Err(error) => {
                         tracing::debug!(%error, "tcp connection handler failed");
-                        TcpConnectionResult {
-                            terminal: TcpConnectionTerminal::Failed,
-                            ..Default::default()
-                        }
+                        TcpConnectionResult::new(TcpConnectionTerminal::Failed)
                     }
                 }
             }
@@ -98,7 +95,7 @@ where
     let handler = Arc::new(handler);
     let owner = Arc::clone(&handler);
     let lifecycle_mode = lifecycle.is_some();
-    let lifecycle = lifecycle.unwrap_or_else(|| config.drain.lifecycle());
+    let lifecycle = lifecycle.unwrap_or_else(|| config.drain().lifecycle());
     let mut subscription = lifecycle.subscribe();
     let mut shutdown = shutdown;
     let mut tasks = JoinSet::new();
@@ -119,7 +116,7 @@ where
                 }
             }
             _ = &mut shutdown => {
-                config.drain.start_drain();
+                config.drain().start_drain();
                 break;
             }
             accept = listener.accept() => {
@@ -132,19 +129,19 @@ where
                     }
                 };
                 if lifecycle.observation().phase.is_draining_or_later() {
-                    config.connection_metrics.connection_rejected();
+                    config.connection_metrics().connection_rejected();
                     report.rejected += 1;
                     drop(stream);
                     break;
                 }
-                if let Err(error) = stream.set_nodelay(config.socket.nodelay) {
+                if let Err(error) = stream.set_nodelay(config.socket().nodelay()) {
                     tracing::debug!(%error, %peer_addr, "failed to set tcp nodelay");
                 }
-                let permit = match config.connection_budget.as_ref() {
+                let permit = match config.connection_budget() {
                     Some(budget) => match budget.try_acquire() {
                         Ok(permit) => Some(permit),
                         Err(error) => {
-                            config.connection_metrics.connection_rejected();
+                            config.connection_metrics().connection_rejected();
                             tracing::warn!(%error, %peer_addr, "tcp connection rejected");
                             drop(stream);
                             report.rejected += 1;
@@ -153,15 +150,15 @@ where
                     },
                     None => None,
                 };
-                config.connection_metrics.connection_accepted();
+                config.connection_metrics().connection_accepted();
                 report.accepted += 1;
                 let handler = Arc::clone(&handler);
-                let connection_metrics = Arc::clone(&config.connection_metrics);
+                let connection_metrics = Arc::clone(config.connection_metrics());
                 let closed = ConnectionCloseGuard(connection_metrics);
                 let cx = ConnectionContext {
-                    local_addr: local_addr.unwrap_or_else(|| stream.local_addr().unwrap_or(config.bind.socket_addr())),
+                    local_addr: local_addr.unwrap_or_else(|| stream.local_addr().unwrap_or(config.bind().socket_addr())),
                     peer_addr,
-                    drain: config.drain.signal(),
+                    drain: config.drain().signal(),
                     lifecycle: lifecycle.subscribe(),
                 };
                 tasks.spawn(async move {
@@ -187,7 +184,7 @@ where
             }
         }
     } else {
-        config.drain_timeout
+        config.drain_timeout()
     };
     if remaining.is_zero() {
         report.unfinished += tasks.len() as u64;

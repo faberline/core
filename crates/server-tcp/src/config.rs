@@ -8,12 +8,12 @@ use server_lifecycle::{
 
 #[derive(Clone)]
 pub struct TcpServerConfig {
-    pub bind: BindConfig,
-    pub connection_budget: Option<ConnectionBudget>,
-    pub drain: DrainController,
-    pub socket: TcpSocketOptions,
-    pub drain_timeout: Duration,
-    pub connection_metrics: Arc<dyn ConnectionMetrics>,
+    bind: BindConfig,
+    connection_budget: Option<ConnectionBudget>,
+    drain: DrainController,
+    socket: TcpSocketOptions,
+    drain_timeout: Duration,
+    connection_metrics: Arc<dyn ConnectionMetrics>,
 }
 
 impl fmt::Debug for TcpServerConfig {
@@ -65,13 +65,79 @@ impl TcpServerConfig {
         self.connection_metrics = metrics;
         self
     }
+
+    /// The address the listener binds.
+    pub fn bind(&self) -> &BindConfig {
+        &self.bind
+    }
+
+    /// The cap on concurrent connections, if any.
+    pub fn connection_budget(&self) -> Option<&ConnectionBudget> {
+        self.connection_budget.as_ref()
+    }
+
+    /// The drain flag the listener starts on shutdown.
+    pub fn drain(&self) -> &DrainController {
+        &self.drain
+    }
+
+    /// The listen-socket options.
+    pub fn socket(&self) -> TcpSocketOptions {
+        self.socket
+    }
+
+    /// How long open connections get to finish when no lifecycle deadline
+    /// applies.
+    pub fn drain_timeout(&self) -> Duration {
+        self.drain_timeout
+    }
+
+    /// The sink for accepted, rejected and closed connection events.
+    pub fn connection_metrics(&self) -> &Arc<dyn ConnectionMetrics> {
+        &self.connection_metrics
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TcpSocketOptions {
-    pub backlog: i32,
-    pub reuse_addr: bool,
-    pub nodelay: bool,
+    backlog: i32,
+    reuse_addr: bool,
+    nodelay: bool,
+}
+
+impl TcpSocketOptions {
+    /// Sets the listen backlog.
+    pub fn with_backlog(mut self, backlog: i32) -> Self {
+        self.backlog = backlog;
+        self
+    }
+
+    /// Sets whether the listen socket reuses its address.
+    pub fn with_reuse_addr(mut self, reuse_addr: bool) -> Self {
+        self.reuse_addr = reuse_addr;
+        self
+    }
+
+    /// Sets whether accepted connections disable Nagle's algorithm.
+    pub fn with_nodelay(mut self, nodelay: bool) -> Self {
+        self.nodelay = nodelay;
+        self
+    }
+
+    /// The listen backlog.
+    pub fn backlog(&self) -> i32 {
+        self.backlog
+    }
+
+    /// Whether the listen socket reuses its address.
+    pub fn reuse_addr(&self) -> bool {
+        self.reuse_addr
+    }
+
+    /// Whether accepted connections disable Nagle's algorithm.
+    pub fn nodelay(&self) -> bool {
+        self.nodelay
+    }
 }
 
 impl Default for TcpSocketOptions {
