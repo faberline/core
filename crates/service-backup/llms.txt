@@ -11,10 +11,15 @@
 
 ## Behaviour
 
-- [tests/projected_admin_transport.rs](tests/projected_admin_transport.rs): the
-  crate's one externally observable case, which needs the `http-client` feature:
-  `cargo test -p service-backup --features http-client --test projected_admin_transport`.
-  A second case moves both into `tests/it/` as modules of one test binary.
+- [tests/it/](tests/it/main.rs): the externally observable cases, as modules
+  of one test binary: `cargo test -p service-backup --all-features --test it`.
+  - [projected_admin_transport.rs](tests/it/projected_admin_transport.rs) and
+    [admin_request_golden.rs](tests/it/admin_request_golden.rs): the admin
+    snapshot transport; built only with the `http-client` feature.
+  - [wire_golden.rs](tests/it/wire_golden.rs) and
+    [schema_golden.rs](tests/it/schema_golden.rs): the CRD JSON, its
+    `schemars` schema, the rendered topic and the destination and policy error
+    text, pinned byte for byte.
 - Rules observable only inside the implementation stay as colocated unit tests
   under their `src/**` owner: `cargo test -p service-backup --lib`.
 
