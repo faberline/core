@@ -5,10 +5,10 @@ use std::fmt::Write;
 /// text, and the current `value`.
 #[derive(Debug, Clone, Copy)]
 pub struct Sample<'a> {
-    pub name: &'a str,
-    pub kind: &'a str,
-    pub help: &'a str,
-    pub value: u64,
+    name: &'a str,
+    kind: &'a str,
+    help: &'a str,
+    value: u64,
 }
 
 impl<'a> Sample<'a> {
@@ -20,19 +20,49 @@ impl<'a> Sample<'a> {
             value,
         }
     }
+
+    /// The Prometheus metric name.
+    pub const fn name(&self) -> &'a str {
+        self.name
+    }
+
+    /// The `# TYPE` token, such as `"counter"` or `"gauge"`.
+    pub const fn kind(&self) -> &'a str {
+        self.kind
+    }
+
+    /// The `# HELP` text.
+    pub const fn help(&self) -> &'a str {
+        self.help
+    }
+
+    /// The sample value.
+    pub const fn value(&self) -> u64 {
+        self.value
+    }
 }
 
 /// One Prometheus label name/value pair. The renderer canonicalizes label
 /// order and escapes values, so callers only own label semantics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Label<'a> {
-    pub name: &'a str,
-    pub value: &'a str,
+    name: &'a str,
+    value: &'a str,
 }
 
 impl<'a> Label<'a> {
     pub const fn new(name: &'a str, value: &'a str) -> Self {
         Self { name, value }
+    }
+
+    /// The label name.
+    pub const fn name(&self) -> &'a str {
+        self.name
+    }
+
+    /// The label value, unescaped.
+    pub const fn value(&self) -> &'a str {
+        self.value
     }
 }
 
@@ -53,10 +83,10 @@ impl<'a> LabeledSample<'a> {
 /// labeled value rows.
 #[derive(Debug, Clone, Copy)]
 pub struct SampleGroup<'a> {
-    pub name: &'a str,
-    pub kind: &'a str,
-    pub help: &'a str,
-    pub samples: &'a [LabeledSample<'a>],
+    name: &'a str,
+    kind: &'a str,
+    help: &'a str,
+    samples: &'a [LabeledSample<'a>],
 }
 
 impl<'a> SampleGroup<'a> {
@@ -72,6 +102,26 @@ impl<'a> SampleGroup<'a> {
             help,
             samples,
         }
+    }
+
+    /// The metric family name shared by every row.
+    pub const fn name(&self) -> &'a str {
+        self.name
+    }
+
+    /// The `# TYPE` token shared by every row.
+    pub const fn kind(&self) -> &'a str {
+        self.kind
+    }
+
+    /// The `# HELP` text shared by every row.
+    pub const fn help(&self) -> &'a str {
+        self.help
+    }
+
+    /// The labeled rows, in render order.
+    pub const fn samples(&self) -> &'a [LabeledSample<'a>] {
+        self.samples
     }
 }
 
@@ -155,6 +205,11 @@ mod tests {
             Sample::new("demo_total", "counter", "A demo counter.", 3),
             Sample::new("demo_bytes", "gauge", "A demo gauge.", 100),
         ];
+        let first = samples[0];
+        assert_eq!(
+            (first.name(), first.kind(), first.help(), first.value()),
+            ("demo_total", "counter", "A demo counter.", 3)
+        );
         let out = render(&samples);
         assert_eq!(
             out,
@@ -186,7 +241,11 @@ mod tests {
 # TYPE demo_active gauge\n\
 demo_active{pool=\"x\\\"y\",zone=\"a\\\\b\\nc\"} 7\n"
         );
-        assert_eq!(rows[0].labels[0].name, "zone");
+        assert_eq!(rows[0].labels[0].name(), "zone");
+        assert_eq!(groups[0].name(), "demo_active");
+        assert_eq!(groups[0].kind(), "gauge");
+        assert_eq!(groups[0].help(), "Active demo resources.");
+        assert_eq!(groups[0].samples().len(), 1);
     }
 
     /// Golden-render test derived from lumen's `src/metrics.rs` (#974):

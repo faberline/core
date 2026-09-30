@@ -14,15 +14,23 @@ use crate::instrument::Counter;
 /// they agree.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bucket<'a> {
-    /// The Prometheus `le` label value, in the metric name's published unit.
-    pub le: &'a str,
-    /// The same bound in the integer unit passed to [`Histogram::observe`].
-    pub max: u64,
+    le: &'a str,
+    max: u64,
 }
 
 impl<'a> Bucket<'a> {
     pub const fn new(le: &'a str, max: u64) -> Self {
         Self { le, max }
+    }
+
+    /// The Prometheus `le` label value, in the metric name's published unit.
+    pub const fn le(&self) -> &'a str {
+        self.le
+    }
+
+    /// The same bound in the integer unit passed to [`Histogram::observe`].
+    pub const fn max(&self) -> u64 {
+        self.max
     }
 }
 
@@ -65,7 +73,7 @@ impl Histogram {
     /// Record one observation of `value`, expressed in the base unit the
     /// bounds' `max` fields use.
     pub fn observe(&self, value: u64) {
-        if let Some(index) = self.bounds.iter().position(|bound| value <= bound.max) {
+        if let Some(index) = self.bounds.iter().position(|bound| value <= bound.max()) {
             self.counts[index].incr();
         }
         self.sum.add(value);
@@ -94,7 +102,7 @@ impl Histogram {
         let mut cumulative = 0u64;
         for (bound, counter) in self.bounds.iter().zip(&self.counts) {
             cumulative += counter.get();
-            let _ = writeln!(out, "{name}_bucket{{le=\"{}\"}} {cumulative}", bound.le);
+            let _ = writeln!(out, "{name}_bucket{{le=\"{}\"}} {cumulative}", bound.le());
         }
         let total = self.count.get();
         let _ = writeln!(out, "{name}_bucket{{le=\"+Inf\"}} {total}");
@@ -137,6 +145,15 @@ mod tests {
         Bucket::new("1", 1_000),
     ];
 
+    const HALF_SECOND_MS: u64 = MS[1].max();
+    const HALF_SECOND_LE: &str = MS[1].le();
+
+    #[test]
+    fn bucket_getters_are_usable_in_const_context() {
+        assert_eq!(HALF_SECOND_MS, 500);
+        assert_eq!(HALF_SECOND_LE, "0.5");
+    }
+
     /// Each bound's `le` label and its integer `max` are written by hand, so
     /// nothing but a test stops them from disagreeing — and a disagreement is
     /// invisible in the scrape body while quietly assigning observations to
@@ -144,13 +161,14 @@ mod tests {
     #[test]
     fn bucket_label_and_integer_bound_agree() {
         for bound in MS {
-            let expected = scale_decimal(bound.max, 1_000);
-            let matches = expected == bound.le
-                || expected.trim_end_matches('0').trim_end_matches('.') == bound.le;
+            let expected = scale_decimal(bound.max(), 1_000);
+            let matches = expected == bound.le()
+                || expected.trim_end_matches('0').trim_end_matches('.') == bound.le();
             assert!(
                 matches,
                 "le={:?} does not denote {} in the base unit (got {expected})",
-                bound.le, bound.max
+                bound.le(),
+                bound.max()
             );
         }
     }
