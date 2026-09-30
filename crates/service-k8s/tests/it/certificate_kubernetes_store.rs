@@ -148,7 +148,12 @@ fn prepare_ssa_patch_merges_live_leaf_and_detects_unchanged() {
         "ANCHOR_A_PEM",
     );
 
-    let (req, key) = service_k8s::certificate::IssuanceRequest::build(&scope, &profile).unwrap();
+    let (req, key) = service_k8s::certificate::IssuanceRequest::build(
+        &scope,
+        &profile,
+        &service_k8s::certificate::RcgenCsrGenerator,
+    )
+    .unwrap();
     let mat = futures::executor::block_on(issuer.issue(req)).unwrap();
 
     let mat_secret = material_secret(
@@ -264,7 +269,12 @@ fn prepare_ssa_patch_detects_changed_or_missing_owner_uid() {
         "ANCHOR_A_PEM",
     );
 
-    let (req, key) = service_k8s::certificate::IssuanceRequest::build(&scope, &profile).unwrap();
+    let (req, key) = service_k8s::certificate::IssuanceRequest::build(
+        &scope,
+        &profile,
+        &service_k8s::certificate::RcgenCsrGenerator,
+    )
+    .unwrap();
     let mat = futures::executor::block_on(issuer.issue(req)).unwrap();
 
     let mat_secret = material_secret(

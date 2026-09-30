@@ -134,6 +134,7 @@ modules = [
   "crates/service-backup/src/api",
   "crates/service-http/src/api",
   "crates/service-k8s/src/api",
+  "crates/service-k8s/src/app",
   "crates/service-projection/src/app",
   "crates/storage-segment/src/app",
 ]
@@ -434,18 +435,6 @@ rule = "B4"
 subject = "service-auth.infrastructure"
 paths = ["crates/service-backup/src/infrastructure/admin_snapshot/transport.rs"]
 reason = "Moved as-is in P1: the admin snapshot transport authenticates with service_auth::k8s::ProjectedTokenFile, which reads a projected ServiceAccount token from disk and so sits in service-auth's infrastructure layer. P2: service-auth offers the projected token through an application-layer token source port, and service-backup depends on that."
-
-[[exceptions]]
-rule = "B2"
-subject = "rcgen"
-paths = ["crates/service-k8s/src/domain/certificate/issuer.rs"]
-reason = "Moved as-is in P1: IssuanceRequest::build generates the keypair and CSR with rcgen (generate_key_and_csr), and issuer.rs moved whole (336 lines, D17) with the Issuer port and its request types. P2: move keypair and CSR generation behind a port implemented in infrastructure, so the domain carries only the CSR PEM."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = ["crates/service-k8s/src/application/certificate/reconcile.rs"]
-reason = "Moved as-is in P1: Reconciler reads and builds the Secret layout directly with infrastructure secret_layout::{read_state, material_secret, trust_bundle_secret}. P2: put the Secret layout behind a port (or the SecretStore port) that infrastructure implements."
 
 [[exceptions]]
 rule = "B2"

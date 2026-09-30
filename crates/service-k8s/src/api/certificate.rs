@@ -40,8 +40,10 @@ pub mod ephemeral {
 }
 pub mod issuer {
     pub use crate::domain::certificate::issuer::{
-        IssuanceRequest, IssuedMaterial, Issuer, IssuerError, IssuerId, PrivateKey,
+        IssuanceRequest, IssuedMaterial, Issuer, IssuerError, IssuerId, KeyAndCsrGenerator,
+        PrivateKey,
     };
+    pub use crate::infrastructure::certificate::csr::RcgenCsrGenerator;
 }
 pub mod kubernetes_store {
     pub use crate::infrastructure::certificate::kubernetes_store::{
@@ -61,9 +63,10 @@ pub mod projection {
         Owner, ProjectedState, TrustBundle, CERT_KEY, IDENTITY_DIGEST_ANNOTATION,
         LEAF_ISSUER_ANNOTATION, PRIVATE_KEY_KEY, TRUST_BUNDLE_ANNOTATION, TRUST_BUNDLE_KEY,
     };
-    pub use crate::infrastructure::certificate::secret_layout::{
-        material_secret, parse_leaf, read_state, trust_bundle_secret, LeafFacts,
+    pub use crate::domain::certificate::secret_layout::{
+        material_secret, read_state, trust_bundle_secret, LeafFacts, LeafParser,
     };
+    pub use crate::infrastructure::certificate::leaf_parser::{parse_leaf, X509LeafParser};
 }
 pub mod reconcile {
     pub use crate::application::certificate::reconcile::{
@@ -93,7 +96,10 @@ pub mod cas {
 }
 
 pub use ephemeral::EphemeralIssuer;
-pub use issuer::{IssuanceRequest, IssuedMaterial, Issuer, IssuerError, IssuerId, PrivateKey};
+pub use issuer::{
+    IssuanceRequest, IssuedMaterial, Issuer, IssuerError, IssuerId, KeyAndCsrGenerator, PrivateKey,
+    RcgenCsrGenerator,
+};
 pub use kubernetes_store::{
     classify_kube_error, prepare_ssa_patch, KubernetesSecretStore, KubernetesStoreError,
     FIELD_MANAGER, RBAC_VERBS, REQUIRED_RBAC_VERBS,
@@ -101,7 +107,7 @@ pub use kubernetes_store::{
 pub use profile::{
     CertificateIdentity, CertificateProfile, ExtendedUsage, InstanceScope, ProfileError, Purpose,
 };
-pub use projection::{Owner, ProjectedState, TrustBundle};
+pub use projection::{LeafParser, Owner, ProjectedState, TrustBundle, X509LeafParser};
 pub use reconcile::{
     MemoryStore, Outcome, ReconcileError, Reconciler, RuntimeReport, SecretStore, StoreError,
     StoreErrorKind, StoredSecret,

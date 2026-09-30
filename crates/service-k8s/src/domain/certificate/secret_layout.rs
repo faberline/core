@@ -1,19 +1,21 @@
 //! The Secret a certificate is projected into: the objects written for a
 //! leaf or a trust bundle, and the facts read back out of them.
+//!
+//! Pure layout. Reading validity and a fingerprint out of a leaf needs an X.509
+//! parser, so that step sits behind the [`LeafParser`] port.
 
 use std::collections::BTreeMap;
 
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 
-use crate::domain::certificate::digest::hex_sha256;
-use crate::domain::certificate::issuer::{IssuedMaterial, IssuerId};
-use crate::domain::certificate::profile::{InstanceScope, Purpose};
-use crate::domain::certificate::projection::{
-    split_pem_blocks, Owner, ProjectedState, TrustBundle, CERT_KEY, IDENTITY_DIGEST_ANNOTATION,
+use super::issuer::{IssuedMaterial, IssuerId};
+use super::profile::{InstanceScope, Purpose};
+use super::projection::{
+    Owner, ProjectedState, TrustBundle, CERT_KEY, IDENTITY_DIGEST_ANNOTATION,
     LEAF_ISSUER_ANNOTATION, PRIVATE_KEY_KEY, TRUST_BUNDLE_ANNOTATION, TRUST_BUNDLE_KEY,
 };
-use crate::domain::certificate::state::ObservedLeaf;
+use super::state::ObservedLeaf;
 
 /// Labels every object this lifecycle writes carries, so a sweep can find them
 /// and an operator can tell at a glance what created them.
@@ -48,15 +50,20 @@ impl Owner {
 ///
 /// `data` is the decoded Secret data (the `kube` client hands out base64; the
 /// caller decodes, because this module has no opinion about transport).
+/// `leaves` reads the stored leaf; a leaf it cannot read counts as no leaf.
 pub fn read_state(
     data: &BTreeMap<String, Vec<u8>>,
     annotations: &BTreeMap<String, String>,
+    leaves: &dyn LeafParser,
 ) -> ProjectedState {
     let bundle = data
         .get(TRUST_BUNDLE_KEY)
         .and_then(|bytes| std::str::from_utf8(bytes).ok())
         .map(|pem| {
-            TrustBundle::parse(pem, annotations.get(TRUST_BUNDLE_ANNOTATION).map(String::as_str))
+            TrustBundle::parse(
+                pem,
+                annotations.get(TRUST_BUNDLE_ANNOTATION).map(String::as_str),
+            )
         })
         .unwrap_or_default();
 
@@ -66,7 +73,7 @@ pub fn read_state(
         .and_then(|pem| {
             let issuer = annotations.get(LEAF_ISSUER_ANNOTATION)?;
             let identity_digest = annotations.get(IDENTITY_DIGEST_ANNOTATION)?;
-            let facts = parse_leaf(pem).ok()?;
+            let facts = leaves.parse_leaf(pem).ok()?;
             Some(ObservedLeaf {
                 issuer: IssuerId::new(issuer.clone()),
                 not_before: facts.not_before,
@@ -86,39 +93,13 @@ pub struct LeafFacts {
     pub fingerprint: String,
 }
 
-/// Parse validity and fingerprint out of a PEM leaf.
-pub fn parse_leaf(pem: &str) -> Result<LeafFacts, String> {
-    let block = split_pem_blocks(pem)
-        .into_iter()
-        .next()
-        .ok_or_else(|| "no PEM block".to_string())?;
-    let der = pem_body_to_der(&block)?;
-    let (_, cert) = x509_parser::parse_x509_certificate(&der)
-        .map_err(|err| format!("parse certificate: {err}"))?;
-    let not_before = Utc
-        .timestamp_opt(cert.validity().not_before.timestamp(), 0)
-        .single()
-        .ok_or_else(|| "notBefore is not a representable instant".to_string())?;
-    let not_after = Utc
-        .timestamp_opt(cert.validity().not_after.timestamp(), 0)
-        .single()
-        .ok_or_else(|| "notAfter is not a representable instant".to_string())?;
-    Ok(LeafFacts {
-        not_before,
-        not_after,
-        fingerprint: hex_sha256(&der),
-    })
-}
-
-fn pem_body_to_der(block: &str) -> Result<Vec<u8>, String> {
-    use base64::Engine as _;
-    let body: String = block
-        .lines()
-        .filter(|line| !line.starts_with("-----"))
-        .collect();
-    base64::engine::general_purpose::STANDARD
-        .decode(body.trim())
-        .map_err(|err| format!("decode PEM body: {err}"))
+/// Reads validity and fingerprint out of a PEM leaf.
+///
+/// A port because it needs an X.509 parser and a base64 decoder, neither of
+/// which the domain carries; `X509LeafParser` in infrastructure implements it.
+pub trait LeafParser: Send + Sync {
+    /// The facts of the first PEM block in `pem`, or why it is not a leaf.
+    fn parse_leaf(&self, pem: &str) -> Result<LeafFacts, String>;
 }
 
 /// The Secret carrying a full set of material: leaf, key, and trust bundle.

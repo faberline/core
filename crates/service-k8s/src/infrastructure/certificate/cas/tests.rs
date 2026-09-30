@@ -3,6 +3,7 @@ use crate::certificate::profile::{
     CertificateIdentity, CertificateProfile, InstanceScope, Purpose,
 };
 use crate::domain::certificate::issuer::{IssuanceRequest, Issuer, IssuerId};
+use crate::infrastructure::certificate::csr::RcgenCsrGenerator;
 use serde_json::json;
 use std::time::Duration;
 
@@ -26,7 +27,9 @@ fn request() -> IssuanceRequest {
         Duration::from_secs(0),
     )
     .unwrap();
-    IssuanceRequest::build(&scope(), &profile).unwrap().0
+    IssuanceRequest::build(&scope(), &profile, &RcgenCsrGenerator)
+        .unwrap()
+        .0
 }
 
 fn pool() -> CaPool {

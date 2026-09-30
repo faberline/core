@@ -62,7 +62,10 @@ fn secrets_are_garbage_collected_with_their_instance() {
     let reference = &secret["metadata"]["ownerReferences"][0];
     assert_eq!(reference["controller"], json!(true));
     assert_eq!(reference["blockOwnerDeletion"], json!(true));
-    assert_eq!(reference["uid"], json!("0f7d1f4e-0000-4000-8000-000000000000"));
+    assert_eq!(
+        reference["uid"],
+        json!("0f7d1f4e-0000-4000-8000-000000000000")
+    );
 }
 
 #[test]

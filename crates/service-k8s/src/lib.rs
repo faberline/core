@@ -13,6 +13,7 @@
 //! `service-backup` + `cli-std` + this).
 
 mod api;
+mod app;
 mod application;
 mod domain;
 mod infrastructure;
@@ -45,9 +46,11 @@ pub use domain::capacity::{
     DEFAULT_SHARD_SPLIT_THRESHOLD_BYTES,
 };
 #[cfg(feature = "certificate")]
-pub use domain::certificate::issuer::{Issuer, IssuerId};
+pub use domain::certificate::issuer::{Issuer, IssuerId, KeyAndCsrGenerator};
 #[cfg(feature = "certificate")]
 pub use domain::certificate::profile::{CertificateProfile, InstanceScope, Purpose};
+#[cfg(feature = "certificate")]
+pub use domain::certificate::secret_layout::LeafParser;
 #[cfg(feature = "certificate")]
 pub use domain::certificate::status::CertificateFacts;
 #[cfg(feature = "controller")]
@@ -55,6 +58,10 @@ pub use domain::condition::{Condition, ConditionFact, ConditionStatus};
 pub use domain::lifecycle::{
     LifecyclePolicy, LifecyclePolicyError, ProbeTiming, TerminationBudget,
 };
+#[cfg(feature = "certificate")]
+pub use infrastructure::certificate::csr::RcgenCsrGenerator;
+#[cfg(feature = "certificate")]
+pub use infrastructure::certificate::leaf_parser::X509LeafParser;
 #[cfg(feature = "controller")]
 pub use infrastructure::lease::Election;
 #[cfg(feature = "controller")]

@@ -32,13 +32,26 @@ and tape.
 - **Certificate profile** — what a service asks a certificate for, checked
   against an `InstanceScope`; `next_action` picks the next `Action` from the
   observed state and the current time.
+- **Secret layout** — the Secret a certificate is projected into
+  (`material_secret`, `trust_bundle_secret`) and the `ProjectedState` read back
+  out of it (`read_state`). Pure domain; reading the stored leaf goes through
+  `LeafParser`.
 
 ## Ports
 
 - `ManagedService` — implemented by each downstream operator's CRD root type.
 - `Issuer` — signs a CSR; `EphemeralIssuer`, `CasIssuer`.
+- `KeyAndCsrGenerator` — a fresh keypair and a CSR for a profile, used by
+  `IssuanceRequest::build`; `RcgenCsrGenerator`.
+- `LeafParser` — validity and fingerprint of a stored PEM leaf, used by
+  `read_state`; `X509LeafParser`.
 - `SecretStore` — a certificate's Secret; `KubernetesSecretStore`, `MemoryStore`.
 - `AccessTokenSource` — the CA Service token; GKE metadata, workload identity.
+
+The composition root, `src/app/`, keeps the public
+`Reconciler::new(scope, owner, store, issuer)`: it wires `RcgenCsrGenerator`
+and `X509LeafParser` into the certificate reconciler. Its signature is
+unchanged.
 
 ## Invariants
 
@@ -75,10 +88,6 @@ runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
     types in interfaces.
   - B2 (`chrono::Utc::now`): `now_rfc3339` reads the wall clock. P2 takes the
     time from a `Clock` port or moves the call to the operator.
-  - B2 (`rcgen`): `IssuanceRequest::build` generates the key and CSR with
-    `rcgen`. P2 moves key generation behind an infrastructure port.
-  - B3 `application->infrastructure`: the certificate `Reconciler` reads and
-    builds the Secret layout directly. P2 puts the layout behind a port.
   - B3 `interfaces->domain` and `interfaces->infrastructure`: the operator's
     reconcile builds and projects conditions itself, and `run` creates the
     leader `Election` and starts the Lease renewal loop. P2 moves the reconcile
