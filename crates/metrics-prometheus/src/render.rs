@@ -305,19 +305,19 @@ demo_active{pool=\"x\\\"y\",zone=\"a\\\\b\\nc\"} 7\n"
                 "lumen_search_requests_total",
                 "counter",
                 "Total search requests served.",
-                search.count.get(),
+                search.count().get(),
             ),
             Sample::new(
                 "lumen_search_latency_ms_sum",
                 "counter",
                 "Sum of search latencies in milliseconds.",
-                search.sum.get(),
+                search.sum().get(),
             ),
             Sample::new(
                 "lumen_search_latency_ms_count",
                 "counter",
                 "Count of search latency observations.",
-                search.count.get(),
+                search.count().get(),
             ),
             Sample::new(
                 "lumen_duplicates_requests_total",

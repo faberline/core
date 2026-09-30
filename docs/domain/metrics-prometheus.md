@@ -17,8 +17,9 @@ and tape do.
   and `get`.
 - **Gauge** — `Gauge`: a point-in-time value on one atomic, with `set` and
   `get`.
-- **Latency** — `Latency`: a `sum` and a `count` counter; `observe` records one
-  value in whatever unit the metric name promises.
+- **Latency** — `Latency`: a `sum` and a `count` counter, read through the
+  `sum()` and `count()` getters; `observe` records one value in whatever unit
+  the metric name promises.
 - **Bucket** — `Bucket`: one histogram bound stated twice, as the `le` label
   text and as the integer `max` that observations are compared against. Its
   const `new` and getters work in a const bucket list.
@@ -66,5 +67,4 @@ layer. Everything is re-exported at the crate root, and no module is public.
 ## Exceptions and debts
 
 - **Checker exceptions (P1):** None.
-- **Tracked for P2:** `Latency` exposes `sum` and `count` as public fields, and
-  relay and tape read them directly.
+- **Tracked for P2:** None.
