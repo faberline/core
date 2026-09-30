@@ -589,7 +589,6 @@ reason = "Moved as-is in P1: ParsedFile wraps a tree_sitter::Tree, Range::from_n
 rule = "B3"
 subject = "domain->infrastructure"
 paths = [
-  "crates/compass/src/domain/python_inference/inferencer.rs",
   "crates/compass/src/domain/semantic_search/engine/call_graph.rs",
   "crates/compass/src/domain/semantic_search/engine/docstrings.rs",
   "crates/compass/src/domain/type_refactoring/engine/ast_cache.rs",

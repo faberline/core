@@ -9,6 +9,6 @@
 //! - Circular import detection and handling
 
 pub use crate::domain::modules::import::{
-    parse_import, Import, ImportedName, ModuleIndexEntry, ModuleInfo, ModuleLoadState,
+    Import, ImportedName, ModuleIndexEntry, ModuleInfo, ModuleLoadState,
 };
 pub use crate::infrastructure::import_resolution::resolver::ImportResolver;
