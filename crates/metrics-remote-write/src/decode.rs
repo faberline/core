@@ -63,10 +63,6 @@ pub struct ValidatedWrite {
 }
 
 impl ValidatedWrite {
-    pub fn request(&self) -> &proto::WriteRequest {
-        &self.request
-    }
-
     pub fn into_inner(self) -> proto::WriteRequest {
         self.request
     }
