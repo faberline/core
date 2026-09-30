@@ -54,7 +54,9 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
   create flags, `with_*` builders set the rest, and getters of the same names
   read them. `CommentOptions::try_new(number)` does the same for a comment and
   rejects issue number 0 with `IssueNumberError` ("issue number must be
-  positive").
+  positive"). `SearchOptions::default()` (no query, state `open`, 20 results)
+  takes `with_query`, `with_state` and `with_limit`; the state is passed on
+  unchecked.
 - **connect role** — `connect::Role` (`Read`, `Write`, `Admin`) together with
   `TokenClaims`, which hold a subject and a role per collection (`*` grants
   every collection).
@@ -179,7 +181,7 @@ jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
   no exception.
 - **Tracked for P2:**
   - Public fields built with struct literals (ADR D2):
-    - `upgrade::Options` and `SearchOptions`, in the CLIs
+    - `upgrade::Options`, in the CLIs
       of beam, cap, courier, defer, jet, keep, loom, lumen, mamba, mesh,
       pgpool, relay, sift, tape and vat;
     - the v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, in lumen.
