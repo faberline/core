@@ -1,5 +1,5 @@
 //! `RaftHost` — drives a [`raft_core::RaftNode`] for a [`RaftStateMachine`] over
-//! an h2c peer transport, with read-your-write `propose` and snapshot/compaction.
+//! a peer client port, with read-your-write `propose` and snapshot/compaction.
 //!
 //! Generalizes the per-service drivers (relay/lumen/keep each hand-rolled this):
 //! the host is the **sole applier** — committed entries are fed to the state
@@ -13,10 +13,9 @@ use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Result};
-use axum::http::StatusCode;
 use raft_core::{
     DemotionRefused, Index, InstallSnapshotReq, InstallSnapshotResp, Membership, NodeId,
-    PromotionRefused, RaftMsg, RaftNode, RemovalRefused, TransferRefused,
+    PromotionRefused, RaftDelivery, RaftMsg, RaftNode, RemovalRefused, TransferRefused,
 };
 use serde::{Deserialize, Serialize};
 use server_lifecycle::ShutdownDeadline;
@@ -28,8 +27,8 @@ use crate::application::port_error::StateMachineError;
 use crate::application::state_machine::{
     AdmissionPermit, Command, RaftStateMachine, SnapshotPreparation,
 };
-use crate::domain::{GroupId, LEGACY_GROUP_ID};
-use crate::infrastructure::{PeerTransport, RaftStore};
+use crate::domain::{GroupId, PeerClient};
+use crate::infrastructure::RaftStore;
 
 mod apply;
 mod backpressure;
@@ -37,6 +36,7 @@ mod chunk_sink;
 mod membership_ops;
 mod ordered_apply;
 mod outcome;
+mod peer_calls;
 mod peer_lane;
 mod propose;
 mod shutdown;
@@ -58,6 +58,7 @@ pub use status::{MembershipPhase, RaftStatus};
 pub(crate) use apply::{apply_ready, cold_start, persist_node};
 pub(crate) use backpressure::decode_backpressure;
 pub(crate) use peer_lane::PeerLaneQueue;
+pub(crate) use spawn::PeerWiring;
 
 use apply::tick_then_maybe_persist;
 use backpressure::{encode_backpressure, rejected_admission};
@@ -73,25 +74,23 @@ pub(crate) struct Shared {
     /// their index. They are keyed by index, never command content, so a caller
     /// cancellation cannot release a live appended command.
     pub(crate) pending_admission: StdMutex<BTreeMap<(Index, u64), AdmissionPermit>>,
-    pub(crate) peers: StdRwLock<HashMap<NodeId, String>>,
+    /// The peer address book and the calls that are not raft messages.
+    pub(crate) peer_client: Arc<dyn PeerClient<NodeId>>,
+    /// Raft message delivery to peers; the same adapter as `peer_client`.
+    pub(crate) delivery: Arc<dyn RaftDelivery>,
     /// One coalescing RPC lane per peer. Raft's latest AppendEntries contains
     /// the complete missing suffix, so retaining every intermediate request
     /// only creates out-of-order progress and repeated durable writes.
     pub(crate) peer_lanes: StdRwLock<HashMap<NodeId, Arc<PeerLane>>>,
-    pub(crate) client: reqwest::Client,
-    pub(crate) peer_transport: Option<PeerTransport>,
     /// Fires (with the SM's applied head) whenever apply advances.
     pub(crate) applied_tx: watch::Sender<Index>,
     pub(crate) cfg: HostConfig,
     pub(crate) rpc_tracker: Arc<RpcTracker>,
     pub(crate) latched_failure: StdMutex<Option<StorageFailed>>,
     pub(crate) undeliverable_never_addressed: AtomicU64,
-    pub(crate) undeliverable_withdrawn_address: AtomicU64,
     pub(crate) proposal_rejected_before_routing: AtomicU64,
     pub(crate) proposal_rejected_before_append: AtomicU64,
     pub(crate) lifecycle_generation: AtomicU64,
-    pub(crate) snapshot_nonce: AtomicU64,
-    pub(crate) snapshot_rpc_timeout: Duration,
     pub(crate) snapshot_install: Arc<Mutex<()>>,
     pub(crate) apply_running: AtomicBool,
     pub(crate) apply_stopped: AtomicBool,
@@ -154,13 +153,6 @@ impl Shared {
         Ok(guard)
     }
 
-    pub(crate) fn http_client(&self) -> reqwest::Client {
-        self.peer_transport
-            .as_ref()
-            .map(PeerTransport::http_client)
-            .unwrap_or_else(|| self.client.clone())
-    }
-
     pub(crate) fn persist(&self, node: &RaftNode) -> Result<(), StorageFailed> {
         if let Some(err) = self.latched_failure.lock().unwrap().clone() {
             return Err(err);
@@ -188,13 +180,7 @@ impl Shared {
 
     pub(crate) fn leader_url(&self, node: &RaftNode) -> (Option<NodeId>, Option<String>) {
         let leader = node.leader();
-        let url = leader.and_then(|l| {
-            self.peers
-                .read()
-                .unwrap_or_else(|p| p.into_inner())
-                .get(&l)
-                .cloned()
-        });
+        let url = leader.and_then(|l| self.peer_client.address(&l));
         (leader, url)
     }
 }

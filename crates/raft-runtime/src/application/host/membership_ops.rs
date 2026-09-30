@@ -105,19 +105,11 @@ impl RaftHost {
     }
     /// Add or update the address of a peer (#3650).
     pub async fn upsert_peer(&self, peer: NodeId, url: String) {
-        self.shared
-            .peers
-            .write()
-            .unwrap_or_else(|p| p.into_inner())
-            .insert(peer, url);
+        self.shared.peer_client.set_address(peer, url);
     }
     /// Remove the address of a peer (#3650).
     pub async fn forget_peer(&self, peer: NodeId) {
-        self.shared
-            .peers
-            .write()
-            .unwrap_or_else(|p| p.into_inner())
-            .remove(&peer);
+        self.shared.peer_client.remove_address(&peer);
         self.shared
             .peer_lanes
             .write()
@@ -129,12 +121,7 @@ impl RaftHost {
         &self,
         target: NodeId,
     ) -> std::result::Result<Index, AdmissionRefused> {
-        let is_routable = self
-            .shared
-            .peers
-            .read()
-            .unwrap_or_else(|p| p.into_inner())
-            .contains_key(&target);
+        let is_routable = self.shared.peer_client.address(&target).is_some();
         if !is_routable {
             return Err(AdmissionRefused::Unroutable { target });
         }

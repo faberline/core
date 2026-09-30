@@ -1,4 +1,4 @@
-//! Infrastructure layer: durable raft storage, the outbound peer RPC client
+//! Infrastructure layer: durable raft storage, the HTTP peer client adapter
 //! and its wire envelopes, the mTLS peer transport, the applied-index file and
 //! the environment-derived cluster topology.
 
@@ -14,6 +14,7 @@ pub use peer_transport::PeerTransport;
 pub use store::{FsyncPolicy, RaftStore};
 pub use topology_env::{parse_peer_overrides, replica_mode};
 
+pub(crate) use peer_rpc::HttpPeerClient;
 pub(crate) use peer_wire::{
     AppendEnvelope, CapableSnapEnvelope, CapableSnapshotResp, NotLeader, PublishEnvelope,
     SnapEnvelope, TimeoutNowEnvelope, VoteEnvelope,

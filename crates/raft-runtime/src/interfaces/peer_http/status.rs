@@ -50,7 +50,7 @@ pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
         learners,
         membership_phase,
         undeliverable_never_addressed: s.undeliverable_never_addressed.load(Ordering::Relaxed),
-        undeliverable_withdrawn_address: s.undeliverable_withdrawn_address.load(Ordering::Relaxed),
+        undeliverable_withdrawn_address: s.undeliverable_withdrawn_address(),
         proposal_rejected_before_routing: s
             .proposal_rejected_before_routing
             .load(Ordering::Relaxed),

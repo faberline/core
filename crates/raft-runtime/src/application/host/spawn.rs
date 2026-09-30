@@ -1,72 +1,27 @@
 use super::*;
 
+/// What the composition root needs to connect the host's peer client.
+pub(crate) struct PeerWiring {
+    pub(crate) id: NodeId,
+    pub(crate) group_id: GroupId,
+    pub(crate) peers: HashMap<NodeId, String>,
+    pub(crate) rpc_timeout: Duration,
+    pub(crate) propose_timeout: Duration,
+    pub(crate) snapshot_rpc_timeout: Duration,
+}
+
 const DEFAULT_MAX_RESIDENT_LOG_BYTES: usize = 2 * 1024 * 1024 * 1024;
 
 impl RaftHost {
-    /// Build a host for node `id`, recovering persisted state + replaying the
-    /// resident committed log into the state machine, and start the tick + pump.
-    /// `peers` maps the other members to base URLs (empty ⇒ single-node).
-    pub fn spawn(
-        id: NodeId,
-        membership: Membership,
-        peers: HashMap<NodeId, String>,
-        store: RaftStore,
-        sm: Arc<dyn RaftStateMachine>,
-        cfg: HostConfig,
-    ) -> RaftHost {
-        Self::spawn_group(
-            id,
-            GroupId(LEGACY_GROUP_ID.to_string()),
-            membership,
-            peers,
-            store,
-            sm,
-            cfg,
-        )
-    }
-
-    pub fn spawn_group(
-        id: NodeId,
-        group_id: GroupId,
-        membership: Membership,
-        peers: HashMap<NodeId, String>,
-        store: RaftStore,
-        sm: Arc<dyn RaftStateMachine>,
-        cfg: HostConfig,
-    ) -> RaftHost {
-        Self::spawn_inner(id, group_id, membership, peers, store, sm, cfg, None)
-    }
-
     /// Access the group identity of this host.
     pub fn group_id(&self) -> &GroupId {
         &self.shared.group_id
     }
 
-    /// Spawn a host whose outgoing peer RPCs use the current generation of a
-    /// shared mutually authenticated HTTPS transport. Callers serve
-    /// [`Self::router`] on [`PeerTransport::serve`] using the same clone.
-    pub fn spawn_with_peer_transport(
-        id: NodeId,
-        membership: Membership,
-        peers: HashMap<NodeId, String>,
-        store: RaftStore,
-        sm: Arc<dyn RaftStateMachine>,
-        cfg: HostConfig,
-        peer_transport: PeerTransport,
-    ) -> RaftHost {
-        Self::spawn_with_peer_transport_group(
-            id,
-            GroupId(LEGACY_GROUP_ID.to_string()),
-            membership,
-            peers,
-            store,
-            sm,
-            cfg,
-            peer_transport,
-        )
-    }
-
-    pub fn spawn_with_peer_transport_group(
+    /// Build a host for node `id`, recovering persisted state + replaying the
+    /// resident committed log into the state machine, connect its peer client
+    /// with `connect`, and start the tick + pump.
+    pub(crate) fn spawn_with_ports<P>(
         id: NodeId,
         group_id: GroupId,
         membership: Membership,
@@ -74,30 +29,11 @@ impl RaftHost {
         store: RaftStore,
         sm: Arc<dyn RaftStateMachine>,
         cfg: HostConfig,
-        peer_transport: PeerTransport,
-    ) -> RaftHost {
-        Self::spawn_inner(
-            id,
-            group_id,
-            membership,
-            peers,
-            store,
-            sm,
-            cfg,
-            Some(peer_transport),
-        )
-    }
-
-    fn spawn_inner(
-        id: NodeId,
-        group_id: GroupId,
-        membership: Membership,
-        peers: HashMap<NodeId, String>,
-        store: RaftStore,
-        sm: Arc<dyn RaftStateMachine>,
-        cfg: HostConfig,
-        peer_transport: Option<PeerTransport>,
-    ) -> RaftHost {
+        connect: impl FnOnce(PeerWiring) -> Arc<P>,
+    ) -> RaftHost
+    where
+        P: RaftDelivery + PeerClient<NodeId> + 'static,
+    {
         let loaded = store.load().unwrap_or_else(|error| {
             panic!(
                 "raft: refuse to start node {id}; durable state {} is invalid: {error}",
@@ -112,8 +48,6 @@ impl RaftHost {
             panic!("raft: refuse to start node {id}; committed replay failed: {error}")
         });
 
-        let client =
-            transport_h2c::h2c_client_with(Some(cfg.rpc_timeout), None).expect("h2c client");
         let (applied_tx, _rx) = watch::channel(sm.applied_index());
         let (shutdown_tx, _shutdown_rx) = watch::channel(None);
         let peer_lanes = peers
@@ -147,6 +81,14 @@ impl RaftHost {
             max_resident_log_bytes > 0,
             "RAFT_RUNTIME_MAX_RESIDENT_LOG_BYTES must be greater than zero"
         );
+        let peer_client = connect(PeerWiring {
+            id,
+            group_id: group_id.clone(),
+            peers,
+            rpc_timeout: cfg.rpc_timeout,
+            propose_timeout: cfg.propose_timeout,
+            snapshot_rpc_timeout,
+        });
         let shared = Arc::new(Shared {
             id,
             group_id,
@@ -154,21 +96,17 @@ impl RaftHost {
             store,
             sm,
             pending_admission: StdMutex::new(BTreeMap::new()),
-            peers: StdRwLock::new(peers),
+            delivery: Arc::clone(&peer_client) as Arc<dyn RaftDelivery>,
+            peer_client,
             peer_lanes: StdRwLock::new(peer_lanes),
-            client,
-            peer_transport,
             applied_tx,
             cfg,
             rpc_tracker: Arc::new(RpcTracker::default()),
             latched_failure: StdMutex::new(None),
             undeliverable_never_addressed: AtomicU64::new(0),
-            undeliverable_withdrawn_address: AtomicU64::new(0),
             proposal_rejected_before_routing: AtomicU64::new(0),
             proposal_rejected_before_append: AtomicU64::new(0),
             lifecycle_generation: AtomicU64::new(0),
-            snapshot_nonce: AtomicU64::new(1),
-            snapshot_rpc_timeout,
             snapshot_install: Arc::new(Mutex::new(())),
             apply_running: AtomicBool::new(false),
             apply_stopped: AtomicBool::new(false),
