@@ -123,7 +123,7 @@ async fn install_snapshot_response(
             *s.latched_failure.lock().unwrap() = Some(StorageFailed {
                 node_id: s.id,
                 operation: "state-machine-restore-panic",
-                path: s.store.path().to_path_buf(),
+                path: s.store_path.clone(),
                 kind: std::io::ErrorKind::InvalidData,
             });
             InstallSnapshotResp {

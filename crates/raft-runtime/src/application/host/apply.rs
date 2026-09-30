@@ -86,8 +86,8 @@ pub(crate) fn cold_start(
 /// Persist exactly the core durable image.  The production wrapper adds its
 /// latched-failure policy; deterministic conformance returns this error to the
 /// scheduler.  Both therefore save identical bytes at identical step points.
-pub(crate) fn persist_node(store: &RaftStore, node: &RaftNode) -> std::io::Result<()> {
-    store.save_ref(&node.persisted_ref())
+pub(crate) fn persist_node(store: &dyn RaftStorage, node: &RaftNode) -> std::io::Result<()> {
+    store.save(&node.persisted_ref())
 }
 
 /// Advance one periodic tick without revalidating an unchanged durable image.

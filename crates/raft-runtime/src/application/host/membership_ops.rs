@@ -23,11 +23,6 @@ impl std::fmt::Display for AdmissionRefused {
 impl std::error::Error for AdmissionRefused {}
 
 impl RaftHost {
-    /// Access the underlying raft store.
-    pub fn store(&self) -> &RaftStore {
-        &self.shared.store
-    }
-
     pub async fn is_leader(&self) -> bool {
         self.shared.node.lock().await.is_leader()
     }

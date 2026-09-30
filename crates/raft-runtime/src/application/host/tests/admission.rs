@@ -3,7 +3,7 @@ use raft_core::{AppendReq, VoteResp};
 
 use crate::application::host::apply::apply_ready_with_admission;
 use crate::interfaces::peer_http::host_status;
-use crate::StateMachineError;
+use crate::{RaftStore, StateMachineError};
 
 struct TestPermit {
     id: u64,
@@ -279,8 +279,7 @@ async fn identical_commands_get_distinct_index_permits() {
 async fn persistence_failure_after_index_keeps_the_host_owned_permit() {
     let sm = AdmissionSm::accepting();
     let host = elected_single_host(sm.clone()).await;
-    host.shared
-        .store
+    host.store()
         .inject_next_save_failure_with_kind(std::io::ErrorKind::Other);
     assert!(host.propose(vec![4]).await.is_err());
     assert_eq!(host.shared.node.lock().await.last_index(), 1);

@@ -29,14 +29,14 @@ pub use port_error::{MembershipError, StateMachineError};
 pub use proposal_cache::{ProposalCache, DEFAULT_PROPOSAL_CACHE_CAPACITY};
 pub use read_consistency::{ReadConsistency, READ_CONSISTENCY_HEADER};
 pub use registry::{GroupRegistry, RaftRegistry, RegistryError};
-pub use replica_host::{MembershipPolicy, ReplicaHostBuilder, ReplicaHostRuntime};
+pub use replica_host::{MembershipPolicy, ReplicaHostBuilder};
 pub use state_machine::{
     AdmissionPermit, Command, PreparedSnapshot, RaftStateMachine, SnapshotPreparation,
 };
 pub use topology::{peer_ordinal, ClusterDims, ClusterTopology};
 
 pub(crate) use host::{
-    apply_ready, cold_start, decode_backpressure, persist_node, take_reply, PeerLaneQueue,
-    PeerWiring, Shared,
+    apply_ready, cold_start, decode_backpressure, persist_node, take_reply, HostStore,
+    PeerLaneQueue, PeerWiring, Shared,
 };
 pub(crate) use topology::check_peer_scheme;

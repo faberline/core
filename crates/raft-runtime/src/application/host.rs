@@ -7,7 +7,9 @@
 //! command *applies* (not just commits), and `compact(applied, snapshot)` is
 //! always sound.
 
+use std::any::Any;
 use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex as StdMutex, RwLock as StdRwLock};
 use std::time::{Duration, Instant};
@@ -15,7 +17,8 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, Result};
 use raft_core::{
     DemotionRefused, Index, InstallSnapshotReq, InstallSnapshotResp, Membership, NodeId,
-    PromotionRefused, RaftDelivery, RaftMsg, RaftNode, RemovalRefused, TransferRefused,
+    PromotionRefused, RaftDelivery, RaftMsg, RaftNode, RaftStorage, RemovalRefused,
+    TransferRefused,
 };
 use serde::{Deserialize, Serialize};
 use server_lifecycle::ShutdownDeadline;
@@ -28,7 +31,6 @@ use crate::application::state_machine::{
     AdmissionPermit, Command, RaftStateMachine, SnapshotPreparation,
 };
 use crate::domain::{GroupId, PeerClient};
-use crate::infrastructure::RaftStore;
 
 mod apply;
 mod backpressure;
@@ -58,7 +60,7 @@ pub use status::{MembershipPhase, RaftStatus};
 pub(crate) use apply::{apply_ready, cold_start, persist_node};
 pub(crate) use backpressure::decode_backpressure;
 pub(crate) use peer_lane::PeerLaneQueue;
-pub(crate) use spawn::PeerWiring;
+pub(crate) use spawn::{HostStore, PeerWiring};
 
 use apply::tick_then_maybe_persist;
 use backpressure::{encode_backpressure, rejected_admission};
@@ -68,7 +70,9 @@ pub(crate) struct Shared {
     pub(crate) id: NodeId,
     pub(crate) group_id: GroupId,
     pub(crate) node: Mutex<RaftNode>,
-    pub(crate) store: RaftStore,
+    /// The durable storage port; `store_path` names it in `StorageFailed`.
+    pub(crate) storage: Box<dyn HostStorage>,
+    pub(crate) store_path: PathBuf,
     pub(crate) sm: Arc<dyn RaftStateMachine>,
     /// Application permits become host-owned immediately after Raft assigned
     /// their index. They are keyed by index, never command content, so a caller
@@ -99,6 +103,12 @@ pub(crate) struct Shared {
     pub(crate) shutdown_started: AtomicBool,
     pub(crate) shutdown_tx: watch::Sender<Option<HostShutdownReport>>,
 }
+
+/// The host's storage port. `Any` lets the composition root hand the concrete
+/// store it chose back to callers.
+pub(crate) trait HostStorage: RaftStorage + Any {}
+
+impl<T: RaftStorage + Any> HostStorage for T {}
 
 #[derive(Default)]
 pub(crate) struct RpcTracker {
@@ -157,13 +167,13 @@ impl Shared {
         if let Some(err) = self.latched_failure.lock().unwrap().clone() {
             return Err(err);
         }
-        match persist_node(&self.store, node) {
+        match persist_node(self.storage.as_ref(), node) {
             Ok(()) => Ok(()),
             Err(e) => {
                 let err = StorageFailed {
                     node_id: self.id,
                     operation: "save",
-                    path: self.store.path().to_path_buf(),
+                    path: self.store_path.clone(),
                     kind: e.kind(),
                 };
                 *self.latched_failure.lock().unwrap() = Some(err.clone());

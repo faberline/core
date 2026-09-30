@@ -30,6 +30,7 @@ mod interfaces;
 mod tests;
 
 pub use api::{conformance, llm};
+pub use app::ReplicaHostRuntime;
 pub use application::{peer_ordinal, ClusterDims, ClusterTopology};
 pub use application::{
     ActiveAssignment, AssignmentEpoch, AssignmentError, FenceToken, FencedAssignment,
@@ -45,7 +46,7 @@ pub use application::{
 pub use application::{GroupRegistry, RaftRegistry, RegistryError};
 pub use application::{HostConfig, SnapshotPolicy};
 pub use application::{MembershipError, StateMachineError};
-pub use application::{MembershipPolicy, ReplicaHostBuilder, ReplicaHostRuntime};
+pub use application::{MembershipPolicy, ReplicaHostBuilder};
 pub use application::{OutcomeWindow, OUTCOME_WINDOW_DEFAULT_CAPACITY};
 pub use application::{ProposalCache, DEFAULT_PROPOSAL_CACHE_CAPACITY};
 pub use application::{ReadConsistency, READ_CONSISTENCY_HEADER};

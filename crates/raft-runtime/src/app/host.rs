@@ -1,12 +1,14 @@
-//! The public `RaftHost` constructors: they connect the HTTP peer client
-//! adapter and hand it to the host as its delivery and peer client ports.
+//! The public `RaftHost` constructors: they hand the host a `RaftStore` as its
+//! storage port and connect the HTTP peer client adapter as its delivery and
+//! peer client ports.
 
+use std::any::Any;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use raft_core::{Membership, NodeId};
 
-use crate::application::{HostConfig, PeerWiring, RaftHost, RaftStateMachine};
+use crate::application::{HostConfig, HostStore, PeerWiring, RaftHost, RaftStateMachine};
 use crate::domain::{GroupId, LEGACY_GROUP_ID};
 use crate::infrastructure::{HttpPeerClient, PeerTransport, RaftStore};
 
@@ -47,7 +49,7 @@ impl RaftHost {
             group_id,
             membership,
             peers,
-            store,
+            host_store(store),
             sm,
             cfg,
             connect(None),
@@ -93,11 +95,26 @@ impl RaftHost {
             group_id,
             membership,
             peers,
-            store,
+            host_store(store),
             sm,
             cfg,
             connect(Some(peer_transport)),
         )
+    }
+
+    /// Access the underlying raft store.
+    pub fn store(&self) -> &RaftStore {
+        let storage: &dyn Any = self.shared.storage.as_ref();
+        storage
+            .downcast_ref::<RaftStore>()
+            .expect("raft: every public RaftHost constructor stores in a RaftStore")
+    }
+}
+
+fn host_store(store: RaftStore) -> HostStore {
+    HostStore {
+        path: store.path().to_path_buf(),
+        storage: Box::new(store),
     }
 }
 

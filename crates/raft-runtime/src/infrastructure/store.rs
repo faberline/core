@@ -34,6 +34,7 @@ mod log_codec;
 mod log_plan;
 mod migration;
 mod open;
+mod ports;
 mod save;
 mod state_codec;
 

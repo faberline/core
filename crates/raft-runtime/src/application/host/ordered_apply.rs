@@ -47,7 +47,7 @@ impl Shared {
             *failure = Some(StorageFailed {
                 node_id: self.id,
                 operation,
-                path: self.store.path().to_path_buf(),
+                path: self.store_path.clone(),
                 kind: std::io::ErrorKind::InvalidData,
             });
         }
@@ -76,7 +76,7 @@ impl Shared {
                     self.persist(&node)?;
                     None
                 } else {
-                    let source = self.store.pin_committed_command(index, term)?;
+                    let source = self.storage.pin_committed_command(index, term)?;
                     let permit = {
                         let mut pending = self
                             .pending_admission
@@ -211,7 +211,7 @@ impl Shared {
                 *self.latched_failure.lock().unwrap() = Some(StorageFailed {
                     node_id: self.id,
                     operation: "state-machine-restore",
-                    path: self.store.path().to_path_buf(),
+                    path: self.store_path.clone(),
                     kind: std::io::ErrorKind::InvalidData,
                 });
                 return InstallSnapshotResp {

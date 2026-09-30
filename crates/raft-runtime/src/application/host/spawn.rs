@@ -10,6 +10,13 @@ pub(crate) struct PeerWiring {
     pub(crate) snapshot_rpc_timeout: Duration,
 }
 
+/// The durable storage a host is spawned over, and the path that names it in
+/// `StorageFailed` and in the refusal to start.
+pub(crate) struct HostStore {
+    pub(crate) storage: Box<dyn HostStorage>,
+    pub(crate) path: PathBuf,
+}
+
 const DEFAULT_MAX_RESIDENT_LOG_BYTES: usize = 2 * 1024 * 1024 * 1024;
 
 impl RaftHost {
@@ -26,7 +33,7 @@ impl RaftHost {
         group_id: GroupId,
         membership: Membership,
         peers: HashMap<NodeId, String>,
-        store: RaftStore,
+        store: HostStore,
         sm: Arc<dyn RaftStateMachine>,
         cfg: HostConfig,
         connect: impl FnOnce(PeerWiring) -> Arc<P>,
@@ -34,10 +41,14 @@ impl RaftHost {
     where
         P: RaftDelivery + PeerClient<NodeId> + 'static,
     {
-        let loaded = store.load().unwrap_or_else(|error| {
+        let HostStore {
+            storage,
+            path: store_path,
+        } = store;
+        let loaded = storage.load().unwrap_or_else(|error| {
             panic!(
                 "raft: refuse to start node {id}; durable state {} is invalid: {error}",
-                store.path().display()
+                store_path.display()
             )
         });
         let mut node = match loaded {
@@ -93,7 +104,8 @@ impl RaftHost {
             id,
             group_id,
             node: Mutex::new(node),
-            store,
+            storage,
+            store_path,
             sm,
             pending_admission: StdMutex::new(BTreeMap::new()),
             delivery: Arc::clone(&peer_client) as Arc<dyn RaftDelivery>,

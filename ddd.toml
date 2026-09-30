@@ -398,15 +398,6 @@ reason = "schemars::JsonSchema is a compile-time description of the same serde w
 
 [[exceptions]]
 rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/raft-runtime/src/application/host.rs",
-  "crates/raft-runtime/src/application/replica_host.rs",
-]
-reason = "Moved as-is in P1: RaftHost holds the concrete RaftStore, and ReplicaHostBuilder opens the RaftStore and builds the PeerTransport itself. P2: a raft log store port in application, implemented by infrastructure and injected at spawn."
-
-[[exceptions]]
-rule = "B3"
 subject = "interfaces->infrastructure"
 paths = [
   "crates/raft-runtime/src/interfaces/conformance/deterministic_host.rs",
