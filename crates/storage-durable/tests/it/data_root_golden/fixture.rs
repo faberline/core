@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use serde::{Deserialize, Serialize};
-use storage_durable::DataRootPolicy;
+use storage_durable::{DataRootError, DataRootPolicy};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GoldenManifest {
@@ -55,16 +55,17 @@ impl DataRootPolicy for GoldenPolicy {
         &["legacy.data"]
     }
 
-    fn create_manifest(&self, _root: &Path) -> anyhow::Result<Self::Manifest> {
+    fn create_manifest(&self, _root: &Path) -> Result<Self::Manifest, DataRootError> {
         Ok(GoldenManifest::with_role("store"))
     }
 
-    fn validate_manifest(&self, manifest: &Self::Manifest) -> anyhow::Result<()> {
-        anyhow::ensure!(
-            manifest.version == 1,
-            "unsupported golden format {}",
-            manifest.version
-        );
+    fn validate_manifest(&self, manifest: &Self::Manifest) -> Result<(), DataRootError> {
+        if manifest.version != 1 {
+            return Err(DataRootError::other(format!(
+                "unsupported golden format {}",
+                manifest.version
+            )));
+        }
         Ok(())
     }
 }

@@ -21,7 +21,8 @@ pub use capacity::{
     FileSystemSpaceProbe, SpaceProbe,
 };
 pub use data_root::{
-    reject_symlink, set_private_directory_mode, set_private_file_mode, DataRoot, DataRootPolicy,
+    reject_symlink, set_private_directory_mode, set_private_file_mode, DataRoot, DataRootError,
+    DataRootPolicy,
 };
 pub use framed_log::{
     FramedLogCursor, FramedLogReader, FramedLogTrimObserver, FramedLogTrimPlan, FramedLogWriter,
