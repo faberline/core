@@ -5,13 +5,13 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::diagnostic::Diagnostic;
+use crate::domain::analysis_cache::AnalysisCache;
 use crate::domain::check::lint_config::LintConfig;
-use crate::infrastructure::analysis_cache::disk_cache::DiskCache;
+use crate::domain::syntax::source_parser::SourceParser;
 use crate::lint::CheckerRegistry;
 use crate::semantic::SymbolTable;
-use crate::storage::resolve_cache_dir;
-use crate::syntax::{MultiParser, ParsedFile};
-use crate::type_inference::{SemanticModel, StubLoader};
+use crate::syntax::ParsedFile;
+use crate::type_inference::SemanticModel;
 
 /// Cached analysis for a file
 pub(super) struct FileAnalysis {
@@ -38,74 +38,33 @@ pub struct RequestHandler {
     pub(super) registry: Arc<CheckerRegistry>,
     /// Lint configuration
     pub(super) config: Arc<LintConfig>,
-    /// Type stubs
-    #[allow(dead_code)]
-    stubs: Arc<RwLock<StubLoader>>,
     /// Parser (not thread-safe, needs mutex)
-    pub(super) parser: Arc<tokio::sync::Mutex<MultiParser>>,
-    /// Persistent disk cache
-    pub(super) disk_cache: Arc<DiskCache>,
+    pub(super) parser: Arc<tokio::sync::Mutex<Box<dyn SourceParser + Send>>>,
+    /// Persistent analysis cache
+    pub(super) disk_cache: Arc<dyn AnalysisCache>,
 }
 
 impl RequestHandler {
-    pub fn new(root: PathBuf) -> Result<Self, String> {
-        let parser = MultiParser::new().map_err(|e| format!("Failed to create parser: {}", e))?;
-
-        let mut stubs = StubLoader::new();
-        stubs.load_builtins();
-
-        let cache_dir = resolve_cache_dir(&root)
-            .unwrap_or_else(|_| root.join("cclab").join(".index").join("cache"));
-        let disk_cache = Arc::new(DiskCache::new(cache_dir));
-
-        Ok(Self {
-            root,
-            cache: Arc::new(RwLock::new(HashMap::new())),
-            overrides: Arc::new(RwLock::new(HashMap::new())),
-            registry: Arc::new(CheckerRegistry::new()),
-            config: Arc::new(LintConfig::default()),
-            stubs: Arc::new(RwLock::new(stubs)),
-            parser: Arc::new(tokio::sync::Mutex::new(parser)),
-            disk_cache,
-        })
-    }
-
-    /// Create a handler for a specific scope (#1127).
+    /// A handler for `root` that parses with `parser` and keeps analysis
+    /// across runs in `disk_cache`, with the default lint configuration.
     ///
-    /// Uses per-scope cache directory and adds scope's search paths to stub loader.
-    pub fn new_with_scope(
+    /// `RequestHandler::new` and `RequestHandler::new_with_scope` (in the
+    /// composition root, src/app) build it with the tree-sitter parser and
+    /// the on-disk cache.
+    pub(crate) fn with_ports(
         root: PathBuf,
-        scope_id: &str,
-        project_root: &std::path::Path,
-        extra_search_paths: &[PathBuf],
-    ) -> Result<Self, String> {
-        let parser = MultiParser::new().map_err(|e| format!("Failed to create parser: {}", e))?;
-
-        let mut stubs = StubLoader::new();
-        stubs.load_builtins();
-        for path in extra_search_paths {
-            stubs.add_stub_path(path.clone());
-        }
-
-        let cache_dir = crate::storage::resolve_scope_cache_dir(project_root, scope_id)
-            .unwrap_or_else(|_| {
-                project_root
-                    .join("cclab/.index/scopes")
-                    .join(scope_id)
-                    .join("cache")
-            });
-        let disk_cache = Arc::new(DiskCache::new(cache_dir));
-
-        Ok(Self {
+        parser: Box<dyn SourceParser + Send>,
+        disk_cache: Arc<dyn AnalysisCache>,
+    ) -> Self {
+        Self {
             root,
             cache: Arc::new(RwLock::new(HashMap::new())),
             overrides: Arc::new(RwLock::new(HashMap::new())),
             registry: Arc::new(CheckerRegistry::new()),
             config: Arc::new(LintConfig::default()),
-            stubs: Arc::new(RwLock::new(stubs)),
             parser: Arc::new(tokio::sync::Mutex::new(parser)),
             disk_cache,
-        })
+        }
     }
 
     /// Set an in-memory document override (for unsaved LSP changes)

@@ -5,5 +5,6 @@
 //! them and keep compass's zero-argument conveniences, such as
 //! `compass::check_paths` and `compass::outline`, at their public paths.
 
+pub(crate) mod analysis;
 pub(crate) mod check;
 pub(crate) mod outline;

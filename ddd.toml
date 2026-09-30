@@ -589,8 +589,6 @@ reason = "Moved as-is in P1: ParsedFile wraps a tree_sitter::Tree, Range::from_n
 rule = "B3"
 subject = "application->infrastructure"
 paths = [
-  "crates/compass/src/application/analysis/file_cache.rs",
-  "crates/compass/src/application/analysis/request_handler.rs",
   "crates/compass/src/application/daemon/background_analysis.rs",
   "crates/compass/src/application/daemon/config.rs",
 ]

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use crate::application::daemon::protocol::*;
 use crate::diagnostic::Diagnostic;
 use crate::semantic::{SymbolTable, SymbolTableBuilder};
-use crate::syntax::{Language, MultiParser};
+use crate::syntax::Language;
 use crate::type_inference::{build_semantic_model, ContentHash, SemanticModel};
 
 use super::request_handler::{FileAnalysis, RequestHandler};
@@ -41,7 +41,7 @@ impl RequestHandler {
                 if path.is_dir() {
                     files.extend(self.collect_files(&path));
                 } else if path.is_file() {
-                    if MultiParser::detect_language(&path).is_some() {
+                    if Language::from_path(&path).is_some() {
                         files.push(path);
                     }
                 }
@@ -84,13 +84,13 @@ impl RequestHandler {
         };
 
         let content_hash = ContentHash::from_content(&source);
-        let persisted = match self.disk_cache.load(path, content_hash.0).await {
+        let (semantic_model, diagnostics) = match self.disk_cache.load(path, content_hash.0).await {
             Some(p) => p,
             None => return false,
         };
 
         // Re-parse to get Tree + SymbolTable (~1ms)
-        let language = match MultiParser::detect_language(path) {
+        let language = match Language::from_path(path) {
             Some(l) => l,
             None => return false,
         };
@@ -122,8 +122,8 @@ impl RequestHandler {
             FileAnalysis {
                 parsed,
                 symbol_table,
-                semantic_model: persisted.semantic_model,
-                diagnostics: persisted.diagnostics,
+                semantic_model,
+                diagnostics,
                 source,
                 last_updated_secs: current_unix_secs(),
             },
@@ -133,7 +133,7 @@ impl RequestHandler {
 
     /// Check a single file and cache the results
     pub(super) async fn check_file(&self, path: &Path) -> Option<Vec<DiagnosticInfo>> {
-        let language = MultiParser::detect_language(path)?;
+        let language = Language::from_path(path)?;
 
         if !self.config.is_language_enabled(language) {
             return None;

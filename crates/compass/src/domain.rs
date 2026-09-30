@@ -1,5 +1,6 @@
 //! Domain layer.
 
+pub(crate) mod analysis_cache;
 pub(crate) mod ast_editing;
 pub(crate) mod check;
 pub(crate) mod checker_config;
