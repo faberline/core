@@ -41,12 +41,14 @@ pub use application::{
     generate_with_file_bearer_auth,
 };
 pub use domain::ir::{build_type_map, TypeMap};
+pub use domain::SpecParseError;
 pub use domain::{
-    FileBearerAuth, FileBearerScheme, GenOptions, GeneratedFile, GeneratedOutput,
-    GenerationManifest, HttpClient, Lang, MANIFEST_FILE,
+    FileBearerAuth, FileBearerAuthError, FileBearerScheme, GenOptions, GeneratedFile,
+    GeneratedOutput, GenerationManifest, HttpClient, Lang, MANIFEST_FILE,
 };
 pub use domain::{
-    PythonTarget, RustTarget, TargetPolicy, TargetProfile, TargetRequirements, TypeScriptTarget,
+    PythonTarget, RustTarget, TargetPolicy, TargetPolicyError, TargetProfile, TargetRequirements,
+    TypeScriptTarget, UnknownTargetProfile,
 };
 pub use interfaces::run;
 

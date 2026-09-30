@@ -6,9 +6,7 @@
 
 use std::str::FromStr;
 
-use anyhow::{bail, Context, Result};
-
-use crate::domain::Lang;
+use crate::domain::{Lang, TargetPolicyError, UnknownTargetProfile};
 
 /// Python language level for generated clients.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -167,15 +165,15 @@ impl TargetProfile {
     }
 
     /// Parse the stable identifier exposed by the CLI and generation manifest.
-    pub fn from_id(id: &str) -> Result<Self> {
+    pub fn from_id(id: &str) -> Result<Self, UnknownTargetProfile> {
         id.parse()
     }
 }
 
 impl FromStr for TargetProfile {
-    type Err = anyhow::Error;
+    type Err = UnknownTargetProfile;
 
-    fn from_str(value: &str) -> Result<Self> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value {
             "python-3.11" => Ok(Self::Python(PythonTarget::Py311)),
             "python-3.12" => Ok(Self::Python(PythonTarget::Py312)),
@@ -184,10 +182,7 @@ impl FromStr for TargetProfile {
             "typescript-5.0" => Ok(Self::TypeScript(TypeScriptTarget::Ts50)),
             "rust-2021" => Ok(Self::Rust(RustTarget::Rust2021)),
             "rust-2024" => Ok(Self::Rust(RustTarget::Rust2024)),
-            _ => bail!(
-                "unknown target profile {value:?}; expected one of: python-3.11, python-3.12, \
-                 python-3.13, python-3.14, typescript-5.0, rust-2021, rust-2024"
-            ),
+            _ => Err(UnknownTargetProfile::new(value)),
         }
     }
 }
@@ -209,19 +204,25 @@ pub struct TargetPolicy {
 impl TargetPolicy {
     /// Resolve a language target, using the policy by default or an explicit
     /// CLI override when supplied. A cross-language override is rejected.
-    pub fn resolve(self, lang: Lang, explicit: Option<&str>) -> Result<TargetProfile> {
+    pub fn resolve(
+        self,
+        lang: Lang,
+        explicit: Option<&str>,
+    ) -> Result<TargetProfile, TargetPolicyError> {
         let target = match explicit {
-            Some(value) => TargetProfile::from_id(value)
-                .with_context(|| format!("parse explicit target profile {value:?}"))?,
+            Some(value) => TargetProfile::from_id(value).map_err(|source| {
+                TargetPolicyError::UnknownExplicit {
+                    value: value.to_string(),
+                    source,
+                }
+            })?,
             None => self.for_lang(lang),
         };
         if target.lang() != lang {
-            bail!(
-                "target profile {} is for {:?}, not requested language {:?}",
-                target.id(),
-                target.lang(),
-                lang
-            );
+            return Err(TargetPolicyError::LanguageMismatch {
+                target,
+                requested: lang,
+            });
         }
         Ok(target)
     }

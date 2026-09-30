@@ -364,18 +364,6 @@ paths = [
 reason = "utoipa::ToSchema is a compile-time description of the same serde wire shape. ProjectionDescriptor, ProjectionCheckpoint and ProjectionLag are served as-is in sift's OpenAPI document under these schema names, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
 
 [[exceptions]]
-rule = "B2"
-subject = "anyhow"
-paths = [
-  "crates/openapi-codegen/src/domain/emit/py.rs",
-  "crates/openapi-codegen/src/domain/emit/rust.rs",
-  "crates/openapi-codegen/src/domain/emit/ts.rs",
-  "crates/openapi-codegen/src/domain/generation/file_bearer_auth.rs",
-  "crates/openapi-codegen/src/domain/target.rs",
-]
-reason = "Moved as-is in P1: the per-language generate functions, FileBearerAuth::new and the target-profile parsers (TargetProfile::from_id, FromStr) return anyhow::Result and use bail!/anyhow!. P2: give the domain a thiserror error enum and convert to anyhow in application and infrastructure."
-
-[[exceptions]]
 rule = "B3"
 subject = "interfaces->domain"
 paths = ["crates/openapi-codegen/src/interfaces/cli.rs"]

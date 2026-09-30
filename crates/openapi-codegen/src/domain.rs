@@ -6,11 +6,14 @@ pub(crate) mod emit;
 mod generation;
 pub(crate) mod ir;
 mod target;
+mod target_error;
 
+pub use emit::SpecParseError;
 pub use generation::{
-    FileBearerAuth, FileBearerScheme, GenOptions, GeneratedFile, GeneratedOutput,
-    GenerationManifest, HttpClient, Lang, MANIFEST_FILE,
+    FileBearerAuth, FileBearerAuthError, FileBearerScheme, GenOptions, GeneratedFile,
+    GeneratedOutput, GenerationManifest, HttpClient, Lang, MANIFEST_FILE,
 };
 pub use target::{
     PythonTarget, RustTarget, TargetPolicy, TargetProfile, TargetRequirements, TypeScriptTarget,
 };
+pub use target_error::{TargetPolicyError, UnknownTargetProfile};

@@ -53,7 +53,13 @@ CLI entry touch the file system.
 - Only the `*_with_file_bearer_auth` entry points add credential reading; plain
   `generate` output stays byte-for-byte unchanged.
 - `FileBearerAuth::new` requires a non-empty UTF-8 token path, a hostname suffix
-  of one leading dot and lowercase DNS labels, and at least one scheme.
+  of one leading dot and lowercase DNS labels, and at least one scheme, and
+  returns a `FileBearerAuthError` naming the first rule broken.
+- Domain errors are typed: the `emit::{ts, py, rust}` `generate*` functions
+  return `SpecParseError`, `TargetProfile::from_id` and `FromStr` return
+  `UnknownTargetProfile`, and `TargetPolicy::resolve` returns
+  `TargetPolicyError`. The root `generate*` functions, `run` and
+  `TargetPolicy::from_toml` keep `anyhow` and pass the text on unchanged.
 - `write_to_dir` refuses an absolute generated path or one with a `..`
   component before it writes any file.
 - Only `query` operations get a POST twin: the `x-post-twin` extension, else the
@@ -74,15 +80,10 @@ topic (v1).
 ## Exceptions and debts
 
 - **Checker exceptions (P1):**
-  - B2 (`anyhow`): the per-language `generate*` functions,
-    `FileBearerAuth::new` and the target-profile parsers
-    (`TargetProfile::from_id`, `FromStr`) are in the domain and return
-    `anyhow::Result`. P2 gives the domain a `thiserror` error enum (ADR D4).
   - B3 `interfaces->domain`: the CLI entry `run` builds `GenOptions` and
     prints the manifest path, both domain items. P2 lets the application layer
     take a CLI request and return the written paths.
 - **Tracked for P2:** `GenOptions` public fields, built with struct literals by
-  defer, keep, loom, lumen, relay, sift and tape. `anyhow` in public
-  signatures: `TargetProfile: FromStr<Err = anyhow::Error>`,
-  `FileBearerAuth::new`, `TargetPolicy::from_toml` and every `generate*`
-  function (ADR D4).
+  defer, keep, loom, lumen, relay, sift and tape. `anyhow` in the public
+  signatures of `TargetPolicy::from_toml` (infrastructure) and the root
+  `generate*` functions (application) (ADR D4).

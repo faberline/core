@@ -9,9 +9,9 @@ pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput> {
     match opts.target {
         Some(target) => generate_for_target(spec_json, opts, target),
         None => match opts.lang {
-            Lang::Ts => emit::ts::generate(spec_json, opts),
-            Lang::Py => emit::py::generate(spec_json, opts),
-            Lang::Rust => emit::rust::generate(spec_json, opts),
+            Lang::Ts => Ok(emit::ts::generate(spec_json, opts)?),
+            Lang::Py => Ok(emit::py::generate(spec_json, opts)?),
+            Lang::Rust => Ok(emit::rust::generate(spec_json, opts)?),
         },
     }
 }
@@ -27,9 +27,15 @@ pub fn generate_with_file_bearer_auth(
     match opts.target {
         Some(target) => generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth),
         None => match opts.lang {
-            Lang::Ts => emit::ts::generate_with_file_bearer_auth(spec_json, opts, auth),
-            Lang::Py => emit::py::generate_with_file_bearer_auth(spec_json, opts, auth),
-            Lang::Rust => emit::rust::generate_with_file_bearer_auth(spec_json, opts, auth),
+            Lang::Ts => Ok(emit::ts::generate_with_file_bearer_auth(
+                spec_json, opts, auth,
+            )?),
+            Lang::Py => Ok(emit::py::generate_with_file_bearer_auth(
+                spec_json, opts, auth,
+            )?),
+            Lang::Rust => Ok(emit::rust::generate_with_file_bearer_auth(
+                spec_json, opts, auth,
+            )?),
         },
     }
 }
@@ -44,9 +50,15 @@ pub fn generate_for_target(
 ) -> Result<GeneratedOutput> {
     validate_target(opts, target)?;
     match target {
-        TargetProfile::TypeScript(target) => emit::ts::generate_for_target(spec_json, opts, target),
-        TargetProfile::Python(target) => emit::py::generate_for_target(spec_json, opts, target),
-        TargetProfile::Rust(target) => emit::rust::generate_for_target(spec_json, opts, target),
+        TargetProfile::TypeScript(target) => {
+            Ok(emit::ts::generate_for_target(spec_json, opts, target)?)
+        }
+        TargetProfile::Python(target) => {
+            Ok(emit::py::generate_for_target(spec_json, opts, target)?)
+        }
+        TargetProfile::Rust(target) => {
+            Ok(emit::rust::generate_for_target(spec_json, opts, target)?)
+        }
     }
 }
 
@@ -81,14 +93,14 @@ pub fn generate_for_target_with_file_bearer_auth(
 ) -> Result<GeneratedOutput> {
     validate_target(opts, target)?;
     match target {
-        TargetProfile::TypeScript(target) => {
-            emit::ts::generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth)
-        }
-        TargetProfile::Python(target) => {
-            emit::py::generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth)
-        }
-        TargetProfile::Rust(target) => {
-            emit::rust::generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth)
-        }
+        TargetProfile::TypeScript(target) => Ok(
+            emit::ts::generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth)?,
+        ),
+        TargetProfile::Python(target) => Ok(emit::py::generate_for_target_with_file_bearer_auth(
+            spec_json, opts, target, auth,
+        )?),
+        TargetProfile::Rust(target) => Ok(emit::rust::generate_for_target_with_file_bearer_auth(
+            spec_json, opts, target, auth,
+        )?),
     }
 }

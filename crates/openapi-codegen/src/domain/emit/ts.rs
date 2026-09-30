@@ -19,10 +19,11 @@ pub mod types_emit;
 use crate::domain::ir::build_type_map;
 use crate::domain::ir::openapi::Spec;
 use crate::domain::{FileBearerAuth, GenOptions, GeneratedFile, GeneratedOutput, TypeScriptTarget};
-use anyhow::{Context, Result};
+
+use super::SpecParseError;
 
 /// Pure TS generation: spec JSON text → in-memory files. No filesystem access.
-pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput> {
+pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, None, None)
 }
 
@@ -30,7 +31,7 @@ pub fn generate_with_file_bearer_auth(
     spec_json: &str,
     opts: &GenOptions,
     auth: &FileBearerAuth,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, None, Some(auth))
 }
 
@@ -39,7 +40,7 @@ pub fn generate_for_target(
     spec_json: &str,
     opts: &GenOptions,
     target: TypeScriptTarget,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, Some(target), None)
 }
 
@@ -48,7 +49,7 @@ pub fn generate_for_target_with_file_bearer_auth(
     opts: &GenOptions,
     target: TypeScriptTarget,
     auth: &FileBearerAuth,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, Some(target), Some(auth))
 }
 
@@ -57,8 +58,8 @@ fn generate_impl(
     opts: &GenOptions,
     target: Option<TypeScriptTarget>,
     auth: Option<&FileBearerAuth>,
-) -> Result<GeneratedOutput> {
-    let spec: Spec = serde_json::from_str(spec_json).context("failed to parse OpenAPI spec")?;
+) -> Result<GeneratedOutput, SpecParseError> {
+    let spec: Spec = serde_json::from_str(spec_json).map_err(SpecParseError::new)?;
     let tm = build_type_map(&spec);
     let plans = plan::build(&spec, &tm);
 

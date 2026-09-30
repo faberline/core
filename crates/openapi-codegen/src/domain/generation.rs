@@ -3,9 +3,11 @@
 //! opt-in, the in-memory generated files, and the contract manifest.
 
 mod file_bearer_auth;
+mod file_bearer_auth_error;
 mod options;
 mod output;
 
 pub use file_bearer_auth::{FileBearerAuth, FileBearerScheme};
+pub use file_bearer_auth_error::FileBearerAuthError;
 pub use options::{GenOptions, HttpClient, Lang};
 pub use output::{GeneratedFile, GeneratedOutput, GenerationManifest, MANIFEST_FILE};
