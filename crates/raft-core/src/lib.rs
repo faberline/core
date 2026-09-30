@@ -24,9 +24,9 @@
 mod domain;
 
 pub use domain::{
-    auto_membership, AppendReq, AppendResp, ConfState, DemotionRefused, EntryKind, Index,
-    InstallSnapshotReq, InstallSnapshotResp, Membership, NodeId, Outgoing, PersistedState,
-    PersistedStateRef, PromotionRefused, RaftEntry, RaftMsg, RaftNode, RemovalRefused, Role, Term,
-    TimeoutNowReq, TransferRefused, VoteReq, VoteResp, ELECTION_TIMEOUT_FLOOR_TICKS,
-    HEARTBEAT_INTERVAL_TICKS,
+    auto_membership, AppendReq, AppendResp, CommandLease, ConfState, DemotionRefused, EntryKind,
+    Index, InstallSnapshotReq, InstallSnapshotResp, Membership, NodeId, Outgoing, PersistedState,
+    PersistedStateRef, PinnedCommand, PromotionRefused, RaftDelivery, RaftEntry, RaftMsg, RaftNode,
+    RaftStorage, RemovalRefused, Role, Term, TimeoutNowReq, TransferRefused, VoteReq, VoteResp,
+    ELECTION_TIMEOUT_FLOOR_TICKS, HEARTBEAT_INTERVAL_TICKS,
 };
