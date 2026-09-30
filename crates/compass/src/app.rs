@@ -10,6 +10,7 @@ pub(crate) mod check;
 pub(crate) mod daemon;
 pub(crate) mod lsp;
 pub(crate) mod outline;
+pub(crate) mod output;
 pub(crate) mod parser;
 pub(crate) mod refactoring;
 pub(crate) mod semantic_search;

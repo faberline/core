@@ -20,7 +20,7 @@ fn test_build_issues_with_symbol_attribution() {
     )];
     let symbol_tables = vec![(PathBuf::from("/project/db.py"), table)];
 
-    let issues = builder.build_issues(&results, &symbol_tables);
+    let issues = builder.build_issues(&results, &table_views(&symbol_tables));
 
     assert_eq!(issues.len(), 1);
     let issue = &issues[0];
@@ -58,7 +58,7 @@ fn test_build_issues_file_level_fallback() {
     )];
     let symbol_tables = vec![(PathBuf::from("/project/app.py"), table)];
 
-    let issues = builder.build_issues(&results, &symbol_tables);
+    let issues = builder.build_issues(&results, &table_views(&symbol_tables));
 
     assert_eq!(issues.len(), 1);
     assert_eq!(
@@ -92,7 +92,7 @@ fn test_build_impact_from_references() {
 
     let symbol_tables = vec![(PathBuf::from("/project/db.py"), table)];
 
-    let impact = builder.build_impact(&symbol_tables);
+    let impact = builder.build_impact(&table_views(&symbol_tables));
 
     let refs = impact
         .get("db.get_user")

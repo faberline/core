@@ -1,10 +1,9 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use crate::diagnostic::DiagnosticSeverity;
+use crate::application::report::{ImportGraphView, SymbolCategory, SymbolTableView, SymbolView};
 use crate::domain::check::file_result::FileResult;
-use crate::graph::ImportGraph;
-use crate::semantic::symbols::{SymbolKind, SymbolTable};
+use crate::domain::diagnostic::model::{DiagnosticSeverity, Range};
 
 use super::agent_types::{AgentIssue, AgentOutput, AgentStats, SymbolDef};
 
@@ -19,19 +18,22 @@ impl<'a> AgentOutputBuilder<'a> {
         Self { project_root }
     }
 
-    /// Build the complete agent output from analysis results.
+    /// Build the complete agent output from analysis results and views.
+    ///
+    /// `AgentOutputBuilder::build` (in the composition root) builds the
+    /// views from symbol tables and the import graph.
     ///
     /// - `results`: lint/check results per file
-    /// - `symbol_tables`: per-file symbol tables (keyed by absolute path)
-    /// - `import_graph`: project-wide import dependency graph
-    pub fn build(
+    /// - `symbol_tables`: per-file symbol table views (keyed by absolute path)
+    /// - `imports`: the import paths of the checked files
+    pub(crate) fn build_views(
         &self,
         results: &[FileResult],
-        symbol_tables: &[(PathBuf, SymbolTable)],
-        import_graph: &ImportGraph,
+        symbol_tables: &[(PathBuf, SymbolTableView)],
+        imports: &ImportGraphView,
     ) -> AgentOutput {
         let symbols = self.build_symbols(symbol_tables);
-        let imports = self.build_imports(results, import_graph);
+        let imports = self.build_imports(results, imports);
         let issues = self.build_issues(results, symbol_tables);
         let impact = self.build_impact(symbol_tables);
 
@@ -53,27 +55,23 @@ impl<'a> AgentOutputBuilder<'a> {
         }
     }
 
-    /// Build the symbols map from per-file SymbolTables.
+    /// Build the symbols map from per-file symbol table views.
     ///
     /// Each symbol is keyed by its qualified name (file-relative name for now).
-    /// Includes type signature from SymbolTable `type_info` (R2, R7).
+    /// Includes the type signature from the symbol table (R2, R7). The views
+    /// hold only user-defined symbols (no imports or parameters).
     fn build_symbols(
         &self,
-        symbol_tables: &[(PathBuf, SymbolTable)],
+        symbol_tables: &[(PathBuf, SymbolTableView)],
     ) -> BTreeMap<String, SymbolDef> {
         let mut symbols = BTreeMap::new();
 
         for (file_path, table) in symbol_tables {
             let rel_path = self.relative_path(file_path);
 
-            for sym in table.all_symbols() {
-                // Skip imports and parameters — only user-defined symbols
-                if matches!(sym.kind, SymbolKind::Import | SymbolKind::Parameter) {
-                    continue;
-                }
-
-                let kind_str = symbol_kind_to_agent_kind(sym.kind);
-                let type_sig = sym.type_info.as_ref().map(|t| t.display());
+            for sym in &table.symbols {
+                let kind_str = category_to_agent_kind(sym.category);
+                let type_sig = sym.type_signature.clone();
 
                 // Use "file_stem.name" as a simple qualified name
                 let qualified = format_qualified_name(&rel_path, &sym.name);
@@ -93,25 +91,24 @@ impl<'a> AgentOutputBuilder<'a> {
         symbols
     }
 
-    /// Build the imports map from ImportGraph edges.
+    /// Build the imports map from the import graph view.
     ///
     /// Maps file path to list of imported symbol qualified names (R3).
     fn build_imports(
         &self,
         results: &[FileResult],
-        import_graph: &ImportGraph,
+        import_graph: &ImportGraphView,
     ) -> BTreeMap<String, Vec<String>> {
         let mut imports = BTreeMap::new();
 
         for result in results {
-            let deps = import_graph.dependencies(&result.path);
+            let deps = import_graph.imports(&result.path);
             if deps.is_empty() {
                 continue;
             }
 
             let rel_path = self.relative_path(&result.path);
-            let import_paths: Vec<String> =
-                deps.iter().map(|edge| edge.import_path.clone()).collect();
+            let import_paths: Vec<String> = deps.to_vec();
 
             if !import_paths.is_empty() {
                 imports.insert(rel_path, import_paths);
@@ -124,17 +121,17 @@ impl<'a> AgentOutputBuilder<'a> {
     /// Build the issues array from diagnostics with symbol attribution (R4, R6).
     ///
     /// Each diagnostic is attributed to the nearest enclosing symbol via
-    /// binary search on SymbolTable ranges. If no enclosing symbol is found,
+    /// the symbol ranges. If no enclosing symbol is found,
     /// uses `"<file-level>"`.
     fn build_issues(
         &self,
         results: &[FileResult],
-        symbol_tables: &[(PathBuf, SymbolTable)],
+        symbol_tables: &[(PathBuf, SymbolTableView)],
     ) -> Vec<AgentIssue> {
         let mut issues = Vec::new();
 
         // Build lookup from path to symbol table
-        let table_map: BTreeMap<&Path, &SymbolTable> = symbol_tables
+        let table_map: BTreeMap<&Path, &SymbolTableView> = symbol_tables
             .iter()
             .map(|(p, t)| (p.as_path(), t))
             .collect();
@@ -164,7 +161,7 @@ impl<'a> AgentOutputBuilder<'a> {
         issues
     }
 
-    /// Build the impact map from SymbolTable references (R5).
+    /// Build the impact map from symbol table references (R5).
     ///
     /// Groups non-definition references by target symbol, emitting
     /// "file:line" location strings.
@@ -175,31 +172,23 @@ impl<'a> AgentOutputBuilder<'a> {
     /// is accurate for intra-file references; cross-file tracking is deferred.
     fn build_impact(
         &self,
-        symbol_tables: &[(PathBuf, SymbolTable)],
+        symbol_tables: &[(PathBuf, SymbolTableView)],
     ) -> BTreeMap<String, Vec<String>> {
         let mut impact: BTreeMap<String, Vec<String>> = BTreeMap::new();
 
         for (file_path, table) in symbol_tables {
             let rel_path = self.relative_path(file_path);
 
-            for reference in table.all_references() {
+            // The views hold only references to user-defined symbols
+            for reference in &table.references {
                 if reference.is_definition {
                     continue;
                 }
 
-                // Look up the target symbol
-                if let Some(sym) = table.get(reference.symbol_id) {
-                    // Skip imports and parameters
-                    if matches!(sym.kind, SymbolKind::Import | SymbolKind::Parameter) {
-                        continue;
-                    }
+                let qualified = format_qualified_name(&rel_path, &reference.symbol_name);
+                let location = format!("{}:{}", rel_path, reference.location.start.line + 1);
 
-                    let sym_rel_path = self.relative_path(file_path);
-                    let qualified = format_qualified_name(&sym_rel_path, &sym.name);
-                    let location = format!("{}:{}", rel_path, reference.location.start.line + 1);
-
-                    impact.entry(qualified).or_default().push(location);
-                }
+                impact.entry(qualified).or_default().push(location);
             }
         }
 
@@ -221,19 +210,14 @@ impl<'a> AgentOutputBuilder<'a> {
     }
 }
 
-/// Find the nearest enclosing symbol for a position in a symbol table.
+/// Find the nearest enclosing symbol for a position in a symbol table view.
 ///
-/// Iterates all symbols and finds one whose range contains the position.
-/// Returns the symbol name or None if at file level.
-fn find_enclosing_symbol(table: &SymbolTable, line: u32, character: u32) -> Option<String> {
-    let mut best: Option<&crate::semantic::Symbol> = None;
+/// Iterates the user-defined symbols and finds one whose range contains the
+/// position. Returns the symbol name or None if at file level.
+fn find_enclosing_symbol(table: &SymbolTableView, line: u32, character: u32) -> Option<String> {
+    let mut best: Option<&SymbolView> = None;
 
-    for sym in table.all_symbols() {
-        // Skip imports and parameters
-        if matches!(sym.kind, SymbolKind::Import | SymbolKind::Parameter) {
-            continue;
-        }
-
+    for sym in &table.symbols {
         if sym.location.contains(line, character) {
             // Prefer the most specific (smallest range) enclosing symbol
             if let Some(current_best) = best {
@@ -252,37 +236,25 @@ fn find_enclosing_symbol(table: &SymbolTable, line: u32, character: u32) -> Opti
 }
 
 /// Compute approximate range size for comparison.
-fn range_size(range: &crate::diagnostic::Range) -> u64 {
+fn range_size(range: &Range) -> u64 {
     let lines = (range.end.line as u64).saturating_sub(range.start.line as u64);
     let cols = (range.end.character as u64).saturating_sub(range.start.character as u64);
     lines * 1000 + cols
 }
 
-/// Map SymbolKind to the agent output kind string.
+/// Map a symbol category to the agent output kind string.
 ///
 /// Uses the schema-defined enum: function, class, method, variable, constant,
 /// interface, type_alias, module.
-fn symbol_kind_to_agent_kind(kind: SymbolKind) -> &'static str {
-    match kind {
-        SymbolKind::Function => "function",
-        SymbolKind::Class | SymbolKind::Struct | SymbolKind::Enum => "class",
-        SymbolKind::Trait | SymbolKind::Interface => "interface",
-        SymbolKind::Variable => "variable",
-        SymbolKind::Const | SymbolKind::Static => "constant",
-        SymbolKind::TypeAlias | SymbolKind::TypeParameter => "type_alias",
-        SymbolKind::Module | SymbolKind::Impl => "module",
-        // Infrastructure and other kinds default to "variable"
-        SymbolKind::Resource
-        | SymbolKind::Job
-        | SymbolKind::Stage
-        | SymbolKind::Port
-        | SymbolKind::Label
-        | SymbolKind::Selector
-        | SymbolKind::Template => "variable",
-        // Decorators, macros
-        SymbolKind::Decorator | SymbolKind::Macro => "function",
-        // Import, Parameter, EnumMember — filtered upstream but handled for exhaustiveness
-        SymbolKind::Import | SymbolKind::Parameter | SymbolKind::EnumMember => "variable",
+fn category_to_agent_kind(category: SymbolCategory) -> &'static str {
+    match category {
+        SymbolCategory::Function => "function",
+        SymbolCategory::Class => "class",
+        SymbolCategory::Interface => "interface",
+        SymbolCategory::Variable => "variable",
+        SymbolCategory::Constant => "constant",
+        SymbolCategory::TypeAlias => "type_alias",
+        SymbolCategory::Module => "module",
     }
 }
 
