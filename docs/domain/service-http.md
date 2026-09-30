@@ -103,12 +103,20 @@ none had a known external user by path.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. service-http has no domain layer:
+- **Checker exceptions:** None. service-http has no domain layer:
   admission control reads the clock, so it is in the application layer. The
   reverse proxy moved whole into the interfaces layer and uses no
   infrastructure module.
-- **Tracked for P2:** clock and id reads: admission and weighted admission read
-  `Instant::now` (the `admit_at` and `acquire_at` seams already take the time),
-  and fresh trace ids hash the wall clock; P2 adds clock and id-generator
-  ports. `ProjectionMetadata` public fields, built with struct literals by
-  sift. `anyhow` in `reverse_proxy_router` (ADR D4).
+- **Public fields kept:** `ProjectionMetadata`, which sift builds with
+  struct literals. It is a wire type.
+- **Debts:**
+  - Clock and id reads: admission and weighted admission read
+    `Instant::now` (the `admit_at` and `acquire_at` seams already take the
+    time), and fresh trace ids hash the wall clock. There are no clock or
+    id-generator ports.
+  - `anyhow` in `reverse_proxy_router`, `init_tracing` and
+    `init_tracing_with_identity` (these are not ports, so ADR D4 does not
+    cover them).
+
+  P2 made the `HttpConfig`, `WeightedAdmissionConfig` and
+  `ContentDecodeLimits` fields private (D2).

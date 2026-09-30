@@ -87,5 +87,6 @@ topic (v1).
 - **Checker exceptions:** none. P2 moved the CLI entry `run`, which names
   `GenOptions` and `MANIFEST_FILE`, from `interfaces` into the `src/app`
   composition root, which the checker does not check.
-- **Tracked:** `anyhow` in the public signatures of `TargetPolicy::from_toml`
-  (infrastructure) and the root `generate*` functions (application) (ADR D4).
+- **Debts:** `anyhow` in the public signatures of `TargetPolicy::from_toml`
+  (infrastructure) and the root `generate*` functions (application). These
+  are not ports, so ADR D4 does not cover them.

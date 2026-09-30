@@ -81,8 +81,14 @@ layer. Every export is at the crate root and has no old module path to keep.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. File-system access is the job of an
+- **Checker exceptions:** None. File-system access is the job of an
   infrastructure crate.
-- **Public fields, not changed in P2:** `SnapshotFile`, `MappedLogFrame`
+- **Public fields kept:** `SnapshotFile`, `MappedLogFrame`
   (its `seq`) and `CapacityError` are built only inside this crate; nothing
   downstream builds them with a struct literal.
+- **Debts:** `anyhow` in the public signatures of the framed log,
+  `SnapshotFileStore`, `atomic_write` and the directory syncs,
+  `CapacityThresholds::new`, `CapacityGuard::open` and `reconcile`, and the
+  path helpers. These are not ports, so ADR D4 does not cover them. P2 made
+  `DataRoot` and its policy port return `DataRootError` (D4), made the
+  `LogFrame` fields private (D2), and deleted four unused methods (D7).

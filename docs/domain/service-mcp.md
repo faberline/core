@@ -49,9 +49,11 @@ A sift test reads sift's own sources and asserts the paths
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. `bearer_token` is in service-auth's
+- **Checker exceptions:** None. `bearer_token` is in service-auth's
   application layer, which other contexts may use.
-- **Tracked for P2:** `anyhow` in `HttpTransportConfig::new`,
-  `HttpTransportConfig::from_env` and `serve_stdio` (ADR D4). The name
-  `McpApplication` reads like the DDD application layer although the trait
-  belongs to the interfaces form; whether to rename it is a P2 decision.
+- **Name kept:** `McpApplication` reads like the DDD application layer
+  although the trait belongs to the interfaces form. The name stays because
+  sift implements the trait and a sift test asserts its path.
+- **Debts:** `anyhow` in `HttpTransportConfig::new`,
+  `HttpTransportConfig::from_env` and `serve_stdio` (these are not ports,
+  so ADR D4 does not cover them).

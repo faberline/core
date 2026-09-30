@@ -49,8 +49,8 @@ path to keep. The behaviour contract is in
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** B2 (`base64`): the token format is base64url,
-  and `base64` is not on the domain allowlist. The encoding is part of the
+- **Checker exceptions:** B2 (`base64`): the token format is base64url, and
+  `base64` is not on the domain allowlist. The encoding is part of the
   token's wire form, so this stays with a long-term reason.
-- **Tracked for P2:** bare ids: the input and result keys are `String`s and
-  the expiry a `u64`.
+- **Debts:** bare ids: the input and result keys are `String`s and the expiry
+  a `u64`. P2 made the `Scope` fields private (D2).

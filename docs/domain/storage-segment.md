@@ -77,9 +77,11 @@ are pure domain functions under `domain/catalog`.
 No core context depends on storage-segment. sift imports from the crate root:
 `PagedCatalog`, the catalog types, `ArchiveCoordinator`, `ArchiveTransaction`,
 `ArchiveObject`, `RecordCodec`, `Partitioner`, `SegmentError` and `Result`.
-P1 keeps every root export; sift's structure test checks for the exact path
-`storage_segment::RecordCodec`.
+Every export is at the crate root; sift's structure test checks for the
+exact path `storage_segment::RecordCodec`.
 
 ## Exceptions and debts
 
 - **Checker exceptions:** none.
+- **Debts:** none tracked. P2 deleted the unimplemented `SegmentStore`
+  trait (D7) and made the `CatalogEntry` fields private (D2).

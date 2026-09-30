@@ -180,14 +180,18 @@ jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
 - **Checker exceptions:** none. The upgrade version rules use `semver`, which
   is not on the domain allowlist, so they sit in the application layer and need
   no exception.
-- **Tracked for P2:**
-  - Public fields built with struct literals (ADR D2): the v2 `Topic`,
-    `Task`, `Runbook`, `Step` and `Input`, in lumen. They are wire types, so
-    P2 leaves them as they are.
+- **Public fields kept:**
+  - The v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, which lumen builds
+    with struct literals. They are wire types.
   - `TopicSection` is an enum and keeps its public variants; tape builds its
     `Generated` variant with named fields.
+- **Debts:**
   - `anyhow` in public signatures, including the `CliModule::execute` port
     that jet, mamba and meter implement (ADR D4).
   - The `issue` and `upgrade` handlers print their results directly. Moving the
     output to the interfaces layer must keep stdout byte-identical, so this is
     a behaviour risk.
+
+  P2 made the `ToolInfo`, `llm::Topic`, `SectionedTopic`, `upgrade::Options`
+  and issue option fields private (D2), and moved the connect, issue and
+  upgrade I/O behind crate-internal ports wired in `src/app/`.

@@ -102,11 +102,11 @@ runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
     statuses embed them as-is (for example `Vec<service_k8s::Condition>` in
     lumen and tape), so their generated schemas must not change, and an
     interfaces copy would duplicate the wire contract. The derive does no I/O.
-- **Public fields kept on purpose:** the wire types `Condition`,
+- **Public fields kept:** the wire types `Condition`,
   `ClusterSpec` and `ResourceSpec`, which downstream CRDs embed; and
   `Election`, `InstanceScope`, the remaining render `*Plan` types and the
   capacity plans, which nothing outside the crate builds as a literal.
-- **Tracked for a later pass:** public fields on `ContainerPlan` and
-  `StatefulInstancePlan`, which downstream builds with `new` and then sets
-  field by field; bare id `IssuerId(pub String)`; `anyhow` in
-  `reconcile_plan`, `run` and `parse_storage_bytes`.
+- **Debts:** public fields on `ContainerPlan` and `StatefulInstancePlan`,
+  which downstream builds with `new` and then sets field by field; bare id
+  `IssuerId(pub String)`; `anyhow` in `reconcile_plan`, `run` and
+  `parse_storage_bytes`.

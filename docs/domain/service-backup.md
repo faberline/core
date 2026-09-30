@@ -126,8 +126,10 @@ the root does not re-export its names.
     through an application query (B3 `interfaces->domain`), and the
     transport reads its bearer through a domain port whose service-auth
     adapter lives in `src/app` (B4).
-- **Tracked:** public fields built with struct literals (ADR D2):
-  `ScheduledBackupPolicy` in lumen and relay tests and in tape's end-to-end
-  tests; `RetentionPolicy` in loom. lumen's unit tests build
-  `BackupDestination::Local` values, and sift destructures every field of
-  the `Gcs` variant (enum variant fields are always public).
+- **Debts:**
+  - Public fields built with struct literals (ADR D2):
+    `ScheduledBackupPolicy` in lumen and relay tests and in tape's
+    end-to-end tests; `RetentionPolicy` in loom. lumen's unit tests build
+    `BackupDestination::Local` values, and sift destructures every field
+    of the `Gcs` variant (enum variant fields are always public).
+  - `LocalFsSink` has public `root` and `prefix` fields.

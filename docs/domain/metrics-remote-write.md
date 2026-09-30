@@ -60,5 +60,6 @@ paths are a contract.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** None.
+- **Checker exceptions:** None.
+- **Debts:** none tracked. P2 deleted the unused
+  `ValidatedWrite::request` borrow; `into_inner` takes the request (D7).

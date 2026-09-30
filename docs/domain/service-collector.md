@@ -84,19 +84,25 @@ No core context depends on service-collector. sift implements
 `CollectorSource`, `RecordDecoder`, `BatchSink` and the record and rejection
 traits, and uses `run_collector_with_delivery_mode`, `JsonlQuarantine`, the
 JSON checkpoint and JSONL helpers and the model types, all from the crate
-root. P1 keeps every root export; there is no old module
+root. Every export is at the crate root; there is no old module
 path to keep. sift's structure test checks its own sources for the exact
 paths `service_collector::run_collector`, `service_collector::RecordDecoder`,
 `service_collector::BatchSink` and `service_collector::save_json_checkpoint`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. `BatchSink` is declared with
+- **Checker exceptions:** None. `BatchSink` is declared with
   `#[async_trait]`, which is not on the domain allowlist, so it sits in the
   application layer; the runtime and the file helpers are outside the domain.
-- **Tracked for P2:**
+- **Public fields kept:** `CommitStats` and `RunReport` are built only
+  inside this crate. `RetryPolicy` has public fields, but sift builds it
+  with `RetryPolicy::new`, and the runtime checks it again before the
+  first read.
+- **Debts:**
   - Bare ids: offsets and counters are `u64`.
-- **Public fields, not changed in P2:** `CommitStats` and `RunReport` are
-  built only inside this crate. `RetryPolicy` has public fields, but sift
-  builds it with `RetryPolicy::new`, and the runtime checks it again before
-  the first read.
+  - `anyhow` in `run_collector`, `run_collector_with_delivery_mode`,
+    `load_json_checkpoint`, `save_json_checkpoint` and `append_jsonl`
+    (these are not ports, so ADR D4 does not cover them).
+
+  P2 made the `RuntimeConfig`, `SourceProgress` and `DeliveryReceipt`
+  fields private (D2).

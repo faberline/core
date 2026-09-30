@@ -66,7 +66,7 @@ functions it instruments.
   `StateMachineDef` into a `ValidationResult`; `MermaidPlusGenerator` renders
   it. `GeneratorRegistry` picks a `CodeGenerator` to emit `GeneratedCode`.
 - **Errors** — `ArgusError` and `Result<T>`. The legacy names Argus and Lens
-  stay unchanged in P1.
+  are kept (ADR compass #5).
 
 ## Ports
 
@@ -152,7 +152,7 @@ function.
   probes the file system with `Path::exists` from the domain; it needs a
   file-system port. `SchemaRegistry::global` and the frontmatter validators
   are `OnceLock` singletons in `infrastructure/schema_validation`.
-- **Open debts:** `CodeGenerator` takes `serde_json::Value` to avoid a
+- **Debts:** `CodeGenerator` takes `serde_json::Value` to avoid a
   circular crate dependency. `Position`, `Range`, `TextEdit`, `Diagnostic`,
   `QuickFix` and the `SpecIR` structs keep public fields by design (wire value
   objects and spec IR). Other aggregates with public fields that code outside

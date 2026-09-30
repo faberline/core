@@ -82,6 +82,11 @@ layer.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. Signals, the clock and task spawning are
+- **Checker exceptions:** None. Signals, the clock and task spawning are
   the job of an infrastructure crate.
-- **Tracked for P2:** None.
+- **Public fields kept:** `ShutdownContext.deadline`, which the library
+  builds and a hook only reads, and the output-only `HookOutcome`,
+  `PhaseTiming`, `ShutdownReport`, `LifecycleObservation` and
+  `ConnectionLimitExceeded`.
+- **Debts:** none tracked. P2 made the `BindConfig` and `ShutdownDeadline`
+  fields private (D2).

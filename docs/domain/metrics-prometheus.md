@@ -66,5 +66,6 @@ layer. Everything is re-exported at the crate root, and no module is public.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** None.
+- **Checker exceptions:** None.
+- **Debts:** none tracked. P2 made the `Sample`, `Label`, `Bucket`,
+  `SampleGroup`, `LabeledSample` and `Latency` fields private (D2).

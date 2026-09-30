@@ -69,7 +69,8 @@ tests check its own sources for the exact paths
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. Task spawning and timers are the job of
+- **Checker exceptions:** None. Task spawning and timers are the job of
   an infrastructure crate.
-- **Tracked for P2:** None. `JobRunReport` keeps public fields as an
-  output-only report.
+- **Public fields kept:** `JobRunReport`, an output-only report.
+- **Debts:** none tracked. P2 made the `GroupCommitConfig` fields private
+  (D2).

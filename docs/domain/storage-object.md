@@ -64,3 +64,5 @@ no old module path needs a facade.
 
 - **Checker exceptions:** None. Network, file-system and environment
   access are the job of an infrastructure crate.
+- **Debts:** none tracked. P2 made the `ObjectMeta` and `Object` fields
+  private (D2).

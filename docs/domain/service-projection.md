@@ -94,9 +94,9 @@ No core context depends on service-projection. sift re-exports
 `ProjectionCheckpoint`, `ProjectionDescriptor`, `ProjectionLag`,
 `ProjectionStateEnvelope`, `RebuildComparison` and
 `PROJECTION_STATE_FORMAT_VERSION`, and its API error carries a
-`ProjectionLag`. The envelope is a persisted format that P1 does not change.
-P1 keeps every root export; there is no old module path. sift's structure
-test checks its own sources for `service_projection::ProjectionRegistry`.
+`ProjectionLag`. The envelope is a persisted format. Every export is at the
+crate root; there is no old module path. sift's structure test checks its
+own sources for `service_projection::ProjectionRegistry`.
 
 ## Exceptions and debts
 
@@ -106,10 +106,16 @@ test checks its own sources for `service_projection::ProjectionRegistry`.
     same serde wire shape with no I/O. sift serves them as-is in its OpenAPI
     document under these schema names, so an interfaces copy would duplicate
     the wire contract.
-- **Tracked for P2:** bare ids: cursors and generations are `u64`, names and
-  event ids `String`.
-- **Public fields, not changed in P2:** `ProjectionCheckpoint`,
-  `ProjectionLag` and `RebuildComparison` are built only inside this crate;
+- **Public fields kept:** `ProjectionCheckpoint`, `ProjectionLag` and
+  `RebuildComparison` are built only inside this crate;
   `ProjectionStateEnvelope` is the persisted state format.
   `ProjectionRuntimeConfig` has public fields and a `new` that raises each
   value to at least 1.
+- **Debts:**
+  - Bare ids: cursors and generations are `u64`, names and event ids
+    `String`.
+  - `anyhow` in the `ProjectionRegistry` and `ProjectionHandle` methods
+    (these are not ports, so ADR D4 does not cover them).
+
+  P2 made the projection ports return `ProjectionError` (D4), and made
+  the `ProjectionDescriptor` fields private behind `try_new` (D2).

@@ -59,5 +59,7 @@ The crate root also re-exports server-lifecycle as `core` and server-tcp as
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** None.
+- **Checker exceptions:** None.
+- **Debts:** none tracked. P2 made `HttpServerReport` an alias of
+  `TcpServerReport` (D7), and made the `HttpServerOptions` and
+  `TlsServerOptions` fields private (D2).

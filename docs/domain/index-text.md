@@ -62,9 +62,9 @@ and `MemoryTextIndex`; lumen uses `Analyzer`, `tokenize`,
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** B2 (`jieba-rs`): the optional `jieba` feature
+- **Checker exceptions:** B2 (`jieba-rs`): the optional `jieba` feature
   exposes `for_jieba_no_hmm` and re-exports `jieba_rs::RouteStore` as
   `JiebaRouteStore`. The dictionary is the analyzer's own vocabulary, so this
   stays with a long-term reason.
-- **Tracked for P2:** bare ids: `TextDocument::external_id` is a `String` and
-  its version a `u64`.
+- **Debts:** bare ids: `TextDocument::external_id` is a `String` and its
+  version a `u64`. P2 made the `TextDocument` fields private (D2).

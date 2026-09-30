@@ -54,6 +54,6 @@ layer. That API is the single function `build_stamp::stamp`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. Running a process, reading the
-  environment and reading the clock are the job of an infrastructure crate.
-- **Tracked for P2:** None.
+- **Checker exceptions:** none. Running a process, reading the environment
+  and reading the clock are the job of an infrastructure crate.
+- **Debts:** none tracked.

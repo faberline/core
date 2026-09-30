@@ -71,7 +71,8 @@ stay public.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. Reading files and the clock is the job
+- **Checker exceptions:** None. Reading files and the clock is the job
   of an infrastructure crate.
-- **Tracked for P2:** `anyhow` in public signatures: `from_env` and the
-  rustls config builders (ADR D4).
+- **Debts:** `anyhow` in `from_env` and the rustls config builders (these
+  are not ports, so ADR D4 does not cover them). P2 made the
+  `PeerTlsConfig` fields private (D2).

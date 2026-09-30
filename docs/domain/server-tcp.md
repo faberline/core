@@ -63,4 +63,9 @@ Its entry points are `bind`, `serve`, `serve_arc` and `serve_with_report`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
+- **Checker exceptions:** None.
+- **Public fields kept:** `ConnectionContext` and `TcpServerReport`. The
+  library builds both, and caller code only reads them.
+- **Debts:** none tracked. P2 replaced `anyhow` in `TcpHandler` with
+  `TcpHandlerError` (D4), and made the `TcpServerConfig`,
+  `TcpSocketOptions` and `TcpConnectionResult` fields private (D2).

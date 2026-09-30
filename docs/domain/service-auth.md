@@ -122,7 +122,11 @@ cli-std: an llm topic.
   - Other contexts: `bearer_token` is in the application layer, so service-mcp
     uses it without an exception. service-backup reads `k8s::ProjectedTokenFile`
     only from its own `src/app` composition root, so it needs no exception.
-- **Tracked:** `anyhow` in the registry loaders and the reload API (ADR D4).
-  `ReviewedIdentity` has public fields built with struct literals in lumen
-  and sift. `DelegatedAuthMetrics` exposes its counters as public fields. The
-  two clock ports stay separate.
+- **Debts:**
+  - `anyhow` in the registry loaders and the reload API. These are not
+    ports, so ADR D4 does not cover them. P2 made `Registry::parse` and
+    `try_merge` return `RegistryError`.
+  - `ReviewedIdentity` has public fields built with struct literals in
+    lumen and sift.
+  - `DelegatedAuthMetrics` exposes its counters as public fields.
+  - The two clock ports, `gcp::Clock` and `k8s::Clock`, stay separate.

@@ -67,5 +67,7 @@ the crate's llm topic through `llm::topic`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** None.
+- **Checker exceptions:** None.
+- **Debts:** none tracked. P2 made the `ManagerConfig` and
+  `ConnectionOptions` fields private (D2), and the manager and the server
+  now share one `is_safe_method` (D7).
