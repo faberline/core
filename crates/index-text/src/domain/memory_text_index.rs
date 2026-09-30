@@ -42,8 +42,8 @@ impl MemoryTextIndex {
     }
 
     fn validate_document(&self, document: &TextDocument) -> Result<()> {
-        self.validate_external_id(&document.external_id)?;
-        for field in document.fields.keys() {
+        self.validate_external_id(document.external_id())?;
+        for field in document.fields().keys() {
             self.schema.field(field)?;
         }
         Ok(())
@@ -58,10 +58,10 @@ impl MemoryTextIndex {
         for document in documents {
             self.validate_document(&document)?;
             if rebuilt
-                .get(&document.external_id)
-                .is_none_or(|current| current.version < document.version)
+                .get(document.external_id())
+                .is_none_or(|current| current.version() < document.version())
             {
-                rebuilt.insert(document.external_id.clone(), document);
+                rebuilt.insert(document.external_id().to_string(), document);
             }
         }
 
@@ -70,7 +70,7 @@ impl MemoryTextIndex {
             self.validate_external_id(&external_id)?;
             if rebuilt
                 .get(&external_id)
-                .is_some_and(|document| document.version > delete_version)
+                .is_some_and(|document| document.version() > delete_version)
             {
                 continue;
             }
@@ -126,7 +126,7 @@ impl MemoryTextIndex {
                     return None;
                 }
                 let document_terms = document
-                    .fields
+                    .fields()
                     .get(field)
                     .map(|value| tokenize(value, analyzer))
                     .unwrap_or_default()
@@ -143,7 +143,7 @@ impl MemoryTextIndex {
                 accepts.then_some(matched as f32 / query_terms.len() as f32)
             }
             TextQuery::Exact { field, value } => document
-                .fields
+                .fields()
                 .get(field)
                 .is_some_and(|actual| actual == value)
                 .then_some(1.0),
@@ -173,19 +173,19 @@ impl TextIndex for MemoryTextIndex {
         let mut state = self.state.write().map_err(|_| IndexError::LockPoisoned)?;
         if state
             .tombstones
-            .get(&document.external_id)
-            .is_some_and(|delete_version| *delete_version >= document.version)
+            .get(document.external_id())
+            .is_some_and(|delete_version| *delete_version >= document.version())
             || state
                 .documents
-                .get(&document.external_id)
-                .is_some_and(|current| current.version >= document.version)
+                .get(document.external_id())
+                .is_some_and(|current| current.version() >= document.version())
         {
             return Ok(());
         }
-        state.tombstones.remove(&document.external_id);
+        state.tombstones.remove(document.external_id());
         state
             .documents
-            .insert(document.external_id.clone(), document);
+            .insert(document.external_id().to_string(), document);
         Ok(())
     }
 
@@ -195,7 +195,7 @@ impl TextIndex for MemoryTextIndex {
         let current_version = state
             .documents
             .get(external_id)
-            .map(|document| document.version);
+            .map(|document| document.version());
         let delete_version = match (version, current_version) {
             (Some(delete_version), Some(current_version)) if current_version > delete_version => {
                 return Ok(false);
@@ -224,8 +224,8 @@ impl TextIndex for MemoryTextIndex {
             .values()
             .filter_map(|document| {
                 self.evaluate(document, query).map(|score| TextHit {
-                    external_id: document.external_id.clone(),
-                    version: document.version,
+                    external_id: document.external_id().to_string(),
+                    version: document.version(),
                     score,
                 })
             })
