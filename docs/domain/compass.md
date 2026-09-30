@@ -142,7 +142,7 @@ function.
   `SemanticSearchEngine` and has no callers; `RefactoringRegistry` and
   `RefactoringEngine` are two refactoring engines; an unused
   `type_inference::CodeGenerator` struct shares the port's name; `format`,
-  `lint::{autofix, custom, embedded_markdown}`, `semantic::types` and
-  `GoImportGraph` are unused; the `type_inference` Rust and TypeScript modules
+  `lint::{autofix, custom, embedded_markdown}` and `semantic::types` are
+  unused; the `type_inference` Rust and TypeScript modules
   have no outside users; and dependencies such as `tera`, `heck`, `indexmap`
   and `crossterm` are never used in source.

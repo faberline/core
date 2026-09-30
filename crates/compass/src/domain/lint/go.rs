@@ -4,7 +4,6 @@ use crate::syntax::{Language, ParsedFile};
 
 mod error_rules;
 mod function_rules;
-mod import_graph;
 mod import_rules;
 
 // ============================================================================
