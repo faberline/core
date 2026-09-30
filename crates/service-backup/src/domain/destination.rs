@@ -9,9 +9,9 @@
 //! The URI form is strictly less expressive than the CR form. `from_uri` fills
 //! in `bucket` and `prefix` and leaves `region`, `endpoint` and
 //! `credentials_secret` as `None` every time -- those can only arrive by
-//! deserializing a CR, never from a URI. `default_prefix` then collapses "no
-//! prefix" (local `None`, object-store `""`) to the literal `"backup"`, so an
-//! empty prefix never reaches a sink as empty.
+//! deserializing a CR, never from a URI. What "no prefix" (local `None`,
+//! object-store `""`) means is each sink's choice: the local and GCS sinks use
+//! the literal `"backup"`, the S3 sink writes at the bucket root.
 //!
 //! [`SUPPORTED_SCHEMES`] is the canonical inventory,
 //! ordered to match `from_uri`'s parse order, and two unit tests hold it to
@@ -155,16 +155,6 @@ impl BackupDestination {
             Self::S3 { bucket, prefix, .. } => format!("s3://{bucket}/{prefix}"),
             Self::Gcs { bucket, prefix, .. } if prefix.is_empty() => format!("gs://{bucket}"),
             Self::Gcs { bucket, prefix, .. } => format!("gs://{bucket}/{prefix}"),
-        }
-    }
-
-    pub fn default_prefix(&self) -> String {
-        match self {
-            Self::Local { prefix, .. } => prefix.clone().unwrap_or_else(|| "backup".into()),
-            Self::S3 { prefix, .. } | Self::Gcs { prefix, .. } if prefix.is_empty() => {
-                "backup".into()
-            }
-            Self::S3 { prefix, .. } | Self::Gcs { prefix, .. } => prefix.clone(),
         }
     }
 }
