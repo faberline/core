@@ -1,4 +1,5 @@
 use super::*;
+use crate::ClusterTopology;
 use std::sync::Mutex;
 
 // The standard env vars are process-global; serialize the env tests.

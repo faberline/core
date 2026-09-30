@@ -131,6 +131,7 @@ modules = [
   "crates/openapi-codegen/src/api",
   "crates/openapi-codegen/src/app",
   "crates/raft-runtime/src/api",
+  "crates/raft-runtime/src/app",
   "crates/service-auth/src/api",
   "crates/service-auth/src/app",
   "crates/service-backup/src/api",
@@ -215,6 +216,7 @@ domain = "crates/raft-core/src/domain"
 name = "raft-runtime"
 depends_on = ["cli-std", "peer-tls", "raft-core", "server-lifecycle", "storage-durable", "transport-h2c"]
 [contexts.layers]
+domain = "crates/raft-runtime/src/domain"
 application = "crates/raft-runtime/src/application"
 infrastructure = "crates/raft-runtime/src/infrastructure"
 interfaces = "crates/raft-runtime/src/interfaces"
@@ -409,8 +411,6 @@ rule = "B3"
 subject = "infrastructure->application"
 paths = [
   "crates/raft-runtime/src/infrastructure/peer_rpc.rs",
-  "crates/raft-runtime/src/infrastructure/store.rs",
-  "crates/raft-runtime/src/infrastructure/topology_env.rs",
 ]
 reason = "Moved as-is in P1: the outbound peer RPC client is an impl block on the host's Shared state and decodes RaftStatus, RaftStore names its files by GroupId and LEGACY_GROUP_ID, and the env reader builds ClusterDims and ClusterTopology and calls peer_ordinal. P2: GroupId, RaftStatus and the topology value types move to a domain layer both sides use, and the RPC client becomes a peer client adapter that owns its own state."
 

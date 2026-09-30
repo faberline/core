@@ -24,11 +24,11 @@ use tokio::sync::{watch, Mutex, Notify, OwnedMutexGuard};
 use tokio::task::{JoinHandle, JoinSet};
 
 use crate::application::config::{HostConfig, SnapshotPolicy};
-use crate::application::group::{GroupId, LEGACY_GROUP_ID};
 use crate::application::port_error::StateMachineError;
 use crate::application::state_machine::{
     AdmissionPermit, Command, RaftStateMachine, SnapshotPreparation,
 };
+use crate::domain::{GroupId, LEGACY_GROUP_ID};
 use crate::infrastructure::{PeerTransport, RaftStore};
 
 mod apply;

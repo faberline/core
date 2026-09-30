@@ -20,7 +20,9 @@
 //! each time.
 
 mod api;
+mod app;
 mod application;
+mod domain;
 mod infrastructure;
 mod interfaces;
 
@@ -40,19 +42,19 @@ pub use application::{
     PhaseRecord, PhaseStatus, ProposalBackpressure, ProposalOutcome, RaftHost, RaftStatus,
     ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed, SNAPSHOT_CHUNK_SIZE,
 };
-pub use application::{GroupId, LEGACY_GROUP_ID};
+pub use application::{GroupRegistry, RaftRegistry, RegistryError};
 pub use application::{HostConfig, SnapshotPolicy};
 pub use application::{MembershipError, StateMachineError};
 pub use application::{MembershipPolicy, ReplicaHostBuilder, ReplicaHostRuntime};
 pub use application::{OutcomeWindow, OUTCOME_WINDOW_DEFAULT_CAPACITY};
 pub use application::{ProposalCache, DEFAULT_PROPOSAL_CACHE_CAPACITY};
 pub use application::{ReadConsistency, READ_CONSISTENCY_HEADER};
+pub use domain::{GroupId, LEGACY_GROUP_ID};
 pub use infrastructure::AppliedIndexStore;
 pub use infrastructure::PeerTransport;
 pub use infrastructure::{parse_peer_overrides, replica_mode};
 pub use infrastructure::{FsyncPolicy, RaftStore};
 pub use interfaces::{ClusterStateView, PeerAddr, RaftRole};
-pub use interfaces::{GroupRegistry, RaftRegistry, RegistryError};
 
 // Re-export the raft_core surface a host consumer needs (membership, ids).
 pub use raft_core::{
