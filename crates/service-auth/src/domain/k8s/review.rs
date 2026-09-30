@@ -14,8 +14,8 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
-
-use async_trait::async_trait;
+use std::future::Future;
+use std::pin::Pin;
 
 use super::principal::ReviewedIdentity;
 
@@ -167,7 +167,10 @@ impl std::error::Error for ReviewError {}
 /// Implementors receive the bearer token by reference and must not retain,
 /// log, or embed it in an error. Everything this trait returns is rendered
 /// into logs somewhere.
-#[async_trait]
+///
+/// The methods are written in the shape `#[async_trait]` expands to, so an
+/// implementation may still be written as `#[async_trait] impl ReviewBackend
+/// for …` with `async fn review_token` and `async fn review_access`.
 pub trait ReviewBackend: Send + Sync + 'static {
     /// `POST /apis/authentication.k8s.io/v1/tokenreviews` with the given
     /// audiences. An empty slice means omit `spec.audiences` and use the
@@ -175,19 +178,29 @@ pub trait ReviewBackend: Send + Sync + 'static {
     /// through an explicit product profile such as
     /// [`super::DelegatedAuthConfig::kubernetes_default`]; ordinary
     /// [`super::DelegatedAuthConfig::new`] still rejects an empty audience.
-    async fn review_token(
-        &self,
-        token: &str,
-        audiences: &[String],
-    ) -> Result<TokenReviewOutcome, ReviewError>;
+    fn review_token<'life0, 'life1, 'life2, 'async_trait>(
+        &'life0 self,
+        token: &'life1 str,
+        audiences: &'life2 [String],
+    ) -> Pin<Box<dyn Future<Output = Result<TokenReviewOutcome, ReviewError>> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        'life2: 'async_trait,
+        Self: 'async_trait;
 
     /// `POST /apis/authorization.k8s.io/v1/subjectaccessreviews` for the
     /// reviewed identity against one set of resource attributes.
-    async fn review_access(
-        &self,
-        identity: &ReviewedIdentity,
-        attributes: &ResourceAttributes,
-    ) -> Result<AccessReviewOutcome, ReviewError>;
+    fn review_access<'life0, 'life1, 'life2, 'async_trait>(
+        &'life0 self,
+        identity: &'life1 ReviewedIdentity,
+        attributes: &'life2 ResourceAttributes,
+    ) -> Pin<Box<dyn Future<Output = Result<AccessReviewOutcome, ReviewError>> + Send + 'async_trait>>
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        'life2: 'async_trait,
+        Self: 'async_trait;
 }
 
 /// The `extra` map shape both reviews use on the wire.

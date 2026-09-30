@@ -6,7 +6,6 @@ use super::error::TokenRequestError;
 use super::minted::MintedToken;
 use super::minter::TokenMinter;
 use super::target::TokenRequestTarget;
-use crate::application::k8s::SystemClock;
 use crate::domain::k8s::{Clock, ProjectedToken};
 
 /// A token that keeps itself current.
@@ -23,10 +22,6 @@ pub struct TokenSource {
 }
 
 impl TokenSource {
-    pub fn new(minter: Arc<dyn TokenMinter>, target: TokenRequestTarget) -> Self {
-        Self::with_clock(minter, target, Arc::new(SystemClock))
-    }
-
     pub fn with_clock(
         minter: Arc<dyn TokenMinter>,
         target: TokenRequestTarget,

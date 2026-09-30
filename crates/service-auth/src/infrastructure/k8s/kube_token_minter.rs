@@ -1,8 +1,7 @@
 use async_trait::async_trait;
 
-use crate::application::k8s::{
-    MintedToken, SystemClock, TokenMinter, TokenRequestError, TokenRequestTarget,
-};
+use super::SystemClock;
+use crate::application::k8s::{MintedToken, TokenMinter, TokenRequestError, TokenRequestTarget};
 use crate::domain::k8s::Clock;
 
 // ---------------------------------------------------------------------------

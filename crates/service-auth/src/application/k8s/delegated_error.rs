@@ -1,6 +1,5 @@
-use super::review::{ResourceAttributes, ReviewError};
 use crate::application::http::AuthError;
-use crate::domain::k8s::AuthRejection;
+use crate::domain::k8s::{AuthRejection, ResourceAttributes, ReviewError};
 
 /// The three outcomes a delegated check can have, kept distinct all the way to
 /// the HTTP layer.

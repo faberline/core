@@ -1,4 +1,8 @@
-use async_trait::async_trait;
+//! The access-token introspection port and the answer it returns.
+
+use std::future::Future;
+use std::pin::Pin;
+
 use serde::{Deserialize, Deserializer};
 
 /// What Google's introspection endpoint reports about an access token.
@@ -15,16 +19,28 @@ pub struct IntrospectedToken {
 }
 
 /// Resolves an opaque access token by asking Google.
-#[async_trait]
+///
+/// The method is written in the shape `#[async_trait]` expands to, so an
+/// implementation may still be written as `#[async_trait] impl
+/// AccessTokenIntrospection for …` with an `async fn introspect`.
 pub trait AccessTokenIntrospection: Send + Sync {
     /// `Ok(Some(_))` — Google answered and the token is live.
     /// `Ok(None)` — Google answered and the token is not valid.
     /// `Err(_)` — Google did not answer. These three are different outcomes
     /// and the type keeps them different.
-    async fn introspect(&self, token: &str) -> Result<Option<IntrospectedToken>, String>;
+    fn introspect<'life0, 'life1, 'async_trait>(
+        &'life0 self,
+        token: &'life1 str,
+    ) -> Pin<
+        Box<dyn Future<Output = Result<Option<IntrospectedToken>, String>> + Send + 'async_trait>,
+    >
+    where
+        'life0: 'async_trait,
+        'life1: 'async_trait,
+        Self: 'async_trait;
 }
 
-pub(super) fn lenient_bool<'de, D: Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
+pub(crate) fn lenient_bool<'de, D: Deserializer<'de>>(deserializer: D) -> Result<bool, D::Error> {
     #[derive(Deserialize)]
     #[serde(untagged)]
     enum BoolOrString {

@@ -20,10 +20,10 @@ use k8s_openapi::api::authorization::v1::{
 use kube::api::{Api, PostParams};
 use kube::Client;
 
-use crate::application::k8s::{
-    AccessReviewOutcome, ResourceAttributes, ReviewBackend, ReviewError, TokenReviewOutcome,
+use crate::domain::k8s::{
+    AccessReviewOutcome, ResourceAttributes, ReviewBackend, ReviewError, ReviewedIdentity,
+    TokenReviewOutcome,
 };
-use crate::domain::k8s::ReviewedIdentity;
 
 /// A [`ReviewBackend`] backed by a live `kube` client.
 pub struct KubeReviewBackend {

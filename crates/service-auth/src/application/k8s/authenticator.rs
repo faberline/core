@@ -3,11 +3,10 @@ use std::time::Duration;
 
 use super::delegated_error::DelegatedAuthError;
 use super::metrics::DelegatedAuthMetrics;
-use super::review::{ResourceAttributes, ReviewBackend, ReviewError};
-use super::system_clock::SystemClock;
 use crate::domain::k8s::{
     digest, AuthRejection, CacheOutcome, Clock, DelegatedAuthConfig, PrincipalRejection,
-    ServiceAccountPrincipal, TokenDigest, TtlCache,
+    ResourceAttributes, ReviewBackend, ReviewError, ServiceAccountPrincipal, TokenDigest,
+    TokenReviewOutcome, TtlCache,
 };
 
 /// The cache key for one authorization decision.
@@ -35,12 +34,9 @@ pub struct DelegatedAuthenticator {
 }
 
 impl DelegatedAuthenticator {
-    pub fn new(backend: Arc<dyn ReviewBackend>, config: DelegatedAuthConfig) -> Self {
-        Self::with_clock(backend, config, Arc::new(SystemClock))
-    }
-
-    /// The same authenticator on an injectable clock, so a caller can prove its
-    /// own revocation bound without waiting for one.
+    /// The authenticator on an injectable clock, so a caller can prove its own
+    /// revocation bound without waiting for one. `new` is the same on the
+    /// system clock.
     pub fn with_clock(
         backend: Arc<dyn ReviewBackend>,
         config: DelegatedAuthConfig,
@@ -185,10 +181,7 @@ impl DelegatedAuthenticator {
     /// then the identity shape. Reading the identity of a token that was not
     /// minted for this service would be treating an unrelated credential as an
     /// attempt to log in here.
-    fn judge(
-        &self,
-        outcome: super::review::TokenReviewOutcome,
-    ) -> Result<ServiceAccountPrincipal, AuthRejection> {
+    fn judge(&self, outcome: TokenReviewOutcome) -> Result<ServiceAccountPrincipal, AuthRejection> {
         if !outcome.authenticated {
             return Err(AuthRejection::Principal(
                 PrincipalRejection::NotAuthenticated,

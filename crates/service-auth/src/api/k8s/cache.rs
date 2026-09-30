@@ -19,5 +19,5 @@
 //! [`get`]: TtlCache::get
 //! [`get_stale`]: TtlCache::get_stale
 
-pub use crate::application::k8s::SystemClock;
 pub use crate::domain::k8s::{CacheOutcome, CachePolicy, Clock, ManualClock, TtlCache};
+pub use crate::infrastructure::k8s::SystemClock;

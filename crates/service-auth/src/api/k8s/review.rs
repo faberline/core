@@ -12,7 +12,7 @@
 //! an API group, a resource, and a verb, and this library never learns what
 //! those strings mean.
 
-pub use crate::application::k8s::{
+pub use crate::domain::k8s::{
     AccessReviewOutcome, ExtraFields, ResourceAttributes, ReviewBackend, ReviewError,
     TokenReviewOutcome,
 };

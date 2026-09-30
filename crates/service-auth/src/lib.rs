@@ -132,13 +132,14 @@
 //! a service that resolves both uses [`load_registry_files`] (#2678).
 
 mod api;
+mod app;
 mod application;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
 pub use api::{gcp, k8s, llm, reload};
-pub use application::google::{AccessTokenIntrospection, Credential, GoogleVerifier, JwksSource};
+pub use application::google::{Credential, GoogleVerifier, JwksSource};
 pub use application::http::{
     async_auth_middleware, auth_middleware, bearer_token, AsAsync, AsyncVerifier, AuthError,
     Verifier,
@@ -152,7 +153,9 @@ pub use domain::authorization::{
     NoopAuthEventSink, Registry, RegistryError, ReloadFailure, Role, RoleMapDenied,
     RoleMapPrincipal, TokenClaims,
 };
-pub use domain::google::{GoogleAuthConfig, GoogleAuthError, InvalidReason};
+pub use domain::google::{
+    AccessTokenIntrospection, GoogleAuthConfig, GoogleAuthError, InvalidReason,
+};
 pub use infrastructure::{
     load_registry, load_registry_file, load_registry_files, RegistrySource, TracingAuthEventSink,
 };

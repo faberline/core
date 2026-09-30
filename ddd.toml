@@ -131,6 +131,7 @@ modules = [
   "crates/openapi-codegen/src/api",
   "crates/raft-runtime/src/api",
   "crates/service-auth/src/api",
+  "crates/service-auth/src/app",
   "crates/service-backup/src/api",
   "crates/service-http/src/api",
   "crates/service-k8s/src/api",
@@ -398,7 +399,6 @@ rule = "B3"
 subject = "infrastructure->application"
 paths = [
   "crates/service-auth/src/infrastructure/google/http.rs",
-  "crates/service-auth/src/infrastructure/k8s/kube_backend.rs",
   "crates/service-auth/src/infrastructure/k8s/kube_token_minter.rs",
 ]
 reason = "Moved as-is in P1: HttpJwksSource, HttpAccessTokenIntrospection, KubeReviewBackend and KubeTokenMinter implement the #[async_trait] ports JwksSource, AccessTokenIntrospection, ReviewBackend and TokenMinter, which B2 keeps out of domain, together with their request and outcome types; KubeTokenMinter also reads the k8s SystemClock, and GoogleVerifier::google() in http.rs wires the HTTP sources and a ReloadableRoleMapVerifier into a GoogleVerifier. P2: the ports and their value types move to domain as native async-fn traits, SystemClock becomes an infrastructure adapter behind the domain Clock port, and google() moves to an assembly constructor."
