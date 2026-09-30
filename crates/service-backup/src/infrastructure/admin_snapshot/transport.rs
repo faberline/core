@@ -1,4 +1,4 @@
-use std::{fmt, sync::Arc};
+use std::{fmt, panic::RefUnwindSafe, sync::Arc};
 
 use super::transport_config::AdminSnapshotTransportConfig;
 use crate::domain::BearerTokenSource;
@@ -60,7 +60,9 @@ impl AdminSnapshotOperation {
 enum AdminCredential {
     None,
     Static(String),
-    Projected(Arc<dyn BearerTokenSource>),
+    /// `RefUnwindSafe` keeps [`AdminSnapshotRequest`] `UnwindSafe` and
+    /// `RefUnwindSafe`, as it was when this held a `ProjectedTokenFile`.
+    Projected(Arc<dyn BearerTokenSource + RefUnwindSafe>),
 }
 
 /// Per-request product policy for a shared admin snapshot call.
@@ -86,7 +88,10 @@ impl AdminSnapshotRequest {
     /// rotated token is observed. A failure is reported as
     /// [`AdminSnapshotRequestError::CredentialFailed`], without the token or
     /// the source's error.
-    pub(crate) fn with_bearer_source(mut self, source: Arc<dyn BearerTokenSource>) -> Self {
+    pub(crate) fn with_bearer_source(
+        mut self,
+        source: Arc<dyn BearerTokenSource + RefUnwindSafe>,
+    ) -> Self {
         self.credential = AdminCredential::Projected(source);
         self
     }
