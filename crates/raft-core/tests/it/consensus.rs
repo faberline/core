@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use raft_core::{auto_membership, AppendResp, NodeId, RaftMsg, RaftNode, Role};
+use raft_core::{auto_membership, AppendResp, Index, NodeId, RaftMsg, RaftNode, Role, Term};
 
 struct Cluster {
     nodes: HashMap<NodeId, RaftNode>,
@@ -180,12 +180,12 @@ fn stale_leader_steps_down_on_higher_term() {
     c.nodes.get_mut(&leader).unwrap().handle(
         NodeId::new(99),
         RaftMsg::AppendResp(AppendResp {
-            term: term + 5,
+            term: Term::new(term.get() + 5),
             success: false,
-            match_index: 0,
+            match_index: Index::new(0),
         }),
     );
     assert_eq!(c.nodes[&leader].role(), Role::Follower);
-    assert_eq!(c.nodes[&leader].current_term(), term + 5);
+    assert_eq!(c.nodes[&leader].current_term(), Term::new(term.get() + 5));
 }
 // CODEGEN-END

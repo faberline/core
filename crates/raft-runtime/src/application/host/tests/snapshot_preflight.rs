@@ -69,7 +69,7 @@ impl RaftStateMachine for PermitPreflightSm {
     }
 
     fn applied_index(&self) -> Index {
-        0
+        Index::new(0)
     }
 }
 

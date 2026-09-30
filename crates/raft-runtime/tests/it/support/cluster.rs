@@ -83,7 +83,7 @@ impl RaftStateMachine for TestSm {
     }
 
     fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
-        self.applied.store(index, Ordering::Release);
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
     fn snapshot(&self, _writer: &mut dyn std::io::Write) -> Result<(), StateMachineError> {
@@ -114,7 +114,7 @@ impl RaftStateMachine for TestSm {
         Ok(())
     }
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 

@@ -4,7 +4,9 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
-use raft_core::{AppendResp, InstallSnapshotReq, InstallSnapshotResp, NodeId, RaftMsg, VoteResp};
+use raft_core::{
+    AppendResp, Index, InstallSnapshotReq, InstallSnapshotResp, NodeId, RaftMsg, Term, VoteResp,
+};
 
 use super::wire::{
     AppendEnvelope, CapableSnapEnvelope, CapableSnapshotResp, SnapEnvelope, TimeoutNowEnvelope,
@@ -23,7 +25,7 @@ pub(crate) async fn request_vote(
     n.handle(env.from, RaftMsg::Vote(env.req));
     if s.persist(&n).is_err() {
         return Json(VoteResp {
-            term: 0,
+            term: Term::new(0),
             granted: false,
         })
         .into_response();
@@ -31,7 +33,7 @@ pub(crate) async fn request_vote(
     Json(match take_reply(&mut n, env.from) {
         Some(RaftMsg::VoteResp(r)) => r,
         _ => VoteResp {
-            term: 0,
+            term: Term::new(0),
             granted: false,
         },
     })
@@ -49,9 +51,9 @@ pub(crate) async fn append_entries(
     n.handle(env.from, RaftMsg::Append(env.req));
     if s.persist(&n).is_err() {
         return Json(AppendResp {
-            term: 0,
+            term: Term::new(0),
             success: false,
-            match_index: 0,
+            match_index: Index::new(0),
         })
         .into_response();
     }
@@ -59,9 +61,9 @@ pub(crate) async fn append_entries(
     Json(match take_reply(&mut n, env.from) {
         Some(RaftMsg::AppendResp(r)) => r,
         _ => AppendResp {
-            term: 0,
+            term: Term::new(0),
             success: false,
-            match_index: 0,
+            match_index: Index::new(0),
         },
     })
     .into_response()
@@ -95,9 +97,9 @@ pub(crate) async fn install_snapshot_capable(
     }
     let response = install_snapshot_response(&s, env.from, env.req).await;
     Json(CapableSnapshotResp {
-        term: response.term,
+        term: response.term.get(),
         accepted: response.accepted,
-        snapshot_index: response.snapshot_index,
+        snapshot_index: response.snapshot_index.get(),
         snapshot_capability: env.snapshot_capability,
         snapshot_nonce: env.snapshot_nonce,
     })
@@ -127,9 +129,9 @@ async fn install_snapshot_response(
                 kind: std::io::ErrorKind::InvalidData,
             });
             InstallSnapshotResp {
-                term: 0,
+                term: Term::new(0),
                 accepted: false,
-                snapshot_index: 0,
+                snapshot_index: Index::new(0),
             }
         }
     }

@@ -5,7 +5,9 @@
 //! group last agreed it was, not as the member its caller happened to name.
 
 use raft_core::NodeId;
-use raft_core::{auto_membership, ConfState, EntryKind, Membership, PersistedState, RaftNode};
+use raft_core::{
+    auto_membership, ConfState, EntryKind, Index, Membership, PersistedState, RaftNode, Term,
+};
 
 fn sole_voter() -> Membership {
     Membership::new(vec![NodeId::new(0)], vec![])
@@ -79,12 +81,12 @@ fn recovered_configuration_beats_the_callers_bootstrap_argument() {
 fn the_bootstrap_argument_is_used_only_when_the_store_carries_no_configuration() {
     let bootstrap = auto_membership(3);
     let state = PersistedState {
-        term: 2,
+        term: Term::new(2),
         voted_for: Some(NodeId::new(1)),
         log: vec![],
-        commit_index: 0,
-        snapshot_index: 0,
-        snapshot_term: 0,
+        commit_index: Index::new(0),
+        snapshot_index: Index::new(0),
+        snapshot_term: Term::new(0),
         snapshot: vec![],
         conf: None,
     };
@@ -99,7 +101,7 @@ fn the_bootstrap_argument_is_used_only_when_the_store_carries_no_configuration()
     );
     assert_eq!(
         node.current_term(),
-        2,
+        Term::new(2),
         "the rest of the hard state still recovers"
     );
 }
@@ -153,10 +155,10 @@ fn a_configuration_that_does_not_supersede_is_refused() {
 #[test]
 fn a_superseding_configuration_moves_the_voter_set_that_decides_a_commit() {
     let mut node = elected_sole_voter();
-    assert_eq!(node.propose(b"a".to_vec()), Some(1));
+    assert_eq!(node.propose(b"a".to_vec()), Some(Index::new(1)));
     assert_eq!(
         node.commit_index(),
-        1,
+        Index::new(1),
         "a sole voter is its own majority and commits its own proposal"
     );
 
@@ -168,10 +170,10 @@ fn a_superseding_configuration_moves_the_voter_set_that_decides_a_commit() {
     assert!(node.adopt_conf(widened.clone()));
     assert_eq!(node.conf_state(), &widened);
 
-    assert_eq!(node.propose(b"b".to_vec()), Some(2));
+    assert_eq!(node.propose(b"b".to_vec()), Some(Index::new(2)));
     assert_eq!(
         node.commit_index(),
-        1,
+        Index::new(1),
         "after adopting {:?} a lone leader is no longer a majority, yet index 2 committed",
         widened.membership
     );
@@ -185,15 +187,15 @@ fn a_superseding_configuration_moves_the_voter_set_that_decides_a_commit() {
 fn a_committed_configuration_entry_is_adopted_and_withheld_from_the_consumer() {
     let mut node = elected_sole_voter();
 
-    assert_eq!(node.propose(b"before".to_vec()), Some(1));
+    assert_eq!(node.propose(b"before".to_vec()), Some(Index::new(1)));
     let next = ConfState {
         membership: Membership::new(vec![NodeId::new(0)], vec![NodeId::new(9)]),
         outgoing: None,
         generation: 3,
     };
-    assert_eq!(node.propose_config(next.clone()), Some(2));
-    assert_eq!(node.propose(b"after".to_vec()), Some(3));
-    assert_eq!(node.commit_index(), 3);
+    assert_eq!(node.propose_config(next.clone()), Some(Index::new(2)));
+    assert_eq!(node.propose(b"after".to_vec()), Some(Index::new(3)));
+    assert_eq!(node.commit_index(), Index::new(3));
 
     let applied = node.take_committed();
 

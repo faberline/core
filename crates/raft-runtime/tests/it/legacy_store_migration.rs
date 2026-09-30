@@ -2,7 +2,7 @@ use raft_core::NodeId;
 use std::io;
 use tempfile::TempDir;
 
-use raft_core::{EntryKind, PersistedState, RaftEntry};
+use raft_core::{EntryKind, Index, PersistedState, RaftEntry, Term};
 use raft_runtime::{FsyncPolicy, GroupId, RaftStore};
 
 #[test]
@@ -40,17 +40,17 @@ fn measurement_1_migrate_legacy_json_to_named_group() {
     assert!(dir.path().join("raft-7-616c706861.state").exists());
 
     let state = store.load().unwrap().expect("migrated state should load");
-    assert_eq!(state.term, 3);
+    assert_eq!(state.term, Term::new(3));
     assert_eq!(state.voted_for, Some(NodeId::new(2)));
-    assert_eq!(state.commit_index, 1);
-    assert_eq!(state.snapshot_index, 0);
-    assert_eq!(state.snapshot_term, 0);
+    assert_eq!(state.commit_index, Index::new(1));
+    assert_eq!(state.snapshot_index, Index::new(0));
+    assert_eq!(state.snapshot_term, Term::new(0));
     assert_eq!(state.snapshot, Vec::<u8>::new());
     assert_eq!(
         state.log,
         vec![RaftEntry {
-            term: 3,
-            index: 1,
+            term: Term::new(3),
+            index: Index::new(1),
             command: vec![10, 20, 30],
             kind: EntryKind::Command,
         }]
@@ -71,17 +71,17 @@ fn measurement_2_migrate_legacy_store_with_snapshot_artifact() {
         .unwrap();
         store
             .save(&PersistedState {
-                term: 2,
+                term: Term::new(2),
                 voted_for: Some(NodeId::new(1)),
                 log: vec![RaftEntry {
-                    term: 2,
-                    index: 4,
+                    term: Term::new(2),
+                    index: Index::new(4),
                     command: b"after-snapshot".to_vec(),
                     kind: EntryKind::Command,
                 }],
-                commit_index: 4,
-                snapshot_index: 3,
-                snapshot_term: 2,
+                commit_index: Index::new(4),
+                snapshot_index: Index::new(3),
+                snapshot_term: Term::new(2),
                 snapshot: snap_payload.clone(),
                 conf: None,
             })
@@ -131,11 +131,11 @@ fn measurement_2_migrate_legacy_store_with_snapshot_artifact() {
         .load()
         .unwrap()
         .expect("migrated store should load snapshot state");
-    assert_eq!(state.term, 2);
+    assert_eq!(state.term, Term::new(2));
     assert_eq!(state.voted_for, Some(NodeId::new(1)));
-    assert_eq!(state.commit_index, 4);
-    assert_eq!(state.snapshot_index, 3);
-    assert_eq!(state.snapshot_term, 2);
+    assert_eq!(state.commit_index, Index::new(4));
+    assert_eq!(state.snapshot_index, Index::new(3));
+    assert_eq!(state.snapshot_term, Term::new(2));
     assert_eq!(state.snapshot, snap_payload);
     assert_eq!(state.log.len(), 1);
     assert_eq!(state.log[0].command, b"after-snapshot");
@@ -277,9 +277,9 @@ fn measurement_6_legacy_open_and_other_node_named_open_succeed() {
         .load()
         .unwrap()
         .expect("node 7 legacy load should succeed");
-    assert_eq!(state7.term, 3);
+    assert_eq!(state7.term, Term::new(3));
     assert_eq!(state7.voted_for, Some(NodeId::new(2)));
-    assert_eq!(state7.commit_index, 1);
+    assert_eq!(state7.commit_index, Index::new(1));
 
     let store8 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
@@ -293,17 +293,17 @@ fn measurement_6_legacy_open_and_other_node_named_open_succeed() {
 
 fn write_v4_legacy_store(dir: &TempDir) -> PersistedState {
     let state = PersistedState {
-        term: 5,
+        term: Term::new(5),
         voted_for: Some(NodeId::new(7)),
         log: vec![RaftEntry {
-            term: 5,
-            index: 9,
+            term: Term::new(5),
+            index: Index::new(9),
             command: b"migration-retry".to_vec(),
             kind: EntryKind::Command,
         }],
-        commit_index: 9,
-        snapshot_index: 8,
-        snapshot_term: 5,
+        commit_index: Index::new(9),
+        snapshot_index: Index::new(8),
+        snapshot_term: Term::new(5),
         snapshot: b"migration-snapshot".to_vec(),
         conf: None,
     };

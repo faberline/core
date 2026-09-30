@@ -29,7 +29,7 @@ impl IndexedSnapshotStateMachine {
 
 impl RaftStateMachine for IndexedSnapshotStateMachine {
     fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
-        self.applied.store(index, Ordering::Release);
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
 
@@ -43,7 +43,7 @@ impl RaftStateMachine for IndexedSnapshotStateMachine {
     fn snapshot_at(&self, index: Index, writer: &mut dyn Write) -> Result<(), StateMachineError> {
         self.requested.lock().unwrap().push(index);
         writer
-            .write_all(&index.to_le_bytes())
+            .write_all(&index.get().to_le_bytes())
             .map_err(StateMachineError::other)?;
         Ok(())
     }
@@ -59,7 +59,7 @@ impl RaftStateMachine for IndexedSnapshotStateMachine {
     }
 
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 
@@ -84,8 +84,16 @@ async fn external_compaction_uses_the_requested_applied_prefix() {
     for value in 1_u8..=10 {
         host.propose(vec![value]).await.unwrap();
     }
-    assert_eq!(host.snapshot_and_compact_through(6).await.unwrap(), 6);
-    assert_eq!(*state_machine.requested.lock().unwrap(), vec![6]);
+    assert_eq!(
+        host.snapshot_and_compact_through(Index::new(6))
+            .await
+            .unwrap(),
+        Index::new(6)
+    );
+    assert_eq!(
+        *state_machine.requested.lock().unwrap(),
+        vec![Index::new(6)]
+    );
 
     host.shutdown().await.unwrap();
     drop(host);
@@ -98,7 +106,7 @@ async fn external_compaction_uses_the_requested_applied_prefix() {
     .load()
     .unwrap()
     .unwrap();
-    assert_eq!(persisted.snapshot_index, 6);
+    assert_eq!(persisted.snapshot_index, Index::new(6));
     assert_eq!(persisted.log.len(), 4);
     assert_eq!(persisted.snapshot, 6_u64.to_le_bytes());
 }
@@ -122,7 +130,7 @@ async fn external_compaction_rejects_an_unapplied_target() {
     );
     host.propose(vec![1]).await.unwrap();
     let error = host
-        .snapshot_and_compact_through(2)
+        .snapshot_and_compact_through(Index::new(2))
         .await
         .expect_err("unapplied snapshot target must fail closed");
     assert!(error.to_string().contains("applied"));

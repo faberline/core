@@ -164,8 +164,8 @@ fn validate_pinned_frame(map: &[u8], frame: CommandFrame) -> io::Result<()> {
         ));
     }
     let mut entry = CursorReader(payload);
-    let term = entry.read_u64()?;
-    let index = entry.read_u64()?;
+    let term = Term::new(entry.read_u64()?);
+    let index = Index::new(entry.read_u64()?);
     let kind = match entry.read_u8()? {
         0 => EntryKind::Command,
         1 => EntryKind::Config,

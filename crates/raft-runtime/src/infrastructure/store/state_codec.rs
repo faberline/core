@@ -4,7 +4,7 @@ impl RaftStore {
     pub(super) fn decode_persisted_state(&self, bytes: &[u8]) -> io::Result<PersistedState> {
         if bytes.starts_with(MAGIC_V4) {
             let mut r = CursorReader(&bytes[MAGIC_V4.len()..]);
-            let term = r.read_u64()?;
+            let term = Term::new(r.read_u64()?);
             let voted_for = match r.read_u8()? {
                 0 => None,
                 1 => Some(NodeId::new(r.read_u64()?)),
@@ -15,9 +15,9 @@ impl RaftStore {
                     ))
                 }
             };
-            let commit_index = r.read_u64()?;
-            let snapshot_index = r.read_u64()?;
-            let snapshot_term = r.read_u64()?;
+            let commit_index = Index::new(r.read_u64()?);
+            let snapshot_index = Index::new(r.read_u64()?);
+            let snapshot_term = Term::new(r.read_u64()?);
             let snapshot_len = r.read_u64()? as usize;
             let snapshot_digest = r.read_bytes(32)?;
             let snapshot = self.read_snapshot_artifact(
@@ -85,7 +85,7 @@ impl RaftStore {
             })
         } else if bytes.starts_with(MAGIC_V3) {
             let mut r = CursorReader(&bytes[MAGIC_V3.len()..]);
-            let term = r.read_u64()?;
+            let term = Term::new(r.read_u64()?);
             let has_voted_for = r.read_u8()?;
             let voted_for = match has_voted_for {
                 0 => None,
@@ -97,9 +97,9 @@ impl RaftStore {
                     ))
                 }
             };
-            let commit_index = r.read_u64()?;
-            let snapshot_index = r.read_u64()?;
-            let snapshot_term = r.read_u64()?;
+            let commit_index = Index::new(r.read_u64()?);
+            let snapshot_index = Index::new(r.read_u64()?);
+            let snapshot_term = Term::new(r.read_u64()?);
             let snapshot_len = r.read_u64()? as usize;
             let snapshot_digest = r.read_bytes(32)?;
 
@@ -131,8 +131,8 @@ impl RaftStore {
             let log_len = r.read_u64()? as usize;
             let mut log = Vec::with_capacity(log_len.min(100_000));
             for _ in 0..log_len {
-                let entry_term = r.read_u64()?;
-                let entry_index = r.read_u64()?;
+                let entry_term = Term::new(r.read_u64()?);
+                let entry_index = Index::new(r.read_u64()?);
                 let kind_tag = r.read_u8()?;
                 let kind = match kind_tag {
                     0 => EntryKind::Command,
@@ -177,7 +177,7 @@ impl RaftStore {
             })
         } else if bytes.starts_with(MAGIC_V2) {
             let mut r = CursorReader(&bytes[MAGIC_V2.len()..]);
-            let term = r.read_u64()?;
+            let term = Term::new(r.read_u64()?);
             let has_voted_for = r.read_u8()?;
             let voted_for = match has_voted_for {
                 0 => None,
@@ -189,9 +189,9 @@ impl RaftStore {
                     ))
                 }
             };
-            let commit_index = r.read_u64()?;
-            let snapshot_index = r.read_u64()?;
-            let snapshot_term = r.read_u64()?;
+            let commit_index = Index::new(r.read_u64()?);
+            let snapshot_index = Index::new(r.read_u64()?);
+            let snapshot_term = Term::new(r.read_u64()?);
             let snapshot_len = r.read_u64()? as usize;
             let snapshot_digest = r.read_bytes(32)?;
 
@@ -205,8 +205,8 @@ impl RaftStore {
             let log_len = r.read_u64()? as usize;
             let mut log = Vec::with_capacity(log_len.min(100_000));
             for _ in 0..log_len {
-                let entry_term = r.read_u64()?;
-                let entry_index = r.read_u64()?;
+                let entry_term = Term::new(r.read_u64()?);
+                let entry_index = Index::new(r.read_u64()?);
                 let command_len = r.read_u64()? as usize;
                 let command = r.read_bytes(command_len)?;
                 log.push(RaftEntry {
@@ -234,7 +234,7 @@ impl RaftStore {
             })
         } else if bytes.starts_with(MAGIC_V1) {
             let mut r = CursorReader(&bytes[MAGIC_V1.len()..]);
-            let term = r.read_u64()?;
+            let term = Term::new(r.read_u64()?);
             let has_voted_for = r.read_u8()?;
             let voted_for = match has_voted_for {
                 0 => None,
@@ -246,16 +246,16 @@ impl RaftStore {
                     ))
                 }
             };
-            let commit_index = r.read_u64()?;
-            let snapshot_index = r.read_u64()?;
-            let snapshot_term = r.read_u64()?;
+            let commit_index = Index::new(r.read_u64()?);
+            let snapshot_index = Index::new(r.read_u64()?);
+            let snapshot_term = Term::new(r.read_u64()?);
             let snapshot_len = r.read_u64()? as usize;
             let snapshot = r.read_bytes(snapshot_len)?;
             let log_len = r.read_u64()? as usize;
             let mut log = Vec::with_capacity(log_len.min(100_000));
             for _ in 0..log_len {
-                let entry_term = r.read_u64()?;
-                let entry_index = r.read_u64()?;
+                let entry_term = Term::new(r.read_u64()?);
+                let entry_index = Index::new(r.read_u64()?);
                 let command_len = r.read_u64()? as usize;
                 let command = r.read_bytes(command_len)?;
                 log.push(RaftEntry {
@@ -307,7 +307,7 @@ pub(super) fn encode_persisted_state_v4(
 ) -> Vec<u8> {
     let mut bytes = Vec::with_capacity(256);
     bytes.extend_from_slice(MAGIC_V4);
-    bytes.extend_from_slice(&state.term.to_le_bytes());
+    bytes.extend_from_slice(&state.term.get().to_le_bytes());
     match state.voted_for {
         Some(node_id) => {
             bytes.push(1);
@@ -315,9 +315,9 @@ pub(super) fn encode_persisted_state_v4(
         }
         None => bytes.push(0),
     }
-    bytes.extend_from_slice(&state.commit_index.to_le_bytes());
-    bytes.extend_from_slice(&state.snapshot_index.to_le_bytes());
-    bytes.extend_from_slice(&state.snapshot_term.to_le_bytes());
+    bytes.extend_from_slice(&state.commit_index.get().to_le_bytes());
+    bytes.extend_from_slice(&state.snapshot_index.get().to_le_bytes());
+    bytes.extend_from_slice(&state.snapshot_term.get().to_le_bytes());
     bytes.extend_from_slice(&(state.snapshot.len() as u64).to_le_bytes());
     bytes.extend_from_slice(snapshot_digest);
     match state.conf {

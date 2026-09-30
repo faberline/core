@@ -41,20 +41,20 @@ pub(super) fn plan_log_write(
     let last_digest = entry_digest(last);
     if let Some(previous) = previous {
         if previous.entry_count == state.log.len() as u64
-            && previous.first_index == first.index
-            && previous.last_index == last.index
-            && previous.last_term == last.term
+            && previous.first_index == first.index.get()
+            && previous.last_index == last.index.get()
+            && previous.last_term == last.term.get()
             && previous.last_entry_digest == last_digest
         {
             return LogWritePlan::Unchanged(Some(previous));
         }
         if state.log.len() as u64 > previous.entry_count
-            && previous.first_index == first.index
+            && previous.first_index == first.index.get()
             && previous.entry_count > 0
         {
             let prior_tail = &state.log[previous.entry_count as usize - 1];
-            if prior_tail.index == previous.last_index
-                && prior_tail.term == previous.last_term
+            if prior_tail.index.get() == previous.last_index
+                && prior_tail.term.get() == previous.last_term
                 && entry_digest(prior_tail) == previous.last_entry_digest
             {
                 let bytes = encode_log_entries(&state.log[previous.entry_count as usize..], false);
@@ -62,9 +62,9 @@ pub(super) fn plan_log_write(
                     generation: previous.generation,
                     byte_len: previous.byte_len.saturating_add(bytes.len() as u64),
                     entry_count: state.log.len() as u64,
-                    first_index: first.index,
-                    last_index: last.index,
-                    last_term: last.term,
+                    first_index: first.index.get(),
+                    last_index: last.index.get(),
+                    last_term: last.term.get(),
                     last_entry_digest: last_digest,
                 };
                 return LogWritePlan::Append {
@@ -84,16 +84,16 @@ pub(super) fn plan_log_write(
             .map(|layout| layout.generation)
             .unwrap_or([0_u8; 32]),
     );
-    generation.update(state.snapshot_index.to_le_bytes());
-    generation.update(state.snapshot_term.to_le_bytes());
+    generation.update(state.snapshot_index.get().to_le_bytes());
+    generation.update(state.snapshot_term.get().to_le_bytes());
     generation.update(&bytes);
     let next = LogLayout {
         generation: generation.finalize().into(),
         byte_len: bytes.len() as u64,
         entry_count: state.log.len() as u64,
-        first_index: first.index,
-        last_index: last.index,
-        last_term: last.term,
+        first_index: first.index.get(),
+        last_index: last.index.get(),
+        last_term: last.term.get(),
         last_entry_digest: last_digest,
     };
     LogWritePlan::Rewrite {

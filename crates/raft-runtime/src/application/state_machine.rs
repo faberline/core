@@ -73,7 +73,7 @@ pub trait RaftStateMachine: Send + Sync + 'static {
             Ok(()) => Ok(()),
             Err(error) if self.applied_index() >= index => {
                 tracing::warn!(
-                    index,
+                    index = index.get(),
                     error = %error,
                     "state machine reported an error after advancing its applied floor; preserving legacy completed no-op"
                 );

@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 use std::fmt::Debug;
 
 use raft_core::{
-    AppendReq, AppendResp, ConfState, EntryKind, InstallSnapshotReq, InstallSnapshotResp,
-    Membership, NodeId, PersistedState, PromotionRefused, RaftEntry, TimeoutNowReq,
+    AppendReq, AppendResp, ConfState, EntryKind, Index, InstallSnapshotReq, InstallSnapshotResp,
+    Membership, NodeId, PersistedState, PromotionRefused, RaftEntry, Term, TimeoutNowReq,
     TransferRefused, VoteReq, VoteResp,
 };
 use serde::de::DeserializeOwned;
@@ -31,8 +31,8 @@ fn joint_conf() -> ConfState {
 
 fn entry(index: u64, kind: EntryKind, command: Vec<u8>) -> RaftEntry {
     RaftEntry {
-        term: 2,
-        index,
+        term: Term::new(2),
+        index: Index::new(index),
         command,
         kind,
     }
@@ -86,15 +86,15 @@ fn raft_entry_and_persisted_state_json_are_pinned() {
         r#"{"term":2,"index":5,"command":[1,2,255],"kind":"Command"}"#,
     );
     let state = PersistedState {
-        term: 3,
+        term: Term::new(3),
         voted_for: Some(NodeId::new(2)),
         log: vec![
             entry(5, EntryKind::Command, vec![9]),
             entry(6, EntryKind::Config, joint_conf().encode()),
         ],
-        commit_index: 5,
-        snapshot_index: 4,
-        snapshot_term: 1,
+        commit_index: Index::new(5),
+        snapshot_index: Index::new(4),
+        snapshot_term: Term::new(1),
         snapshot: vec![7, 8],
         conf: Some(joint_conf()),
     };
@@ -112,60 +112,60 @@ fn raft_entry_and_persisted_state_json_are_pinned() {
 fn raft_messages_json_are_pinned() {
     pin_json(
         &VoteReq {
-            term: 3,
+            term: Term::new(3),
             candidate: NodeId::new(1),
-            last_log_index: 9,
-            last_log_term: 2,
+            last_log_index: Index::new(9),
+            last_log_term: Term::new(2),
         },
         r#"{"term":3,"candidate":1,"last_log_index":9,"last_log_term":2}"#,
     );
     pin_json(
         &VoteResp {
-            term: 3,
+            term: Term::new(3),
             granted: true,
         },
         r#"{"term":3,"granted":true}"#,
     );
     pin_json(
         &AppendReq {
-            term: 3,
+            term: Term::new(3),
             leader: NodeId::new(1),
-            prev_log_index: 4,
-            prev_log_term: 2,
+            prev_log_index: Index::new(4),
+            prev_log_term: Term::new(2),
             entries: vec![entry(5, EntryKind::Command, vec![6])],
-            leader_commit: 4,
+            leader_commit: Index::new(4),
         },
         r#"{"term":3,"leader":1,"prev_log_index":4,"prev_log_term":2,"entries":[{"term":2,"index":5,"command":[6],"kind":"Command"}],"leader_commit":4}"#,
     );
     pin_json(
         &AppendResp {
-            term: 3,
+            term: Term::new(3),
             success: false,
-            match_index: 4,
+            match_index: Index::new(4),
         },
         r#"{"term":3,"success":false,"match_index":4}"#,
     );
     pin_json(
         &InstallSnapshotReq {
-            term: 3,
+            term: Term::new(3),
             leader: NodeId::new(1),
-            snapshot_index: 8,
-            snapshot_term: 2,
+            snapshot_index: Index::new(8),
+            snapshot_term: Term::new(2),
             data: vec![1, 2],
         },
         r#"{"term":3,"leader":1,"snapshot_index":8,"snapshot_term":2,"data":[1,2]}"#,
     );
     pin_json(
         &InstallSnapshotResp {
-            term: 3,
+            term: Term::new(3),
             accepted: true,
-            snapshot_index: 8,
+            snapshot_index: Index::new(8),
         },
         r#"{"term":3,"accepted":true,"snapshot_index":8}"#,
     );
     pin_json(
         &TimeoutNowReq {
-            term: 3,
+            term: Term::new(3),
             leader: NodeId::new(1),
         },
         r#"{"term":3,"leader":1}"#,
@@ -177,15 +177,15 @@ fn refusals_and_node_keyed_maps_json_are_pinned() {
     pin_json(
         &TransferRefused::NotCaughtUp {
             target: NodeId::new(2),
-            matched: 4,
-            last_index: 9,
+            matched: Index::new(4),
+            last_index: Index::new(9),
         },
         r#"{"NotCaughtUp":{"target":2,"matched":4,"last_index":9}}"#,
     );
     pin_json(
         &PromotionRefused::NotCaughtUp {
-            matched: 4,
-            target: 9,
+            matched: Index::new(4),
+            target: Index::new(9),
         },
         r#"{"NotCaughtUp":{"matched":4,"target":9}}"#,
     );
@@ -228,8 +228,8 @@ fn debug_output_is_pinned() {
             "{:?}",
             TransferRefused::NotCaughtUp {
                 target: NodeId::new(2),
-                matched: 4,
-                last_index: 9,
+                matched: Index::new(4),
+                last_index: Index::new(9),
             }
         ),
         "NotCaughtUp { target: 2, matched: 4, last_index: 9 }"

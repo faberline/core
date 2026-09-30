@@ -5,10 +5,12 @@
 //! These cases pin the peer HTTP handlers' copy; `peer_wire_split` checks that
 //! the HTTP peer client's copy encodes the same bytes.
 
-use crate::NodeId;
 use std::fmt::Debug;
 
-use raft_core::{AppendReq, EntryKind, InstallSnapshotReq, RaftEntry, TimeoutNowReq, VoteReq};
+use raft_core::{
+    AppendReq, EntryKind, Index, InstallSnapshotReq, NodeId, RaftEntry, Term, TimeoutNowReq,
+    VoteReq,
+};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -28,10 +30,10 @@ fn pin_json<T: Serialize + DeserializeOwned + Debug>(value: &T, json: &str) {
 
 fn snapshot_req() -> InstallSnapshotReq {
     InstallSnapshotReq {
-        term: 3,
+        term: Term::new(3),
         leader: NodeId::new(1),
-        snapshot_index: 8,
-        snapshot_term: 2,
+        snapshot_index: Index::new(8),
+        snapshot_term: Term::new(2),
         data: vec![1, 2],
     }
 }
@@ -43,10 +45,10 @@ fn vote_append_and_timeout_envelopes_are_pinned() {
             group_id: "orders".to_owned(),
             from: NodeId::new(1),
             req: VoteReq {
-                term: 3,
+                term: Term::new(3),
                 candidate: NodeId::new(1),
-                last_log_index: 9,
-                last_log_term: 2,
+                last_log_index: Index::new(9),
+                last_log_term: Term::new(2),
             },
         },
         r#"{"group_id":"orders","from":1,"req":{"term":3,"candidate":1,"last_log_index":9,"last_log_term":2}}"#,
@@ -56,17 +58,17 @@ fn vote_append_and_timeout_envelopes_are_pinned() {
             group_id: "orders".to_owned(),
             from: NodeId::new(1),
             req: AppendReq {
-                term: 3,
+                term: Term::new(3),
                 leader: NodeId::new(1),
-                prev_log_index: 4,
-                prev_log_term: 2,
+                prev_log_index: Index::new(4),
+                prev_log_term: Term::new(2),
                 entries: vec![RaftEntry {
-                    term: 3,
-                    index: 5,
+                    term: Term::new(3),
+                    index: Index::new(5),
                     command: vec![6],
                     kind: EntryKind::Command,
                 }],
-                leader_commit: 4,
+                leader_commit: Index::new(4),
             },
         },
         concat!(
@@ -80,7 +82,7 @@ fn vote_append_and_timeout_envelopes_are_pinned() {
             group_id: "orders".to_owned(),
             from: NodeId::new(1),
             req: TimeoutNowReq {
-                term: 3,
+                term: Term::new(3),
                 leader: NodeId::new(1),
             },
         },

@@ -4,7 +4,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-use raft_core::{EntryKind, PersistedState, RaftEntry};
+use raft_core::{EntryKind, Index, PersistedState, RaftEntry, Term};
 use raft_runtime::{FsyncPolicy, RaftStore};
 
 fn find_artifact(dir_path: &std::path::Path) -> Option<PathBuf> {
@@ -48,17 +48,17 @@ fn measurement_1_hard_state_size_bounded_and_independent_of_snapshot() {
 
     let snap_1m = vec![0x11; 1024 * 1024];
     let state1 = PersistedState {
-        term: 1,
+        term: Term::new(1),
         voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
-            term: 1,
-            index: 2,
+            term: Term::new(1),
+            index: Index::new(2),
             command: vec![1, 2, 3, 4],
             kind: EntryKind::Command,
         }],
-        commit_index: 2,
-        snapshot_index: 1,
-        snapshot_term: 1,
+        commit_index: Index::new(2),
+        snapshot_index: Index::new(1),
+        snapshot_term: Term::new(1),
         snapshot: snap_1m,
         conf: None,
     };
@@ -75,17 +75,17 @@ fn measurement_1_hard_state_size_bounded_and_independent_of_snapshot() {
 
     let snap_8m = vec![0x22; 8 * 1024 * 1024];
     let state2 = PersistedState {
-        term: 1,
+        term: Term::new(1),
         voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
-            term: 1,
-            index: 2,
+            term: Term::new(1),
+            index: Index::new(2),
             command: vec![1, 2, 3, 4],
             kind: EntryKind::Command,
         }],
-        commit_index: 2,
-        snapshot_index: 1,
-        snapshot_term: 1,
+        commit_index: Index::new(2),
+        snapshot_index: Index::new(1),
+        snapshot_term: Term::new(1),
         snapshot: snap_8m,
         conf: None,
     };
@@ -123,12 +123,12 @@ fn measurement_2_log_append_does_not_rewrite_snapshot_artifact() {
 
     let snap = vec![0xAA; 1024 * 1024];
     let state = PersistedState {
-        term: 1,
+        term: Term::new(1),
         voted_for: Some(NodeId::new(1)),
         log: vec![],
-        commit_index: 1,
-        snapshot_index: 1,
-        snapshot_term: 1,
+        commit_index: Index::new(1),
+        snapshot_index: Index::new(1),
+        snapshot_term: Term::new(1),
         snapshot: snap.clone(),
         conf: None,
     };
@@ -142,17 +142,17 @@ fn measurement_2_log_append_does_not_rewrite_snapshot_artifact() {
 
     // Save one more 64-byte log entry with unchanged snapshot
     let state2 = PersistedState {
-        term: 1,
+        term: Term::new(1),
         voted_for: Some(NodeId::new(1)),
         log: vec![RaftEntry {
-            term: 1,
-            index: 2,
+            term: Term::new(1),
+            index: Index::new(2),
             command: vec![0x55; 64],
             kind: EntryKind::Command,
         }],
-        commit_index: 2,
-        snapshot_index: 1,
-        snapshot_term: 1,
+        commit_index: Index::new(2),
+        snapshot_index: Index::new(1),
+        snapshot_term: Term::new(1),
         snapshot: snap,
         conf: None,
     };
@@ -190,12 +190,12 @@ fn measurement_3_fault_before_publish_recovers_last_complete_generation() {
 
     let gen1_bytes = vec![0x11; 1024];
     let state_gen1 = PersistedState {
-        term: 1,
+        term: Term::new(1),
         voted_for: Some(NodeId::new(1)),
         log: vec![],
-        commit_index: 1,
-        snapshot_index: 1,
-        snapshot_term: 1,
+        commit_index: Index::new(1),
+        snapshot_index: Index::new(1),
+        snapshot_term: Term::new(1),
         snapshot: gen1_bytes.clone(),
         conf: None,
     };
@@ -206,12 +206,12 @@ fn measurement_3_fault_before_publish_recovers_last_complete_generation() {
 
     let gen2_bytes = vec![0x22; 1024];
     let state_gen2 = PersistedState {
-        term: 2,
+        term: Term::new(2),
         voted_for: Some(NodeId::new(1)),
         log: vec![],
-        commit_index: 2,
-        snapshot_index: 2,
-        snapshot_term: 2,
+        commit_index: Index::new(2),
+        snapshot_index: Index::new(2),
+        snapshot_term: Term::new(2),
         snapshot: gen2_bytes,
         conf: None,
     };
@@ -230,8 +230,8 @@ fn measurement_3_fault_before_publish_recovers_last_complete_generation() {
         .unwrap()
         .expect("fresh store must load state");
 
-    assert_eq!(loaded.snapshot_index, 1);
-    assert_eq!(loaded.snapshot_term, 1);
+    assert_eq!(loaded.snapshot_index, Index::new(1));
+    assert_eq!(loaded.snapshot_term, Term::new(1));
     assert_eq!(loaded.snapshot, gen1_bytes);
 }
 
@@ -248,12 +248,12 @@ fn measurement_4_fault_after_publish_retains_durable_generation_and_collects_lat
     let gen1_bytes = vec![0x11; 512];
     store
         .save(&PersistedState {
-            term: 1,
+            term: Term::new(1),
             voted_for: Some(NodeId::new(1)),
             log: vec![],
-            commit_index: 1,
-            snapshot_index: 1,
-            snapshot_term: 1,
+            commit_index: Index::new(1),
+            snapshot_index: Index::new(1),
+            snapshot_term: Term::new(1),
             snapshot: gen1_bytes,
             conf: None,
         })
@@ -264,12 +264,12 @@ fn measurement_4_fault_after_publish_retains_durable_generation_and_collects_lat
 
     let gen2_bytes = vec![0x22; 512];
     let res = store.save(&PersistedState {
-        term: 2,
+        term: Term::new(2),
         voted_for: Some(NodeId::new(1)),
         log: vec![],
-        commit_index: 2,
-        snapshot_index: 2,
-        snapshot_term: 2,
+        commit_index: Index::new(2),
+        snapshot_index: Index::new(2),
+        snapshot_term: Term::new(2),
         snapshot: gen2_bytes.clone(),
         conf: None,
     });
@@ -297,20 +297,20 @@ fn measurement_4_fault_after_publish_retains_durable_generation_and_collects_lat
         .load()
         .unwrap()
         .expect("fresh store must load state");
-    assert_eq!(loaded_gen2.snapshot_index, 2);
-    assert_eq!(loaded_gen2.snapshot_term, 2);
+    assert_eq!(loaded_gen2.snapshot_index, Index::new(2));
+    assert_eq!(loaded_gen2.snapshot_term, Term::new(2));
     assert_eq!(loaded_gen2.snapshot, gen2_bytes);
 
     // Now publish generation 3 cleanly
     let gen3_bytes = vec![0x33; 512];
     fresh_store
         .save(&PersistedState {
-            term: 3,
+            term: Term::new(3),
             voted_for: Some(NodeId::new(1)),
             log: vec![],
-            commit_index: 3,
-            snapshot_index: 3,
-            snapshot_term: 3,
+            commit_index: Index::new(3),
+            snapshot_index: Index::new(3),
+            snapshot_term: Term::new(3),
             snapshot: gen3_bytes.clone(),
             conf: None,
         })
@@ -341,25 +341,25 @@ fn measurement_5_missing_artifact_fails_identically_regardless_of_log_size() {
     let snap_a = vec![0xAA; 512];
     store_a
         .save(&PersistedState {
-            term: 3,
+            term: Term::new(3),
             voted_for: Some(NodeId::new(1)),
             log: vec![
                 RaftEntry {
-                    term: 3,
-                    index: 6,
+                    term: Term::new(3),
+                    index: Index::new(6),
                     command: vec![1, 2, 3],
                     kind: EntryKind::Command,
                 },
                 RaftEntry {
-                    term: 3,
-                    index: 7,
+                    term: Term::new(3),
+                    index: Index::new(7),
                     command: vec![4, 5, 6],
                     kind: EntryKind::Command,
                 },
             ],
-            commit_index: 7,
-            snapshot_index: 5,
-            snapshot_term: 3,
+            commit_index: Index::new(7),
+            snapshot_index: Index::new(5),
+            snapshot_term: Term::new(3),
             snapshot: snap_a,
             conf: None,
         })
@@ -394,17 +394,17 @@ fn measurement_5_missing_artifact_fails_identically_regardless_of_log_size() {
     let snap_b = vec![0xAA; 512];
     store_b
         .save(&PersistedState {
-            term: 3,
+            term: Term::new(3),
             voted_for: Some(NodeId::new(1)),
             log: vec![RaftEntry {
-                term: 3,
-                index: 6,
+                term: Term::new(3),
+                index: Index::new(6),
                 command: vec![0x99; 1024 * 1024],
                 kind: EntryKind::Command,
             }],
-            commit_index: 6,
-            snapshot_index: 5,
-            snapshot_term: 3,
+            commit_index: Index::new(6),
+            snapshot_index: Index::new(5),
+            snapshot_term: Term::new(3),
             snapshot: snap_b,
             conf: None,
         })
@@ -451,12 +451,12 @@ fn measurement_6_corrupted_content_same_length_fails_load() {
     let snap = vec![0x55; 1024];
     store
         .save(&PersistedState {
-            term: 1,
+            term: Term::new(1),
             voted_for: Some(NodeId::new(1)),
             log: vec![],
-            commit_index: 1,
-            snapshot_index: 1,
-            snapshot_term: 1,
+            commit_index: Index::new(1),
+            snapshot_index: Index::new(1),
+            snapshot_term: Term::new(1),
             snapshot: snap,
             conf: None,
         })
@@ -498,12 +498,12 @@ fn measurement_7_superseded_artifacts_collected_leaving_only_latest() {
     let gen1_bytes = vec![0x10; 256];
     store
         .save(&PersistedState {
-            term: 1,
+            term: Term::new(1),
             voted_for: Some(NodeId::new(1)),
             log: vec![],
-            commit_index: 1,
-            snapshot_index: 1,
-            snapshot_term: 1,
+            commit_index: Index::new(1),
+            snapshot_index: Index::new(1),
+            snapshot_term: Term::new(1),
             snapshot: gen1_bytes,
             conf: None,
         })
@@ -512,12 +512,12 @@ fn measurement_7_superseded_artifacts_collected_leaving_only_latest() {
     let gen2_bytes = vec![0x20; 256];
     store
         .save(&PersistedState {
-            term: 2,
+            term: Term::new(2),
             voted_for: Some(NodeId::new(1)),
             log: vec![],
-            commit_index: 2,
-            snapshot_index: 2,
-            snapshot_term: 2,
+            commit_index: Index::new(2),
+            snapshot_index: Index::new(2),
+            snapshot_term: Term::new(2),
             snapshot: gen2_bytes,
             conf: None,
         })
@@ -526,12 +526,12 @@ fn measurement_7_superseded_artifacts_collected_leaving_only_latest() {
     let gen3_bytes = vec![0x30; 256];
     store
         .save(&PersistedState {
-            term: 3,
+            term: Term::new(3),
             voted_for: Some(NodeId::new(1)),
             log: vec![],
-            commit_index: 3,
-            snapshot_index: 3,
-            snapshot_term: 3,
+            commit_index: Index::new(3),
+            snapshot_index: Index::new(3),
+            snapshot_term: Term::new(3),
             snapshot: gen3_bytes.clone(),
             conf: None,
         })
@@ -588,7 +588,7 @@ fn measurement_8_legacy_inline_snapshot_loads_without_artifact() {
         .unwrap()
         .expect("legacy inline state must load successfully");
 
-    assert_eq!(loaded.snapshot_index, 1);
-    assert_eq!(loaded.snapshot_term, 2);
+    assert_eq!(loaded.snapshot_index, Index::new(1));
+    assert_eq!(loaded.snapshot_term, Term::new(2));
     assert_eq!(loaded.snapshot, snap_bytes);
 }

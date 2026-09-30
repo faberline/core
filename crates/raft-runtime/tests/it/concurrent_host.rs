@@ -1,4 +1,4 @@
-use raft_runtime::{HostConfig, RaftStateMachine};
+use raft_runtime::{HostConfig, Index, RaftStateMachine};
 use std::time::Duration;
 
 use crate::support::cluster;
@@ -32,7 +32,7 @@ async fn concurrent() {
 
     let mut sorted = returned_indices.clone();
     sorted.sort_unstable();
-    let expected: Vec<u64> = (1..=num_proposals).collect();
+    let expected: Vec<Index> = (1..=num_proposals).map(Index::new).collect();
     assert_eq!(
         sorted, expected,
         "indices must be contiguous 1..={num_proposals}"
@@ -40,7 +40,7 @@ async fn concurrent() {
 
     let deadline = std::time::Instant::now() + Duration::from_secs(10);
     for n in &nodes {
-        while n.sm.applied_index() < num_proposals {
+        while n.sm.applied_index() < Index::new(num_proposals) {
             if std::time::Instant::now() >= deadline {
                 break;
             }
@@ -57,7 +57,7 @@ async fn concurrent() {
     println!("sm={sm_vals:?} fresh_watch={watch_vals:?}");
 
     for sm_val in &sm_vals {
-        assert_eq!(*sm_val, num_proposals);
+        assert_eq!(*sm_val, Index::new(num_proposals));
     }
 }
 
@@ -84,7 +84,7 @@ async fn sequential() {
 
     let mut sorted = returned_indices.clone();
     sorted.sort_unstable();
-    let expected: Vec<u64> = (1..=num_proposals).collect();
+    let expected: Vec<Index> = (1..=num_proposals).map(Index::new).collect();
     assert_eq!(
         sorted, expected,
         "indices must be contiguous 1..={num_proposals}"
@@ -92,7 +92,7 @@ async fn sequential() {
 
     let deadline = std::time::Instant::now() + Duration::from_secs(10);
     for n in &nodes {
-        while n.sm.applied_index() < num_proposals {
+        while n.sm.applied_index() < Index::new(num_proposals) {
             if std::time::Instant::now() >= deadline {
                 break;
             }
@@ -109,6 +109,6 @@ async fn sequential() {
     println!("sm={sm_vals:?} fresh_watch={watch_vals:?}");
 
     for sm_val in &sm_vals {
-        assert_eq!(*sm_val, num_proposals);
+        assert_eq!(*sm_val, Index::new(num_proposals));
     }
 }

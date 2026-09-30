@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use raft_runtime::{
-    AdmissionRefused, FsyncPolicy, HostConfig, Membership, MembershipPhase, RaftHost,
+    AdmissionRefused, FsyncPolicy, HostConfig, Index, Membership, MembershipPhase, RaftHost,
     RaftStateMachine, RaftStatus, RaftStore,
 };
 use tempfile::TempDir;
@@ -138,7 +138,7 @@ async fn a_running_host_admits_a_new_learner_observed_on_the_new_node_itself() {
         .add_learner(new_node_id)
         .await
         .expect("admitting a routable learner succeeds");
-    assert!(idx > 0);
+    assert!(idx > Index::new(0));
 
     // Observe on the NEW NODE's own /raftz that it appears as a learner.
     let new_node_status = poll_status_until(
@@ -216,7 +216,7 @@ async fn admitting_an_unaddressed_node_is_refused_as_unroutable_without_proposin
     let post_status = poll_status_until(
         &client,
         &nodes[bystander].url,
-        |s| s.applied_index >= barrier_index,
+        |s| s.applied_index >= barrier_index.get(),
         Duration::from_secs(5),
         "bystander node applies barrier entry",
     )

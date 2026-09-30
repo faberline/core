@@ -23,7 +23,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use raft_runtime::{RaftStateMachine, RaftStatus};
+use raft_runtime::{Index, RaftStateMachine, RaftStatus};
 
 use crate::support::cluster;
 use cluster::{await_leader, cluster};
@@ -218,7 +218,7 @@ async fn unquiesced_cluster_admits_proposals_and_reports_generation_zero() {
     loop {
         let mut all_applied = true;
         for node in &nodes {
-            if node.sm.applied_index() < 8 {
+            if node.sm.applied_index() < Index::new(8) {
                 all_applied = false;
                 break;
             }

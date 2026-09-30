@@ -3,7 +3,7 @@ use raft_core::{AppendReq, VoteResp};
 
 use crate::application::host::apply::apply_ready_with_admission;
 use crate::interfaces::peer_http::host_status;
-use crate::{RaftStore, StateMachineError};
+use crate::{RaftStore, StateMachineError, Term};
 
 struct TestPermit {
     id: u64,
@@ -83,10 +83,10 @@ impl RaftStateMachine for AdmissionSm {
         let permit =
             permit.map(|permit| permit.downcast::<TestPermit>().expect("test permit type"));
         if let Some(permit) = &permit {
-            assert_eq!(permit.id, index, "permit identity follows Raft index");
+            assert_eq!(permit.id, index.get(), "permit identity follows Raft index");
         }
         if self.early_watermark_then_fail.load(Ordering::SeqCst) {
-            self.applied.store(index, Ordering::SeqCst);
+            self.applied.store(index.get(), Ordering::SeqCst);
         }
         self.gate_entered.store(true, Ordering::SeqCst);
         while !self.gate_release.load(Ordering::SeqCst) {
@@ -97,13 +97,13 @@ impl RaftStateMachine for AdmissionSm {
                 "injected error after an early state-machine watermark",
             ));
         }
-        self.applied.store(index, Ordering::SeqCst);
+        self.applied.store(index.get(), Ordering::SeqCst);
         drop(permit);
         Ok(())
     }
 
     fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
-        self.applied.store(index, Ordering::SeqCst);
+        self.applied.store(index.get(), Ordering::SeqCst);
         Ok(())
     }
     fn snapshot(&self, _writer: &mut dyn Write) -> Result<(), StateMachineError> {
@@ -113,7 +113,7 @@ impl RaftStateMachine for AdmissionSm {
         Ok(())
     }
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::SeqCst)
+        Index::new(self.applied.load(Ordering::SeqCst))
     }
 }
 
@@ -198,7 +198,7 @@ async fn proposal_ack_waits_for_callback_completion_not_an_early_watermark() {
     );
     assert!(matches!(
         joined.unwrap().unwrap(),
-        ProposalOutcome::DurabilityFailure { index: Some(1), .. }
+        ProposalOutcome::DurabilityFailure { index: Some(index), .. } if index == Index::new(1)
     ));
     assert_eq!(
         after.unwrap().applied_index,
@@ -214,7 +214,7 @@ async fn proposal_admission_rejects_before_raft_append() {
     let error = host.propose(b"full".to_vec()).await.unwrap_err();
     let backpressure = error.downcast_ref::<ProposalBackpressure>().unwrap();
     assert_eq!(backpressure.retry_after_seconds, 7);
-    assert_eq!(host.shared.node.lock().await.last_index(), 0);
+    assert_eq!(host.shared.node.lock().await.last_index(), Index::new(0));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -248,7 +248,7 @@ async fn indexed_permit_survives_cancelled_producer_until_apply_returns() {
     let applied = tokio::time::timeout(Duration::from_secs(2), async {
         // The SM floor can precede callback return and permit drop.
         // Observe the host publication, which follows both.
-        while host.shared.completed_applied_index() < 1 {
+        while host.shared.completed_applied_index() < Index::new(1) {
             tokio::task::yield_now().await;
         }
     })
@@ -271,8 +271,8 @@ async fn indexed_permit_survives_cancelled_producer_until_apply_returns() {
 async fn identical_commands_get_distinct_index_permits() {
     let sm = AdmissionSm::accepting();
     let host = elected_single_host(sm.clone()).await;
-    assert_eq!(host.propose(vec![9]).await.unwrap(), 1);
-    assert_eq!(host.propose(vec![9]).await.unwrap(), 2);
+    assert_eq!(host.propose(vec![9]).await.unwrap(), Index::new(1));
+    assert_eq!(host.propose(vec![9]).await.unwrap(), Index::new(2));
     assert_eq!(sm.admitted.load(Ordering::SeqCst), 2);
     assert_eq!(sm.drops.load(Ordering::SeqCst), 2);
 }
@@ -284,7 +284,7 @@ async fn persistence_failure_after_index_keeps_the_host_owned_permit() {
     host.store()
         .inject_next_save_failure_with_kind(std::io::ErrorKind::Other);
     assert!(host.propose(vec![4]).await.is_err());
-    assert_eq!(host.shared.node.lock().await.last_index(), 1);
+    assert_eq!(host.shared.node.lock().await.last_index(), Index::new(1));
     assert_eq!(
         host.shared.pending_admission.lock().unwrap().len(),
         1,
@@ -328,22 +328,22 @@ fn conflicting_term_at_same_index_drops_only_replaced_uncommitted_permit() {
     node.handle(
         NodeId::new(1),
         RaftMsg::VoteResp(VoteResp {
-            term: 1,
+            term: Term::new(1),
             granted: true,
         }),
     );
     let index = node.propose(vec![1]).unwrap();
     let old_term = node.current_term();
-    assert_eq!(index, 1);
+    assert_eq!(index, Index::new(1));
     node.handle(
         NodeId::new(1),
         RaftMsg::Append(AppendReq {
-            term: old_term + 1,
+            term: old_term.next(),
             leader: NodeId::new(1),
-            prev_log_index: 0,
-            prev_log_term: 0,
+            prev_log_index: Index::new(0),
+            prev_log_term: Term::new(0),
             entries: vec![raft_core::RaftEntry {
-                term: old_term + 1,
+                term: old_term.next(),
                 index,
                 command: vec![2],
                 kind: raft_core::EntryKind::Command,
@@ -354,7 +354,7 @@ fn conflicting_term_at_same_index_drops_only_replaced_uncommitted_permit() {
     let sm = AdmissionSm::accepting();
     let drops = Arc::new(AtomicU64::new(0));
     let pending = StdMutex::new(BTreeMap::from([(
-        (index, old_term),
+        (index, old_term.get()),
         Box::new(TestPermit {
             id: 99,
             drops: drops.clone(),

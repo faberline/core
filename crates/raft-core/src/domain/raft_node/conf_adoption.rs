@@ -1,7 +1,7 @@
 use super::RaftNode;
 use crate::domain::conf_state::ConfState;
 use crate::domain::entry::EntryKind;
-use crate::domain::ids::NodeId;
+use crate::domain::ids::{Index, NodeId};
 use crate::domain::role::Role;
 
 impl RaftNode {
@@ -34,10 +34,10 @@ impl RaftNode {
                 .or_insert(self.commit_index);
         }
         if self.role == Role::Leader {
-            let next = self.last_index() + 1;
+            let next = self.last_index().next();
             for p in &self.peers {
                 self.next_index.entry(*p).or_insert(next);
-                self.match_index.entry(*p).or_insert(0);
+                self.match_index.entry(*p).or_insert(Index::new(0));
             }
         }
         true

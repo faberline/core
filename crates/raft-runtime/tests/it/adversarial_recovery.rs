@@ -80,7 +80,10 @@ impl RaftStateMachine for Sm {
     }
 
     fn applied_index(&self) -> Index {
-        self.prefix().last().map(|(index, _)| *index).unwrap_or(0)
+        self.prefix()
+            .last()
+            .map(|(index, _)| *index)
+            .unwrap_or(Index::new(0))
     }
 }
 
@@ -387,7 +390,7 @@ impl Engine {
             sms.push(sm);
         }
         Ok(Self {
-            last_commit: vec![0; init.nodes],
+            last_commit: vec![Index::new(0); init.nodes],
             init,
             dir,
             hosts,
@@ -1615,7 +1618,7 @@ fn validate_replay(replay: &Replay) -> Result<(), ReplayFailure> {
                     || outgoing.iter().any(|node| !known(*node))
                     || incoming.iter().any(|node| !known(*node))
                     || acknowledged.iter().any(|node| !known(*node))
-                    || *target_index == 0
+                    || *target_index == Index::new(0)
                     || append_ids.len() != response_ids.len()
                     || response_ids.len() + 1 != acknowledged.len() =>
                 {

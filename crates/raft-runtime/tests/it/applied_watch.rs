@@ -4,7 +4,9 @@ use std::sync::Arc;
 use std::time::Duration;
 use tempfile::TempDir;
 
-use raft_runtime::{FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore};
+use raft_runtime::{
+    FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
+};
 
 use crate::support::cluster;
 use cluster::*;
@@ -30,15 +32,15 @@ async fn single_voter_late_subscriber() {
 
     for v in 1..=4u64 {
         let idx = host.propose(v.to_le_bytes().to_vec()).await.unwrap();
-        assert_eq!(idx, v);
+        assert_eq!(idx, Index::new(v));
     }
 
     let watch_val = *host.applied_watch().borrow();
     let sm_val = sm.applied_index();
     println!("sm=[{sm_val}] fresh_watch=[{watch_val}]");
 
-    assert_eq!(sm_val, 4);
-    assert_eq!(watch_val, 4);
+    assert_eq!(sm_val, Index::new(4));
+    assert_eq!(watch_val, Index::new(4));
 }
 
 #[tokio::test]
@@ -57,14 +59,14 @@ async fn held_subscriber() {
             .propose(v.to_le_bytes().to_vec())
             .await
             .unwrap();
-        assert_eq!(idx, v);
+        assert_eq!(idx, Index::new(v));
     }
 
     // The apply worker persists the node before it publishes the watch, so a
     // state machine can report 4 while its watch still reads 3.
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     for (i, n) in nodes.iter().enumerate() {
-        while n.sm.applied_index() < 4 || *receivers[i].borrow() < 4 {
+        while n.sm.applied_index() < Index::new(4) || *receivers[i].borrow() < Index::new(4) {
             if std::time::Instant::now() >= deadline {
                 break;
             }
@@ -81,10 +83,10 @@ async fn held_subscriber() {
     println!("sm={sm_vals:?} fresh_watch={watch_vals:?}");
 
     for sm_val in &sm_vals {
-        assert_eq!(*sm_val, 4);
+        assert_eq!(*sm_val, Index::new(4));
     }
     for watch_val in &watch_vals {
-        assert_eq!(*watch_val, 4);
+        assert_eq!(*watch_val, Index::new(4));
     }
 }
 
@@ -99,12 +101,14 @@ async fn three_voter_late_subscriber() {
             .propose(v.to_le_bytes().to_vec())
             .await
             .unwrap();
-        assert_eq!(idx, v);
+        assert_eq!(idx, Index::new(v));
     }
 
     let deadline = std::time::Instant::now() + Duration::from_secs(5);
     for n in &nodes {
-        while n.sm.applied_index() < 4 || *n.host.applied_watch().borrow() < 4 {
+        while n.sm.applied_index() < Index::new(4)
+            || *n.host.applied_watch().borrow() < Index::new(4)
+        {
             if std::time::Instant::now() >= deadline {
                 break;
             }
@@ -121,9 +125,9 @@ async fn three_voter_late_subscriber() {
     println!("sm={sm_vals:?} fresh_watch={watch_vals:?}");
 
     for sm_val in &sm_vals {
-        assert_eq!(*sm_val, 4);
+        assert_eq!(*sm_val, Index::new(4));
     }
     for watch_val in &watch_vals {
-        assert_eq!(*watch_val, 4);
+        assert_eq!(*watch_val, Index::new(4));
     }
 }

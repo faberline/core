@@ -4,7 +4,7 @@ use std::sync::Arc;
 use tempfile::TempDir;
 
 use raft_runtime::{
-    FsyncPolicy, GroupId, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore,
+    FsyncPolicy, GroupId, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
     LEGACY_GROUP_ID,
 };
 
@@ -600,7 +600,7 @@ async fn row6_install_snapshot_refusal() {
         z1.get("snapshot_index").unwrap().as_u64().unwrap(),
         z2.get("snapshot_index").unwrap().as_u64().unwrap()
     );
-    assert_eq!(sm.applied_index(), 0);
+    assert_eq!(sm.applied_index(), Index::new(0));
 
     let req_alpha = serde_json::json!({
         "group_id": "alpha",
@@ -720,7 +720,7 @@ async fn row7_publish_refusal() {
         z1.get("snapshot_index").unwrap().as_u64().unwrap(),
         z2.get("snapshot_index").unwrap().as_u64().unwrap()
     );
-    assert_eq!(sm.applied_index(), 0);
+    assert_eq!(sm.applied_index(), Index::new(0));
 
     let req_alpha = serde_json::json!({
         "group_id": "alpha",

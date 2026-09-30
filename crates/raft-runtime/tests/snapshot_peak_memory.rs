@@ -80,8 +80,8 @@ impl MemoryTestSm {
 impl RaftStateMachine for MemoryTestSm {
     fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
         let mut entries = self.entries.lock().unwrap();
-        entries.push((index, command.to_vec()));
-        self.applied.store(index, Ordering::Release);
+        entries.push((index.get(), command.to_vec()));
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
 
@@ -138,7 +138,7 @@ impl RaftStateMachine for MemoryTestSm {
     }
 
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 
@@ -155,7 +155,7 @@ fn measure_snapshot_peak(count: usize) -> (usize, usize) {
 
     let peak = PEAK_ALLOC.load(Ordering::SeqCst);
     let peak_delta = peak.saturating_sub(start_alloc);
-    (peak_delta, sm.applied_index() as usize)
+    (peak_delta, sm.applied_index().get() as usize)
 }
 
 #[test]
@@ -191,7 +191,7 @@ fn restore_round_trips_exact_index() {
 
     assert_eq!(
         restored_sm.applied_index(),
-        SMALL_ENTRIES as u64,
+        Index::new(SMALL_ENTRIES as u64),
         "restored applied_index must match snapshot applied_index"
     );
 }

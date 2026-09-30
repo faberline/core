@@ -1,4 +1,5 @@
 use super::*;
+use crate::Term;
 
 fn fresh_node(membership: Membership) -> RaftNode {
     RaftNode::new(NodeId::new(0), &membership)
@@ -58,7 +59,7 @@ fn tick_persists_election_image_and_failure_blocks_apply_and_stays_latched() {
         |persisted| {
             calls += 1;
             let image = persisted.persisted();
-            assert_eq!(image.term, 1);
+            assert_eq!(image.term, Term::new(1));
             assert_eq!(image.voted_for, Some(NodeId::new(0)));
             latched.set(true);
             false
@@ -97,7 +98,7 @@ fn tick_persists_joint_election_with_leave_joint_entry() {
         &mut first_tick,
         |persisted| {
             let image = persisted.persisted();
-            assert_eq!(image.term, 1);
+            assert_eq!(image.term, Term::new(1));
             assert!(image
                 .conf
                 .as_ref()

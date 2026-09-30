@@ -33,7 +33,7 @@ impl RaftNode {
     }
     /// Highest log index (covers compacted prefix): `snapshot_index + log.len()`.
     pub fn last_index(&self) -> Index {
-        self.snapshot_index + self.log.len() as Index
+        Index::new(self.snapshot_index.get() + self.log.len() as u64)
     }
     /// Last index folded into a snapshot (0 = none).
     pub fn snapshot_index(&self) -> Index {
@@ -51,7 +51,7 @@ impl RaftNode {
     /// to peers. `None` means the requested index is outside this node's known
     /// prefix.
     pub fn term_at_index(&self, index: Index) -> Option<Term> {
-        if index == 0 || index > self.last_index() {
+        if index == Index::new(0) || index > self.last_index() {
             return None;
         }
         Some(self.term_at(index))
@@ -74,13 +74,13 @@ impl RaftNode {
 
     /// Term of the entry at `index` (snapshot point or a resident entry).
     pub(super) fn term_at(&self, index: Index) -> Term {
-        if index == 0 {
-            0
+        if index == Index::new(0) {
+            Term::new(0)
         } else if index <= self.snapshot_index {
             self.snapshot_term
         } else {
-            let pos = (index - self.snapshot_index - 1) as usize;
-            self.log.get(pos).map(|e| e.term).unwrap_or(0)
+            let pos = (index.get() - self.snapshot_index.get() - 1) as usize;
+            self.log.get(pos).map(|e| e.term).unwrap_or(Term::new(0))
         }
     }
 }

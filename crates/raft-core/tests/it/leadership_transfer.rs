@@ -71,7 +71,9 @@
 
 use std::collections::{HashMap, HashSet};
 
-use raft_core::{Membership, NodeId, RaftMsg, RaftNode, Role, TimeoutNowReq, TransferRefused};
+use raft_core::{
+    Membership, NodeId, RaftMsg, RaftNode, Role, Term, TimeoutNowReq, TransferRefused,
+};
 
 /// Voters 0,1,2 — at least three, so "the named node became leader" is not the
 /// same statement as "the only other node became leader".
@@ -460,7 +462,7 @@ fn a_learner_asked_to_campaign_neither_campaigns_nor_takes_the_senders_term() {
          about a voter and measures nothing"
     );
     let term_before = learner.current_term();
-    let sender_term = term_before + 5;
+    let sender_term = Term::new(term_before.get() + 5);
 
     learner.handle(
         NodeId::new(0),
@@ -520,7 +522,7 @@ fn a_voter_asked_to_campaign_at_a_stale_term_stays_where_it_is() {
     let (mut bus, leader, target) = settled_group();
     let term = bus.nodes[&target].current_term();
     assert!(
-        term > 0,
+        term > Term::new(0),
         "the group has elected a leader, so the receiver's term stands above \
          the floor a stale message has to sit below; at term 0 there is no \
          stale term to send and this row would be vacuous"
@@ -536,7 +538,7 @@ fn a_voter_asked_to_campaign_at_a_stale_term_stays_where_it_is() {
     node.handle(
         leader,
         RaftMsg::TimeoutNow(TimeoutNowReq {
-            term: term - 1,
+            term: Term::new(term.get() - 1),
             leader,
         }),
     );

@@ -47,8 +47,8 @@ fn committed_pair() -> RaftNode {
     let membership = Membership::new(vec![NodeId::new(1)], vec![]);
     let mut node = RaftNode::new(NodeId::new(1), &membership);
     node.become_leader();
-    assert_eq!(node.propose(vec![11]), Some(1));
-    assert_eq!(node.propose(vec![22]), Some(2));
+    assert_eq!(node.propose(vec![11]), Some(Index::new(1)));
+    assert_eq!(node.propose(vec![22]), Some(Index::new(2)));
     node
 }
 
@@ -58,24 +58,24 @@ fn committed_identity_is_stable_until_exact_completion() {
     let term = node.current_term();
     assert_eq!(
         node.peek_next_committed_identity(),
-        Some((1, term, EntryKind::Command))
+        Some((Index::new(1), term, EntryKind::Command))
     );
     assert_eq!(
         node.peek_next_committed_identity(),
-        Some((1, term, EntryKind::Command))
+        Some((Index::new(1), term, EntryKind::Command))
     );
-    assert!(!node.finish_committed_identity(2, term));
-    assert!(!node.finish_committed_identity(1, term + 1));
-    assert_eq!(node.last_applied, 0);
-    assert!(node.finish_committed_identity(1, term));
+    assert!(!node.finish_committed_identity(Index::new(2), term));
+    assert!(!node.finish_committed_identity(Index::new(1), term.next()));
+    assert_eq!(node.last_applied, Index::new(0));
+    assert!(node.finish_committed_identity(Index::new(1), term));
     assert_eq!(
         node.peek_next_committed_identity(),
-        Some((2, term, EntryKind::Command))
+        Some((Index::new(2), term, EntryKind::Command))
     );
-    assert!(!node.finish_committed_identity(1, term));
-    assert!(node.finish_committed_identity(2, term));
+    assert!(!node.finish_committed_identity(Index::new(1), term));
+    assert!(node.finish_committed_identity(Index::new(2), term));
     assert_eq!(node.peek_next_committed_identity(), None);
-    assert!(!node.finish_committed_identity(3, term));
+    assert!(!node.finish_committed_identity(Index::new(3), term));
 }
 
 #[test]
@@ -85,45 +85,45 @@ fn unfinished_committed_head_survives_durable_recovery() {
     let restored = RaftNode::from_persisted(NodeId::new(1), &membership, node.persisted());
     assert_eq!(
         restored.peek_next_committed_identity(),
-        Some((1, node.current_term(), EntryKind::Command))
+        Some((Index::new(1), node.current_term(), EntryKind::Command))
     );
-    assert_eq!(restored.last_applied, 0);
+    assert_eq!(restored.last_applied, Index::new(0));
 }
 
 #[test]
 fn configuration_changes_only_when_its_exact_identity_finishes() {
     let mut node = committed_pair();
     let term = node.current_term();
-    assert!(node.finish_committed_identity(1, term));
-    assert!(node.finish_committed_identity(2, term));
+    assert!(node.finish_committed_identity(Index::new(1), term));
+    assert!(node.finish_committed_identity(Index::new(2), term));
     let mut next = node.conf_state().clone();
     next.generation += 1;
     let (voters, mut learners) = next.membership.into_parts();
     learners.push(NodeId::new(9));
     next.membership = Membership::new(voters, learners);
     node.log.push(RaftEntry {
-        index: 3,
+        index: Index::new(3),
         term,
         kind: EntryKind::Config,
         command: next.encode(),
     });
-    node.commit_index = 3;
+    node.commit_index = Index::new(3);
     assert_eq!(
         node.peek_next_committed_identity(),
-        Some((3, term, EntryKind::Config))
+        Some((Index::new(3), term, EntryKind::Config))
     );
     assert!(!node
         .conf_state()
         .membership
         .learners()
         .contains(&NodeId::new(9)));
-    assert!(!node.finish_committed_identity(3, term + 1));
+    assert!(!node.finish_committed_identity(Index::new(3), term.next()));
     assert!(!node
         .conf_state()
         .membership
         .learners()
         .contains(&NodeId::new(9)));
-    assert!(node.finish_committed_identity(3, term));
+    assert!(node.finish_committed_identity(Index::new(3), term));
     assert!(node
         .conf_state()
         .membership

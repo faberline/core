@@ -11,7 +11,8 @@ use std::sync::RwLock;
 use std::time::Duration;
 
 use raft_core::{
-    AppendResp, InstallSnapshotReq, InstallSnapshotResp, NodeId, RaftDelivery, RaftMsg, VoteResp,
+    AppendResp, Index, InstallSnapshotReq, InstallSnapshotResp, NodeId, RaftDelivery, RaftMsg,
+    Term, VoteResp,
 };
 use serde::Serialize;
 
@@ -193,9 +194,9 @@ impl HttpPeerClient {
                 )));
             }
             return Ok(InstallSnapshotResp {
-                term: response.term,
+                term: Term::new(response.term),
                 accepted: response.accepted,
-                snapshot_index: response.snapshot_index,
+                snapshot_index: Index::new(response.snapshot_index),
             });
         }
         let bytes = self

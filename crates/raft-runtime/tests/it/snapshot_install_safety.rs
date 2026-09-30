@@ -5,7 +5,7 @@ use std::{
 };
 
 use raft_runtime::{
-    FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStatus, RaftStore,
+    FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStatus, RaftStore,
     LEGACY_GROUP_ID,
 };
 
@@ -68,9 +68,9 @@ async fn failed_state_machine_restore_keeps_the_old_snapshot_and_log() {
     assert_eq!(state_machine.restore_attempts.load(Ordering::Acquire), 1);
 
     let persisted = host.store().load().unwrap().unwrap();
-    assert_eq!(persisted.snapshot_index, 0);
+    assert_eq!(persisted.snapshot_index, Index::new(0));
     assert_eq!(persisted.log.len(), 1);
-    assert_eq!(persisted.log[0].index, 1);
+    assert_eq!(persisted.log[0].index, Index::new(1));
     server.abort();
 }
 
@@ -106,9 +106,11 @@ async fn equal_index_snapshot_retry_requires_the_same_identity() {
     for value in 1_u8..=4 {
         host.propose(vec![value]).await.unwrap();
     }
-    host.snapshot_and_compact_through(4).await.unwrap();
+    host.snapshot_and_compact_through(Index::new(4))
+        .await
+        .unwrap();
     let before = host.store().load().unwrap().unwrap();
-    assert_eq!(before.snapshot_index, 4);
+    assert_eq!(before.snapshot_index, Index::new(4));
 
     let client = transport_h2c::h2c_client_with(None, None).unwrap();
     let identical: serde_json::Value = client
@@ -203,10 +205,10 @@ async fn raft_save_failure_happens_before_state_machine_restore() {
             "group_id": LEGACY_GROUP_ID,
             "from": 1,
             "req": {
-                "term": before.term + 1,
+                "term": before.term.next(),
                 "leader": 1,
                 "snapshot_index": 2,
-                "snapshot_term": before.term + 1,
+                "snapshot_term": before.term.next(),
                 "data": [8, 8, 8]
             }
         }))
@@ -239,10 +241,10 @@ async fn coordinated_compaction_reaches_every_voter_and_keeps_the_suffix() {
     assert_eq!(
         nodes[leader]
             .host
-            .snapshot_and_compact_through(6)
+            .snapshot_and_compact_through(Index::new(6))
             .await
             .unwrap(),
-        6
+        Index::new(6)
     );
 
     let client = transport_h2c::h2c_client_with(None, None).unwrap();
@@ -275,19 +277,19 @@ async fn coordinated_compaction_reports_an_already_installed_prefix_as_a_noop() 
 
     let installed = nodes[leader]
         .host
-        .snapshot_and_compact_through_outcome(4)
+        .snapshot_and_compact_through_outcome(Index::new(4))
         .await
         .unwrap();
     assert!(installed.installed);
-    assert_eq!(installed.snapshot_index, 4);
+    assert_eq!(installed.snapshot_index, Index::new(4));
 
     let noop = nodes[leader]
         .host
-        .snapshot_and_compact_through_outcome(4)
+        .snapshot_and_compact_through_outcome(Index::new(4))
         .await
         .unwrap();
     assert!(!noop.installed);
-    assert_eq!(noop.snapshot_index, 4);
+    assert_eq!(noop.snapshot_index, Index::new(4));
 }
 
 #[tokio::test]
@@ -311,20 +313,20 @@ async fn quorum_compaction_bounds_the_log_while_one_voter_is_offline() {
 
     let all_voter_error = nodes[leader]
         .host
-        .snapshot_and_compact_through_outcome(8)
+        .snapshot_and_compact_through_outcome(Index::new(8))
         .await
         .expect_err("an offline voter must block the all-voter barrier");
     assert!(all_voter_error.to_string().contains("voter"));
 
     let compacted = nodes[leader]
         .host
-        .snapshot_and_compact_through_quorum_outcome(8)
+        .snapshot_and_compact_through_quorum_outcome(Index::new(8))
         .await
         .unwrap();
     assert!(compacted.installed);
-    assert_eq!(compacted.snapshot_index, 8);
+    assert_eq!(compacted.snapshot_index, Index::new(8));
     let persisted = nodes[leader].host.store().load().unwrap().unwrap();
-    assert_eq!(persisted.snapshot_index, 8);
+    assert_eq!(persisted.snapshot_index, Index::new(8));
     assert!(persisted.log.is_empty());
 }
 
@@ -363,13 +365,13 @@ async fn quorum_checkpoint_does_not_wait_for_a_blackholed_voter() {
         std::time::Duration::from_secs(2),
         nodes[leader]
             .host
-            .snapshot_and_compact_through_quorum_outcome(8),
+            .snapshot_and_compact_through_quorum_outcome(Index::new(8)),
     )
     .await
     .expect("a live quorum must not wait for the snapshot RPC timeout")
     .unwrap();
     assert!(compacted.installed);
-    assert_eq!(compacted.snapshot_index, 8);
+    assert_eq!(compacted.snapshot_index, Index::new(8));
     blackhole.abort();
 }
 
@@ -379,7 +381,7 @@ async fn all_voter_applied_barrier_refuses_a_lagging_replica() {
     let leader = await_leader(&nodes).await.expect("a leader is elected");
     let index = nodes[leader].host.propose(vec![1]).await.unwrap();
     for node in &nodes {
-        while node.sm.applied.load(Ordering::Acquire) < index {
+        while node.sm.applied.load(Ordering::Acquire) < index.get() {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
     }
@@ -428,7 +430,7 @@ async fn coordinated_compaction_waits_for_every_voter_snapshot_capability() {
 
     let error = nodes[leader]
         .host
-        .snapshot_and_compact_through(4)
+        .snapshot_and_compact_through(Index::new(4))
         .await
         .expect_err("mixed snapshot decoders must block coordinated compaction");
     assert!(error.to_string().contains("snapshot capability"));
@@ -473,7 +475,7 @@ async fn capability_disappearance_between_probe_and_install_fails_before_restore
 
     let error = nodes[leader]
         .host
-        .snapshot_and_compact_through(4)
+        .snapshot_and_compact_through(Index::new(4))
         .await
         .expect_err("capability must still be present on the install request");
     assert!(error.to_string().contains("capable snapshot"));
@@ -629,7 +631,7 @@ async fn higher_term_snapshot_refusal_steps_the_old_leader_down_immediately() {
 
     let snapshot_result = nodes[leader]
         .host
-        .snapshot_and_compact_through_outcome(4)
+        .snapshot_and_compact_through_outcome(Index::new(4))
         .await;
     let old_leader_result = async {
         client
@@ -705,7 +707,7 @@ async fn shutdown_waits_for_coordinated_snapshot_reply_before_safe_peer_close() 
     let applied = nodes[leader].host.propose(vec![1]).await.unwrap();
     tokio::time::timeout(Duration::from_secs(3), async {
         for node in &nodes {
-            while node.sm.applied.load(Ordering::Acquire) < applied {
+            while node.sm.applied.load(Ordering::Acquire) < applied.get() {
                 tokio::task::yield_now().await;
             }
         }
@@ -790,7 +792,7 @@ async fn shutdown_waits_for_coordinated_snapshot_reply_before_safe_peer_close() 
     );
     assert_eq!(
         nodes[other_voter].sm.applied.load(Ordering::Acquire),
-        applied
+        applied.get()
     );
     tokio::time::timeout(Duration::from_secs(3), async {
         while nodes[other_voter].host.snapshot_index().await < applied {

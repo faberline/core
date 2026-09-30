@@ -12,7 +12,7 @@ use crate::{RaftStateMachine, RaftStore, StateMachineError};
 struct CountingSm(AtomicU64);
 impl RaftStateMachine for CountingSm {
     fn apply(&self, index: Index, _: &[u8]) -> Result<(), StateMachineError> {
-        self.0.store(index, Ordering::Release);
+        self.0.store(index.get(), Ordering::Release);
         Ok(())
     }
     fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
@@ -30,7 +30,7 @@ impl RaftStateMachine for CountingSm {
         Ok(())
     }
     fn applied_index(&self) -> Index {
-        self.0.load(Ordering::Acquire)
+        Index::new(self.0.load(Ordering::Acquire))
     }
 }
 
@@ -55,7 +55,7 @@ fn single_voter_is_deterministic_and_persists_before_reopen() {
         host.tick().unwrap();
     }
     assert_eq!(host.view().role, ConformanceRole::Leader);
-    assert_eq!(host.try_propose(vec![7].into()).unwrap(), 1);
+    assert_eq!(host.try_propose(vec![7].into()).unwrap(), Index::new(1));
     let store = RaftStore::open(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
@@ -71,7 +71,7 @@ fn single_voter_is_deterministic_and_persists_before_reopen() {
         after.clone(),
     )
     .unwrap();
-    assert_eq!(after.applied_index(), 1);
+    assert_eq!(after.applied_index(), Index::new(1));
     assert_eq!(reopened.view().membership.voters(), vec![NodeId::new(0)]);
 }
 

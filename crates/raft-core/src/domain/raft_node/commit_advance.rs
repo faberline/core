@@ -1,4 +1,5 @@
 use super::RaftNode;
+use crate::domain::ids::Index;
 use crate::domain::role::Role;
 
 impl RaftNode {
@@ -18,7 +19,7 @@ impl RaftNode {
             .as_ref()
             .map(|out| out.len() / 2 + 1);
 
-        for n in (self.commit_index + 1)..=last {
+        for n in (self.commit_index.get() + 1..=last.get()).map(Index::new) {
             if self.term_at(n) != self.current_term {
                 continue;
             }
@@ -27,7 +28,7 @@ impl RaftNode {
                 let m = if *v == self.id {
                     last
                 } else {
-                    *self.match_index.get(v).unwrap_or(&0)
+                    *self.match_index.get(v).unwrap_or(&Index::new(0))
                 };
                 if m >= n {
                     incoming_count += 1;
@@ -42,7 +43,7 @@ impl RaftNode {
                         let m = if *v == self.id {
                             last
                         } else {
-                            *self.match_index.get(v).unwrap_or(&0)
+                            *self.match_index.get(v).unwrap_or(&Index::new(0))
                         };
                         if m >= n {
                             outgoing_count += 1;

@@ -22,8 +22,8 @@ impl RaftNode {
         {
             return Err(PromotionRefused::TransitionInFlight);
         }
-        let matched = self.learner_matched(peer).unwrap_or(0);
-        let target = self.learner_read_target(peer).unwrap_or(0);
+        let matched = self.learner_matched(peer).unwrap_or(Index::new(0));
+        let target = self.learner_read_target(peer).unwrap_or(Index::new(0));
         if matched < target {
             return Err(PromotionRefused::NotCaughtUp { matched, target });
         }

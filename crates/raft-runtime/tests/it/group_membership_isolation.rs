@@ -48,7 +48,7 @@ impl NullSm {
 
 impl RaftStateMachine for NullSm {
     fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
-        self.applied.store(index, Ordering::Release);
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
 
@@ -61,7 +61,7 @@ impl RaftStateMachine for NullSm {
     }
 
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 

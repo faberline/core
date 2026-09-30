@@ -26,7 +26,7 @@ use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
 use raft_runtime::{
-    FsyncPolicy, HostConfig, HostShutdownReport, LeadershipHandoff, Membership, PhaseStatus,
+    FsyncPolicy, HostConfig, HostShutdownReport, Index, LeadershipHandoff, Membership, PhaseStatus,
     ProposalOutcome, RaftHost, RaftStateMachine, RaftStatus, RaftStore, ShutdownCaller,
     ShutdownPhase, StateMachineError,
 };
@@ -201,10 +201,10 @@ impl BlockingApplySm {
 }
 
 impl RaftStateMachine for BlockingApplySm {
-    fn apply(&self, index: u64, _command: &[u8]) -> Result<(), StateMachineError> {
+    fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
         let fail = {
             let mut gate = self.gate.lock().expect("blocking gate mutex poisoned");
-            gate.callback_indices.push(index);
+            gate.callback_indices.push(index.get());
             if gate.armed {
                 gate.armed = false;
                 gate.entered = true;
@@ -229,7 +229,7 @@ impl RaftStateMachine for BlockingApplySm {
             )));
         }
         self.applied
-            .store(index, std::sync::atomic::Ordering::Release);
+            .store(index.get(), std::sync::atomic::Ordering::Release);
         Ok(())
     }
 
@@ -241,8 +241,8 @@ impl RaftStateMachine for BlockingApplySm {
         Ok(())
     }
 
-    fn applied_index(&self) -> u64 {
-        self.applied.load(std::sync::atomic::Ordering::Acquire)
+    fn applied_index(&self) -> Index {
+        Index::new(self.applied.load(std::sync::atomic::Ordering::Acquire))
     }
 }
 
@@ -331,7 +331,7 @@ async fn hold_leader_apply(
     nodes: &[BlockingNode],
     leader: usize,
     command: Vec<u8>,
-) -> tokio::task::JoinHandle<anyhow::Result<u64>> {
+) -> tokio::task::JoinHandle<anyhow::Result<Index>> {
     nodes[leader].sm.arm();
     let host = Arc::clone(&nodes[leader].host);
     let proposal = tokio::spawn(async move { host.propose(command).await });
@@ -396,7 +396,8 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
         "the follower-routed proposal must allocate and commit its own index"
     );
     assert_eq!(
-        applied_while_blocked, 0,
+        applied_while_blocked,
+        Index::new(0),
         "the first blocked callback is not falsely applied"
     );
     assert_eq!(
@@ -404,8 +405,8 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
         vec![1],
         "a single worker must not begin the second callback before the first releases"
     );
-    assert_eq!(first_index, 1);
-    assert_eq!(second_index, 2);
+    assert_eq!(first_index, Index::new(1));
+    assert_eq!(second_index, Index::new(2));
 }
 
 /// A callback Err is an explicit failed apply, not a normal domain outcome.
@@ -484,7 +485,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
             HostConfig::default().with_tick(Duration::from_millis(10)),
         );
         restart_applied = tokio::time::timeout(JOIN_LIMIT, async {
-            while sm.applied_index() < 2 {
+            while sm.applied_index() < Index::new(2) {
                 tokio::task::yield_now().await;
             }
         })
@@ -506,7 +507,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
         two_status.last_index >= 2 && two_status.commit_index >= 2,
         "the second command commits before the first callback returns Err"
     );
-    assert_eq!(applied_while_blocked, 0);
+    assert_eq!(applied_while_blocked, Index::new(0));
     assert_eq!(callbacks_while_blocked, vec![1]);
     assert!(
         failure_observed,
@@ -517,7 +518,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
         "the durable source still contains both committed commands"
     );
     assert!(
-        after_error.applied_index < 1 && applied_before_restart < 1,
+        after_error.applied_index < 1 && applied_before_restart < Index::new(1),
         "an Err must not falsely publish the failed head as applied"
     );
     assert_eq!(
@@ -546,7 +547,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
         vec![1, 1, 2],
         "restart must retry the failed head before it applies the later command"
     );
-    assert_eq!(sm.applied_index(), 2);
+    assert_eq!(sm.applied_index(), Index::new(2));
 }
 
 /// A three-voter cluster's leader shut down under a generous deadline records

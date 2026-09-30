@@ -60,12 +60,12 @@ impl SnapshotCore {
         }
         records.push((index, command.to_vec()));
         drop(records);
-        self.applied.store(index, Ordering::Release);
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
 
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 
     fn bytes_through(&self, index: Index) -> anyhow::Result<Vec<u8>> {
@@ -73,7 +73,7 @@ impl SnapshotCore {
             .records
             .lock()
             .expect("snapshot records mutex poisoned");
-        if index > 0 {
+        if index > Index::new(0) {
             let last = records
                 .iter()
                 .filter(|(record_index, _)| *record_index <= index)
@@ -85,9 +85,9 @@ impl SnapshotCore {
             );
         }
 
-        let mut bytes = index.to_le_bytes().to_vec();
+        let mut bytes = index.get().to_le_bytes().to_vec();
         for (record_index, command) in records.iter().filter(|(at, _)| *at <= index) {
-            bytes.extend_from_slice(&record_index.to_le_bytes());
+            bytes.extend_from_slice(&record_index.get().to_le_bytes());
             bytes.extend_from_slice(&(command.len() as u64).to_le_bytes());
             bytes.extend_from_slice(command);
         }
@@ -559,7 +559,7 @@ async fn preflight_does_not_hold_apply_and_stale_explicit_prefix_refuses() {
     );
     assert_eq!(
         host.snapshot_index().await,
-        0,
+        Index::new(0),
         "a stale explicit target does not publish a snapshot"
     );
     let persisted = host
@@ -567,7 +567,7 @@ async fn preflight_does_not_hold_apply_and_stale_explicit_prefix_refuses() {
         .load()
         .expect("read persisted state after stale explicit target")
         .expect("host persists a Raft state");
-    assert_eq!(persisted.snapshot_index, 0);
+    assert_eq!(persisted.snapshot_index, Index::new(0));
     assert_eq!(
         persisted
             .log
@@ -720,7 +720,7 @@ async fn capture_keeps_its_exact_cut_and_releases_apply_before_export() {
             .propose(b"committed-during-capture".to_vec())
             .await
     });
-    wait_for_committed(&host, capture_index + 1).await;
+    wait_for_committed(&host, capture_index.next()).await;
     // A durable commit can precede dispatch to the ordered apply worker. An
     // immediate floor read would miss a host that released its lease too soon.
     // Keep capture blocked for the confirmation interval, then assert the
@@ -891,7 +891,7 @@ async fn assert_failed_prepared_snapshot_retains_prefix(stage: FailureStage) {
     );
     assert_eq!(
         host.snapshot_index().await,
-        0,
+        Index::new(0),
         "failed preflight, capture, or export does not publish a snapshot index"
     );
     let persisted = host
@@ -900,7 +900,8 @@ async fn assert_failed_prepared_snapshot_retains_prefix(stage: FailureStage) {
         .expect("read persisted state after prepared snapshot failure")
         .expect("host persists a Raft state");
     assert_eq!(
-        persisted.snapshot_index, 0,
+        persisted.snapshot_index,
+        Index::new(0),
         "failed preflight, capture, or export does not compact a partial snapshot"
     );
     assert_eq!(

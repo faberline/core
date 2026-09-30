@@ -102,7 +102,7 @@ impl RaftHost {
             }
             let applied = self.shared.completed_applied_index();
             let up_to = requested_index.unwrap_or(applied);
-            if up_to == 0 {
+            if up_to == Index::new(0) {
                 return Ok(SnapshotCompactionOutcome {
                     snapshot_index: n.snapshot_index(),
                     installed: false,

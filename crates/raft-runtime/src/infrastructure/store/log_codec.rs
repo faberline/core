@@ -16,8 +16,8 @@ pub(super) fn encode_log_entries(entries: &[RaftEntry], include_magic: bool) -> 
 
 fn encode_log_entry(entry: &RaftEntry) -> Vec<u8> {
     let mut payload = Vec::with_capacity(25 + entry.command.len());
-    payload.extend_from_slice(&entry.term.to_le_bytes());
-    payload.extend_from_slice(&entry.index.to_le_bytes());
+    payload.extend_from_slice(&entry.term.get().to_le_bytes());
+    payload.extend_from_slice(&entry.index.get().to_le_bytes());
     payload.push(match entry.kind {
         EntryKind::Command => 0,
         EntryKind::Config => 1,
@@ -53,8 +53,8 @@ pub(super) fn decode_log_artifact(bytes: &[u8], layout: LogLayout) -> io::Result
             ));
         }
         let mut entry = CursorReader(&payload);
-        let term = entry.read_u64()?;
-        let index = entry.read_u64()?;
+        let term = Term::new(entry.read_u64()?);
+        let index = Index::new(entry.read_u64()?);
         let kind = match entry.read_u8()? {
             0 => EntryKind::Command,
             1 => EntryKind::Config,
@@ -84,9 +84,9 @@ pub(super) fn decode_log_artifact(bytes: &[u8], layout: LogLayout) -> io::Result
         });
     }
     if !reader.is_empty()
-        || log.first().map(|entry| entry.index) != Some(layout.first_index)
-        || log.last().map(|entry| entry.index) != Some(layout.last_index)
-        || log.last().map(|entry| entry.term) != Some(layout.last_term)
+        || log.first().map(|entry| entry.index) != Some(Index::new(layout.first_index))
+        || log.last().map(|entry| entry.index) != Some(Index::new(layout.last_index))
+        || log.last().map(|entry| entry.term) != Some(Term::new(layout.last_term))
         || log.last().map(entry_digest) != Some(layout.last_entry_digest)
     {
         return Err(io::Error::new(

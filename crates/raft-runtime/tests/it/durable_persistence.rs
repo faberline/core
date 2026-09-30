@@ -1,6 +1,7 @@
 use raft_runtime::NodeId;
 use raft_runtime::{
-    FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore, LEGACY_GROUP_ID,
+    FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
+    LEGACY_GROUP_ID,
 };
 use std::io::ErrorKind;
 use std::sync::Arc;
@@ -26,18 +27,18 @@ async fn test_1_propose_refusal_and_restart() {
     let host = node.host.clone();
 
     let idx1 = host.propose(to_command(1)).await.unwrap();
-    assert_eq!(idx1, 1);
+    assert_eq!(idx1, Index::new(1));
 
     host.store()
         .inject_next_save_failure_with_kind(ErrorKind::StorageFull);
 
     let err = host.propose(to_command(2)).await.unwrap_err();
-    assert_eq!(node.sm.applied_index(), 1);
+    assert_eq!(node.sm.applied_index(), Index::new(1));
 
     // Propose 3 (Measurement 2)
     let err2 = host.propose(to_command(3)).await.unwrap_err();
     assert_eq!(err.to_string(), err2.to_string());
-    assert_eq!(node.sm.applied_index(), 1);
+    assert_eq!(node.sm.applied_index(), Index::new(1));
 
     let cluster::Node {
         host,
@@ -60,7 +61,7 @@ async fn test_1_propose_refusal_and_restart() {
         sm2.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
-    assert_eq!(sm2.applied_index(), 1);
+    assert_eq!(sm2.applied_index(), Index::new(1));
     std::fs::remove_dir_all(dir_path).unwrap();
 }
 
@@ -180,7 +181,7 @@ async fn test_5_healthy_host() {
     host.propose(to_command(1)).await.unwrap();
     host.propose(to_command(2)).await.unwrap();
     host.propose(to_command(3)).await.unwrap();
-    assert_eq!(node.sm.applied_index(), 3);
+    assert_eq!(node.sm.applied_index(), Index::new(3));
 
     let cluster::Node {
         host,
@@ -203,7 +204,7 @@ async fn test_5_healthy_host() {
         sm2.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
-    assert_eq!(sm2.applied_index(), 3);
+    assert_eq!(sm2.applied_index(), Index::new(3));
     std::fs::remove_dir_all(dir_path).unwrap();
 }
 
@@ -468,10 +469,10 @@ async fn test_8_latched_follower_refuses_proposal() {
 
     // Wait for the healthy follower to apply it to prove the cluster is still healthy.
     for _ in 0..50 {
-        if nodes[other_follower_idx].sm.applied_index() >= 2 {
+        if nodes[other_follower_idx].sm.applied_index() >= Index::new(2) {
             break;
         }
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
-    assert!(nodes[other_follower_idx].sm.applied_index() >= 2);
+    assert!(nodes[other_follower_idx].sm.applied_index() >= Index::new(2));
 }

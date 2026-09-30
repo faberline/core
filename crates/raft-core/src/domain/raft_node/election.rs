@@ -1,11 +1,11 @@
 use super::RaftNode;
-use crate::domain::ids::{NodeId, Term};
+use crate::domain::ids::{Index, NodeId, Term};
 use crate::domain::message::{RaftMsg, VoteReq, VoteResp};
 use crate::domain::role::Role;
 
 impl RaftNode {
     pub(super) fn start_election(&mut self) {
-        self.current_term += 1;
+        self.current_term = self.current_term.next();
         self.role = Role::Candidate;
         self.voted_for = Some(self.id);
         self.leader_id = None;
@@ -62,12 +62,12 @@ impl RaftNode {
     pub(super) fn become_leader(&mut self) {
         self.role = Role::Leader;
         self.leader_id = Some(self.id);
-        let next = self.last_index() + 1;
+        let next = self.last_index().next();
         self.next_index.clear();
         self.match_index.clear();
         for p in self.peers.clone() {
             self.next_index.insert(p, next);
-            self.match_index.insert(p, 0);
+            self.match_index.insert(p, Index::new(0));
         }
         self.heartbeat_elapsed = 0;
         self.transfer_in_flight = None;

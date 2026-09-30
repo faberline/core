@@ -334,7 +334,7 @@ async fn withdrawn_peer_address_during_in_flight_send_increments_withdrawn_count
     poll_status_until(
         &client,
         &nodes[healthy_voter].url,
-        |s| s.commit_index >= first_result,
+        |s| s.commit_index >= first_result.get(),
         Duration::from_secs(5),
         "healthy voter commits the first proposal",
     )

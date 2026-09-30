@@ -12,7 +12,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
-use raft_core::{ConfState, EntryKind, Index, Membership, PersistedState, RaftEntry};
+use raft_core::{ConfState, EntryKind, Index, Membership, PersistedState, RaftEntry, Term};
 use raft_runtime::conformance::DeterministicHost;
 use raft_runtime::{
     ActiveAssignment, AdmissionRefused, ClusterStateView, FenceToken, FencedAssignment,
@@ -60,25 +60,25 @@ fn joint_conf() -> ConfState {
 
 fn persisted_state() -> PersistedState {
     PersistedState {
-        term: 3,
+        term: Term::new(3),
         voted_for: Some(NodeId::new(2)),
         log: vec![
             RaftEntry {
-                term: 2,
-                index: 5,
+                term: Term::new(2),
+                index: Index::new(5),
                 command: vec![9],
                 kind: EntryKind::Command,
             },
             RaftEntry {
-                term: 3,
-                index: 6,
+                term: Term::new(3),
+                index: Index::new(6),
                 command: joint_conf().encode(),
                 kind: EntryKind::Config,
             },
         ],
-        commit_index: 5,
-        snapshot_index: 4,
-        snapshot_term: 1,
+        commit_index: Index::new(5),
+        snapshot_index: Index::new(4),
+        snapshot_term: Term::new(1),
         snapshot: vec![7, 8],
         conf: Some(joint_conf()),
     }
@@ -294,7 +294,7 @@ struct CountingSm(AtomicU64);
 
 impl RaftStateMachine for CountingSm {
     fn apply(&self, index: Index, _: &[u8]) -> Result<(), StateMachineError> {
-        self.0.store(index, Ordering::Release);
+        self.0.store(index.get(), Ordering::Release);
         Ok(())
     }
     fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
@@ -312,7 +312,7 @@ impl RaftStateMachine for CountingSm {
         Ok(())
     }
     fn applied_index(&self) -> Index {
-        self.0.load(Ordering::Acquire)
+        Index::new(self.0.load(Ordering::Acquire))
     }
 }
 

@@ -30,14 +30,14 @@ pub(super) fn apply_ready_with_admission(
     while let Some((index, term, kind)) = node.peek_next_committed_identity() {
         let permit = pending_admission.and_then(|pending| {
             let mut pending = pending.lock().unwrap_or_else(|p| p.into_inner());
-            pending.retain(|(at, entry_term), _| *at != index || *entry_term == term);
-            pending.remove(&(index, term))
+            pending.retain(|(at, entry_term), _| *at != index || *entry_term == term.get());
+            pending.remove(&(index, term.get()))
         });
         if kind == raft_core::EntryKind::Command && index > sm.applied_index() {
             // Cold start and deterministic conformance own the node directly.
             // Borrow exactly this command; never materialize a committed batch.
             let persisted = node.persisted_ref();
-            let offset = (index - persisted.snapshot_index - 1) as usize;
+            let offset = (index.get() - persisted.snapshot_index.get() - 1) as usize;
             let entry = &persisted.log[offset];
             sm.apply_admitted(index, &entry.command, permit)
                 .map_err(StateMachineError::into_anyhow)?;
@@ -59,7 +59,8 @@ pub(super) fn apply_ready_with_admission(
         return Ok(());
     };
     let applied = sm.applied_index();
-    if applied == 0 || applied.saturating_sub(node.snapshot_index()) < every {
+    if applied == Index::new(0) || applied.get().saturating_sub(node.snapshot_index().get()) < every
+    {
         return Ok(());
     }
     let mut sink = ChunkSink::new(SNAPSHOT_CHUNK_SIZE);

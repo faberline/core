@@ -52,7 +52,7 @@ impl Shared {
                     .pending_admission
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .insert((idx, term), permit);
+                    .insert((idx, term.get()), permit);
                 debug_assert!(previous.is_none(), "Raft index permit was replaced");
             }
             if let Err(e) = self.persist(&n) {
@@ -206,7 +206,7 @@ impl RaftHost {
     /// machine applies the returned index (read-your-write on a follower).
     pub(super) async fn forward(&self, leader_url: &str, command: &[u8]) -> ProposalOutcome {
         let seq = match self.shared.peer_client.forward(leader_url, command).await {
-            ForwardReply::Accepted { seq } => seq,
+            ForwardReply::Accepted { seq } => Index::new(seq),
             ForwardReply::Backpressure {
                 reason,
                 retry_after_seconds,

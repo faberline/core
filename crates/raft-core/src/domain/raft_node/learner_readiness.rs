@@ -9,7 +9,7 @@ impl RaftNode {
         if self.role != Role::Leader || !self.conf_state.membership.learners().contains(&peer) {
             return None;
         }
-        self.match_index.get(&peer).copied().or(Some(0))
+        self.match_index.get(&peer).copied().or(Some(Index::new(0)))
     }
 
     /// The index `peer` must replicate to before it is fit to serve reads, or

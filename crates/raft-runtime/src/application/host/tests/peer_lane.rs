@@ -1,27 +1,27 @@
 use super::*;
-use raft_core::{AppendReq, AppendResp, TimeoutNowReq, VoteReq, VoteResp};
+use raft_core::{AppendReq, AppendResp, Term, TimeoutNowReq, VoteReq, VoteResp};
 
 fn append(marker: u64) -> RaftMsg {
     RaftMsg::Append(AppendReq {
-        term: marker,
+        term: Term::new(marker),
         leader: NodeId::new(7),
-        prev_log_index: 0,
-        prev_log_term: 0,
+        prev_log_index: Index::new(0),
+        prev_log_term: Term::new(0),
         entries: vec![],
-        leader_commit: marker,
+        leader_commit: Index::new(marker),
     })
 }
 
 fn timeout_now(marker: u64) -> RaftMsg {
     RaftMsg::TimeoutNow(TimeoutNowReq {
-        term: marker,
+        term: Term::new(marker),
         leader: NodeId::new(7),
     })
 }
 
 fn assert_append(message: Option<RaftMsg>, marker: u64) {
     match message {
-        Some(RaftMsg::Append(req)) => assert_eq!(req.leader_commit, marker),
+        Some(RaftMsg::Append(req)) => assert_eq!(req.leader_commit, Index::new(marker)),
         other => panic!("expected Append({marker}), got {other:?}"),
     }
 }
@@ -29,7 +29,7 @@ fn assert_append(message: Option<RaftMsg>, marker: u64) {
 fn assert_timeout_now(message: Option<RaftMsg>, term: u64, leader: u64) {
     match message {
         Some(RaftMsg::TimeoutNow(req)) => {
-            assert_eq!(req.term, term);
+            assert_eq!(req.term, Term::new(term));
             assert_eq!(req.leader, NodeId::new(leader));
         }
         other => panic!("expected TimeoutNow({term}, {leader}), got {other:?}"),
@@ -120,31 +120,31 @@ fn peer_lane_keeps_every_non_append_message_lossless_and_fifo() {
     let mut queue = PeerLaneQueue::default();
     let expected = vec![
         RaftMsg::Vote(VoteReq {
-            term: 10,
+            term: Term::new(10),
             candidate: NodeId::new(1),
-            last_log_index: 2,
-            last_log_term: 3,
+            last_log_index: Index::new(2),
+            last_log_term: Term::new(3),
         }),
         RaftMsg::VoteResp(VoteResp {
-            term: 20,
+            term: Term::new(20),
             granted: true,
         }),
         RaftMsg::AppendResp(AppendResp {
-            term: 30,
+            term: Term::new(30),
             success: true,
-            match_index: 4,
+            match_index: Index::new(4),
         }),
         RaftMsg::InstallSnapshot(InstallSnapshotReq {
-            term: 40,
+            term: Term::new(40),
             leader: NodeId::new(1),
-            snapshot_index: 5,
-            snapshot_term: 6,
+            snapshot_index: Index::new(5),
+            snapshot_term: Term::new(6),
             data: vec![7],
         }),
         RaftMsg::InstallSnapshotResp(InstallSnapshotResp {
-            term: 50,
+            term: Term::new(50),
             accepted: true,
-            snapshot_index: 8,
+            snapshot_index: Index::new(8),
         }),
         timeout_now(60),
         append(70),

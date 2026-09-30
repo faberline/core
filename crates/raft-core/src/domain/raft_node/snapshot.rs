@@ -52,7 +52,7 @@ impl RaftNode {
             return;
         }
         let term = self.term_at(up_to);
-        let drop = (up_to - self.snapshot_index) as usize;
+        let drop = (up_to.get() - self.snapshot_index.get()) as usize;
         let drop = drop.min(self.log.len());
         let removed = self.log[..drop]
             .iter()
@@ -96,7 +96,7 @@ impl RaftNode {
             let retained_suffix = if req.snapshot_index <= self.last_index()
                 && self.term_at(req.snapshot_index) == req.snapshot_term
             {
-                let first = (req.snapshot_index - self.snapshot_index) as usize;
+                let first = (req.snapshot_index.get() - self.snapshot_index.get()) as usize;
                 self.log[first.min(self.log.len())..].to_vec()
             } else {
                 Vec::new()
@@ -137,15 +137,15 @@ impl RaftNode {
             return;
         }
         let m = resp.snapshot_index;
-        if m > *self.match_index.get(&from).unwrap_or(&0) {
+        if m > *self.match_index.get(&from).unwrap_or(&Index::new(0)) {
             self.match_index.insert(from, m);
         }
-        self.next_index.insert(from, m + 1);
+        self.next_index.insert(from, m.next());
         let old = self.commit_index;
         self.maybe_commit();
         if self.commit_index > old {
             self.broadcast_append();
-        } else if *self.next_index.get(&from).unwrap_or(&1) <= self.last_index() {
+        } else if *self.next_index.get(&from).unwrap_or(&Index::new(1)) <= self.last_index() {
             self.send_append_to(from);
         }
     }

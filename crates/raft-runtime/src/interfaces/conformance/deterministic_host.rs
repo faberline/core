@@ -202,7 +202,7 @@ impl DeterministicHost {
                 Role::Candidate => ConformanceRole::Candidate,
                 Role::Leader => ConformanceRole::Leader,
             },
-            term: self.node.current_term(),
+            term: self.node.current_term().get(),
             leader: self.node.leader(),
             commit_index: self.node.commit_index(),
             last_index: self.node.last_index(),

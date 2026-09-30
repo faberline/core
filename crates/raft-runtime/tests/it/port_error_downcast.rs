@@ -104,7 +104,7 @@ impl RaftStateMachine for RefusingSm {
     }
 
     fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
-        self.applied.store(index, Ordering::Release);
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
 
@@ -124,7 +124,7 @@ impl RaftStateMachine for RefusingSm {
     }
 
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 
@@ -253,8 +253,8 @@ fn membership_error_from_anyhow_comes_back_whole() {
 #[test]
 fn prefix_unavailable_keeps_its_text() {
     let error = StateMachineError::PrefixUnavailable {
-        index: 4,
-        applied: 7,
+        index: Index::new(4),
+        applied: Index::new(7),
     };
     assert_eq!(
         error.to_string(),

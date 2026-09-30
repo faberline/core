@@ -5,7 +5,7 @@
 use raft_core::NodeId;
 use std::{collections::HashMap, sync::Arc};
 
-use raft_core::{EntryKind, PersistedState, RaftEntry};
+use raft_core::{EntryKind, Index, PersistedState, RaftEntry, Term};
 use raft_runtime::{FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore};
 
 #[allow(dead_code)]
@@ -32,11 +32,13 @@ async fn resident_log_limit_backpressures_then_reopens_after_compaction() {
         HostConfig::default(),
     );
 
-    assert_eq!(host.propose(vec![1; 40]).await.unwrap(), 1);
+    assert_eq!(host.propose(vec![1; 40]).await.unwrap(), Index::new(1));
     let error = host.propose(vec![2; 40]).await.unwrap_err();
     assert!(error.to_string().contains("resident log memory limit"));
-    host.snapshot_and_compact_through(1).await.unwrap();
-    assert_eq!(host.propose(vec![3; 40]).await.unwrap(), 2);
+    host.snapshot_and_compact_through(Index::new(1))
+        .await
+        .unwrap();
+    assert_eq!(host.propose(vec![3; 40]).await.unwrap(), Index::new(2));
     std::env::remove_var("RAFT_RUNTIME_MAX_RESIDENT_LOG_BYTES");
 }
 
@@ -51,17 +53,17 @@ async fn corrupt_referenced_v4_log_refuses_host_startup() {
     .unwrap();
     store
         .save(&PersistedState {
-            term: 1,
+            term: Term::new(1),
             voted_for: Some(NodeId::new(0)),
             log: vec![RaftEntry {
-                term: 1,
-                index: 1,
+                term: Term::new(1),
+                index: Index::new(1),
                 command: vec![7; 128],
                 kind: EntryKind::Command,
             }],
-            commit_index: 1,
-            snapshot_index: 0,
-            snapshot_term: 0,
+            commit_index: Index::new(1),
+            snapshot_index: Index::new(0),
+            snapshot_term: Term::new(0),
             snapshot: Vec::new(),
             conf: None,
         })

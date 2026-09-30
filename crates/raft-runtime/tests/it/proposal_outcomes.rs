@@ -27,7 +27,8 @@ use std::time::Duration;
 
 use axum::{http::StatusCode, routing::post, Json, Router};
 use raft_runtime::{
-    FsyncPolicy, HostConfig, Membership, ProposalOutcome, RaftHost, RaftStateMachine, RaftStore,
+    FsyncPolicy, HostConfig, Index, Membership, ProposalOutcome, RaftHost, RaftStateMachine,
+    RaftStore,
 };
 use tempfile::TempDir;
 use tokio::io::AsyncReadExt;
@@ -115,7 +116,10 @@ async fn single_voter_completed_outcome_matches_applied_index() {
 
     match outcome {
         ProposalOutcome::Completed { index } => {
-            assert!(index >= 1, "completed index must be >= 1, got {index}");
+            assert!(
+                index >= Index::new(1),
+                "completed index must be >= 1, got {index}"
+            );
             assert_eq!(
                 nodes[0].sm.applied_index(),
                 index,
@@ -215,7 +219,10 @@ async fn injected_save_failure_reports_durability_failure_with_allocated_index()
                 "first durability failure must have allocated index Some(i)"
             );
             let idx = index.unwrap();
-            assert!(idx >= 1, "allocated index must be >= 1, got {idx}");
+            assert!(
+                idx >= Index::new(1),
+                "allocated index must be >= 1, got {idx}"
+            );
             assert_eq!(failure.kind, ErrorKind::StorageFull);
         }
         other => {
@@ -284,7 +291,10 @@ async fn follower_forwarding_to_live_leader_completes_after_local_apply() {
 
     match outcome {
         ProposalOutcome::Completed { index } => {
-            assert!(index >= 1, "forwarded completed index must be positive");
+            assert!(
+                index >= Index::new(1),
+                "forwarded completed index must be positive"
+            );
             assert_eq!(
                 nodes[follower].sm.applied_index(),
                 index,
@@ -428,7 +438,7 @@ async fn follower_forwarding_malformed_admission_body_remains_ambiguous() {
 #[tokio::test]
 async fn sequential_successful_proposals_increase_indices() {
     let nodes = cluster(1).await;
-    let mut prev_index = 0;
+    let mut prev_index = Index::new(0);
 
     for i in 1..=4u8 {
         let outcome = nodes[0]

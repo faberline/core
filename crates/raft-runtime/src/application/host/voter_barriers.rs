@@ -77,7 +77,7 @@ impl RaftHost {
             .filter(|voter| *voter != self.shared.id)
         {
             let status = self.shared.request_status(voter).await?;
-            if status.applied_index < index {
+            if status.applied_index < index.get() {
                 return Err(anyhow!(
                     "raft: voter {voter} has applied index {}, below required index {index}",
                     status.applied_index

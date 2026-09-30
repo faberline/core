@@ -3,7 +3,7 @@
 //! run on the blocking pool under the separate state-machine serial boundary.
 
 use super::*;
-use raft_core::EntryKind;
+use raft_core::{EntryKind, Term};
 
 impl Shared {
     /// Called while the node mutex is held, after its current state is durable.
@@ -82,8 +82,10 @@ impl Shared {
                             .pending_admission
                             .lock()
                             .unwrap_or_else(|p| p.into_inner());
-                        pending.retain(|(at, entry_term), _| *at != index || *entry_term == term);
-                        pending.remove(&(index, term))
+                        pending.retain(|(at, entry_term), _| {
+                            *at != index || *entry_term == term.get()
+                        });
+                        pending.remove(&(index, term.get()))
                     };
                     Some((index, term, source, permit))
                 }
@@ -118,7 +120,9 @@ impl Shared {
         let applied = self.sm.applied_index();
         {
             let node = self.node.blocking_lock();
-            if applied == 0 || applied.saturating_sub(node.snapshot_index()) < every {
+            if applied == Index::new(0)
+                || applied.get().saturating_sub(node.snapshot_index().get()) < every
+            {
                 return Ok(());
             }
         }
@@ -155,9 +159,9 @@ impl Shared {
                 node.reject_install_snapshot(req);
                 if self.persist(&node).is_err() {
                     return InstallSnapshotResp {
-                        term: 0,
+                        term: Term::new(0),
                         accepted: false,
-                        snapshot_index: 0,
+                        snapshot_index: Index::new(0),
                     };
                 }
                 return match take_reply(&mut node, from) {
@@ -178,9 +182,9 @@ impl Shared {
             if self.persist(&node).is_err() {
                 let _ = take_reply(&mut node, from);
                 return InstallSnapshotResp {
-                    term: 0,
+                    term: Term::new(0),
                     accepted: false,
-                    snapshot_index: 0,
+                    snapshot_index: Index::new(0),
                 };
             }
             let bytes = if restore {

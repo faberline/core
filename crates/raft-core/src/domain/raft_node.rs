@@ -80,7 +80,7 @@ impl RaftNode {
         let peers = members.into_iter().filter(|m| *m != id).collect();
         let mut learner_read_targets = HashMap::new();
         for &l in membership.learners() {
-            learner_read_targets.insert(l, 0);
+            learner_read_targets.insert(l, Index::new(0));
         }
         RaftNode {
             id,
@@ -92,14 +92,14 @@ impl RaftNode {
                 generation: 0,
             },
             role: Role::Follower,
-            current_term: 0,
+            current_term: Term::new(0),
             voted_for: None,
             log: Vec::new(),
             resident_log_bytes: 0,
-            commit_index: 0,
-            last_applied: 0,
-            snapshot_index: 0,
-            snapshot_term: 0,
+            commit_index: Index::new(0),
+            last_applied: Index::new(0),
+            snapshot_index: Index::new(0),
+            snapshot_term: Term::new(0),
             snapshot: Vec::new(),
             installed_snapshot: None,
             next_index: HashMap::new(),

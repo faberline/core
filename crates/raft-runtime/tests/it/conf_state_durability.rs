@@ -10,7 +10,7 @@
 use raft_core::NodeId;
 use tempfile::TempDir;
 
-use raft_core::{ConfState, EntryKind, Membership, PersistedState, RaftEntry};
+use raft_core::{ConfState, EntryKind, Index, Membership, PersistedState, RaftEntry, Term};
 use raft_runtime::{FsyncPolicy, RaftStore};
 
 const MAGIC_V1: &[u8; 8] = b"RAFTST01";
@@ -97,21 +97,21 @@ fn a_record_written_by_the_current_format_loads_with_no_configuration() {
         state.conf, None,
         "a record written before membership was durable must load with no configuration rather than be rejected"
     );
-    assert_eq!(state.term, 3);
+    assert_eq!(state.term, Term::new(3));
     assert_eq!(state.voted_for, Some(NodeId::new(2)));
-    assert_eq!(state.commit_index, 2);
+    assert_eq!(state.commit_index, Index::new(2));
     assert_eq!(
         state.log,
         vec![
             RaftEntry {
-                term: 3,
-                index: 1,
+                term: Term::new(3),
+                index: Index::new(1),
                 command: b"one".to_vec(),
                 kind: EntryKind::Command,
             },
             RaftEntry {
-                term: 3,
-                index: 2,
+                term: Term::new(3),
+                index: Index::new(2),
                 command: b"two".to_vec(),
                 kind: EntryKind::Command,
             },
@@ -129,7 +129,7 @@ fn the_oldest_record_format_still_loads() {
     let state = store.load().unwrap().expect("a RAFTST01 record must load");
 
     assert_eq!(state.conf, None);
-    assert_eq!(state.term, 1);
+    assert_eq!(state.term, Term::new(1));
     assert_eq!(state.voted_for, None);
     assert_eq!(state.log[0].kind, EntryKind::Command);
     assert_eq!(state.log[0].command, b"only".to_vec());
@@ -147,25 +147,25 @@ fn the_configuration_and_entry_kinds_survive_the_durable_round_trip() {
         generation: 9,
     };
     let state = PersistedState {
-        term: 4,
+        term: Term::new(4),
         voted_for: Some(NodeId::new(0)),
         log: vec![
             RaftEntry {
-                term: 4,
-                index: 1,
+                term: Term::new(4),
+                index: Index::new(1),
                 command: b"cmd".to_vec(),
                 kind: EntryKind::Command,
             },
             RaftEntry {
-                term: 4,
-                index: 2,
+                term: Term::new(4),
+                index: Index::new(2),
                 command: conf.encode(),
                 kind: EntryKind::Config,
             },
         ],
-        commit_index: 2,
-        snapshot_index: 0,
-        snapshot_term: 0,
+        commit_index: Index::new(2),
+        snapshot_index: Index::new(0),
+        snapshot_term: Term::new(0),
         snapshot: vec![],
         conf: Some(conf.clone()),
     };
@@ -196,17 +196,17 @@ fn the_record_carries_the_configuration_as_the_canonical_encoder_writes_it() {
         generation: 11,
     };
     let state = PersistedState {
-        term: 2,
+        term: Term::new(2),
         voted_for: None,
         log: vec![RaftEntry {
-            term: 2,
-            index: 1,
+            term: Term::new(2),
+            index: Index::new(1),
             command: b"payload".to_vec(),
             kind: EntryKind::Command,
         }],
-        commit_index: 1,
-        snapshot_index: 0,
-        snapshot_term: 0,
+        commit_index: Index::new(1),
+        snapshot_index: Index::new(0),
+        snapshot_term: Term::new(0),
         snapshot: vec![],
         conf: Some(conf.clone()),
     };
@@ -346,17 +346,17 @@ fn a_configuration_claiming_a_length_the_record_cannot_hold_is_refused() {
     for (what, field_at, claimed) in cases {
         let dir = TempDir::new().unwrap();
         let state = PersistedState {
-            term: 2,
+            term: Term::new(2),
             voted_for: None,
             log: vec![RaftEntry {
-                term: 2,
-                index: 1,
+                term: Term::new(2),
+                index: Index::new(1),
                 command: b"payload".to_vec(),
                 kind: EntryKind::Command,
             }],
-            commit_index: 1,
-            snapshot_index: 0,
-            snapshot_term: 0,
+            commit_index: Index::new(1),
+            snapshot_index: Index::new(0),
+            snapshot_term: Term::new(0),
             snapshot: vec![],
             conf: Some(conf.clone()),
         };
@@ -408,17 +408,17 @@ fn a_voters_length_claiming_one_slot_past_the_bound_is_refused() {
 
     let dir = TempDir::new().unwrap();
     let state = PersistedState {
-        term: 2,
+        term: Term::new(2),
         voted_for: None,
         log: vec![RaftEntry {
-            term: 2,
-            index: 1,
+            term: Term::new(2),
+            index: Index::new(1),
             command: b"payload".to_vec(),
             kind: EntryKind::Command,
         }],
-        commit_index: 1,
-        snapshot_index: 0,
-        snapshot_term: 0,
+        commit_index: Index::new(1),
+        snapshot_index: Index::new(0),
+        snapshot_term: Term::new(0),
         snapshot: vec![],
         conf: Some(conf.clone()),
     };
@@ -482,25 +482,25 @@ fn a_config_entry_whose_command_does_not_decode_is_refused() {
     );
 
     let state = PersistedState {
-        term: 4,
+        term: Term::new(4),
         voted_for: Some(NodeId::new(0)),
         log: vec![
             RaftEntry {
-                term: 4,
-                index: 1,
+                term: Term::new(4),
+                index: Index::new(1),
                 command: b"cmd".to_vec(),
                 kind: EntryKind::Command,
             },
             RaftEntry {
-                term: 4,
-                index: 2,
+                term: Term::new(4),
+                index: Index::new(2),
                 command: undecodable,
                 kind: EntryKind::Config,
             },
         ],
-        commit_index: 2,
-        snapshot_index: 0,
-        snapshot_term: 0,
+        commit_index: Index::new(2),
+        snapshot_index: Index::new(0),
+        snapshot_term: Term::new(0),
         snapshot: vec![],
         conf: Some(conf),
     };
@@ -556,17 +556,17 @@ fn a_config_entry_longer_than_the_decoders_floor_is_still_judged_by_the_decoder(
     );
 
     let state = PersistedState {
-        term: 4,
+        term: Term::new(4),
         voted_for: Some(NodeId::new(0)),
         log: vec![RaftEntry {
-            term: 4,
-            index: 1,
+            term: Term::new(4),
+            index: Index::new(1),
             command: undecodable,
             kind: EntryKind::Config,
         }],
-        commit_index: 1,
-        snapshot_index: 0,
-        snapshot_term: 0,
+        commit_index: Index::new(1),
+        snapshot_index: Index::new(0),
+        snapshot_term: Term::new(0),
         snapshot: vec![],
         conf: Some(conf),
     };

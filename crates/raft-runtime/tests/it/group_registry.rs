@@ -1,10 +1,9 @@
-use raft_core::NodeId;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 
-use raft_core::VoteReq;
+use raft_core::{NodeId, Term, VoteReq};
 use raft_runtime::{
     FsyncPolicy, GroupId, HostConfig, Index, Membership, RaftHost, RaftRegistry, RaftStateMachine,
     RaftStatus, RaftStore, RegistryError, StateMachineError,
@@ -48,7 +47,7 @@ impl RaftStateMachine for SequenceSm {
             0
         };
         self.commands.lock().unwrap().push(val);
-        self.applied.store(index, Ordering::Release);
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
 
@@ -75,7 +74,7 @@ impl RaftStateMachine for SequenceSm {
     }
 
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 
@@ -431,10 +430,10 @@ async fn row3_unknown_group_refusal_negative_control() {
             "group_id": "unregistered_group",
             "from": 99,
             "req": VoteReq {
-                term: 999,
+                term: Term::new(999),
                 candidate: NodeId::new(99),
-                last_log_index: 999,
-                last_log_term: 999,
+                last_log_index: Index::new(999),
+                last_log_term: Term::new(999),
             }
         }))
         .send()
@@ -912,10 +911,10 @@ async fn row8_foreign_group_single_host_returns_400() {
             "group_id": "beta",
             "from": 1,
             "req": VoteReq {
-                term: 2,
+                term: Term::new(2),
                 candidate: NodeId::new(1),
-                last_log_index: 0,
-                last_log_term: 0,
+                last_log_index: Index::new(0),
+                last_log_term: Term::new(0),
             }
         }))
         .send()

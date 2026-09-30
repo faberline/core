@@ -12,7 +12,7 @@ impl RaftNode {
         if self.role != Role::Leader || self.transfer_in_flight.is_some() {
             return None;
         }
-        let index = self.last_index() + 1;
+        let index = self.last_index().next();
         self.resident_log_bytes = self.resident_log_bytes.saturating_add(command.len());
         self.log.push(RaftEntry {
             term: self.current_term,
@@ -31,7 +31,7 @@ impl RaftNode {
         if self.role != Role::Leader || self.transfer_in_flight.is_some() {
             return None;
         }
-        let index = self.last_index() + 1;
+        let index = self.last_index().next();
         let command = conf.encode();
         self.resident_log_bytes = self.resident_log_bytes.saturating_add(command.len());
         self.log.push(RaftEntry {
