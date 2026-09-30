@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 
 use serde_json::json;
 use service_k8s::render::{
-    ClusterRoleBindingPlan, ContainerPlan, DeploymentPlan, FqdnMatchPlan, FqdnNetworkPolicyPlan,
-    NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan, PodPlan,
-    PodRuntimePolicy, RenderCtx, ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan,
-    WorkloadPlan,
+    ClusterRoleBindingPlan, ContainerPlan, CronJobPlan, DeploymentPlan, FqdnMatchPlan,
+    FqdnNetworkPolicyPlan, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
+    PodPlan, PodRuntimePolicy, RbacRulePlan, RenderCtx, RoleBindingPlan, RolePlan,
+    ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan, WorkloadPlan,
 };
 
 fn context() -> RenderCtx<'static> {
@@ -155,4 +155,75 @@ fn any_network_peer_omits_the_direction_selector() {
         "an unrestricted peer is expressed by omitting `from`, not by an invalid empty peer"
     );
     assert_eq!(ingress["ports"], json!([{"protocol":"TCP", "port":7380}]));
+}
+
+#[test]
+fn typed_plan_renders_role_role_binding_and_cron_job_from_constructors() {
+    let cx = context();
+    let role = RolePlan::new("sample-agent", "auth").with_rule(
+        RbacRulePlan::new(
+            vec!["demo.axiom.dev".into()],
+            vec!["projects".into()],
+            vec!["get".into(), "update".into()],
+        )
+        .with_resource_names(vec!["sample".into()]),
+    );
+    assert_eq!(role.name(), "sample-agent");
+    assert_eq!(role.rules()[0].resource_names(), ["sample"]);
+    let binding = RoleBindingPlan::new("sample-agent", "auth", "sample-agent")
+        .with_service_account(ServiceAccountSubjectPlan::new("observability", "sample"))
+        .with_service_account(ServiceAccountSubjectPlan::new(
+            "observability",
+            "sample-backup",
+        ));
+    assert_eq!(binding.subjects()[1].name(), "sample-backup");
+    assert_eq!(binding.subjects()[1].namespace(), "observability");
+    let pod = PodPlan::new(
+        "backup",
+        ContainerPlan::new("backup", "demo:1", vec!["backup".into()]),
+        PodRuntimePolicy::restricted("sample-backup", json!({})),
+    );
+    let defaults = CronJobPlan::new("sample-backup", "0 3 * * *", pod.clone());
+    assert_eq!(
+        (
+            defaults.successful_jobs_history_limit(),
+            defaults.failed_jobs_history_limit()
+        ),
+        (3, 1)
+    );
+    let cron_job = CronJobPlan::new("sample-backup", "0 3 * * *", pod)
+        .with_successful_jobs_history_limit(5)
+        .with_failed_jobs_history_limit(2);
+
+    let mut plan = WorkloadPlan::new(&cx);
+    plan.add_role(role);
+    plan.add_role_binding(binding);
+    plan.add_cron_job(cron_job);
+    let objects = plan.render().expect("render typed workload plan");
+
+    assert_eq!(
+        objects[0]["rules"],
+        json!([{
+            "apiGroups": ["demo.axiom.dev"],
+            "resources": ["projects"],
+            "resourceNames": ["sample"],
+            "verbs": ["get", "update"]
+        }])
+    );
+    assert_eq!(objects[1]["roleRef"]["name"], "sample-agent");
+    assert_eq!(
+        objects[1]["subjects"],
+        json!([
+            {"kind": "ServiceAccount", "name": "sample", "namespace": "observability"},
+            {"kind": "ServiceAccount", "name": "sample-backup", "namespace": "observability"}
+        ])
+    );
+    let spec = &objects[2]["spec"];
+    assert_eq!(spec["schedule"], "0 3 * * *");
+    assert_eq!(spec["successfulJobsHistoryLimit"], 5);
+    assert_eq!(spec["failedJobsHistoryLimit"], 2);
+    assert_eq!(
+        spec["jobTemplate"]["spec"]["template"]["spec"]["restartPolicy"],
+        "OnFailure"
+    );
 }

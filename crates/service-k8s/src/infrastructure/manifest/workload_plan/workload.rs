@@ -255,16 +255,59 @@ impl PodDisruptionBudgetPlan {
     }
 }
 
+/// A CronJob that runs `pod` on `schedule`, one run at a time.
 #[derive(Clone, Debug)]
 pub struct CronJobPlan {
-    pub name: String,
-    pub schedule: String,
-    pub successful_jobs_history_limit: i32,
-    pub failed_jobs_history_limit: i32,
-    pub pod: PodPlan,
+    name: String,
+    schedule: String,
+    successful_jobs_history_limit: i32,
+    failed_jobs_history_limit: i32,
+    pod: PodPlan,
 }
 
 impl CronJobPlan {
+    /// A CronJob that keeps Kubernetes' default history: 3 successful and
+    /// 1 failed Job. The builders below change either limit.
+    pub fn new(name: impl Into<String>, schedule: impl Into<String>, pod: PodPlan) -> Self {
+        Self {
+            name: name.into(),
+            schedule: schedule.into(),
+            successful_jobs_history_limit: 3,
+            failed_jobs_history_limit: 1,
+            pod,
+        }
+    }
+
+    pub fn with_successful_jobs_history_limit(mut self, limit: i32) -> Self {
+        self.successful_jobs_history_limit = limit;
+        self
+    }
+
+    pub fn with_failed_jobs_history_limit(mut self, limit: i32) -> Self {
+        self.failed_jobs_history_limit = limit;
+        self
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn schedule(&self) -> &str {
+        &self.schedule
+    }
+
+    pub fn successful_jobs_history_limit(&self) -> i32 {
+        self.successful_jobs_history_limit
+    }
+
+    pub fn failed_jobs_history_limit(&self) -> i32 {
+        self.failed_jobs_history_limit
+    }
+
+    pub fn pod(&self) -> &PodPlan {
+        &self.pod
+    }
+
     pub(super) fn render(mut self, cx: &RenderCtx<'_>) -> Value {
         self.pod.runtime.restart_policy = Some("OnFailure".into());
         let component = self.pod.component.clone();

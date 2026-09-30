@@ -5,22 +5,86 @@ use serde_json::{json, Value};
 use super::{LabelSet, RenderCtx};
 use crate::infrastructure::manifest::rbac;
 
+/// One rule of a [`RolePlan`].
 #[derive(Clone, Debug)]
 pub struct RbacRulePlan {
-    pub api_groups: Vec<String>,
-    pub resources: Vec<String>,
-    pub resource_names: Vec<String>,
-    pub verbs: Vec<String>,
+    api_groups: Vec<String>,
+    resources: Vec<String>,
+    resource_names: Vec<String>,
+    verbs: Vec<String>,
 }
 
+impl RbacRulePlan {
+    /// A rule over every object of `resources`; narrow it to named objects
+    /// with [`Self::with_resource_names`].
+    pub fn new(api_groups: Vec<String>, resources: Vec<String>, verbs: Vec<String>) -> Self {
+        Self {
+            api_groups,
+            resources,
+            resource_names: Vec::new(),
+            verbs,
+        }
+    }
+
+    /// Add names to `resourceNames`. The rule renders `resourceNames` only
+    /// when at least one name is set.
+    pub fn with_resource_names(mut self, names: Vec<String>) -> Self {
+        self.resource_names.extend(names);
+        self
+    }
+
+    pub fn api_groups(&self) -> &[String] {
+        &self.api_groups
+    }
+
+    pub fn resources(&self) -> &[String] {
+        &self.resources
+    }
+
+    pub fn resource_names(&self) -> &[String] {
+        &self.resource_names
+    }
+
+    pub fn verbs(&self) -> &[String] {
+        &self.verbs
+    }
+}
+
+/// A namespaced Role, owned by the custom resource like every other child.
 #[derive(Clone, Debug)]
 pub struct RolePlan {
-    pub name: String,
-    pub component: String,
-    pub rules: Vec<RbacRulePlan>,
+    name: String,
+    component: String,
+    rules: Vec<RbacRulePlan>,
 }
 
 impl RolePlan {
+    /// A Role with no rules yet; add them with [`Self::with_rule`].
+    pub fn new(name: impl Into<String>, component: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            component: component.into(),
+            rules: Vec::new(),
+        }
+    }
+
+    pub fn with_rule(mut self, rule: RbacRulePlan) -> Self {
+        self.rules.push(rule);
+        self
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn component(&self) -> &str {
+        &self.component
+    }
+
+    pub fn rules(&self) -> &[RbacRulePlan] {
+        &self.rules
+    }
+
     pub(super) fn render(self, cx: &RenderCtx<'_>) -> Value {
         let rules = self
             .rules
@@ -46,10 +110,12 @@ impl RolePlan {
     }
 }
 
+/// A ServiceAccount subject of a [`RoleBindingPlan`] or
+/// [`ClusterRoleBindingPlan`].
 #[derive(Clone, Debug)]
 pub struct ServiceAccountSubjectPlan {
-    pub name: String,
-    pub namespace: String,
+    name: String,
+    namespace: String,
 }
 
 impl ServiceAccountSubjectPlan {
@@ -59,17 +125,62 @@ impl ServiceAccountSubjectPlan {
             namespace: namespace.into(),
         }
     }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn namespace(&self) -> &str {
+        &self.namespace
+    }
 }
 
+/// A namespaced RoleBinding from ServiceAccounts to a Role.
 #[derive(Clone, Debug)]
 pub struct RoleBindingPlan {
-    pub name: String,
-    pub component: String,
-    pub role_name: String,
-    pub subjects: Vec<ServiceAccountSubjectPlan>,
+    name: String,
+    component: String,
+    role_name: String,
+    subjects: Vec<ServiceAccountSubjectPlan>,
 }
 
 impl RoleBindingPlan {
+    /// A binding to the Role `role_name` with no subjects yet; add them with
+    /// [`Self::with_service_account`].
+    pub fn new(
+        name: impl Into<String>,
+        component: impl Into<String>,
+        role_name: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            component: component.into(),
+            role_name: role_name.into(),
+            subjects: Vec::new(),
+        }
+    }
+
+    pub fn with_service_account(mut self, subject: ServiceAccountSubjectPlan) -> Self {
+        self.subjects.push(subject);
+        self
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn component(&self) -> &str {
+        &self.component
+    }
+
+    pub fn role_name(&self) -> &str {
+        &self.role_name
+    }
+
+    pub fn subjects(&self) -> &[ServiceAccountSubjectPlan] {
+        &self.subjects
+    }
+
     pub(super) fn render(self, cx: &RenderCtx<'_>) -> Value {
         json!({
             "apiVersion": "rbac.authorization.k8s.io/v1",
