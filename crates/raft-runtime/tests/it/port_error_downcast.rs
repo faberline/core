@@ -137,10 +137,7 @@ async fn leader(refusal: Refusal, snapshot_failure: SnapshotFailure) -> (RaftHos
     });
     let host = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        Membership::new(vec![0], vec![]),
         Default::default(),
         RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap(),
         sm as Arc<dyn RaftStateMachine>,

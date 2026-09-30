@@ -18,10 +18,7 @@ async fn failed_state_machine_restore_keeps_the_old_snapshot_and_log() {
     let state_machine = TestSm::new();
     let host = Arc::new(RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: Vec::new(),
-        },
+        Membership::new(vec![0], Vec::new()),
         HashMap::new(),
         RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
         state_machine.clone() as Arc<dyn RaftStateMachine>,
@@ -78,10 +75,7 @@ async fn equal_index_snapshot_retry_requires_the_same_identity() {
     let state_machine = TestSm::new();
     let host = Arc::new(RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: Vec::new(),
-        },
+        Membership::new(vec![0], Vec::new()),
         HashMap::new(),
         RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
         state_machine.clone() as Arc<dyn RaftStateMachine>,
@@ -165,10 +159,7 @@ async fn raft_save_failure_happens_before_state_machine_restore() {
     let state_machine = TestSm::new();
     let host = Arc::new(RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: Vec::new(),
-        },
+        Membership::new(vec![0], Vec::new()),
         HashMap::new(),
         RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
         state_machine.clone() as Arc<dyn RaftStateMachine>,

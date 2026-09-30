@@ -114,14 +114,14 @@ impl RaftHost {
                 ));
             }
             if up_to <= n.snapshot_index()
-                && (!require_every_voter || n.conf_state().membership.voters.len() <= 1)
+                && (!require_every_voter || n.conf_state().membership.voters().len() <= 1)
             {
                 return Ok(SnapshotCompactionOutcome {
                     snapshot_index: n.snapshot_index(),
                     installed: false,
                 });
             }
-            if !n.is_leader() && n.conf_state().membership.voters.len() > 1 {
+            if !n.is_leader() && n.conf_state().membership.voters().len() > 1 {
                 return Err(anyhow!(
                     "only the Raft leader can coordinate voter compaction"
                 ));
@@ -132,7 +132,7 @@ impl RaftHost {
                 (
                     n.current_term(),
                     persisted.snapshot_term,
-                    n.conf_state().membership.voters.clone(),
+                    n.conf_state().membership.voters().to_vec(),
                     persisted.snapshot_index,
                     Some(persisted.snapshot.to_vec()),
                 )
@@ -141,7 +141,7 @@ impl RaftHost {
                     anyhow!("Raft prefix {up_to} has no term and cannot be compacted")
                 })?;
                 let term = n.current_term();
-                let voters = n.conf_state().membership.voters.clone();
+                let voters = n.conf_state().membership.voters().to_vec();
                 drop(n);
                 (term, snapshot_term, voters, up_to, None)
             }
@@ -306,7 +306,7 @@ impl RaftHost {
 
         let mut n = self.shared.node.lock().await;
         if n.current_term() != term
-            || (!n.is_leader() && n.conf_state().membership.voters.len() > 1)
+            || (!n.is_leader() && n.conf_state().membership.voters().len() > 1)
         {
             return Err(anyhow!(
                 "raft leadership changed while coordinating snapshot {up_to}"

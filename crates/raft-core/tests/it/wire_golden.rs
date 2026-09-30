@@ -15,10 +15,7 @@ use serde::de::DeserializeOwned;
 use serde::Serialize;
 
 fn membership() -> Membership {
-    Membership {
-        voters: vec![1, 2, 3],
-        learners: vec![4],
-    }
+    Membership::new(vec![1, 2, 3], vec![4])
 }
 
 fn joint_conf() -> ConfState {

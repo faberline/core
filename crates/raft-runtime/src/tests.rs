@@ -98,10 +98,7 @@ async fn single_node_propose_applies_read_your_write() {
     let sm = CounterSm::new();
     let host = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        Membership::new(vec![0], vec![]),
         std::collections::HashMap::new(),
         store(&tmp, 0),
         sm.clone() as Arc<dyn RaftStateMachine>,
@@ -126,10 +123,7 @@ async fn restart_replays_committed_log_into_a_fresh_sm() {
     let mk = |sm: Arc<dyn RaftStateMachine>| {
         RaftHost::spawn(
             0,
-            Membership {
-                voters: vec![0],
-                learners: vec![],
-            },
+            Membership::new(vec![0], vec![]),
             std::collections::HashMap::new(),
             RaftStore::open(tmp.to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
             sm,

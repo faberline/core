@@ -18,16 +18,16 @@ pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
     let (committed_voters, incoming_voters, membership_phase) = match &conf.outgoing {
         Some(outgoing) => (
             outgoing.clone(),
-            Some(conf.membership.voters.clone()),
+            Some(conf.membership.voters().to_vec()),
             MembershipPhase::Joint,
         ),
         None => (
-            conf.membership.voters.clone(),
+            conf.membership.voters().to_vec(),
             None,
             MembershipPhase::Stable,
         ),
     };
-    let learners = conf.membership.learners.clone();
+    let learners = conf.membership.learners().to_vec();
     let role = if !n.is_voter() {
         "Learner".to_string()
     } else {

@@ -7,14 +7,14 @@ impl RaftHost {
         let _operation = self.shared.begin_coordinated_peer_work()?;
         let (term, voters) = {
             let node = self.shared.node.lock().await;
-            if !node.is_leader() && node.conf_state().membership.voters.len() > 1 {
+            if !node.is_leader() && node.conf_state().membership.voters().len() > 1 {
                 return Err(anyhow!(
                     "only the Raft leader can verify voter snapshot capabilities"
                 ));
             }
             (
                 node.current_term(),
-                node.conf_state().membership.voters.clone(),
+                node.conf_state().membership.voters().to_vec(),
             )
         };
         let required = self
@@ -36,7 +36,7 @@ impl RaftHost {
         }
         let node = self.shared.node.lock().await;
         if node.current_term() != term
-            || (!node.is_leader() && node.conf_state().membership.voters.len() > 1)
+            || (!node.is_leader() && node.conf_state().membership.voters().len() > 1)
         {
             return Err(anyhow!(
                 "raft leadership changed while verifying snapshot capabilities"
@@ -54,7 +54,7 @@ impl RaftHost {
         let _operation = self.shared.begin_coordinated_peer_work()?;
         let (term, voters) = {
             let node = self.shared.node.lock().await;
-            if !node.is_leader() && node.conf_state().membership.voters.len() > 1 {
+            if !node.is_leader() && node.conf_state().membership.voters().len() > 1 {
                 return Err(anyhow!(
                     "only the Raft leader can verify voter applied indexes"
                 ));
@@ -68,7 +68,7 @@ impl RaftHost {
             }
             (
                 node.current_term(),
-                node.conf_state().membership.voters.clone(),
+                node.conf_state().membership.voters().to_vec(),
             )
         };
         for voter in voters
@@ -86,7 +86,7 @@ impl RaftHost {
         }
         let node = self.shared.node.lock().await;
         if node.current_term() != term
-            || (!node.is_leader() && node.conf_state().membership.voters.len() > 1)
+            || (!node.is_leader() && node.conf_state().membership.voters().len() > 1)
         {
             return Err(anyhow!(
                 "raft leadership changed while verifying voter applied indexes"

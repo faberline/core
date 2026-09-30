@@ -15,10 +15,7 @@ fn new_derives_election_timeout_from_public_floor_and_node_id() {
 
 #[test]
 fn leader_sends_first_periodic_heartbeat_at_public_interval() {
-    let membership = Membership {
-        voters: vec![1, 2],
-        learners: Vec::new(),
-    };
+    let membership = Membership::new(vec![1, 2], Vec::new());
     let mut node = RaftNode::new(1, &membership);
     node.become_leader();
     assert_eq!(
@@ -44,10 +41,7 @@ fn leader_sends_first_periodic_heartbeat_at_public_interval() {
 }
 
 fn committed_pair() -> RaftNode {
-    let membership = Membership {
-        voters: vec![1],
-        learners: vec![],
-    };
+    let membership = Membership::new(vec![1], vec![]);
     let mut node = RaftNode::new(1, &membership);
     node.become_leader();
     assert_eq!(node.propose(vec![11]), Some(1));
@@ -101,7 +95,9 @@ fn configuration_changes_only_when_its_exact_identity_finishes() {
     assert!(node.finish_committed_identity(2, term));
     let mut next = node.conf_state().clone();
     next.generation += 1;
-    next.membership.learners.push(9);
+    let (voters, mut learners) = next.membership.into_parts();
+    learners.push(9);
+    next.membership = Membership::new(voters, learners);
     node.log.push(RaftEntry {
         index: 3,
         term,
@@ -113,11 +109,11 @@ fn configuration_changes_only_when_its_exact_identity_finishes() {
         node.peek_next_committed_identity(),
         Some((3, term, EntryKind::Config))
     );
-    assert!(!node.conf_state().membership.learners.contains(&9));
+    assert!(!node.conf_state().membership.learners().contains(&9));
     assert!(!node.finish_committed_identity(3, term + 1));
-    assert!(!node.conf_state().membership.learners.contains(&9));
+    assert!(!node.conf_state().membership.learners().contains(&9));
     assert!(node.finish_committed_identity(3, term));
-    assert!(node.conf_state().membership.learners.contains(&9));
+    assert!(node.conf_state().membership.learners().contains(&9));
     assert_eq!(node.peek_next_committed_identity(), None);
 }
 

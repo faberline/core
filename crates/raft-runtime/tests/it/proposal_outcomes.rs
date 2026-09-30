@@ -54,10 +54,7 @@ async fn custom_timeout_cluster(n: u64, timeout: Duration) -> (Vec<Node>, Durati
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             peers,
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
@@ -174,10 +171,7 @@ async fn no_leader_elected_rejects_before_admission() {
     cfg.propose_timeout = Duration::from_millis(150);
     let host = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        Membership::new(vec![0, 1], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,

@@ -354,10 +354,7 @@ impl Engine {
             step: 0,
             message: format!("temporary store: {error}"),
         })?;
-        let membership = Membership {
-            voters: (0..init.voters as NodeId).collect(),
-            learners: Vec::new(),
-        };
+        let membership = Membership::new((0..init.voters as NodeId).collect(), Vec::new());
         let mut hosts = Vec::with_capacity(init.nodes);
         let mut sms = Vec::with_capacity(init.nodes);
         for id in 0..init.nodes as NodeId {
@@ -728,10 +725,7 @@ impl Engine {
         // conflicting bootstrap. It therefore observes a real wrong recovered
         // membership without writing or changing the actual RaftStore.
         let reopen_adapter_membership = if self.fault == Some(Mutant::IgnorePersistedMembership) {
-            let conflicting_bootstrap = Membership {
-                voters: vec![node],
-                learners: Vec::new(),
-            };
+            let conflicting_bootstrap = Membership::new(vec![node], Vec::new());
             let mut state_without_conf = persisted.clone();
             state_without_conf.conf = None;
             RaftNode::from_persisted(node, &conflicting_bootstrap, state_without_conf)
@@ -1203,8 +1197,8 @@ impl Engine {
             for host in &self.hosts {
                 let view = host.view();
                 if let Some(removed) = removed {
-                    if view.membership.voters.contains(&removed)
-                        || view.membership.learners.contains(&removed)
+                    if view.membership.voters().contains(&removed)
+                        || view.membership.learners().contains(&removed)
                     {
                         return Err(ReplayFailure::Safety(SafetyViolation::FinalMembership {
                             template: self.init.template,
@@ -1216,8 +1210,8 @@ impl Engine {
                     continue;
                 }
                 if view.joint
-                    || view.membership.voters != voters
-                    || view.membership.learners != learners
+                    || view.membership.voters() != voters
+                    || view.membership.learners() != learners
                 {
                     return Err(ReplayFailure::Safety(SafetyViolation::FinalMembership {
                         template: self.init.template,

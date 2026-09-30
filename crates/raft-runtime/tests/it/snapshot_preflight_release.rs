@@ -444,10 +444,7 @@ where
     let data = tempfile::tempdir().expect("create raft store directory");
     let host = Arc::new(RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: Vec::new(),
-        },
+        Membership::new(vec![0], Vec::new()),
         HashMap::new(),
         RaftStore::open(
             data.path().to_str().expect("temporary path is UTF-8"),

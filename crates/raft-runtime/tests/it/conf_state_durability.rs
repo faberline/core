@@ -133,10 +133,7 @@ fn the_oldest_record_format_still_loads() {
 fn the_configuration_and_entry_kinds_survive_the_durable_round_trip() {
     let dir = TempDir::new().unwrap();
     let conf = ConfState {
-        membership: Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![3],
-        },
+        membership: Membership::new(vec![0, 1, 2], vec![3]),
         outgoing: None,
         generation: 9,
     };
@@ -182,10 +179,7 @@ fn the_configuration_and_entry_kinds_survive_the_durable_round_trip() {
 fn the_record_carries_the_configuration_as_the_canonical_encoder_writes_it() {
     let dir = TempDir::new().unwrap();
     let conf = ConfState {
-        membership: Membership {
-            voters: vec![4, 5, 6],
-            learners: vec![7, 8],
-        },
+        membership: Membership::new(vec![4, 5, 6], vec![7, 8]),
         outgoing: None,
         generation: 11,
     };
@@ -301,10 +295,7 @@ fn saving_after_loading_an_older_record_upgrades_the_file_in_place() {
 #[test]
 fn a_configuration_claiming_a_length_the_record_cannot_hold_is_refused() {
     let conf = ConfState {
-        membership: Membership {
-            voters: vec![4, 5, 6],
-            learners: vec![7, 8],
-        },
+        membership: Membership::new(vec![4, 5, 6], vec![7, 8]),
         outgoing: None,
         generation: 11,
     };
@@ -312,7 +303,7 @@ fn a_configuration_claiming_a_length_the_record_cannot_hold_is_refused() {
     // Offsets inside the canonical encoder's output: generation, the voters
     // length, the voters, the learners length, the learners.
     const VOTERS_LEN_AT: usize = 8;
-    let learners_len_at = VOTERS_LEN_AT + 8 + conf.membership.voters.len() * 8;
+    let learners_len_at = VOTERS_LEN_AT + 8 + conf.membership.voters().len() * 8;
 
     // `claimed * 8` is the byte cost the decoder computes before it has decided
     // the claim is honourable. `1 << 61` makes that product wrap, which is the
@@ -390,10 +381,7 @@ fn a_configuration_claiming_a_length_the_record_cannot_hold_is_refused() {
 #[test]
 fn a_voters_length_claiming_one_slot_past_the_bound_is_refused() {
     let conf = ConfState {
-        membership: Membership {
-            voters: vec![4, 5, 6],
-            learners: vec![7, 8],
-        },
+        membership: Membership::new(vec![4, 5, 6], vec![7, 8]),
         outgoing: None,
         generation: 11,
     };
@@ -458,10 +446,7 @@ fn a_voters_length_claiming_one_slot_past_the_bound_is_refused() {
 fn a_config_entry_whose_command_does_not_decode_is_refused() {
     let dir = TempDir::new().unwrap();
     let conf = ConfState {
-        membership: Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![3],
-        },
+        membership: Membership::new(vec![0, 1, 2], vec![3]),
         outgoing: None,
         generation: 9,
     };
@@ -524,10 +509,7 @@ fn a_config_entry_whose_command_does_not_decode_is_refused() {
 fn a_config_entry_longer_than_the_decoders_floor_is_still_judged_by_the_decoder() {
     let dir = TempDir::new().unwrap();
     let conf = ConfState {
-        membership: Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![3],
-        },
+        membership: Membership::new(vec![0, 1, 2], vec![3]),
         outgoing: None,
         generation: 9,
     };

@@ -19,10 +19,7 @@ async fn resident_log_limit_backpressures_then_reopens_after_compaction() {
     let state_machine = TestSm::new();
     let host = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: Vec::new(),
-        },
+        Membership::new(vec![0], Vec::new()),
         HashMap::new(),
         RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
         state_machine as Arc<dyn RaftStateMachine>,
@@ -79,10 +76,7 @@ async fn corrupt_referenced_v4_log_refuses_host_startup() {
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         RaftHost::spawn(
             0,
-            Membership {
-                voters: vec![0],
-                learners: Vec::new(),
-            },
+            Membership::new(vec![0], Vec::new()),
             HashMap::new(),
             store,
             TestSm::new() as Arc<dyn RaftStateMachine>,

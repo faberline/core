@@ -79,20 +79,14 @@ use raft_core::{Membership, NodeId, PromotionRefused, RaftNode};
 /// Voters 0,1,2. Odd, so an outgoing majority can be one short of an incoming
 /// one — the size at which the outgoing-alone row can measure anything.
 fn three_voters() -> Membership {
-    Membership {
-        voters: vec![0, 1, 2],
-        learners: vec![],
-    }
+    Membership::new(vec![0, 1, 2], vec![])
 }
 
 /// Voters 0,1,2,3. Even, so an incoming majority that leans on the new voter is
 /// not an outgoing majority — the size at which the incoming-alone row can
 /// measure anything.
 fn four_voters() -> Membership {
-    Membership {
-        voters: vec![0, 1, 2, 3],
-        learners: vec![],
-    }
+    Membership::new(vec![0, 1, 2, 3], vec![])
 }
 
 struct Bus {
@@ -270,7 +264,7 @@ impl Bus {
 
     /// The voters of the configuration `node` currently has in force.
     fn voters_of(&self, node: NodeId) -> Vec<NodeId> {
-        self.nodes[&node].conf_state().membership.voters.clone()
+        self.nodes[&node].conf_state().membership.voters().to_vec()
     }
 }
 
@@ -331,7 +325,7 @@ fn a_caught_up_learner_becomes_a_voter_and_the_group_leaves_the_joint_state() {
         "node 3 was promoted, so it belongs in the voter set"
     );
     assert!(
-        !node.conf_state().membership.learners.contains(&3),
+        !node.conf_state().membership.learners().contains(&3),
         "node 3 is a voter now; leaving it in the learner list would let it be \
          counted twice, once for each role"
     );
@@ -744,13 +738,13 @@ fn a_second_promotion_while_a_transition_is_in_flight_is_refused() {
 
     let node = &bus.nodes[&leader];
     assert_eq!(
-        node.conf_state().membership.voters,
+        node.conf_state().membership.voters(),
         vec![0, 1, 2, 3],
         "the refused second promotion must not have altered the transition \
          already in flight"
     );
     assert!(
-        node.conf_state().membership.learners.contains(&4),
+        node.conf_state().membership.learners().contains(&4),
         "node 4 was not promoted, so it is still a learner"
     );
 }

@@ -32,10 +32,7 @@ async fn row1_request_vote_refusal() {
     let host = Arc::new(RaftHost::spawn_group(
         0,
         GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        Membership::new(vec![0], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -117,10 +114,7 @@ async fn row2_append_entries_refusal() {
     let host = Arc::new(RaftHost::spawn_group(
         0,
         GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        Membership::new(vec![0, 1], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -263,10 +257,7 @@ async fn row3_absent_group_id_refused() {
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        Membership::new(vec![0, 1], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -392,10 +383,7 @@ async fn row5_timeout_now_refusal() {
     let host = Arc::new(RaftHost::spawn_group(
         0,
         GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        Membership::new(vec![0, 1], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -523,10 +511,7 @@ async fn row6_install_snapshot_refusal() {
     let host = Arc::new(RaftHost::spawn_group(
         0,
         GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        Membership::new(vec![0, 1], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
@@ -651,10 +636,7 @@ async fn row7_publish_refusal() {
     let host = Arc::new(RaftHost::spawn_group(
         0,
         GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        Membership::new(vec![0], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,

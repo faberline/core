@@ -183,10 +183,10 @@ impl ClusterTopology {
             peers.insert(id, url);
         }
 
-        let membership = Membership {
-            voters: (0..voter_count as NodeId).collect(),
-            learners: (voter_count as NodeId..replicas_per_shard as NodeId).collect(),
-        };
+        let membership = Membership::new(
+            (0..voter_count as NodeId).collect(),
+            (voter_count as NodeId..replicas_per_shard as NodeId).collect(),
+        );
         Ok(Self {
             node_id,
             membership,

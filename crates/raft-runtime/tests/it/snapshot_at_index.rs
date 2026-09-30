@@ -68,10 +68,7 @@ async fn external_compaction_uses_the_requested_applied_prefix() {
     let state_machine = IndexedSnapshotStateMachine::new();
     let host = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: Vec::new(),
-        },
+        Membership::new(vec![0], Vec::new()),
         HashMap::new(),
         RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
         state_machine.clone() as Arc<dyn RaftStateMachine>,
@@ -102,10 +99,7 @@ async fn external_compaction_rejects_an_unapplied_target() {
     let state_machine = IndexedSnapshotStateMachine::new();
     let host = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: Vec::new(),
-        },
+        Membership::new(vec![0], Vec::new()),
         HashMap::new(),
         RaftStore::open(data.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
         state_machine as Arc<dyn RaftStateMachine>,

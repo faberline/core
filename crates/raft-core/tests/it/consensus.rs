@@ -133,12 +133,12 @@ fn kill_leader_reelects_without_losing_committed() {
 #[test]
 fn learner_applies_but_never_votes_or_counts() {
     let m = auto_membership(4);
-    assert_eq!(m.voters, vec![0, 1, 2]);
-    assert_eq!(m.learners, vec![3]);
+    assert_eq!(m.voters(), vec![0, 1, 2]);
+    assert_eq!(m.learners(), vec![3]);
 
     let mut c = Cluster::new(4);
     let leader = c.run_until_leader();
-    assert!(m.voters.contains(&leader));
+    assert!(m.voters().contains(&leader));
     for i in 0..3u8 {
         c.propose(vec![i]);
     }

@@ -7,10 +7,7 @@
 use raft_core::{auto_membership, ConfState, EntryKind, Membership, PersistedState, RaftNode};
 
 fn sole_voter() -> Membership {
-    Membership {
-        voters: vec![0],
-        learners: vec![],
-    }
+    Membership::new(vec![0], vec![])
 }
 
 /// Drive a sole voter to leadership. Its election timeout is `ELECTION_MIN + id`
@@ -31,10 +28,7 @@ fn elected_sole_voter() -> RaftNode {
 /// from the caller's argument and never from the recovered state.
 #[test]
 fn recovered_configuration_beats_the_callers_bootstrap_argument() {
-    let agreed = Membership {
-        voters: vec![1, 2, 3],
-        learners: vec![0],
-    };
+    let agreed = Membership::new(vec![1, 2, 3], vec![0]);
     let bootstrap = sole_voter();
 
     let mut node = RaftNode::new(0, &bootstrap);
@@ -109,18 +103,9 @@ fn the_bootstrap_argument_is_used_only_when_the_store_carries_no_configuration()
 /// A generation that is stored but never compared is a field, not a guard.
 #[test]
 fn a_configuration_that_does_not_supersede_is_refused() {
-    let mut node = RaftNode::new(
-        0,
-        &Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![],
-        },
-    );
+    let mut node = RaftNode::new(0, &Membership::new(vec![0, 1, 2], vec![]));
     let in_force = ConfState {
-        membership: Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![3],
-        },
+        membership: Membership::new(vec![0, 1, 2], vec![3]),
         outgoing: None,
         generation: 7,
     };
@@ -166,10 +151,7 @@ fn a_superseding_configuration_moves_the_voter_set_that_decides_a_commit() {
     );
 
     let widened = ConfState {
-        membership: Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![],
-        },
+        membership: Membership::new(vec![0, 1, 2], vec![]),
         outgoing: None,
         generation: 1,
     };
@@ -195,10 +177,7 @@ fn a_committed_configuration_entry_is_adopted_and_withheld_from_the_consumer() {
 
     assert_eq!(node.propose(b"before".to_vec()), Some(1));
     let next = ConfState {
-        membership: Membership {
-            voters: vec![0],
-            learners: vec![9],
-        },
+        membership: Membership::new(vec![0], vec![9]),
         outgoing: None,
         generation: 3,
     };
@@ -238,10 +217,7 @@ fn the_durable_state_carries_the_configuration_and_the_entry_kinds() {
     let mut node = elected_sole_voter();
     node.propose(b"cmd".to_vec()).unwrap();
     let next = ConfState {
-        membership: Membership {
-            voters: vec![0],
-            learners: vec![4],
-        },
+        membership: Membership::new(vec![0], vec![4]),
         outgoing: None,
         generation: 2,
     };

@@ -15,7 +15,7 @@ impl RaftNode {
         let last_index = self.last_index();
         self.conf_state
             .membership
-            .voters
+            .voters()
             .iter()
             .copied()
             .filter(|&id| id != self.id)
@@ -30,7 +30,7 @@ impl RaftNode {
         if self.role != Role::Leader {
             return Err(TransferRefused::NotLeader);
         }
-        if !self.conf_state.membership.voters.contains(&target) {
+        if !self.conf_state.membership.voters().contains(&target) {
             return Err(TransferRefused::NotAVoter { target });
         }
         let matched = if target == self.id {

@@ -36,7 +36,7 @@ impl RaftHost {
             if !node.is_leader() {
                 (LeadershipHandoff::NotLeader, false)
             } else {
-                let voters = node.conf_state().membership.voters.len();
+                let voters = node.conf_state().membership.voters().len();
                 if voters <= 1 {
                     (LeadershipHandoff::SoleVoter, false)
                 } else if let Some(target) = node.handoff_candidate() {

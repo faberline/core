@@ -52,10 +52,7 @@ async fn test_1_propose_refusal_and_restart() {
     let store2 = RaftStore::open(dir_path.to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
     let _host2 = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        Membership::new(vec![0], vec![]),
         std::collections::HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,
@@ -197,10 +194,7 @@ async fn test_5_healthy_host() {
     let store2 = RaftStore::open(dir_path.to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
     let _host2 = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        Membership::new(vec![0], vec![]),
         std::collections::HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,

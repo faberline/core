@@ -51,10 +51,7 @@ async fn cluster_with_long_rpc_timeout() -> (Vec<Node>, Duration) {
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             peers,
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
@@ -131,10 +128,7 @@ async fn spawn_node_with_unaddressed_peers(id: u64, voters: Vec<u64>) -> Node {
     let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
     let host = Arc::new(RaftHost::spawn(
         id,
-        Membership {
-            voters,
-            learners: vec![],
-        },
+        Membership::new(voters, vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,

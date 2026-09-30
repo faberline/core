@@ -43,10 +43,7 @@ fn unhex(text: &str) -> Vec<u8> {
 }
 
 fn membership() -> Membership {
-    Membership {
-        voters: vec![1, 2, 3],
-        learners: vec![4],
-    }
+    Membership::new(vec![1, 2, 3], vec![4])
 }
 
 fn joint_conf() -> ConfState {
@@ -301,10 +298,7 @@ fn conformance_envelope_meta_and_node_view_are_pinned() {
     let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
     let mut host = DeterministicHost::open(
         0,
-        Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![],
-        },
+        Membership::new(vec![0, 1, 2], vec![]),
         store,
         Arc::new(CountingSm(AtomicU64::new(0))),
     )

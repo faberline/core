@@ -64,10 +64,7 @@ use raft_core::{DemotionRefused, Membership, NodeId, RaftNode, RemovalRefused, R
 const SILENT_TICKS: usize = 120;
 
 fn voters(ids: &[NodeId]) -> Membership {
-    Membership {
-        voters: ids.to_vec(),
-        learners: vec![],
-    }
+    Membership::new(ids.to_vec(), vec![])
 }
 
 struct Bus {
@@ -201,7 +198,7 @@ impl Bus {
         *self.nodes[&leader]
             .conf_state()
             .membership
-            .voters
+            .voters()
             .iter()
             .find(|v| **v != leader)
             .expect("the group has a voter other than its leader")
@@ -229,16 +226,16 @@ fn removing_a_voter_from_a_four_voter_group_commits_and_stops_replication_to_it(
         "the transition must reach its final configuration, not stop at the joint one"
     );
     assert!(
-        !conf.membership.voters.contains(&victim),
+        !conf.membership.voters().contains(&victim),
         "the removed member must be gone from the voter set, found {:?}",
-        conf.membership.voters
+        conf.membership.voters()
     );
     assert!(
-        !conf.membership.learners.contains(&victim),
+        !conf.membership.learners().contains(&victim),
         "removal is not demotion: the member must not reappear as a learner"
     );
     assert_eq!(
-        conf.membership.voters.len(),
+        conf.membership.voters().len(),
         3,
         "exactly one voter leaves, so three remain"
     );
@@ -286,7 +283,7 @@ fn removing_a_voter_from_a_three_voter_group_is_refused_because_tolerance_would_
     );
 
     assert_eq!(
-        bus.nodes[&leader].conf_state().membership.voters,
+        bus.nodes[&leader].conf_state().membership.voters(),
         vec![0, 1, 2],
         "a refused removal must not have proposed anything"
     );
@@ -320,7 +317,7 @@ fn removing_a_voter_from_a_five_voter_group_is_refused_although_four_voters_rema
     );
 
     assert_eq!(
-        bus.nodes[&leader].conf_state().membership.voters.len(),
+        bus.nodes[&leader].conf_state().membership.voters().len(),
         5,
         "a refused removal must not have proposed anything"
     );
@@ -346,7 +343,7 @@ fn removing_the_leader_is_refused_and_directs_the_caller_to_transfer_first() {
     );
 
     assert_eq!(
-        bus.nodes[&leader].conf_state().membership.voters.len(),
+        bus.nodes[&leader].conf_state().membership.voters().len(),
         4,
         "a refused removal must not have proposed anything"
     );
@@ -375,7 +372,7 @@ fn removing_the_leader_is_refused_and_directs_the_caller_to_transfer_first() {
         !bus.nodes[&new_leader]
             .conf_state()
             .membership
-            .voters
+            .voters()
             .contains(&leader),
         "the route the refusal named must actually remove the node"
     );
@@ -402,12 +399,12 @@ fn a_demoted_voter_stops_campaigning_while_the_group_still_elects() {
         "the transition must reach its final configuration"
     );
     assert!(
-        !conf.membership.voters.contains(&victim),
+        !conf.membership.voters().contains(&victim),
         "the demoted node must leave the voter set, found {:?}",
-        conf.membership.voters
+        conf.membership.voters()
     );
     assert!(
-        conf.membership.learners.contains(&victim),
+        conf.membership.learners().contains(&victim),
         "demotion is not removal: the node must remain a member, as a learner"
     );
     assert!(
@@ -469,7 +466,7 @@ fn demoting_a_voter_from_a_three_voter_group_is_refused_on_the_same_arithmetic_a
     );
 
     assert_eq!(
-        bus.nodes[&leader].conf_state().membership.voters,
+        bus.nodes[&leader].conf_state().membership.voters(),
         vec![0, 1, 2],
         "a refused demotion must not have proposed anything"
     );
@@ -477,7 +474,7 @@ fn demoting_a_voter_from_a_three_voter_group_is_refused_on_the_same_arithmetic_a
         bus.nodes[&leader]
             .conf_state()
             .membership
-            .learners
+            .learners()
             .is_empty(),
         "a refused demotion must not have moved the target into the learner set"
     );

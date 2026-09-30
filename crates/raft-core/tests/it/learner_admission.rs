@@ -29,10 +29,7 @@ use raft_core::{Membership, NodeId, RaftNode, Role};
 
 /// Voters 0,1,2 with no learners: the group a learner is added *to*.
 fn three_voters() -> Membership {
-    Membership {
-        voters: vec![0, 1, 2],
-        learners: vec![],
-    }
+    Membership::new(vec![0, 1, 2], vec![])
 }
 
 struct Bus {
@@ -181,7 +178,7 @@ fn a_learner_added_at_runtime_is_withheld_from_reads_until_it_reaches_the_record
 
     let node = &bus.nodes[&leader];
     assert!(
-        node.conf_state().membership.learners.contains(&3),
+        node.conf_state().membership.learners().contains(&3),
         "the configuration entry at index {at} committed, but the leader's configuration is {:?}",
         node.conf_state().membership
     );
@@ -335,7 +332,7 @@ fn a_caught_up_learner_still_never_votes_and_never_counts_toward_a_majority() {
         !bus.nodes[&leader]
             .conf_state()
             .membership
-            .voters
+            .voters()
             .contains(&3),
         "the committed configuration made the learner a voter: {:?}",
         bus.nodes[&leader].conf_state().membership,

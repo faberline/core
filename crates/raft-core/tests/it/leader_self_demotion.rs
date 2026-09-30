@@ -49,10 +49,7 @@ use std::collections::{HashMap, HashSet};
 use raft_core::{ConfState, DemotionRefused, Membership, NodeId, RaftNode, RemovalRefused, Role};
 
 fn voters(ids: &[NodeId]) -> Membership {
-    Membership {
-        voters: ids.to_vec(),
-        learners: vec![],
-    }
+    Membership::new(ids.to_vec(), vec![])
 }
 
 struct Bus {
@@ -152,7 +149,7 @@ impl Bus {
         *self.nodes[&leader]
             .conf_state()
             .membership
-            .voters
+            .voters()
             .iter()
             .find(|v| **v != leader)
             .expect("the group has a voter other than its leader")
@@ -166,10 +163,7 @@ impl Bus {
         let generation = self.nodes[&leader].conf_state().generation + 1;
         let node = self.nodes.get_mut(&leader).unwrap();
         let adopted = node.adopt_conf(ConfState {
-            membership: Membership {
-                voters: remaining.to_vec(),
-                learners: vec![leader],
-            },
+            membership: Membership::new(remaining.to_vec(), vec![leader]),
             outgoing: None,
             generation,
         });
@@ -188,7 +182,7 @@ impl Bus {
              the floor at all",
         );
         assert_eq!(
-            node.conf_state().membership.voters,
+            node.conf_state().membership.voters(),
             remaining.to_vec(),
             "the voter set must be exactly what was adopted",
         );

@@ -6,10 +6,7 @@ fn fresh_node(membership: Membership) -> RaftNode {
 
 #[test]
 fn tick_persists_initial_learner_image_then_skips_unchanged_tick() {
-    let mut node = fresh_node(Membership {
-        voters: vec![],
-        learners: vec![0],
-    });
+    let mut node = fresh_node(Membership::new(vec![], vec![0]));
     let initial = node.persisted();
     let mut first_tick = true;
     let mut calls = 0;
@@ -38,10 +35,7 @@ fn tick_persists_initial_learner_image_then_skips_unchanged_tick() {
 
 #[test]
 fn tick_persists_election_image_and_failure_blocks_apply_and_stays_latched() {
-    let mut node = fresh_node(Membership {
-        voters: vec![0],
-        learners: vec![],
-    });
+    let mut node = fresh_node(Membership::new(vec![0], vec![]));
     let mut first_tick = true;
     let mut calls = 0;
     for _ in 0..raft_core::ELECTION_TIMEOUT_FLOOR_TICKS - 1 {
@@ -82,10 +76,7 @@ fn tick_persists_election_image_and_failure_blocks_apply_and_stays_latched() {
 
 #[test]
 fn tick_persists_joint_election_with_leave_joint_entry() {
-    let membership = Membership {
-        voters: vec![0],
-        learners: vec![],
-    };
+    let membership = Membership::new(vec![0], vec![]);
     let mut node = fresh_node(membership.clone());
     assert!(node.adopt_conf(raft_core::ConfState {
         membership,
@@ -123,10 +114,7 @@ fn tick_persists_joint_election_with_leave_joint_entry() {
 
 #[test]
 fn elected_leader_heartbeat_ticks_skip_persistence_and_keep_full_image() {
-    let mut node = fresh_node(Membership {
-        voters: vec![0],
-        learners: vec![],
-    });
+    let mut node = fresh_node(Membership::new(vec![0], vec![]));
     let mut first_tick = true;
     for _ in 0..raft_core::ELECTION_TIMEOUT_FLOOR_TICKS - 1 {
         assert!(tick_then_maybe_persist(

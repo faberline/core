@@ -7,17 +7,11 @@ use raft_core::{Membership, NodeId, RaftNode};
 /// Voters 0,1,2 — at least three, so "the named node became leader" is not the
 /// same statement as "the only other node became leader".
 fn three_voters() -> Membership {
-    Membership {
-        voters: vec![0, 1, 2],
-        learners: vec![],
-    }
+    Membership::new(vec![0, 1, 2], vec![])
 }
 
 fn single_voter() -> Membership {
-    Membership {
-        voters: vec![0],
-        learners: vec![],
-    }
+    Membership::new(vec![0], vec![])
 }
 
 struct Bus {

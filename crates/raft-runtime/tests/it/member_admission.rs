@@ -75,10 +75,7 @@ async fn spawn_standalone_node(id: u64) -> Node {
     let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
     let host = Arc::new(RaftHost::spawn(
         id,
-        Membership {
-            voters: vec![],
-            learners: vec![],
-        },
+        Membership::new(vec![], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,

@@ -39,16 +39,8 @@ fn single_voter_is_deterministic_and_persists_before_reopen() {
     let store =
         RaftStore::open(dir.path().to_str().unwrap(), 0, crate::FsyncPolicy::Always).unwrap();
     let sm = Arc::new(CountingSm(AtomicU64::new(0)));
-    let mut host = DeterministicHost::open(
-        0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
-        store,
-        sm.clone(),
-    )
-    .unwrap();
+    let mut host =
+        DeterministicHost::open(0, Membership::new(vec![0], vec![]), store, sm.clone()).unwrap();
     for _ in 0..50 {
         host.tick().unwrap();
     }
@@ -58,18 +50,10 @@ fn single_voter_is_deterministic_and_persists_before_reopen() {
         RaftStore::open(dir.path().to_str().unwrap(), 0, crate::FsyncPolicy::Always).unwrap();
     drop(host);
     let after = Arc::new(CountingSm(AtomicU64::new(0)));
-    let reopened = DeterministicHost::open(
-        0,
-        Membership {
-            voters: vec![9],
-            learners: vec![],
-        },
-        store,
-        after.clone(),
-    )
-    .unwrap();
+    let reopened =
+        DeterministicHost::open(0, Membership::new(vec![9], vec![]), store, after.clone()).unwrap();
     assert_eq!(after.applied_index(), 1);
-    assert_eq!(reopened.view().membership.voters, vec![0]);
+    assert_eq!(reopened.view().membership.voters(), vec![0]);
 }
 
 #[test]
@@ -78,16 +62,8 @@ fn nonleaders_report_not_leader_for_all_admission_paths() {
     let store =
         RaftStore::open(dir.path().to_str().unwrap(), 1, crate::FsyncPolicy::Always).unwrap();
     let sm = Arc::new(CountingSm(AtomicU64::new(0)));
-    let mut host = DeterministicHost::open(
-        1,
-        Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![],
-        },
-        store,
-        sm,
-    )
-    .unwrap();
+    let mut host =
+        DeterministicHost::open(1, Membership::new(vec![0, 1, 2], vec![]), store, sm).unwrap();
     assert!(matches!(
         host.try_propose(vec![1].into()),
         Err(StepError::NotLeader)

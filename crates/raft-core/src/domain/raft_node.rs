@@ -71,21 +71,21 @@ impl RaftNode {
     /// Create a node `id` within `membership` (starts as Follower at term 0).
     pub fn new(id: NodeId, membership: &Membership) -> RaftNode {
         let mut members: Vec<NodeId> = membership
-            .voters
+            .voters()
             .iter()
-            .chain(membership.learners.iter())
+            .chain(membership.learners().iter())
             .copied()
             .collect();
         members.sort_unstable();
         let peers = members.into_iter().filter(|m| *m != id).collect();
         let mut learner_read_targets = HashMap::new();
-        for &l in &membership.learners {
+        for &l in membership.learners() {
             learner_read_targets.insert(l, 0);
         }
         RaftNode {
             id,
             peers,
-            is_voter: membership.voters.contains(&id),
+            is_voter: membership.voters().contains(&id),
             conf_state: ConfState {
                 membership: membership.clone(),
                 outgoing: None,

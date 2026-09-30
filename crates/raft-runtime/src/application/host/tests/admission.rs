@@ -132,10 +132,7 @@ async fn elected_single_host(sm: Arc<AdmissionSm>) -> AdmissionTestHost {
     let path = dir.path();
     let host = RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        Membership::new(vec![0], vec![]),
         HashMap::new(),
         RaftStore::open(path.to_str().unwrap(), 0, crate::FsyncPolicy::Os).unwrap(),
         sm as Arc<dyn RaftStateMachine>,
@@ -318,10 +315,7 @@ async fn forwarded_backpressure_reply_restores_typed_error_data() {
 
 #[test]
 fn conflicting_term_at_same_index_drops_only_replaced_uncommitted_permit() {
-    let membership = Membership {
-        voters: vec![0, 1],
-        learners: vec![],
-    };
+    let membership = Membership::new(vec![0, 1], vec![]);
     let mut node = RaftNode::new(0, &membership);
     for _ in 0..raft_core::ELECTION_TIMEOUT_FLOOR_TICKS {
         node.tick();

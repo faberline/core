@@ -27,7 +27,7 @@ fn topology_from_env_with_local_override() {
     std::env::set_var("SVC_PEERS", "10.0.0.0:9001,10.0.0.1:9002,10.0.0.2:9003");
     let t = ClusterTopology::from_env("svc", "svc-headless", 7000, "SVC_PEERS").unwrap();
     assert_eq!(t.node_id, 1);
-    assert_eq!(t.membership.voters, vec![0, 1, 2]);
+    assert_eq!(t.membership.voters(), vec![0, 1, 2]);
     // self (id 1) excluded; peers point at the override addresses.
     assert_eq!(t.peers.get(&0).unwrap(), "http://10.0.0.0:9001");
     assert_eq!(t.peers.get(&2).unwrap(), "http://10.0.0.2:9003");

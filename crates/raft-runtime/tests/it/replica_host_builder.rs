@@ -9,8 +9,8 @@ struct ExactlyThree;
 impl MembershipPolicy for ExactlyThree {
     fn validate(&self, topology: &ClusterTopology) -> Result<(), MembershipError> {
         if !(topology.replicas_per_shard == 3
-            && topology.membership.voters.len() == 3
-            && topology.membership.learners.is_empty())
+            && topology.membership.voters().len() == 3
+            && topology.membership.learners().is_empty())
         {
             return Err(MembershipError::other(
                 "service requires exactly three voters",
@@ -42,7 +42,7 @@ fn service_policy_validates_shared_topology_without_owning_startup() {
     .unwrap();
     let topology = builder.topology().unwrap();
     assert_eq!(topology.node_id, 0);
-    assert_eq!(topology.membership.voters, vec![0, 1, 2]);
+    assert_eq!(topology.membership.voters(), vec![0, 1, 2]);
 
     std::env::set_var("VOTER_COUNT", "2");
     let error = builder.topology().unwrap_err().to_string();

@@ -170,10 +170,7 @@ async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_bu
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             peers,
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,

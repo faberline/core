@@ -241,10 +241,7 @@ async fn the_registry_routes_a_handoff_to_the_group_it_names() {
     let host = Arc::new(RaftHost::spawn_group(
         0,
         GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        Membership::new(vec![0, 1], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,

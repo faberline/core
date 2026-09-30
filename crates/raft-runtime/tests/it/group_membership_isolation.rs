@@ -90,10 +90,7 @@ fn seed_conf(store: &RaftStore, conf: ConfState) {
 /// joint phase does not dissolve underneath the assertions.
 fn joint_conf() -> ConfState {
     ConfState {
-        membership: Membership {
-            voters: vec![0, 1, 2],
-            learners: vec![],
-        },
+        membership: Membership::new(vec![0, 1, 2], vec![]),
         outgoing: Some(vec![0, 1]),
         generation: 7,
     }
@@ -165,14 +162,7 @@ async fn wait_leader(host: &RaftHost) {
 async fn a_resting_group_keeps_its_own_committed_set_when_a_joint_group_joins_the_same_process() {
     let dir = TempDir::new().unwrap();
 
-    let beta = spawn(
-        "beta",
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
-        open(&dir, "beta"),
-    );
+    let beta = spawn("beta", Membership::new(vec![0], vec![]), open(&dir, "beta"));
     let registry = RaftRegistry::new();
     registry.register(beta.clone()).unwrap();
     wait_leader(&beta).await;
@@ -191,14 +181,7 @@ async fn a_resting_group_keeps_its_own_committed_set_when_a_joint_group_joins_th
 
     let alpha_store = open(&dir, "alpha");
     seed_conf(&alpha_store, joint_conf());
-    let alpha = spawn(
-        "alpha",
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
-        alpha_store,
-    );
+    let alpha = spawn("alpha", Membership::new(vec![0], vec![]), alpha_store);
     registry.register(alpha.clone()).unwrap();
 
     let after = statuses(&client, &url).await;
@@ -232,14 +215,7 @@ async fn a_group_in_a_joint_configuration_reports_both_sets_and_names_the_joint_
 
     let store = open(&dir, "alpha");
     seed_conf(&store, joint_conf());
-    let alpha = spawn(
-        "alpha",
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
-        store,
-    );
+    let alpha = spawn("alpha", Membership::new(vec![0], vec![]), store);
     let registry = RaftRegistry::new();
     registry.register(alpha.clone()).unwrap();
 
@@ -278,10 +254,7 @@ async fn a_node_that_is_a_learner_is_reported_as_a_learner_rather_than_a_followe
 
     let gamma = spawn(
         "gamma",
-        Membership {
-            voters: vec![1],
-            learners: vec![0],
-        },
+        Membership::new(vec![1], vec![0]),
         open(&dir, "gamma"),
     );
     let registry = RaftRegistry::new();
@@ -313,28 +286,11 @@ async fn the_multi_group_status_endpoint_gives_each_group_its_own_sets() {
 
     let alpha_store = open(&dir, "alpha");
     seed_conf(&alpha_store, joint_conf());
-    let alpha = spawn(
-        "alpha",
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
-        alpha_store,
-    );
-    let beta = spawn(
-        "beta",
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
-        open(&dir, "beta"),
-    );
+    let alpha = spawn("alpha", Membership::new(vec![0], vec![]), alpha_store);
+    let beta = spawn("beta", Membership::new(vec![0], vec![]), open(&dir, "beta"));
     let gamma = spawn(
         "gamma",
-        Membership {
-            voters: vec![1],
-            learners: vec![0],
-        },
+        Membership::new(vec![1], vec![0]),
         open(&dir, "gamma"),
     );
 

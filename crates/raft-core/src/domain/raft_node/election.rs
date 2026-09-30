@@ -14,7 +14,7 @@ impl RaftNode {
         self.election_elapsed = 0;
         let (lli, llt) = (self.last_index(), self.last_term());
         let term = self.current_term;
-        let mut vote_targets = self.conf_state.membership.voters.clone();
+        let mut vote_targets = self.conf_state.membership.voters().to_vec();
         if let Some(outgoing) = &self.conf_state.outgoing {
             vote_targets.extend(outgoing);
         }
@@ -43,9 +43,9 @@ impl RaftNode {
         let incoming_granted = self
             .votes
             .iter()
-            .filter(|v| self.conf_state.membership.voters.contains(v))
+            .filter(|v| self.conf_state.membership.voters().contains(v))
             .count();
-        let incoming_maj = self.conf_state.membership.voters.len() / 2 + 1;
+        let incoming_maj = self.conf_state.membership.voters().len() / 2 + 1;
         let outgoing_satisfied = match &self.conf_state.outgoing {
             Some(outgoing) => {
                 let outgoing_granted = self.votes.iter().filter(|v| outgoing.contains(v)).count();

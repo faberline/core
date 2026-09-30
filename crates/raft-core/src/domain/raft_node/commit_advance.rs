@@ -11,7 +11,7 @@ impl RaftNode {
         }
         let last = self.last_index();
         let mut new_commit = self.commit_index;
-        let incoming_maj = self.conf_state.membership.voters.len() / 2 + 1;
+        let incoming_maj = self.conf_state.membership.voters().len() / 2 + 1;
         let outgoing_maj = self
             .conf_state
             .outgoing
@@ -23,7 +23,7 @@ impl RaftNode {
                 continue;
             }
             let mut incoming_count = 0usize;
-            for v in &self.conf_state.membership.voters {
+            for v in self.conf_state.membership.voters() {
                 let m = if *v == self.id {
                     last
                 } else {

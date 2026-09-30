@@ -13,22 +13,22 @@ impl RaftNode {
         }
         let mut members: Vec<NodeId> = conf
             .membership
-            .voters
+            .voters()
             .iter()
-            .chain(conf.membership.learners.iter())
+            .chain(conf.membership.learners().iter())
             .chain(conf.outgoing.iter().flatten())
             .copied()
             .collect();
         members.sort_unstable();
         members.dedup();
         self.peers = members.into_iter().filter(|m| *m != self.id).collect();
-        self.is_voter = conf.membership.voters.contains(&self.id)
+        self.is_voter = conf.membership.voters().contains(&self.id)
             || conf
                 .outgoing
                 .as_ref()
                 .map_or(false, |o| o.contains(&self.id));
         self.conf_state = conf;
-        for l in &self.conf_state.membership.learners {
+        for l in self.conf_state.membership.learners() {
             self.learner_read_targets
                 .entry(*l)
                 .or_insert(self.commit_index);

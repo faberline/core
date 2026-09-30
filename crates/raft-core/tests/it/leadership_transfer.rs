@@ -76,10 +76,7 @@ use raft_core::{Membership, NodeId, RaftMsg, RaftNode, Role, TimeoutNowReq, Tran
 /// Voters 0,1,2 — at least three, so "the named node became leader" is not the
 /// same statement as "the only other node became leader".
 fn three_voters() -> Membership {
-    Membership {
-        voters: vec![0, 1, 2],
-        learners: vec![],
-    }
+    Membership::new(vec![0, 1, 2], vec![])
 }
 
 struct Bus {
@@ -442,10 +439,7 @@ fn campaigned(node: &mut RaftNode) -> bool {
 /// adopting the term it was asked at.
 #[test]
 fn a_learner_asked_to_campaign_neither_campaigns_nor_takes_the_senders_term() {
-    let membership = Membership {
-        voters: vec![0, 1, 2],
-        learners: vec![3],
-    };
+    let membership = Membership::new(vec![0, 1, 2], vec![3]);
     let mut learner = RaftNode::new(3, &membership);
     assert!(
         !learner.is_voter(),

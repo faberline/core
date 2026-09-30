@@ -285,10 +285,7 @@ async fn blocking_cluster(node_count: u64) -> Vec<BlockingNode> {
             .expect("temporary raft store opens");
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             cluster::peers_excluding(id, &all),
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
@@ -477,10 +474,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
     if stopped_cleanly {
         let restarted = RaftHost::spawn(
             0,
-            Membership {
-                voters: vec![0],
-                learners: vec![],
-            },
+            Membership::new(vec![0], vec![]),
             HashMap::new(),
             RaftStore::open(
                 restart_dir.to_str().expect("temporary directory is UTF-8"),
@@ -958,10 +952,7 @@ async fn tiny_rpc_timeout_legacy_shutdown_returns_err_naming_quiesce() {
     let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
     let host = Arc::new(RaftHost::spawn(
         0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        Membership::new(vec![0], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,

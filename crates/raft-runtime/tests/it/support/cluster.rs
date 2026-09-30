@@ -160,10 +160,7 @@ pub async fn cluster_with_config(n: u64, cfg: HostConfig) -> Vec<Node> {
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             peers,
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
