@@ -37,18 +37,18 @@
 //! GitHub token. Unset or blank means unconfigured, and unconfigured is not a
 //! degraded mode: the direct-GitHub path runs unchanged.
 
+mod api;
 mod application;
-mod compat;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
-pub use application::tool_info::ToolInfo;
 #[cfg(feature = "k8s")]
-pub use compat::connect;
+pub use api::connect;
 #[cfg(feature = "registry")]
-pub use compat::registry;
-pub use compat::{artifact, chainable, issue, llm, report_issue, upgrade};
+pub use api::registry;
+pub use api::{artifact, chainable, issue, llm, report_issue, upgrade};
+pub use application::tool_info::ToolInfo;
 
 #[cfg(feature = "online")]
 pub(crate) use infrastructure::confirm::confirm;

@@ -123,14 +123,15 @@ core contexts build their llm topics with it (ADR D19). The model is `Topic`,
 `SectionedTopic`, `TopicSection`, `render_sectioned` and
 `assert_topics_render`.
 
-Downstream CLIs use the whole public API. P1 keeps every public path:
+Downstream CLIs use the whole public API:
 - the crate-root `ToolInfo`;
-- facades for `issue`, `upgrade`, `llm`, `llm::v2`, `connect`, `chainable`,
-  `artifact`, `registry` and `report_issue`.
+- the public modules `issue`, `upgrade`, `llm`, `llm::v2`, `connect`,
+  `chainable`, `artifact`, `registry` and `report_issue`. They keep their
+  paths (`src/api/`) because the root does not re-export their names.
 
 jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
 `linkme` distributed slice, through that exact path with
-`#[distributed_slice(...)]`. The `registry` facade must keep that path working.
+`#[distributed_slice(...)]`. The `registry` module must keep that path working.
 
 `report_issue` is a deprecated alias of `issue`; cap and mamba still use it.
 

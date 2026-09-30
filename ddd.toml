@@ -125,7 +125,7 @@ path = "crates/surface/src"
 # names the crate root does not re-export.
 [assembly]
 modules = [
-  "crates/cli-std/src/compat",
+  "crates/cli-std/src/api",
   "crates/compass/src/api",
   "crates/openapi-codegen/src/api",
   "crates/raft-runtime/src/api",
