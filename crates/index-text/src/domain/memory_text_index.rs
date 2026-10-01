@@ -8,6 +8,7 @@ use super::schema::{FieldKind, TextSchema};
 use super::snapshot::{TextIndexSnapshot, SNAPSHOT_FORMAT_VERSION};
 use super::text_index::TextIndex;
 use super::tokenize::tokenize;
+use super::{DocumentId, DocumentVersion};
 
 /// Deterministic in-process index. Durability comes from its typed snapshot or
 /// from rebuilding it from the product's committed segments.
@@ -18,8 +19,8 @@ pub struct MemoryTextIndex {
 
 #[derive(Default)]
 struct MemoryTextState {
-    documents: BTreeMap<String, TextDocument>,
-    tombstones: BTreeMap<String, u64>,
+    documents: BTreeMap<DocumentId, TextDocument>,
+    tombstones: BTreeMap<DocumentId, DocumentVersion>,
 }
 
 impl MemoryTextIndex {
@@ -32,8 +33,8 @@ impl MemoryTextIndex {
         })
     }
 
-    fn validate_external_id(&self, external_id: &str) -> Result<()> {
-        if external_id.trim().is_empty() || external_id.contains('\0') {
+    fn validate_external_id(&self, external_id: &DocumentId) -> Result<()> {
+        if external_id.as_str().trim().is_empty() || external_id.as_str().contains('\0') {
             return Err(IndexError::InvalidDocument {
                 message: "external_id must not be empty or contain NUL".to_string(),
             });
@@ -52,16 +53,16 @@ impl MemoryTextIndex {
     fn build_state(
         &self,
         documents: Vec<TextDocument>,
-        tombstones: BTreeMap<String, u64>,
+        tombstones: BTreeMap<DocumentId, DocumentVersion>,
     ) -> Result<MemoryTextState> {
-        let mut rebuilt = BTreeMap::<String, TextDocument>::new();
+        let mut rebuilt = BTreeMap::<DocumentId, TextDocument>::new();
         for document in documents {
             self.validate_document(&document)?;
             if rebuilt
                 .get(document.external_id())
                 .is_none_or(|current| current.version() < document.version())
             {
-                rebuilt.insert(document.external_id().to_string(), document);
+                rebuilt.insert(document.external_id().clone(), document);
             }
         }
 
@@ -185,11 +186,11 @@ impl TextIndex for MemoryTextIndex {
         state.tombstones.remove(document.external_id());
         state
             .documents
-            .insert(document.external_id().to_string(), document);
+            .insert(document.external_id().clone(), document);
         Ok(())
     }
 
-    fn delete(&self, external_id: &str, version: Option<u64>) -> Result<bool> {
+    fn delete(&self, external_id: &DocumentId, version: Option<DocumentVersion>) -> Result<bool> {
         self.validate_external_id(external_id)?;
         let mut state = self.state.write().map_err(|_| IndexError::LockPoisoned)?;
         let current_version = state
@@ -207,7 +208,7 @@ impl TextIndex for MemoryTextIndex {
         let removed = state.documents.remove(external_id).is_some();
         state
             .tombstones
-            .entry(external_id.to_string())
+            .entry(external_id.clone())
             .and_modify(|current| *current = (*current).max(delete_version))
             .or_insert(delete_version);
         Ok(removed)
@@ -224,7 +225,7 @@ impl TextIndex for MemoryTextIndex {
             .values()
             .filter_map(|document| {
                 self.evaluate(document, query).map(|score| TextHit {
-                    external_id: document.external_id().to_string(),
+                    external_id: document.external_id().clone(),
                     version: document.version(),
                     score,
                 })

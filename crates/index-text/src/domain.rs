@@ -3,6 +3,7 @@
 
 mod document;
 mod error;
+mod ids;
 mod memory_text_index;
 mod query;
 mod schema;
@@ -12,6 +13,7 @@ mod tokenize;
 
 pub use document::TextDocument;
 pub use error::{IndexError, Result};
+pub use ids::{DocumentId, DocumentVersion};
 pub use memory_text_index::MemoryTextIndex;
 pub use query::{MatchOperator, TextHit, TextQuery};
 pub use schema::{Analyzer, FieldKind, FieldSpec, TextSchema};

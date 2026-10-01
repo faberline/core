@@ -2,19 +2,27 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
+use super::{DocumentId, DocumentVersion};
+
 /// A document to index: an external id, a version and named text fields.
 /// `new` and `with_field` build it; `Deserialize` fills the fields directly.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub struct TextDocument {
-    external_id: String,
-    version: u64,
+    external_id: DocumentId,
+    version: DocumentVersion,
     fields: BTreeMap<String, String>,
 }
 
 impl TextDocument {
-    pub fn new(external_id: impl Into<String>, version: u64) -> Self {
+    /// Build a document with a key and a write version.
+    ///
+    /// ```compile_fail
+    /// use index_text::{DocumentId, DocumentVersion, TextDocument};
+    /// TextDocument::new(DocumentVersion::new(1), DocumentId::new("doc"));
+    /// ```
+    pub fn new(external_id: DocumentId, version: DocumentVersion) -> Self {
         Self {
-            external_id: external_id.into(),
+            external_id,
             version,
             fields: BTreeMap::new(),
         }
@@ -25,11 +33,11 @@ impl TextDocument {
         self
     }
 
-    pub fn external_id(&self) -> &str {
+    pub fn external_id(&self) -> &DocumentId {
         &self.external_id
     }
 
-    pub fn version(&self) -> u64 {
+    pub fn version(&self) -> DocumentVersion {
         self.version
     }
 

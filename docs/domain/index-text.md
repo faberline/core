@@ -11,6 +11,11 @@ index with it, and lumen uses its analyzers.
 
 ## Model
 
+- **Document identity and version** — `DocumentId` wraps an external key
+  (`new`, `as_str`), and `DocumentVersion` wraps its write or delete version
+  (`new`, `get`). `TextDocument`, `TextHit`, `TextIndex::delete` and snapshot
+  tombstones use them. Their JSON strings and numbers stay the same.
+
 - **Analyzer** — `Analyzer`: `WhitespaceLower`, `Jieba` or `Ngram`. A token
   stream comes from `tokenize` and the streaming `for_whitespace_lower`,
   `for_whitespace_lower_cow` and, with the `jieba` feature, `for_jieba_no_hmm`.
@@ -66,5 +71,5 @@ and `MemoryTextIndex`; lumen uses `Analyzer`, `tokenize`,
   exposes `for_jieba_no_hmm` and re-exports `jieba_rs::RouteStore` as
   `JiebaRouteStore`. The dictionary is the analyzer's own vocabulary, so this
   stays with a long-term reason.
-- **Debts:** bare ids: `TextDocument::external_id` is a `String` and its
-  version a `u64`. P2 made the `TextDocument` fields private (D2).
+- **Debts:** none tracked. P2 made the `TextDocument` fields private (D2),
+  and typed document ids and versions throughout the index (W5).
