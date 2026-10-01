@@ -4,11 +4,16 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 /// @spec apps/agentic-workflow/tech-design/logic/shared-server-substrate-performance-layers.md#logic
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BindConfig {
-    pub host: IpAddr,
-    pub port: u16,
+    host: IpAddr,
+    port: u16,
 }
 
 impl BindConfig {
+    /// Bind on `host` and `port`.
+    pub const fn new(host: IpAddr, port: u16) -> Self {
+        Self { host, port }
+    }
+
     /// Bind on all IPv4 interfaces.
     pub fn any(port: u16) -> Self {
         Self {
@@ -25,8 +30,24 @@ impl BindConfig {
         }
     }
 
+    /// The address to bind.
+    pub const fn host(&self) -> IpAddr {
+        self.host
+    }
+
+    /// The port to bind; 0 asks the OS for a free one.
+    pub const fn port(&self) -> u16 {
+        self.port
+    }
+
     pub fn socket_addr(&self) -> SocketAddr {
         SocketAddr::new(self.host, self.port)
+    }
+}
+
+impl From<SocketAddr> for BindConfig {
+    fn from(addr: SocketAddr) -> Self {
+        Self::new(addr.ip(), addr.port())
     }
 }
 

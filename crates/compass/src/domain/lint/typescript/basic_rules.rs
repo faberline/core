@@ -1,5 +1,6 @@
 use super::TypeScriptChecker;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range, TextEdit};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl TypeScriptChecker {
@@ -10,7 +11,7 @@ impl TypeScriptChecker {
         file.walk(|node, _depth| {
             if node.kind() == "non_null_expression" {
                 diagnostics.push(Diagnostic::warning(
-                    Range::from_node(node),
+                    node.to_range(),
                     "TS102",
                     DiagnosticCategory::Type,
                     "Non-null assertion (!) bypasses TypeScript's null checks",
@@ -29,7 +30,7 @@ impl TypeScriptChecker {
         file.walk(|node, _depth| {
             if node.kind() == "as_expression" {
                 diagnostics.push(Diagnostic::new(
-                    Range::from_node(node),
+                    node.to_range(),
                     crate::diagnostic::DiagnosticSeverity::Information,
                     "TS002",
                     DiagnosticCategory::Type,
@@ -51,7 +52,7 @@ impl TypeScriptChecker {
                 let text = file.node_text(node);
                 if text == "any" {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         "TS001",
                         DiagnosticCategory::Type,
                         "Avoid using 'any' type - use 'unknown' or a more specific type",
@@ -75,7 +76,7 @@ impl TypeScriptChecker {
                         let text = file.node_text(&func);
                         if text.starts_with("console.") {
                             diagnostics.push(Diagnostic::new(
-                                Range::from_node(node),
+                                node.to_range(),
                                 crate::diagnostic::DiagnosticSeverity::Hint,
                                 "TS103",
                                 DiagnosticCategory::Style,
@@ -103,16 +104,13 @@ impl TypeScriptChecker {
             if node.kind() == "lexical_declaration" {
                 let text = file.node_text(node);
                 if text.starts_with("let ") {
-                    let decl_range = Range::from_node(node);
+                    let decl_range = node.to_range();
                     let mut cursor = node.walk();
                     for child in node.children(&mut cursor) {
                         if child.kind() == "variable_declarator" {
                             if let Some(name_node) = child.child_by_field_name("name") {
                                 let name = file.node_text(&name_node).to_string();
-                                let_vars.insert(
-                                    name,
-                                    (Range::from_node(&name_node), decl_range.clone()),
-                                );
+                                let_vars.insert(name, (name_node.to_range(), decl_range.clone()));
                             }
                         }
                     }

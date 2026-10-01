@@ -1,5 +1,6 @@
 use super::GoChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl GoChecker {
@@ -30,7 +31,7 @@ impl GoChecker {
                                         .any(|c| c.kind() == "call_expression");
                                     if has_call {
                                         diagnostics.push(Diagnostic::warning(
-                                            Range::from_node(node),
+                                            node.to_range(),
                                             "GO001",
                                             DiagnosticCategory::Logic,
                                             "Error return value is discarded with '_' — handle the error",
@@ -65,7 +66,7 @@ impl GoChecker {
                                 .count();
                             if non_brace == 0 {
                                 diagnostics.push(Diagnostic::warning(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     "GO006",
                                     DiagnosticCategory::Logic,
                                     "Empty error handling block — handle the error or add a comment",
@@ -98,7 +99,7 @@ impl GoChecker {
                                     if let Some(inner_func) = child.child_by_field_name("function") {
                                         if file.node_text(&inner_func) == "fmt.Sprintf" {
                                             diagnostics.push(Diagnostic::warning(
-                                                Range::from_node(node),
+                                                node.to_range(),
                                                 "GO007",
                                                 DiagnosticCategory::Style,
                                                 "Use fmt.Errorf() directly instead of errors.New(fmt.Sprintf(...))",

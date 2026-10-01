@@ -22,9 +22,9 @@ fn mapped_cursor_keeps_original_file_alive_after_path_replacement() {
     std::fs::rename(&replacement, &path).unwrap();
     drop(cursor);
 
-    assert_eq!(view.seq, owned.seq);
-    assert_eq!(view.payload(), owned.payload.as_slice());
-    assert_eq!(FramedLogReader::read_frames(&path, 0).unwrap()[0].seq, 8);
+    assert_eq!(view.seq, owned.seq());
+    assert_eq!(view.payload(), owned.payload());
+    assert_eq!(FramedLogReader::read_frames(&path, 0).unwrap()[0].seq(), 8);
     assert_eq!(view.payload(), payload);
 }
 
@@ -47,12 +47,15 @@ fn mapped_cursor_uses_open_length_and_reread_does_not_advance() {
     fn requires_borrowed_payload(_: &[u8]) {}
     requires_borrowed_payload(view.payload());
     assert!(cursor.next_mapped_frame().unwrap().is_none());
-    let reread = cursor.reread_mapped_frame_at(start).unwrap().unwrap();
+    let reread = cursor.reread_large_mapped_frame_at(start).unwrap().unwrap();
     assert_eq!(reread.seq, 1);
     assert_eq!(reread.payload(), b"prefix");
     assert_eq!(cursor.byte_offset(), next);
-    assert!(cursor.reread_mapped_frame_at(next).unwrap().is_none());
-    assert!(cursor.reread_mapped_frame_at(u64::MAX).unwrap().is_none());
+    assert!(cursor.reread_large_mapped_frame_at(next).unwrap().is_none());
+    assert!(cursor
+        .reread_large_mapped_frame_at(u64::MAX)
+        .unwrap()
+        .is_none());
 }
 
 #[test]
@@ -101,7 +104,10 @@ fn mapped_cursor_rejects_oversized_and_overflow_offsets_without_owned_payload() 
     let mut cursor = FramedLogCursor::open(&path).unwrap();
     let error = cursor.next_mapped_frame().unwrap_err();
     assert!(error.to_string().contains("oversized legacy log frame"));
-    assert!(cursor.reread_mapped_frame_at(u64::MAX).unwrap().is_none());
+    assert!(cursor
+        .reread_large_mapped_frame_at(u64::MAX)
+        .unwrap()
+        .is_none());
 }
 
 #[test]
@@ -125,7 +131,7 @@ fn mapped_cursor_never_allocates_a_payload_sized_transient_buffer() {
     let next_largest = observation.largest_request();
     drop(view);
     observation.reset();
-    let reread = cursor.reread_mapped_frame_at(start).unwrap().unwrap();
+    let reread = cursor.reread_large_mapped_frame_at(start).unwrap().unwrap();
     assert_eq!(reread.seq, 44);
     assert_eq!(reread.payload(), payload.as_slice());
     let reread_largest = observation.largest_request();
@@ -136,60 +142,4 @@ fn mapped_cursor_never_allocates_a_payload_sized_transient_buffer() {
     assert!(reread_largest <= MAX_ALLOWED_REQUEST);
     assert!(next_largest < PAYLOAD_BYTES);
     assert!(reread_largest < PAYLOAD_BYTES);
-}
-
-#[test]
-fn cursor_rereads_pinned_frame_after_compaction_without_advancing() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("state.log");
-    let mut log = FramedLogWriter::open(&path, FsyncPolicy::Always).unwrap();
-    log.append(10, b"before-compaction").unwrap();
-    log.append(20, b"next-original-frame").unwrap();
-    log.sync().unwrap();
-    let mut cursor = FramedLogCursor::open(&path).unwrap();
-    let start = cursor.byte_offset();
-    let first = cursor.next_frame().unwrap().unwrap();
-    let next = cursor.byte_offset();
-    log.truncate_through(10).unwrap();
-    assert_eq!(FramedLogReader::read_frames(&path, 0).unwrap()[0].seq, 20);
-    assert_eq!(
-        cursor.reread_frame_at(start).unwrap(),
-        Some(first),
-        "capacity retry must reread the original inode and exact frame"
-    );
-    assert_eq!(
-        cursor.byte_offset(),
-        next,
-        "reread must leave normal replay progression unchanged"
-    );
-    assert_eq!(cursor.next_frame().unwrap().unwrap().seq, 20);
-    assert!(cursor.next_frame().unwrap().is_none());
-}
-
-#[test]
-fn cursor_reread_keeps_initial_length_and_validates_crc() {
-    let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("state.log");
-    let mut log = FramedLogWriter::open(&path, FsyncPolicy::Always).unwrap();
-    log.append(1, b"one").unwrap();
-    log.sync().unwrap();
-    let mut cursor = FramedLogCursor::open(&path).unwrap();
-    cursor.next_frame().unwrap().unwrap();
-    let old_end = cursor.byte_offset();
-    log.append(2, b"new-tail").unwrap();
-    log.sync().unwrap();
-    assert!(
-        cursor.reread_frame_at(old_end).unwrap().is_none(),
-        "reread must not consume bytes appended after the replay cut"
-    );
-    assert!(cursor.reread_frame_at(u64::MAX).unwrap().is_none());
-    let mut corrupt = OpenOptions::new().write(true).open(&path).unwrap();
-    corrupt.seek(SeekFrom::Start(HEADER_LEN as u64)).unwrap();
-    corrupt.write_all(b"bad").unwrap();
-    corrupt.sync_all().unwrap();
-    assert!(
-        cursor.reread_frame_at(0).unwrap().is_none(),
-        "reread must validate the frame instead of returning stale bytes"
-    );
-    assert_eq!(cursor.byte_offset(), old_end);
 }

@@ -81,31 +81,6 @@ pub fn assert_chainable(output: &str) -> Result<(), ChainableViolation> {
     }
 }
 
-/// Run `command`, then assert its captured stdout is chainable per
-/// [`assert_chainable`], returning the captured stdout so the caller can
-/// chain further assertions. Plain `std::process::Command` — no extra
-/// dev-deps — build it exactly as you'd invoke the binary under test. This
-/// is the full adoption recipe (AC1: under 10 lines), using the standard
-/// `CARGO_BIN_EXE_<name>` env var Cargo sets for integration tests of a
-/// binary named `mytool` in the same crate:
-///
-/// ```ignore
-/// #[test]
-/// fn status_output_is_chainable() {
-///     let mut cmd = std::process::Command::new(env!("CARGO_BIN_EXE_mytool"));
-///     cmd.arg("status");
-///     cli_std::chainable::assert_command_chainable(&mut cmd).unwrap();
-/// }
-/// ```
-pub fn assert_command_chainable(command: &mut std::process::Command) -> anyhow::Result<String> {
-    use anyhow::Context;
-    let output = command.output().context("run command under test")?;
-    let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
-    assert_chainable(&stdout)
-        .map_err(|violation| anyhow::anyhow!("{violation}\n--- stdout ---\n{stdout}"))?;
-    Ok(stdout)
-}
-
 fn has_terminal_marker(value: &Value) -> bool {
     if value
         .pointer("/completion/workflow_complete")
@@ -285,24 +260,5 @@ mod tests {
     #[test]
     fn empty_output_fails() {
         assert!(assert_chainable("   \n  ").is_err());
-    }
-
-    #[test]
-    fn assert_command_chainable_wraps_process_output() {
-        // `echo` doubles as the "binary under test": it emits the
-        // lightweight trailing-line form, proving the harness without
-        // spawning a real ecosystem CLI.
-        let mut cmd = std::process::Command::new("echo");
-        cmd.arg("next: done");
-        let stdout = assert_command_chainable(&mut cmd).expect("echo output should be chainable");
-        assert!(stdout.trim().ends_with("next: done"));
-    }
-
-    #[test]
-    fn assert_command_chainable_surfaces_violation() {
-        let mut cmd = std::process::Command::new("echo");
-        cmd.arg("no marker here");
-        let err = assert_command_chainable(&mut cmd).expect_err("should surface violation");
-        assert!(err.to_string().contains("chainable-output violation"));
     }
 }

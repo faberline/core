@@ -94,6 +94,6 @@ fn replay_sequences(path: &Path) -> Vec<u64> {
     FramedLogReader::read_frames(path, 0)
         .unwrap()
         .into_iter()
-        .map(|frame| frame.seq)
+        .map(|frame| frame.seq())
         .collect()
 }

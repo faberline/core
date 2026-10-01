@@ -23,11 +23,6 @@ impl std::fmt::Display for AdmissionRefused {
 impl std::error::Error for AdmissionRefused {}
 
 impl RaftHost {
-    /// Access the underlying raft store.
-    pub fn store(&self) -> &RaftStore {
-        &self.shared.store
-    }
-
     pub async fn is_leader(&self) -> bool {
         self.shared.node.lock().await.is_leader()
     }
@@ -41,7 +36,7 @@ impl RaftHost {
             if !node.is_leader() {
                 (LeadershipHandoff::NotLeader, false)
             } else {
-                let voters = node.conf_state().membership.voters.len();
+                let voters = node.conf_state().membership.voters().len();
                 if voters <= 1 {
                     (LeadershipHandoff::SoleVoter, false)
                 } else if let Some(target) = node.handoff_candidate() {
@@ -105,19 +100,11 @@ impl RaftHost {
     }
     /// Add or update the address of a peer (#3650).
     pub async fn upsert_peer(&self, peer: NodeId, url: String) {
-        self.shared
-            .peers
-            .write()
-            .unwrap_or_else(|p| p.into_inner())
-            .insert(peer, url);
+        self.shared.peer_client.set_address(peer, url);
     }
     /// Remove the address of a peer (#3650).
     pub async fn forget_peer(&self, peer: NodeId) {
-        self.shared
-            .peers
-            .write()
-            .unwrap_or_else(|p| p.into_inner())
-            .remove(&peer);
+        self.shared.peer_client.remove_address(&peer);
         self.shared
             .peer_lanes
             .write()
@@ -129,12 +116,7 @@ impl RaftHost {
         &self,
         target: NodeId,
     ) -> std::result::Result<Index, AdmissionRefused> {
-        let is_routable = self
-            .shared
-            .peers
-            .read()
-            .unwrap_or_else(|p| p.into_inner())
-            .contains_key(&target);
+        let is_routable = self.shared.peer_client.address(&target).is_some();
         if !is_routable {
             return Err(AdmissionRefused::Unroutable { target });
         }

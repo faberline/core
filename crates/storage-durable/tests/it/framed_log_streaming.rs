@@ -23,8 +23,8 @@ fn visitor_streams_only_the_requested_suffix_and_propagates_failure() {
     let mut visited = 0_u64;
     let maximum = FramedLogReader::visit_frames(&path, 900, |frame| {
         visited += 1;
-        assert_eq!(frame.seq, 900 + visited);
-        assert_eq!(frame.payload.len(), 4_096);
+        assert_eq!(frame.seq(), 900 + visited);
+        assert_eq!(frame.payload().len(), 4_096);
         Ok(())
     })
     .unwrap();
@@ -33,8 +33,8 @@ fn visitor_streams_only_the_requested_suffix_and_propagates_failure() {
 
     let mut stopped_at = 0_u64;
     let error = FramedLogReader::visit_frames(&path, 0, |frame| {
-        stopped_at = frame.seq;
-        if frame.seq == 10 {
+        stopped_at = frame.seq();
+        if frame.seq() == 10 {
             bail!("injected visitor failure");
         }
         Ok(())
@@ -60,8 +60,8 @@ fn cursor_keeps_its_byte_offset_and_holds_only_one_frame() {
     let mut previous_offset = 0;
     for sequence in 1..=4_u64 {
         let frame = cursor.next_frame().unwrap().unwrap();
-        assert_eq!(frame.seq, sequence);
-        assert_eq!(frame.payload.len(), 1_048_576);
+        assert_eq!(frame.seq(), sequence);
+        assert_eq!(frame.payload().len(), 1_048_576);
         assert!(cursor.byte_offset() > previous_offset);
         previous_offset = cursor.byte_offset();
         drop(frame);

@@ -6,7 +6,6 @@ pub(crate) mod checker_config;
 pub(crate) mod codegen;
 pub(crate) mod config;
 pub(crate) mod daemon;
-pub(crate) mod format;
 pub(crate) mod frameworks;
 pub(crate) mod import_graph;
 pub(crate) mod import_resolution;

@@ -1,8 +1,7 @@
-use std::{fmt, path::Path, time::Duration};
+use std::{fmt, panic::RefUnwindSafe, sync::Arc};
 
-const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
-const OPERATION_TIMEOUT: Duration = Duration::from_secs(2 * 60 * 60);
-const BACKUP_IDLE_TIMEOUT: Duration = Duration::from_secs(30);
+use super::transport_config::AdminSnapshotTransportConfig;
+use crate::domain::BearerTokenSource;
 
 /// The standard operation performed by [`AdminSnapshotTransport`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,31 +57,12 @@ impl AdminSnapshotOperation {
     }
 }
 
-/// Shared transport limits. Products may lower these values but do not need to
-/// own request, redirect, retry, idle-read, or diagnostic-body control flow.
-#[derive(Clone, Copy, Debug)]
-pub struct AdminSnapshotTransportConfig {
-    pub connect_timeout: Duration,
-    pub operation_timeout: Duration,
-    pub response_idle_timeout: Duration,
-    pub max_diagnostic_bytes: usize,
-}
-
-impl Default for AdminSnapshotTransportConfig {
-    fn default() -> Self {
-        Self {
-            connect_timeout: CONNECT_TIMEOUT,
-            operation_timeout: OPERATION_TIMEOUT,
-            response_idle_timeout: BACKUP_IDLE_TIMEOUT,
-            max_diagnostic_bytes: 8 * 1024,
-        }
-    }
-}
-
 enum AdminCredential {
     None,
     Static(String),
-    Projected(service_auth::k8s::ProjectedTokenFile),
+    /// `RefUnwindSafe` keeps [`AdminSnapshotRequest`] `UnwindSafe` and
+    /// `RefUnwindSafe`, as it was when this held a `ProjectedTokenFile`.
+    Projected(Arc<dyn BearerTokenSource + RefUnwindSafe>),
 }
 
 /// Per-request product policy for a shared admin snapshot call.
@@ -104,17 +84,15 @@ impl AdminSnapshotRequest {
         self
     }
 
-    /// Store only the file descriptor policy. The file is opened and checked
-    /// immediately before every request so kubelet token rotation is observed.
-    pub fn with_projected_bearer(
+    /// Ask `source` for the bearer immediately before every request, so a
+    /// rotated token is observed. A failure is reported as
+    /// [`AdminSnapshotRequestError::CredentialFailed`], without the token or
+    /// the source's error.
+    pub(crate) fn with_bearer_source(
         mut self,
-        path: impl AsRef<Path>,
-        audience: impl Into<String>,
+        source: Arc<dyn BearerTokenSource + RefUnwindSafe>,
     ) -> Self {
-        self.credential = AdminCredential::Projected(service_auth::k8s::ProjectedTokenFile::new(
-            path.as_ref(),
-            audience,
-        ));
+        self.credential = AdminCredential::Projected(source);
         self
     }
 
@@ -237,7 +215,7 @@ impl AdminSnapshotTransport {
         config: AdminSnapshotTransportConfig,
     ) -> std::result::Result<Self, AdminSnapshotTransportError> {
         let client = reqwest::Client::builder()
-            .connect_timeout(config.connect_timeout)
+            .connect_timeout(config.connect_timeout())
             .redirect(reqwest::redirect::Policy::none())
             .retry(reqwest::retry::never())
             .build()
@@ -246,12 +224,15 @@ impl AdminSnapshotTransport {
     }
 
     #[cfg(test)]
-    pub(super) fn for_tests(operation: Duration, backup_idle: Duration) -> Self {
-        Self::with_config(AdminSnapshotTransportConfig {
-            operation_timeout: operation,
-            response_idle_timeout: backup_idle,
-            ..Default::default()
-        })
+    pub(super) fn for_tests(
+        operation: std::time::Duration,
+        backup_idle: std::time::Duration,
+    ) -> Self {
+        Self::with_config(
+            AdminSnapshotTransportConfig::default()
+                .with_operation_timeout(operation)
+                .with_response_idle_timeout(backup_idle),
+        )
         .expect("test client builds")
     }
 
@@ -263,7 +244,7 @@ impl AdminSnapshotTransport {
         policy: &AdminSnapshotRequest,
     ) -> std::result::Result<Vec<u8>, AdminSnapshotRequestError> {
         let operation = AdminSnapshotOperation::Backup;
-        let result = tokio::time::timeout(self.config.operation_timeout, async {
+        let result = tokio::time::timeout(self.config.operation_timeout(), async {
             let url = format!("{}/admin/backup", base_url.trim_end_matches('/'));
             let mut request = self.client.get(url).headers(policy.headers.clone());
             match &policy.credential {
@@ -271,11 +252,11 @@ impl AdminSnapshotTransport {
                 AdminCredential::Static(token) => {
                     request = request.bearer_auth(token);
                 }
-                AdminCredential::Projected(file) => {
-                    let token = file
-                        .read()
+                AdminCredential::Projected(source) => {
+                    let token = source
+                        .bearer_token()
                         .map_err(|_| AdminSnapshotRequestError::CredentialFailed { operation })?;
-                    request = request.bearer_auth(token.expose());
+                    request = request.bearer_auth(token);
                 }
             }
             let mut response = request
@@ -285,11 +266,11 @@ impl AdminSnapshotTransport {
             if response.status() != reqwest::StatusCode::OK {
                 let status = response.status().as_u16();
                 let mut body = Vec::new();
-                let limit = self.config.max_diagnostic_bytes;
+                let limit = self.config.max_diagnostic_bytes();
                 let mut truncated = false;
                 loop {
                     let chunk =
-                        tokio::time::timeout(self.config.response_idle_timeout, response.chunk())
+                        tokio::time::timeout(self.config.response_idle_timeout(), response.chunk())
                             .await
                             .map_err(|_| AdminSnapshotRequestError::ResponseReadFailed {
                                 operation,
@@ -307,7 +288,7 @@ impl AdminSnapshotTransport {
                     body.extend_from_slice(&chunk);
                     if body.len() == limit {
                         let more = tokio::time::timeout(
-                            self.config.response_idle_timeout,
+                            self.config.response_idle_timeout(),
                             response.chunk(),
                         )
                         .await
@@ -329,7 +310,7 @@ impl AdminSnapshotTransport {
             let mut payload = Vec::new();
             loop {
                 let chunk =
-                    tokio::time::timeout(self.config.response_idle_timeout, response.chunk())
+                    tokio::time::timeout(self.config.response_idle_timeout(), response.chunk())
                         .await
                         .map_err(|_| AdminSnapshotRequestError::ResponseReadFailed { operation })?
                         .map_err(|_| AdminSnapshotRequestError::ResponseReadFailed { operation })?;
@@ -363,7 +344,7 @@ impl AdminSnapshotTransport {
         snapshot: &[u8],
     ) -> std::result::Result<(), AdminSnapshotTransportError> {
         let operation = AdminSnapshotOperation::Restore;
-        tokio::time::timeout(self.config.operation_timeout, async {
+        tokio::time::timeout(self.config.operation_timeout(), async {
             let url = format!("{}/admin/restore", base_url.trim_end_matches('/'));
             let mut request = self
                 .client

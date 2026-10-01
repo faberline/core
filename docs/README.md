@@ -11,7 +11,8 @@ each crate's `README.md` and `llms.txt`; contributor rules live in
 | [domain/](domain/) | One page per context: what it models, its ports, its invariants, and its recorded exceptions. |
 | [adr/](adr/) | Architecture decisions and the reasons behind them. |
 | [operations/](operations/README.md) | Releasing, how downstream repos pin core, and how to run the architecture checker. |
-| [migration/](migration/ddd-p1.md) | What each refactor phase changes for downstream repos, and where moved source files are now. |
+| [P1 migration](migration/ddd-p1.md), [P2 migration](migration/ddd-p2.md) | What each refactor phase changes for downstream repos, and where moved source files are now. |
+| [P2 validation](migration/ddd-p2-validation.md), [downstream checks](migration/ddd-p2-downstream.md) | Test results, API inventories and each downstream repo's required migration. |
 
 The architecture contract itself is [`ddd.toml`](../ddd.toml) at the repository
 root. It is checked by the workspace's rust-arch contract

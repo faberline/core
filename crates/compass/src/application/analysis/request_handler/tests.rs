@@ -11,7 +11,7 @@ use crate::syntax::{Language, MultiParser};
 use crate::type_inference::{build_semantic_model, SemanticModel, SemanticSymbolKind, TypeInfo};
 
 use super::RequestHandler;
-use crate::application::daemon::protocol::*;
+use crate::domain::daemon::protocol::*;
 
 // =============================================================================
 // SemanticModel Accuracy Tests

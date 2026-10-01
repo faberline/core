@@ -1,5 +1,3 @@
-// SPEC-MANAGED: crates/surface/docs/contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract
-// CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec renderer-neutral-ui-surface-model-contract
 // @capability renderer-neutral-ui-surface-model
@@ -68,4 +66,3 @@ fn aw_ec_parse_cargo_running_test_count(line: &str) -> Option<usize> {
         .or_else(|| rest.strip_suffix(" test"))?;
     number.trim().parse().ok()
 }
-// CODEGEN-END

@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use super::FileBearerAuthError;
 
 /// A URL scheme that may use a generated file-backed bearer token.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -37,27 +37,27 @@ impl FileBearerAuth {
         token_path: impl Into<PathBuf>,
         hostname_suffix: impl Into<String>,
         schemes: impl IntoIterator<Item = FileBearerScheme>,
-    ) -> Result<Self> {
+    ) -> Result<Self, FileBearerAuthError> {
         let token_path = token_path.into();
         if token_path.as_os_str().is_empty() {
-            anyhow::bail!("bearer token path must not be empty");
+            return Err(FileBearerAuthError::EmptyTokenPath);
         }
         if token_path.to_str().is_none() {
-            anyhow::bail!("bearer token path must be valid UTF-8");
+            return Err(FileBearerAuthError::NonUtf8TokenPath);
         }
 
         let hostname_suffix = hostname_suffix.into();
         let dns = hostname_suffix
             .strip_prefix('.')
             .filter(|suffix| !suffix.is_empty() && !suffix.ends_with('.'))
-            .ok_or_else(|| anyhow::anyhow!("bearer hostname suffix must start with one dot"))?;
+            .ok_or(FileBearerAuthError::SuffixNotDotted)?;
         if !dns.split('.').all(valid_dns_label) {
-            anyhow::bail!("bearer hostname suffix must be lowercase DNS labels");
+            return Err(FileBearerAuthError::SuffixNotDnsLabels);
         }
 
         let schemes: BTreeSet<_> = schemes.into_iter().collect();
         if schemes.is_empty() {
-            anyhow::bail!("bearer auth needs at least one HTTP scheme");
+            return Err(FileBearerAuthError::NoSchemes);
         }
 
         Ok(Self {

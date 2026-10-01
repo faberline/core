@@ -21,7 +21,8 @@ tape and workspace do.
   result is an `AdmissionDecision` with an `AdmissionOutcome`
   (`Bypass`, `Allow`, `Deny`).
 - **Weighted admission** — `WeightedAdmission`: per-key concurrency plus a
-  weight quota per window, under `WeightedAdmissionConfig`.
+  weight quota per window, under `WeightedAdmissionConfig` (checked `new`,
+  getters).
 - **Concurrency lease** — `ConcurrencyLease`: a held slot of weighted
   admission, released on drop.
 - **Reverse proxy policy** — `ReverseProxyPolicy`: which upstream a request
@@ -36,11 +37,11 @@ tape and workspace do.
   request carries or is given, used by the service-http trace layer
   (`trace_layer`, target `http.access`) and its span makers.
 - **Content decode limits** — `ContentDecodeLimits`: compressed and decoded
-  byte caps for `decode_request_body`.
+  byte caps for `decode_request_body` (checked `new`, getters).
 - **Server timing** — `ServerTimingExt` entries and a `ServerTimingDisclosure`
   (`TotalOnly` by default, `Full` per response).
 - **HTTP config** — `HttpConfig`: bind address, log settings, grace period,
-  body limit and OTLP endpoint.
+  body limit and OTLP endpoint. `new` takes every value; getters read them.
 - **Shutdown trigger** — `LifecycleShutdownTrigger`: turns a signal into a
   server-lifecycle shutdown with a validated total and reserve.
 
@@ -90,22 +91,32 @@ Downstream crates import from the crate root only: `ApiErr` and the envelopes,
 `serve_tls`, `trace_layer`, the content-decode types and the signal helpers.
 The root also re-exports `HttpServerOptions`, `ServerConfigSource` and
 `config_source` from server-http, and `LifecycleMetrics`, `LogFormat`,
-`ServiceIdentity` and the tracing initializers from service-observability. P1
-keeps every root re-export, and the old modules `admission`, `body_limit`,
-`config`, `content_decode`, `error`, `logging`, `metrics`, `probes`,
-`readiness`, `reverse_proxy`, `server_timing`, `signal`, `transport` and
-`weighted_admission` stay as compatibility facades; none has a known external
-user by path.
+`ServiceIdentity` and the tracing initializers from service-observability.
+
+`transport` is the one public module (`src/api/transport.rs`): it also holds
+`request_trace_context`, `RequestTraceContext`, `CorrelatingMakeSpan` and the
+access-log span hooks, which the root does not re-export. P2 deleted the old
+modules `admission`, `body_limit`, `config`, `content_decode`, `error`,
+`logging`, `metrics`, `probes`, `readiness`, `reverse_proxy`, `server_timing`,
+`signal` and `weighted_admission`: every name in them is at the crate root, and
+none had a known external user by path.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. service-http has no domain layer:
+- **Checker exceptions:** None. service-http has no domain layer:
   admission control reads the clock, so it is in the application layer. The
   reverse proxy moved whole into the interfaces layer and uses no
   infrastructure module.
-- **Tracked for P2:** clock and id reads: admission and weighted admission read
-  `Instant::now` (the `admit_at` and `acquire_at` seams already take the time),
-  and fresh trace ids hash the wall clock; P2 adds clock and id-generator
-  ports. `ProjectionMetadata` public fields, built with struct literals by
-  sift. Public fields on `WeightedAdmissionConfig`, `ContentDecodeLimits` and
-  `HttpConfig`. `anyhow` in `reverse_proxy_router` (ADR D4).
+- **Public fields kept:** `ProjectionMetadata`, which sift builds with
+  struct literals. It is a wire type.
+- **Debts:**
+  - Clock and id reads: admission and weighted admission read
+    `Instant::now` (the `admit_at` and `acquire_at` seams already take the
+    time), and fresh trace ids hash the wall clock. There are no clock or
+    id-generator ports.
+  - `anyhow` in `reverse_proxy_router`, `init_tracing` and
+    `init_tracing_with_identity` (these are not ports, so ADR D4 does not
+    cover them).
+
+  P2 made the `HttpConfig`, `WeightedAdmissionConfig` and
+  `ContentDecodeLimits` fields private (D2).

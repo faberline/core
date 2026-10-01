@@ -1,3 +1,4 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use std::collections::HashMap;
 
 use super::PythonChecker;
@@ -21,7 +22,7 @@ impl PythonChecker {
                             let obj_name = file.node_text(&obj);
                             if obj_name != "self" && obj_name != "cls" {
                                 diagnostics.push(Diagnostic::warning(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     "PY402",
                                     DiagnosticCategory::Style,
                                     format!(
@@ -57,7 +58,7 @@ impl PythonChecker {
                             if matches!(key.kind(), "string" | "integer" | "float" | "identifier") {
                                 if let Some(prev_range) = seen_keys.get(key_text) {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(&key),
+                                        key.to_range(),
                                         "PY403",
                                         DiagnosticCategory::Logic,
                                         format!(
@@ -67,7 +68,7 @@ impl PythonChecker {
                                         ),
                                     ));
                                 } else {
-                                    seen_keys.insert(key_text.to_string(), Range::from_node(&key));
+                                    seen_keys.insert(key_text.to_string(), key.to_range());
                                 }
                             }
                         }
@@ -110,7 +111,7 @@ impl PythonChecker {
                                 };
 
                                 diagnostics.push(Diagnostic::new(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     crate::diagnostic::DiagnosticSeverity::Hint,
                                     "PY404",
                                     DiagnosticCategory::Style,
@@ -155,7 +156,7 @@ impl PythonChecker {
                                         )
                                     };
 
-                                    let range = Range::from_node(node);
+                                    let range = node.to_range();
                                     diagnostics.push(
                                         Diagnostic::warning(
                                             range.clone(),
@@ -192,7 +193,7 @@ impl PythonChecker {
                                             )
                                         };
 
-                                        let range = Range::from_node(node);
+                                        let range = node.to_range();
                                         diagnostics.push(
                                             Diagnostic::warning(
                                                 range.clone(),
@@ -255,7 +256,7 @@ impl PythonChecker {
 
                     if is_useless {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "PY406",
                             DiagnosticCategory::Logic,
                             "Statement has no effect",

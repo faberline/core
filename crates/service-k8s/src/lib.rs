@@ -12,32 +12,39 @@
 //! the shared service kit (`raft-core` + `raft-runtime` + `transport-h2c` + `service-http` +
 //! `service-backup` + `cli-std` + this).
 
+mod api;
+mod app;
 mod application;
-mod compat;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
 #[cfg(feature = "certificate")]
-pub use compat::certificate;
+pub use api::certificate;
 #[cfg(feature = "controller")]
-pub use compat::controller;
-pub use compat::crd;
+pub use api::controller;
+pub use api::crd;
 #[cfg(feature = "controller")]
-pub use compat::lease;
-pub use compat::lifecycle;
+pub use api::lease;
+pub use api::lifecycle;
 #[cfg(feature = "controller")]
-pub use compat::llm;
+pub use api::llm;
 #[cfg(feature = "controller")]
-pub use compat::metrics;
-pub use compat::render;
+pub use api::metrics;
+pub use api::render;
 #[cfg(feature = "controller")]
-pub use compat::resize;
-pub use compat::service;
-pub use compat::stateful;
+pub use api::resize;
+pub use api::service;
+pub use api::stateful;
 
+#[cfg(feature = "controller")]
+pub use app::operator::run;
 #[cfg(feature = "certificate")]
 pub use application::certificate::reconcile::Reconciler;
+#[cfg(feature = "controller")]
+pub use application::operator::managed_service::{
+    ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
+};
 pub use domain::capacity::{
     plan_replica_layer, plan_shard_split, ObservedShardUsage, ObservedUtilization,
     ReplicaLayerError, ReplicaLayerPlan, ReplicaLayerPolicy, ShardSplitError, ShardSplitPlan,
@@ -45,25 +52,27 @@ pub use domain::capacity::{
     DEFAULT_SHARD_SPLIT_THRESHOLD_BYTES,
 };
 #[cfg(feature = "certificate")]
-pub use domain::certificate::issuer::{Issuer, IssuerId};
+pub use domain::certificate::issuer::{Issuer, IssuerId, KeyAndCsrGenerator};
 #[cfg(feature = "certificate")]
 pub use domain::certificate::profile::{CertificateProfile, InstanceScope, Purpose};
+#[cfg(feature = "certificate")]
+pub use domain::certificate::secret_layout::LeafParser;
 #[cfg(feature = "certificate")]
 pub use domain::certificate::status::CertificateFacts;
 #[cfg(feature = "controller")]
 pub use domain::condition::{Condition, ConditionFact, ConditionStatus};
+#[cfg(feature = "controller")]
+pub use domain::leadership::Election;
 pub use domain::lifecycle::{
     LifecyclePolicy, LifecyclePolicyError, ProbeTiming, TerminationBudget,
 };
-#[cfg(feature = "controller")]
-pub use infrastructure::lease::Election;
+#[cfg(feature = "certificate")]
+pub use infrastructure::certificate::csr::RcgenCsrGenerator;
+#[cfg(feature = "certificate")]
+pub use infrastructure::certificate::leaf_parser::X509LeafParser;
 #[cfg(feature = "controller")]
 pub use interfaces::cluster_spec::{ClusterSpec, ResourceSpec};
 #[cfg(feature = "controller")]
 pub use interfaces::metrics::ControllerMetrics;
 #[cfg(feature = "controller")]
-pub use interfaces::operator::managed_service::{
-    ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
-};
-#[cfg(feature = "controller")]
-pub use interfaces::operator::{run, Error};
+pub use interfaces::operator::Error;

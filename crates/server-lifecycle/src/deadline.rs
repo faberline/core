@@ -5,21 +5,49 @@ use tokio::time::Instant;
 /// One absolute shutdown budget shared by every lifecycle participant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ShutdownDeadline {
-    pub expires_at: Instant,
-    pub total: Duration,
-    pub reserve: Duration,
+    expires_at: Instant,
+    total: Duration,
+    reserve: Duration,
 }
 
 impl ShutdownDeadline {
-    pub fn from_now(total: Duration, reserve: Duration) -> Result<Self, DeadlineError> {
+    /// A deadline that expires at `expires_at` for a budget of `total`, of
+    /// which `reserve` is held back for the final step. Fails when the
+    /// reserve exceeds the total.
+    pub fn new(
+        expires_at: Instant,
+        total: Duration,
+        reserve: Duration,
+    ) -> Result<Self, DeadlineError> {
         if reserve > total {
             return Err(DeadlineError::ReserveExceedsTotal { total, reserve });
         }
         Ok(Self {
-            expires_at: Instant::now() + total,
+            expires_at,
             total,
             reserve,
         })
+    }
+
+    /// A deadline that expires `total` from now. Fails when the reserve
+    /// exceeds the total.
+    pub fn from_now(total: Duration, reserve: Duration) -> Result<Self, DeadlineError> {
+        Self::new(Instant::now() + total, total, reserve)
+    }
+
+    /// The instant the whole budget runs out.
+    pub fn expires_at(&self) -> Instant {
+        self.expires_at
+    }
+
+    /// The whole budget, reserve included.
+    pub fn total(&self) -> Duration {
+        self.total
+    }
+
+    /// The part of the budget held back for the final step.
+    pub fn reserve(&self) -> Duration {
+        self.reserve
     }
 
     pub fn remaining(self) -> Duration {

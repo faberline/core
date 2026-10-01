@@ -25,6 +25,19 @@ fn gzip_decode_has_independent_compressed_and_decoded_limits() {
 }
 
 #[test]
+fn ingest_configs_report_the_limits_they_were_built_with() {
+    let limits = ContentDecodeLimits::new(64, 256).unwrap();
+    assert_eq!(limits.max_compressed_bytes(), 64);
+    assert_eq!(limits.max_decoded_bytes(), 256);
+
+    let config = WeightedAdmissionConfig::new(2, 10, Duration::from_secs(60), 8).unwrap();
+    assert_eq!(config.max_concurrent_per_key(), 2);
+    assert_eq!(config.max_weight_per_window(), 10);
+    assert_eq!(config.window(), Duration::from_secs(60));
+    assert_eq!(config.max_keys(), 8);
+}
+
+#[test]
 fn weighted_quota_and_raii_concurrency_are_one_shared_flow() {
     let admission = WeightedAdmission::new(
         WeightedAdmissionConfig::new(1, 3, Duration::from_secs(60), 8).unwrap(),

@@ -13,8 +13,8 @@ impl PagedCatalog {
     ) -> Result<CatalogMutation> {
         let mut sorted = BTreeMap::new();
         for entry in entries {
-            self.validate_entry_key(&entry.key)?;
-            let key = entry.key.clone();
+            self.validate_entry_key(entry.key())?;
+            let key = entry.key().to_string();
             if sorted.insert(key.clone(), entry).is_some() {
                 return Err(SegmentError::DuplicateCatalogKey { key });
             }

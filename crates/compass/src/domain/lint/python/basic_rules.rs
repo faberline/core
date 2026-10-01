@@ -1,3 +1,4 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use std::collections::{HashMap, HashSet};
 
 use super::PythonChecker;
@@ -22,7 +23,7 @@ impl PythonChecker {
                             let name = file.node_text(&child);
                             // For "import foo.bar", we only track "foo"
                             let base_name = name.split('.').next().unwrap_or(name);
-                            imports.insert(base_name.to_string(), Range::from_node(&child));
+                            imports.insert(base_name.to_string(), child.to_range());
                         }
                     }
                 }
@@ -40,7 +41,7 @@ impl PythonChecker {
                             } else {
                                 file.node_text(&child)
                             };
-                            imports.insert(name.to_string(), Range::from_node(&child));
+                            imports.insert(name.to_string(), child.to_range());
                         }
                     }
                 }
@@ -78,7 +79,7 @@ impl PythonChecker {
                     let value_kind = value.kind();
                     if value_kind == "list" || value_kind == "dictionary" || value_kind == "set" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(&value),
+                            value.to_range(),
                             "PY201",
                             DiagnosticCategory::Logic,
                             format!(
@@ -107,7 +108,7 @@ impl PythonChecker {
 
                 if !has_type {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         "PY202",
                         DiagnosticCategory::Logic,
                         "Bare except clause catches all exceptions including KeyboardInterrupt and SystemExit",
@@ -132,7 +133,7 @@ impl PythonChecker {
                 for child in node.children(&mut cursor) {
                     if found_terminal && !child.kind().contains("comment") {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(&child),
+                            child.to_range(),
                             "PY203",
                             DiagnosticCategory::Logic,
                             "Unreachable code after return/raise/break/continue",
@@ -177,7 +178,7 @@ impl PythonChecker {
                     let name = file.node_text(&name_node);
                     if self.builtins.contains(name) {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(&name_node),
+                            name_node.to_range(),
                             "PY104",
                             DiagnosticCategory::Names,
                             format!("Shadowing builtin name: '{}'", name),

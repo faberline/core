@@ -11,17 +11,6 @@ pub enum DecodedPayload {
     Json { signal: OtlpSignal, value: Value },
 }
 
-impl DecodedPayload {
-    pub fn signal(&self) -> OtlpSignal {
-        match self {
-            Self::Logs(_) => OtlpSignal::Logs,
-            Self::Metrics(_) => OtlpSignal::Metrics,
-            Self::Traces(_) => OtlpSignal::Traces,
-            Self::Json { signal, .. } => *signal,
-        }
-    }
-}
-
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct PartialSuccess {
     pub rejected_items: usize,

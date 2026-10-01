@@ -11,8 +11,8 @@ const NAMESPACED: &str = r#"{
 fn namespaced_document_lands_each_entry_in_its_own_namespace() {
     let registry = Registry::parse(NAMESPACED).unwrap();
     assert_eq!(registry.len(), 2);
-    assert_eq!(registry.tokens["s3cret"].subject, "svc");
-    assert_eq!(registry.identities["a@b.com"].subject, "dev");
+    assert_eq!(registry.tokens["s3cret"].subject(), "svc");
+    assert_eq!(registry.identities["a@b.com"].subject(), "dev");
     // The whole point: neither key resolves from the other's map.
     assert!(!registry.tokens.contains_key("a@b.com"));
     assert!(!registry.identities.contains_key("s3cret"));
@@ -32,7 +32,7 @@ fn a_flat_document_is_read_as_bearer_secrets() {
 #[test]
 fn a_flat_document_whose_secret_is_spelled_tokens_is_still_flat() {
     let registry = Registry::parse(r#"{"tokens":{"subject":"svc","roles":{"*":"read"}}}"#).unwrap();
-    assert_eq!(registry.tokens["tokens"].subject, "svc");
+    assert_eq!(registry.tokens["tokens"].subject(), "svc");
     assert!(registry.identities.is_empty());
 }
 

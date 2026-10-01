@@ -85,14 +85,16 @@ impl PagedCatalog {
 
         for entry in entries {
             let entry = entry?;
-            self.validate_entry_key(&entry.key)?;
+            self.validate_entry_key(entry.key())?;
             if last_key
                 .as_ref()
-                .is_some_and(|previous| previous >= &entry.key)
+                .is_some_and(|previous| previous.as_str() >= entry.key())
             {
-                return Err(SegmentError::UnsortedCatalogKey { key: entry.key });
+                return Err(SegmentError::UnsortedCatalogKey {
+                    key: entry.into_parts().0,
+                });
             }
-            last_key = Some(entry.key.clone());
+            last_key = Some(entry.key().to_string());
             entry_count =
                 entry_count
                     .checked_add(1)
@@ -292,7 +294,7 @@ impl PagedCatalog {
         reference: &CatalogPageRef,
     ) -> Result<()> {
         if let Err(error) = observe(reference) {
-            self.store.delete(&reference.key)?;
+            self.objects.delete(&reference.key)?;
             return Err(error);
         }
         Ok(())

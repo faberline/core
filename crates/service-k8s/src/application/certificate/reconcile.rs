@@ -18,24 +18,27 @@ use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 
-use crate::domain::certificate::issuer::{IssuanceRequest, Issuer, IssuerError, IssuerId};
+use crate::domain::certificate::issuer::{
+    IssuanceRequest, Issuer, IssuerError, IssuerId, KeyAndCsrGenerator,
+};
 use crate::domain::certificate::profile::{CertificateProfile, InstanceScope};
-use crate::domain::certificate::projection::{
-    Owner, TrustBundle, CERT_KEY, PRIVATE_KEY_KEY, TRUST_BUNDLE_KEY,
+use crate::domain::certificate::projection::{Owner, TrustBundle};
+use crate::domain::certificate::secret_layout::{
+    material_secret, read_state, trust_bundle_secret, LeafParser,
 };
 use crate::domain::certificate::secret_store::{SecretStore, StoreError};
 use crate::domain::certificate::state::{next_action, retry_after, Action, Desired, Observed};
 use crate::domain::certificate::status::{redact, CertificateFacts};
-use crate::infrastructure::certificate::secret_layout::{
-    material_secret, read_state, trust_bundle_secret,
-};
 
 /// Why a reconcile could not complete.
 #[derive(Debug)]
 pub enum ReconcileError {
     /// The profile names an instance or namespace this reconciler does not own.
     /// Raised before any key is generated or any Secret is read.
-    OutOfScope { requested: String, owned: String },
+    OutOfScope {
+        requested: String,
+        owned: String,
+    },
     Store(StoreError),
     Issuance(IssuerError),
 }
@@ -76,25 +79,36 @@ pub struct Outcome {
 }
 
 /// Reconciles one instance's certificate of one purpose.
+///
+/// `Reconciler::new` wires the production key generator (`RcgenCsrGenerator`)
+/// and leaf parser (`X509LeafParser`).
 pub struct Reconciler<'a> {
     scope: &'a InstanceScope,
     owner: &'a Owner,
     store: &'a dyn SecretStore,
     issuer: &'a dyn Issuer,
+    keys: &'a dyn KeyAndCsrGenerator,
+    leaves: &'a dyn LeafParser,
 }
 
 impl<'a> Reconciler<'a> {
-    pub fn new(
+    /// A reconciler over the given store and issuer, generating keys with
+    /// `keys` and reading stored leaves with `leaves`.
+    pub(crate) fn with_ports(
         scope: &'a InstanceScope,
         owner: &'a Owner,
         store: &'a dyn SecretStore,
         issuer: &'a dyn Issuer,
+        keys: &'a dyn KeyAndCsrGenerator,
+        leaves: &'a dyn LeafParser,
     ) -> Self {
         Self {
             scope,
             owner,
             store,
             issuer,
+            keys,
+            leaves,
         }
     }
 
@@ -116,7 +130,7 @@ impl<'a> Reconciler<'a> {
             .await
             .map_err(ReconcileError::Store)?
             .unwrap_or_default();
-        let projected = read_state(&stored.data, &stored.annotations);
+        let projected = read_state(&stored.data, &stored.annotations, self.leaves);
 
         let desired = Desired {
             profile,
@@ -141,10 +155,7 @@ impl<'a> Reconciler<'a> {
                 bundle.insert(self.issuer.id(), anchor);
                 self.store
                     .apply(trust_bundle_secret(
-                        self.scope,
-                        purpose,
-                        self.owner,
-                        &bundle,
+                        self.scope, purpose, self.owner, &bundle,
                     ))
                     .await
                     .map_err(ReconcileError::Store)?;
@@ -162,10 +173,7 @@ impl<'a> Reconciler<'a> {
                 bundle.retain(&keep);
                 self.store
                     .apply(trust_bundle_secret(
-                        self.scope,
-                        purpose,
-                        self.owner,
-                        &bundle,
+                        self.scope, purpose, self.owner, &bundle,
                     ))
                     .await
                     .map_err(ReconcileError::Store)?;
@@ -177,7 +185,10 @@ impl<'a> Reconciler<'a> {
             purpose,
             projected.leaf.as_ref().map(|leaf| leaf.issuer.clone()),
             projected.leaf.as_ref().map(|leaf| leaf.not_after),
-            projected.leaf.as_ref().map(|leaf| leaf.fingerprint.as_str()),
+            projected
+                .leaf
+                .as_ref()
+                .map(|leaf| leaf.fingerprint.as_str()),
             bundle.issuers(),
             runtime.consecutive_failures,
             &action,
@@ -201,8 +212,8 @@ impl<'a> Reconciler<'a> {
         // The key is generated here and consumed by the apply below. It is never
         // handed to the issuer -- `build` returns it separately for exactly that
         // reason -- and it is never named in an error.
-        let (request, private_key) =
-            IssuanceRequest::build(self.scope, profile).map_err(ReconcileError::Issuance)?;
+        let (request, private_key) = IssuanceRequest::build(self.scope, profile, self.keys)
+            .map_err(ReconcileError::Issuance)?;
         let private_key_pem = private_key.into_pem();
         let material = self
             .issuer
@@ -254,6 +265,3 @@ fn requeue_for(action: &Action, now: DateTime<Utc>, failures: u32) -> Duration {
         _ => retry_after(failures),
     }
 }
-
-/// Keys a caller should expect to find in a fully projected Secret.
-pub const PROJECTED_KEYS: [&str; 3] = [CERT_KEY, PRIVATE_KEY_KEY, TRUST_BUNDLE_KEY];

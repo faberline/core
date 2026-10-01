@@ -1,7 +1,11 @@
 use super::*;
+use crate::StateMachineError;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+
+mod peer_wire_golden;
+mod peer_wire_split;
 
 /// A trivial state machine: applies `u64` commands into a log, tracks the
 /// applied index, snapshots/restores the whole log.
@@ -20,36 +24,46 @@ impl CounterSm {
     }
 }
 impl RaftStateMachine for CounterSm {
-    fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
         match self.apply_mode.load(Ordering::Acquire) {
             1 => {
-                self.applied.store(index, Ordering::Release);
-                anyhow::bail!("injected completed domain refusal")
+                self.applied.store(index.get(), Ordering::Release);
+                return Err(StateMachineError::other(
+                    "injected completed domain refusal",
+                ));
             }
-            2 => anyhow::bail!("injected incomplete infrastructure failure"),
+            2 => {
+                return Err(StateMachineError::other(
+                    "injected incomplete infrastructure failure",
+                ))
+            }
             _ => {}
         }
         let v = u64::from_le_bytes(command.try_into().unwrap_or([0; 8]));
         self.log.lock().unwrap().push((index, v));
-        self.applied.store(index, Ordering::Release);
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
-    fn snapshot(&self, writer: &mut dyn Write) -> anyhow::Result<()> {
-        let bytes = serde_json::to_vec(&*self.log.lock().unwrap())?;
-        writer.write_all(&bytes)?;
+    fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError> {
+        let bytes =
+            serde_json::to_vec(&*self.log.lock().unwrap()).map_err(StateMachineError::other)?;
+        writer.write_all(&bytes).map_err(StateMachineError::other)?;
         Ok(())
     }
-    fn restore(&self, reader: &mut dyn Read) -> anyhow::Result<()> {
+    fn restore(&self, reader: &mut dyn Read) -> Result<(), StateMachineError> {
         let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes)?;
-        let log: Vec<(Index, u64)> = serde_json::from_slice(&bytes)?;
-        let last = log.last().map(|(i, _)| *i).unwrap_or(0);
+        reader
+            .read_to_end(&mut bytes)
+            .map_err(StateMachineError::other)?;
+        let log: Vec<(Index, u64)> =
+            serde_json::from_slice(&bytes).map_err(StateMachineError::other)?;
+        let last = log.last().map(|(i, _)| *i).unwrap_or(Index::new(0));
         *self.log.lock().unwrap() = log;
-        self.applied.store(last, Ordering::Release);
+        self.applied.store(last.get(), Ordering::Release);
         Ok(())
     }
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 
@@ -62,8 +76,8 @@ fn default_apply_admitted_preserves_completed_domain_error() {
     let sm = CounterSm::new();
     sm.apply_mode.store(1, Ordering::Release);
 
-    RaftStateMachine::apply_admitted(&*sm, 7, &7_u64.to_le_bytes(), None).unwrap();
-    assert_eq!(sm.applied_index(), 7);
+    RaftStateMachine::apply_admitted(&*sm, Index::new(7), &7_u64.to_le_bytes(), None).unwrap();
+    assert_eq!(sm.applied_index(), Index::new(7));
 }
 
 #[test]
@@ -71,10 +85,10 @@ fn default_apply_admitted_preserves_incomplete_infrastructure_error() {
     let sm = CounterSm::new();
     sm.apply_mode.store(2, Ordering::Release);
 
-    let error = RaftStateMachine::apply_admitted(&*sm, 7, &7_u64.to_le_bytes(), None)
+    let error = RaftStateMachine::apply_admitted(&*sm, Index::new(7), &7_u64.to_le_bytes(), None)
         .expect_err("an unchanged floor must preserve the apply error");
     assert!(error.to_string().contains("incomplete infrastructure"));
-    assert_eq!(sm.applied_index(), 0);
+    assert_eq!(sm.applied_index(), Index::new(0));
 }
 
 #[tokio::test]
@@ -83,24 +97,24 @@ async fn single_node_propose_applies_read_your_write() {
     let _ = std::fs::create_dir_all(&tmp);
     let sm = CounterSm::new();
     let host = RaftHost::spawn(
-        0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         std::collections::HashMap::new(),
-        store(&tmp, 0),
+        store(&tmp, NodeId::new(0)),
         sm.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
     // propose returns only after the SM has applied the entry (RYW).
     for v in 1..=3u64 {
         let idx = host.propose(v.to_le_bytes().to_vec()).await.unwrap();
-        assert_eq!(idx, v);
+        assert_eq!(idx, Index::new(v));
         assert!(sm.applied_index() >= idx, "applied before propose returned");
     }
     let log = sm.log.lock().unwrap().clone();
-    assert_eq!(log, vec![(1, 1), (2, 2), (3, 3)]);
+    assert_eq!(
+        log,
+        vec![(Index::new(1), 1), (Index::new(2), 2), (Index::new(3), 3)]
+    );
     let _ = std::fs::remove_dir_all(&tmp);
 }
 
@@ -111,13 +125,10 @@ async fn restart_replays_committed_log_into_a_fresh_sm() {
     // Use Always fsync so the log is durable across the "restart".
     let mk = |sm: Arc<dyn RaftStateMachine>| {
         RaftHost::spawn(
-            0,
-            Membership {
-                voters: vec![0],
-                learners: vec![],
-            },
+            NodeId::new(0),
+            Membership::new(vec![NodeId::new(0)], vec![]),
             std::collections::HashMap::new(),
-            RaftStore::open(tmp.to_str().unwrap(), 0, FsyncPolicy::Always).unwrap(),
+            RaftStore::open(tmp.to_str().unwrap(), NodeId::new(0), FsyncPolicy::Always).unwrap(),
             sm,
             HostConfig::default(),
         )
@@ -127,20 +138,23 @@ async fn restart_replays_committed_log_into_a_fresh_sm() {
         let host = mk(sm.clone());
         host.propose(7u64.to_le_bytes().to_vec()).await.unwrap();
         host.propose(8u64.to_le_bytes().to_vec()).await.unwrap();
-        assert_eq!(sm.applied_index(), 2);
+        assert_eq!(sm.applied_index(), Index::new(2));
     } // host dropped → tasks aborted (simulated restart)
       // The persisted commit watermark lets a fresh in-memory state machine
       // replay before it serves reads or accepts another proposal.
     let sm2 = CounterSm::new();
     let host2 = mk(sm2.clone());
-    assert_eq!(sm2.applied_index(), 2);
-    assert_eq!(sm2.log.lock().unwrap().clone(), vec![(1, 7), (2, 8)]);
-    let idx = host2.propose(9u64.to_le_bytes().to_vec()).await.unwrap();
-    assert_eq!(idx, 3);
-    assert_eq!(sm2.applied_index(), 3);
+    assert_eq!(sm2.applied_index(), Index::new(2));
     assert_eq!(
         sm2.log.lock().unwrap().clone(),
-        vec![(1, 7), (2, 8), (3, 9)],
+        vec![(Index::new(1), 7), (Index::new(2), 8)]
+    );
+    let idx = host2.propose(9u64.to_le_bytes().to_vec()).await.unwrap();
+    assert_eq!(idx, Index::new(3));
+    assert_eq!(sm2.applied_index(), Index::new(3));
+    assert_eq!(
+        sm2.log.lock().unwrap().clone(),
+        vec![(Index::new(1), 7), (Index::new(2), 8), (Index::new(3), 9)],
         "the cold replay and new command remain in order"
     );
     let _ = std::fs::remove_dir_all(&tmp);

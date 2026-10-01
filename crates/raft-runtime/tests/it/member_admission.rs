@@ -13,12 +13,13 @@
 //!    has been registered for the target, leaving the group's configuration
 //!    unchanged.
 
+use raft_runtime::NodeId;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use raft_runtime::{
-    AdmissionRefused, FsyncPolicy, HostConfig, Membership, MembershipPhase, RaftHost,
+    AdmissionRefused, FsyncPolicy, HostConfig, Index, Membership, MembershipPhase, RaftHost,
     RaftStateMachine, RaftStatus, RaftStore,
 };
 use tempfile::TempDir;
@@ -72,13 +73,15 @@ async fn spawn_standalone_node(id: u64) -> Node {
     let (listener, url) = bind().await;
     let sm = TestSm::new();
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(id),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let host = Arc::new(RaftHost::spawn(
-        id,
-        Membership {
-            voters: vec![],
-            learners: vec![],
-        },
+        NodeId::new(id),
+        Membership::new(vec![], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
@@ -116,8 +119,8 @@ async fn a_running_host_admits_a_new_learner_observed_on_the_new_node_itself() {
         .expect("a three-voter cluster elects a leader");
     let client = h2c_client();
 
-    let new_node_id = 3u64;
-    let new_node = spawn_standalone_node(new_node_id).await;
+    let new_node_id = NodeId::new(3);
+    let new_node = spawn_standalone_node(new_node_id.get()).await;
 
     // Node 3's initial status has empty membership.
     let initial_status = status(&client, &new_node.url).await;
@@ -135,7 +138,7 @@ async fn a_running_host_admits_a_new_learner_observed_on_the_new_node_itself() {
         .add_learner(new_node_id)
         .await
         .expect("admitting a routable learner succeeds");
-    assert!(idx > 0);
+    assert!(idx > Index::new(0));
 
     // Observe on the NEW NODE's own /raftz that it appears as a learner.
     let new_node_status = poll_status_until(
@@ -150,7 +153,10 @@ async fn a_running_host_admits_a_new_learner_observed_on_the_new_node_itself() {
     assert_eq!(new_node_status.membership_phase, MembershipPhase::Stable);
     assert_eq!(new_node_status.role, "Learner");
     assert_eq!(new_node_status.learners, vec![new_node_id]);
-    assert_eq!(new_node_status.committed_voters, vec![0, 1, 2]);
+    assert_eq!(
+        new_node_status.committed_voters,
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+    );
 
     // Also verify a bystander follower's /raftz reflects the new learner.
     let bystander = (leader + 1) % 3;
@@ -179,15 +185,22 @@ async fn admitting_an_unaddressed_node_is_refused_as_unroutable_without_proposin
     let client = h2c_client();
 
     let initial_status = status(&client, &nodes[bystander].url).await;
-    assert_eq!(initial_status.committed_voters, vec![0, 1, 2]);
+    assert_eq!(
+        initial_status.committed_voters,
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+    );
     assert!(initial_status.learners.is_empty());
 
     let unaddressed_id = 999u64;
 
     // Call add_learner on the leader for an unaddressed node id.
-    match nodes[leader].host.add_learner(unaddressed_id).await {
+    match nodes[leader]
+        .host
+        .add_learner(NodeId::new(unaddressed_id))
+        .await
+    {
         Err(AdmissionRefused::Unroutable { target }) => {
-            assert_eq!(target, unaddressed_id);
+            assert_eq!(target, NodeId::new(unaddressed_id));
         }
         other => panic!("expected Err(AdmissionRefused::Unroutable), got {other:?}"),
     }
@@ -203,12 +216,15 @@ async fn admitting_an_unaddressed_node_is_refused_as_unroutable_without_proposin
     let post_status = poll_status_until(
         &client,
         &nodes[bystander].url,
-        |s| s.applied_index >= barrier_index,
+        |s| s.applied_index >= barrier_index.get(),
         Duration::from_secs(5),
         "bystander node applies barrier entry",
     )
     .await;
-    assert_eq!(post_status.committed_voters, vec![0, 1, 2]);
+    assert_eq!(
+        post_status.committed_voters,
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+    );
     assert!(
         post_status.learners.is_empty(),
         "unroutable admission must not propose or commit any learner"
@@ -226,10 +242,10 @@ async fn a_host_that_is_not_the_leader_refuses_admission() {
 
     nodes[follower]
         .host
-        .upsert_peer(42, "http://127.0.0.1:1234".to_string())
+        .upsert_peer(NodeId::new(42), "http://127.0.0.1:1234".to_string())
         .await;
 
-    match nodes[follower].host.add_learner(42).await {
+    match nodes[follower].host.add_learner(NodeId::new(42)).await {
         Err(AdmissionRefused::NotLeaderOrTransferInFlight) => {}
         other => {
             panic!("expected Err(AdmissionRefused::NotLeaderOrTransferInFlight), got {other:?}")
@@ -247,14 +263,14 @@ async fn forget_peer_removes_address_causing_subsequent_admission_to_be_refused(
 
     nodes[leader]
         .host
-        .upsert_peer(55, "http://127.0.0.1:5555".to_string())
+        .upsert_peer(NodeId::new(55), "http://127.0.0.1:5555".to_string())
         .await;
 
-    nodes[leader].host.forget_peer(55).await;
+    nodes[leader].host.forget_peer(NodeId::new(55)).await;
 
-    match nodes[leader].host.add_learner(55).await {
+    match nodes[leader].host.add_learner(NodeId::new(55)).await {
         Err(AdmissionRefused::Unroutable { target }) => {
-            assert_eq!(target, 55);
+            assert_eq!(target, NodeId::new(55));
         }
         other => panic!("expected Err(AdmissionRefused::Unroutable), got {other:?}"),
     }

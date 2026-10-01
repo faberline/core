@@ -23,7 +23,7 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use raft_runtime::{RaftStateMachine, RaftStatus};
+use raft_runtime::{Index, RaftStateMachine, RaftStatus};
 
 use crate::support::cluster;
 use cluster::{await_leader, cluster};
@@ -101,7 +101,7 @@ async fn forwarded_publish_refused_after_quiesce() {
         .await
         .expect("a three-voter cluster elects a leader");
     let client = h2c_client();
-    let group_id = nodes[leader].host.group_id().0.clone();
+    let group_id = nodes[leader].host.group_id().as_str().to_owned();
 
     let quiesced = nodes[leader].host.quiesce_proposals();
     assert!(
@@ -218,7 +218,7 @@ async fn unquiesced_cluster_admits_proposals_and_reports_generation_zero() {
     loop {
         let mut all_applied = true;
         for node in &nodes {
-            if node.sm.applied_index() < 8 {
+            if node.sm.applied_index() < Index::new(8) {
                 all_applied = false;
                 break;
             }
@@ -263,7 +263,7 @@ async fn successful_publish_retains_seq_response_without_admission_outcome() {
         .await
         .expect("a one-voter cluster elects its sole leader");
     let client = h2c_client();
-    let group_id = nodes[leader].host.group_id().0.clone();
+    let group_id = nodes[leader].host.group_id().as_str().to_owned();
 
     let resp = client
         .post(format!("{}/raft/publish", nodes[leader].url))

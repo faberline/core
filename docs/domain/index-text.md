@@ -11,6 +11,11 @@ index with it, and lumen uses its analyzers.
 
 ## Model
 
+- **Document identity and version** — `DocumentId` wraps an external key
+  (`new`, `as_str`), and `DocumentVersion` wraps its write or delete version
+  (`new`, `get`). `TextDocument`, `TextHit`, `TextIndex::delete` and snapshot
+  tombstones use them. Their JSON strings and numbers stay the same.
+
 - **Analyzer** — `Analyzer`: `WhitespaceLower`, `Jieba` or `Ngram`. A token
   stream comes from `tokenize` and the streaming `for_whitespace_lower`,
   `for_whitespace_lower_cow` and, with the `jieba` feature, `for_jieba_no_hmm`.
@@ -18,7 +23,9 @@ index with it, and lumen uses its analyzers.
   analyzed search, or `Keyword` for exact match.
 - **Schema** — `TextSchema`: the named fields of one index.
 - **Document** — `TextDocument`: an external id, a `u64` version and field
-  values. The version orders every write to the same id.
+  values. The version orders every write to the same id. The fields are
+  private: `TextDocument::new(external_id, version)` and `with_field` build
+  it, and `external_id()`, `version()` and `fields()` read it.
 - **Tombstone** — the highest delete version seen for an absent document.
 - **Query** — `TextQuery`: `All`, `Match` (field, text, `MatchOperator` `All`
   or `Any`), `Exact`, `And`, `Or`, `Not`. `TextHit` is an id, version and
@@ -60,10 +67,9 @@ and `MemoryTextIndex`; lumen uses `Analyzer`, `tokenize`,
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** B2 (`jieba-rs`): the optional `jieba` feature
+- **Checker exceptions:** B2 (`jieba-rs`): the optional `jieba` feature
   exposes `for_jieba_no_hmm` and re-exports `jieba_rs::RouteStore` as
   `JiebaRouteStore`. The dictionary is the analyzer's own vocabulary, so this
   stays with a long-term reason.
-- **Tracked for P2:** bare ids: `TextDocument::external_id` is a `String` and
-  its version a `u64`. `TextDocument` has public fields, but no downstream
-  struct literal was found; sift builds documents with `TextDocument::new`.
+- **Debts:** none tracked. P2 made the `TextDocument` fields private (D2),
+  and typed document ids and versions throughout the index (W5).

@@ -22,25 +22,22 @@ impl RaftNode {
         {
             return Err(PromotionRefused::TransitionInFlight);
         }
-        let matched = self.learner_matched(peer).unwrap_or(0);
-        let target = self.learner_read_target(peer).unwrap_or(0);
+        let matched = self.learner_matched(peer).unwrap_or(Index::new(0));
+        let target = self.learner_read_target(peer).unwrap_or(Index::new(0));
         if matched < target {
             return Err(PromotionRefused::NotCaughtUp { matched, target });
         }
-        let mut new_voters = self.conf_state.membership.voters.clone();
+        let mut new_voters = self.conf_state.membership.voters().to_vec();
         if !new_voters.contains(&peer) {
             new_voters.push(peer);
             new_voters.sort_unstable();
         }
-        let mut new_learners = self.conf_state.membership.learners.clone();
+        let mut new_learners = self.conf_state.membership.learners().to_vec();
         new_learners.retain(|l| *l != peer);
 
-        let outgoing = Some(self.conf_state.membership.voters.clone());
+        let outgoing = Some(self.conf_state.membership.voters().to_vec());
         let conf = ConfState {
-            membership: Membership {
-                voters: new_voters,
-                learners: new_learners,
-            },
+            membership: Membership::new(new_voters, new_learners),
             outgoing,
             generation: self.conf_state.generation + 1,
         };
@@ -69,32 +66,29 @@ impl RaftNode {
         {
             return Err(DemotionRefused::TransitionInFlight);
         }
-        if !self.conf_state.membership.voters.contains(&peer) {
+        if !self.conf_state.membership.voters().contains(&peer) {
             return Err(DemotionRefused::NotAVoter { target: peer });
         }
-        let mut new_voters = self.conf_state.membership.voters.clone();
+        let mut new_voters = self.conf_state.membership.voters().to_vec();
         new_voters.retain(|v| *v != peer);
         if new_voters.is_empty() {
             return Err(DemotionRefused::WouldEmptyVoterSet { target: peer });
         }
-        let n = self.conf_state.membership.voters.len();
+        let n = self.conf_state.membership.voters().len();
         let before = n.saturating_sub(n / 2 + 1);
         let after = (n - 1).saturating_sub((n - 1) / 2 + 1);
         if after < before {
             return Err(DemotionRefused::ToleranceWouldDrop { before, after });
         }
-        let mut new_learners = self.conf_state.membership.learners.clone();
+        let mut new_learners = self.conf_state.membership.learners().to_vec();
         if !new_learners.contains(&peer) {
             new_learners.push(peer);
             new_learners.sort_unstable();
         }
 
-        let outgoing = Some(self.conf_state.membership.voters.clone());
+        let outgoing = Some(self.conf_state.membership.voters().to_vec());
         let conf = ConfState {
-            membership: Membership {
-                voters: new_voters,
-                learners: new_learners,
-            },
+            membership: Membership::new(new_voters, new_learners),
             outgoing,
             generation: self.conf_state.generation + 1,
         };
@@ -123,33 +117,30 @@ impl RaftNode {
         {
             return Err(RemovalRefused::TransitionInFlight);
         }
-        let is_voter = self.conf_state.membership.voters.contains(&peer);
-        let is_learner = self.conf_state.membership.learners.contains(&peer);
+        let is_voter = self.conf_state.membership.voters().contains(&peer);
+        let is_learner = self.conf_state.membership.learners().contains(&peer);
         if !is_voter && !is_learner {
             return Err(RemovalRefused::NotAMember { target: peer });
         }
-        let mut new_voters = self.conf_state.membership.voters.clone();
+        let mut new_voters = self.conf_state.membership.voters().to_vec();
         new_voters.retain(|v| *v != peer);
         if is_voter {
             if new_voters.is_empty() {
                 return Err(RemovalRefused::WouldEmptyVoterSet { target: peer });
             }
-            let n = self.conf_state.membership.voters.len();
+            let n = self.conf_state.membership.voters().len();
             let before = n.saturating_sub(n / 2 + 1);
             let after = (n - 1).saturating_sub((n - 1) / 2 + 1);
             if after < before {
                 return Err(RemovalRefused::ToleranceWouldDrop { before, after });
             }
         }
-        let mut new_learners = self.conf_state.membership.learners.clone();
+        let mut new_learners = self.conf_state.membership.learners().to_vec();
         new_learners.retain(|l| *l != peer);
 
-        let outgoing = Some(self.conf_state.membership.voters.clone());
+        let outgoing = Some(self.conf_state.membership.voters().to_vec());
         let conf = ConfState {
-            membership: Membership {
-                voters: new_voters,
-                learners: new_learners,
-            },
+            membership: Membership::new(new_voters, new_learners),
             outgoing,
             generation: self.conf_state.generation + 1,
         };

@@ -247,7 +247,7 @@ impl<'a> StatefulInstancePlan<'a> {
     ) -> Self {
         Self {
             cx,
-            name: cx.name.into(),
+            name: cx.name().into(),
             service_name: service_name.into(),
             replicas,
             selector: BTreeMap::new(),

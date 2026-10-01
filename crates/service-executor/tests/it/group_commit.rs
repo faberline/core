@@ -35,6 +35,17 @@ impl GroupCommitRequest for Numbers {
     }
 }
 
+#[test]
+fn config_getters_report_the_limits_and_queue_capacity() {
+    let config = GroupCommitConfig::new(Duration::from_millis(20), 10, 1_024).unwrap();
+    assert_eq!(config.max_delay(), Duration::from_millis(20));
+    assert_eq!(config.max_items(), 10);
+    assert_eq!(config.max_bytes(), 1_024);
+    assert_eq!(config.queue_capacity(), 1_024);
+    assert_eq!(config.with_queue_capacity(8).unwrap().queue_capacity(), 8);
+    assert!(config.with_queue_capacity(0).is_err());
+}
+
 #[tokio::test]
 async fn one_window_executes_once_and_fans_results_back_to_each_request() {
     let calls = Arc::new(AtomicUsize::new(0));

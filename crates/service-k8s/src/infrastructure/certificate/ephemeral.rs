@@ -26,8 +26,8 @@ use std::sync::Mutex;
 use chrono::{DateTime, TimeZone, Utc};
 use futures::future::{ready, BoxFuture};
 use rcgen::{
-    Certificate, CertificateParams, CertificateSigningRequestParams, DnType, ExtendedKeyUsagePurpose,
-    IsCa, KeyPair, KeyUsagePurpose,
+    Certificate, CertificateParams, CertificateSigningRequestParams, DnType,
+    ExtendedKeyUsagePurpose, IsCa, KeyPair, KeyUsagePurpose,
 };
 
 use crate::domain::certificate::digest::hex_sha256;
@@ -87,11 +87,6 @@ impl EphemeralIssuer {
     /// Make the next issuance fail with `reason`.
     pub fn fail_next(&self, reason: impl Into<String>) {
         *self.fail_next.lock().expect("issuer failure switch") = Some(reason.into());
-    }
-
-    /// The root's PEM — what verifiers need in order to accept its leaves.
-    pub fn anchor_pem(&self) -> String {
-        self.root.pem()
     }
 
     fn sign(&self, request: IssuanceRequest) -> Result<IssuedMaterial, IssuerError> {
@@ -178,6 +173,9 @@ mod tests {
     };
     use std::time::Duration;
 
+    use crate::infrastructure::certificate::csr::RcgenCsrGenerator;
+    use crate::infrastructure::certificate::leaf_parser::parse_leaf;
+
     fn scope() -> InstanceScope {
         InstanceScope::new("lumen", "lumen", "lumen-prod.svc.id.goog")
     }
@@ -201,7 +199,8 @@ mod tests {
     #[test]
     fn a_leaf_is_dated_from_the_clock_the_test_controls() {
         let issuer = EphemeralIssuer::new("pool-a", instant(2026, 7, 1, 12));
-        let (request, _key) = IssuanceRequest::build(&scope(), &profile()).unwrap();
+        let (request, _key) =
+            IssuanceRequest::build(&scope(), &profile(), &RcgenCsrGenerator).unwrap();
         let material = futures::executor::block_on(issuer.issue(request)).unwrap();
         assert_eq!(material.not_before, instant(2026, 7, 1, 12));
         assert_eq!(
@@ -213,9 +212,10 @@ mod tests {
     #[test]
     fn a_leaf_carries_the_usages_the_purpose_asked_for() {
         let issuer = EphemeralIssuer::new("pool-a", instant(2026, 7, 1, 12));
-        let (request, _key) = IssuanceRequest::build(&scope(), &profile()).unwrap();
+        let (request, _key) =
+            IssuanceRequest::build(&scope(), &profile(), &RcgenCsrGenerator).unwrap();
         let material = futures::executor::block_on(issuer.issue(request)).unwrap();
-        let facts = crate::certificate::projection::parse_leaf(&material.certificate_pem).unwrap();
+        let facts = parse_leaf(&material.certificate_pem).unwrap();
         assert_eq!(facts.not_after, material.not_after);
         assert_eq!(facts.fingerprint, material.fingerprint);
     }
@@ -224,7 +224,8 @@ mod tests {
     fn a_forced_failure_signs_nothing() {
         let issuer = EphemeralIssuer::new("pool-a", instant(2026, 7, 1, 12));
         issuer.fail_next("CA unreachable");
-        let (request, _key) = IssuanceRequest::build(&scope(), &profile()).unwrap();
+        let (request, _key) =
+            IssuanceRequest::build(&scope(), &profile(), &RcgenCsrGenerator).unwrap();
         assert!(futures::executor::block_on(issuer.issue(request)).is_err());
         assert_eq!(issuer.issued_count(), 0);
     }

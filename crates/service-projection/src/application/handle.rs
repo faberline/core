@@ -1,26 +1,26 @@
+use crate::domain::ProjectionCursor;
 use std::{
-    fs,
-    path::{Path, PathBuf},
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
-use anyhow::{Context, Result};
+use anyhow::Result;
+use chrono::Utc;
 use tokio::sync::Notify;
 
 use super::config::ProjectionRuntimeConfig;
 use crate::domain::{
     checkpoint, validate_descriptor, Projection, ProjectionCheckpoint, ProjectionDescriptor,
-    ProjectionLag, ProjectionRecord, ProjectionSource, RebuildComparison,
+    ProjectionError, ProjectionLag, ProjectionRecord, ProjectionSource, ProjectionStateStore,
+    RebuildComparison,
 };
-use crate::infrastructure::{persist, quarantine_invalid_snapshot, restore_snapshot};
 
 mod locked;
 
 struct LiveProjection<P> {
     implementation: Arc<P>,
     checkpoint: ProjectionCheckpoint,
-    persisted_cursor: u64,
+    persisted_cursor: ProjectionCursor,
 }
 
 type ProjectionFactory<P> = Arc<dyn Fn() -> Result<Arc<P>> + Send + Sync>;
@@ -32,7 +32,8 @@ where
 {
     source: Arc<dyn ProjectionSource<Record>>,
     factory: ProjectionFactory<P>,
-    state_path: PathBuf,
+    store: Arc<dyn ProjectionStateStore>,
+    name: String,
     live: Mutex<LiveProjection<P>>,
     published: Notify,
     config: ProjectionRuntimeConfig,
@@ -44,7 +45,7 @@ where
     P: Projection<Record>,
 {
     pub(super) fn open(
-        root: &Path,
+        store: Arc<dyn ProjectionStateStore>,
         source: Arc<dyn ProjectionSource<Record>>,
         factory: ProjectionFactory<P>,
         config: ProjectionRuntimeConfig,
@@ -52,25 +53,34 @@ where
         let mut implementation = factory()?;
         let descriptor = implementation.descriptor();
         validate_descriptor(&descriptor)?;
-        let state_path = root.join(&descriptor.name).join("state.json");
-        let (checkpoint, rebuild_invalid_snapshot) = if state_path.exists() {
-            let bytes = fs::read(&state_path)
-                .with_context(|| format!("read projection state {}", state_path.display()))?;
-            match restore_snapshot(&descriptor, implementation.as_ref(), &bytes) {
-                Ok(checkpoint) => (checkpoint, false),
-                Err(_) => {
-                    quarantine_invalid_snapshot(&state_path, &bytes)?;
-                    implementation = factory()?;
-                    (ProjectionCheckpoint::empty(&descriptor), true)
+        let (checkpoint, restored, rebuild_invalid_snapshot) = match store
+            .read(descriptor.name().as_str())?
+        {
+            Some(bytes) => {
+                match restore_saved(store.as_ref(), &descriptor, implementation.as_ref(), &bytes) {
+                    Ok(checkpoint) => (checkpoint, true, false),
+                    Err(_) => {
+                        store.quarantine(descriptor.name().as_str(), &bytes)?;
+                        implementation = factory()?;
+                        (
+                            ProjectionCheckpoint::empty(&descriptor, Utc::now()),
+                            false,
+                            true,
+                        )
+                    }
                 }
             }
-        } else {
-            (ProjectionCheckpoint::empty(&descriptor), false)
+            None => (
+                ProjectionCheckpoint::empty(&descriptor, Utc::now()),
+                false,
+                false,
+            ),
         };
         let handle = Self {
             source,
             factory,
-            state_path,
+            store,
+            name: descriptor.name().to_string(),
             live: Mutex::new(LiveProjection {
                 implementation,
                 persisted_cursor: checkpoint.cursor,
@@ -79,7 +89,7 @@ where
             published: Notify::new(),
             config,
         };
-        if handle.state_path.exists() {
+        if restored {
             handle.projection().checkpoint_committed()?;
         }
         if rebuild_invalid_snapshot
@@ -102,7 +112,7 @@ where
         self.projection().descriptor()
     }
 
-    pub fn current_cursor(&self) -> u64 {
+    pub fn current_cursor(&self) -> ProjectionCursor {
         self.live
             .lock()
             .expect("projection state lock poisoned")
@@ -111,10 +121,10 @@ where
     }
 
     pub fn semantic_digest(&self) -> Result<String> {
-        self.projection().semantic_digest()
+        Ok(self.projection().semantic_digest()?)
     }
 
-    pub fn catch_up(&self) -> Result<u64> {
+    pub fn catch_up(&self) -> Result<ProjectionCursor> {
         let target = self.source.current_cursor();
         let generation = self.source.generation();
         let mut live = self.live.lock().expect("projection state lock poisoned");
@@ -128,9 +138,9 @@ where
 
     pub async fn wait_for_min_cursor(
         &self,
-        required_cursor: u64,
+        required_cursor: ProjectionCursor,
         timeout: Duration,
-    ) -> std::result::Result<u64, ProjectionLag> {
+    ) -> std::result::Result<ProjectionCursor, ProjectionLag> {
         let started = Instant::now();
         loop {
             let published = self.published.notified();
@@ -171,8 +181,9 @@ where
                 source_generation,
                 last_event_id,
                 &state,
+                Utc::now(),
             );
-            persist(&self.state_path, &checkpoint, &state)?;
+            self.store.persist(&self.name, &checkpoint, &state)?;
             rebuilt.checkpoint_committed()?;
             let mut live = self.live.lock().expect("projection state lock poisoned");
             live.implementation = rebuilt;
@@ -213,4 +224,21 @@ where
         }
         Ok(())
     }
+}
+
+/// Decode saved state and restore it into `implementation`; an error means
+/// the saved state is quarantined and the projection rebuilt.
+fn restore_saved<Record, P>(
+    store: &dyn ProjectionStateStore,
+    descriptor: &ProjectionDescriptor,
+    implementation: &P,
+    bytes: &[u8],
+) -> std::result::Result<ProjectionCheckpoint, ProjectionError>
+where
+    Record: ProjectionRecord,
+    P: Projection<Record>,
+{
+    let (checkpoint, state) = store.restore(descriptor, bytes)?;
+    implementation.restore(&state)?;
+    Ok(checkpoint)
 }

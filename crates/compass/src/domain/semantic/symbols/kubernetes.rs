@@ -4,7 +4,7 @@
 
 use super::{SymbolKind, SymbolTableBuilder};
 use crate::domain::diagnostic::model::Range;
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 impl SymbolTableBuilder {
     /// Walk YAML AST to extract Kubernetes resource symbols
@@ -146,7 +146,7 @@ fn extract_metadata(
             "name" => {
                 if let Some(v) = &vn {
                     *name = file.node_text(v).trim().into();
-                    *name_range = Range::from_node(v);
+                    *name_range = v.to_range();
                 }
             }
             "namespace" => {
@@ -244,7 +244,7 @@ fn collect_mapping_keys(
             if let Some(k) = child.child_by_field_name("key") {
                 let kn = file.node_text(&k).trim().to_string();
                 if !kn.is_empty() {
-                    out.push((kn, Range::from_node(&k)));
+                    out.push((kn, k.to_range()));
                 }
             }
         }

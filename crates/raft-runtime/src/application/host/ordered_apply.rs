@@ -3,7 +3,7 @@
 //! run on the blocking pool under the separate state-machine serial boundary.
 
 use super::*;
-use raft_core::EntryKind;
+use raft_core::{EntryKind, Term};
 
 impl Shared {
     /// Called while the node mutex is held, after its current state is durable.
@@ -47,7 +47,7 @@ impl Shared {
             *failure = Some(StorageFailed {
                 node_id: self.id,
                 operation,
-                path: self.store.path().to_path_buf(),
+                path: self.store_path.clone(),
                 kind: std::io::ErrorKind::InvalidData,
             });
         }
@@ -76,14 +76,16 @@ impl Shared {
                     self.persist(&node)?;
                     None
                 } else {
-                    let source = self.store.pin_committed_command(index, term)?;
+                    let source = self.storage.pin_committed_command(index, term)?;
                     let permit = {
                         let mut pending = self
                             .pending_admission
                             .lock()
                             .unwrap_or_else(|p| p.into_inner());
-                        pending.retain(|(at, entry_term), _| *at != index || *entry_term == term);
-                        pending.remove(&(index, term))
+                        pending.retain(|(at, entry_term), _| {
+                            *at != index || *entry_term == term.get()
+                        });
+                        pending.remove(&(index, term.get()))
                     };
                     Some((index, term, source, permit))
                 }
@@ -91,7 +93,9 @@ impl Shared {
             if let Some((index, term, source, permit)) = selected {
                 if self.sm.applied_index() < index {
                     let command = source.map()?;
-                    self.sm.apply_admitted(index, command.command(), permit)?;
+                    self.sm
+                        .apply_admitted(index, command.command(), permit)
+                        .map_err(StateMachineError::into_anyhow)?;
                     if self.sm.applied_index() < index {
                         anyhow::bail!(
                             "state machine returned success without applying index {index}"
@@ -110,13 +114,15 @@ impl Shared {
     }
 
     fn capture_periodic_snapshot(&self) -> Result<()> {
-        let SnapshotPolicy::EveryEntries(every) = self.cfg.snapshot else {
+        let SnapshotPolicy::EveryEntries(every) = self.cfg.snapshot() else {
             return Ok(());
         };
         let applied = self.sm.applied_index();
         {
             let node = self.node.blocking_lock();
-            if applied == 0 || applied.saturating_sub(node.snapshot_index()) < every {
+            if applied == Index::new(0)
+                || applied.get().saturating_sub(node.snapshot_index().get()) < every
+            {
                 return Ok(());
             }
         }
@@ -153,9 +159,9 @@ impl Shared {
                 node.reject_install_snapshot(req);
                 if self.persist(&node).is_err() {
                     return InstallSnapshotResp {
-                        term: 0,
+                        term: Term::new(0),
                         accepted: false,
-                        snapshot_index: 0,
+                        snapshot_index: Index::new(0),
                     };
                 }
                 return match take_reply(&mut node, from) {
@@ -176,9 +182,9 @@ impl Shared {
             if self.persist(&node).is_err() {
                 let _ = take_reply(&mut node, from);
                 return InstallSnapshotResp {
-                    term: 0,
+                    term: Term::new(0),
                     accepted: false,
-                    snapshot_index: 0,
+                    snapshot_index: Index::new(0),
                 };
             }
             let bytes = if restore {
@@ -199,13 +205,17 @@ impl Shared {
         if restore {
             let result = bytes
                 .ok_or_else(|| anyhow!("durable snapshot has no restore bytes"))
-                .and_then(|bytes| self.sm.restore(&mut std::io::Cursor::new(bytes)));
+                .and_then(|bytes| {
+                    self.sm
+                        .restore(&mut std::io::Cursor::new(bytes))
+                        .map_err(StateMachineError::into_anyhow)
+                });
             if let Err(error) = result {
                 tracing::error!(%error, "raft: durable snapshot restore failed; latch node until restart");
                 *self.latched_failure.lock().unwrap() = Some(StorageFailed {
                     node_id: self.id,
                     operation: "state-machine-restore",
-                    path: self.store.path().to_path_buf(),
+                    path: self.store_path.clone(),
                     kind: std::io::ErrorKind::InvalidData,
                 });
                 return InstallSnapshotResp {

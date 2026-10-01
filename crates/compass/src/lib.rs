@@ -18,40 +18,42 @@
 //! - `projects/conductor/` — cloud web
 //! - `sdd` — library crate re-exports compass for backward compat
 
+mod api;
+mod app;
 mod application;
-mod compat;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
-pub use compat::{
-    check_pipeline, checker, core, diagnostic, format, gen, graph, lens_error, lint, lsp, outline,
-    output, refactoring, schemas, search, semantic, server, spec, storage, syntax, type_inference,
-    watch,
+pub use api::{
+    check_pipeline, core, diagnostic, gen, graph, lens_error, lint, lsp, output, schemas, semantic,
+    server, spec, storage, syntax, type_inference,
 };
 // generate/ module moved to sdd crate (consolidate-codegen)
 
 // Re-export commonly used types (matches the surface previously exposed by sdd)
+pub use app::check::{check_paths, check_paths_with_propagation};
+pub use app::outline::outline;
 pub use application::analysis::request_handler::RequestHandler;
-pub use application::check::check_paths::{check_paths, check_paths_with_propagation};
-pub use application::daemon::config::DaemonConfig;
-pub use application::outline::function_outline::{
-    outline, outline_parsed, FunctionDef, FunctionKind,
-};
+pub use application::outline::function_outline::{outline_parsed, FunctionDef, FunctionKind};
 pub use domain::check::file_result::FileResult;
 pub use domain::check::lint_config::LintConfig;
+pub use domain::codegen::traits::{
+    CodeGenerator, GenContext, GenError, GenResult, GeneratedCode, TechStack,
+};
 pub use domain::config::argus_config::{ArgusConfig, LanguageConfig};
+pub use domain::daemon::config::DaemonConfig;
 pub use domain::diagnostic::model::{
     Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range,
 };
+pub use domain::diagnostic::rule_code::RuleCode;
 pub use domain::error::argus_error::ArgusError;
 pub use domain::lint::checker::Checker;
+pub use domain::lint::custom::RejectedRule;
 pub use domain::lint::registry::CheckerRegistry;
 pub use domain::syntax::language::Language;
-pub use domain::syntax::parsed_file::ParsedFile;
-pub use infrastructure::codegen::traits::{
-    CodeGenerator, GenContext, GenError, GenResult, GeneratedCode, TechStack,
-};
+pub use domain::syntax::parsed_file::{NodeRange, ParsedFile};
+pub use domain::syntax::source_parser::SourceParser;
 pub use infrastructure::daemon::client::DaemonClient;
 pub use infrastructure::syntax::multi_parser::MultiParser;
 pub use infrastructure::watch::file_watcher::{FileWatcher, WatchConfig, WatchEvent};

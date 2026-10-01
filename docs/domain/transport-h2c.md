@@ -20,8 +20,9 @@ and lumen's tests also serve connections with it.
   speaks HTTP/2 with prior knowledge.
 - **h2c pool** — `H2cPool`: a fixed set of such clients used round-robin.
 - **h2c manager** — `H2cManager`: a self-managing set of frame-level h2
-  connections to one authority, configured by `ManagerConfig` and observed
-  through `ManagerStats`.
+  connections to one authority, configured by `ManagerConfig` (`Default` or
+  `for_concurrency`, then `with_*` builders) and observed through
+  `ManagerStats`.
 - **Stream admission** — the manager's per-origin semaphore
   (`max_in_flight_per_origin`): a request waits up to `pool_timeout` for a slot
   instead of opening unbounded streams.
@@ -31,7 +32,8 @@ and lumen's tests also serve connections with it.
   lost mutation might have run.
 - **Connection terminal** — `ConnectionTerminal` (`PeerClosed`, `Drained`,
   `DeadlineExceeded`, `Failed`) and the `ConnectionReport` of one served
-  connection; `ConnectionOptions` caps concurrent streams (4096 by default).
+  connection; `ConnectionOptions` caps concurrent streams (4096 by default,
+  or `ConnectionOptions::new(n)`).
 
 ## Ports
 
@@ -65,7 +67,7 @@ the crate's llm topic through `llm::topic`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** the safe-method check exists twice, `is_safe_method` in
-  both the manager and the server side (ADR D7). server-http builds
-  `ConnectionOptions` with struct literals.
+- **Checker exceptions:** None.
+- **Debts:** none tracked. P2 made the `ManagerConfig` and
+  `ConnectionOptions` fields private (D2), and the manager and the server
+  now share one `is_safe_method` (D7).

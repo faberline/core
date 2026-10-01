@@ -1,4 +1,5 @@
-//! Minimal Lease-based leader election (coordination.k8s.io/v1).
+//! Minimal Lease-based leader election (coordination.k8s.io/v1): the kube side
+//! of the [`LeaderLease`] port.
 //!
 //! kube-rs 0.98 ships no built-in elector, so this is a small hand-rolled one:
 //! every operator replica runs the watch + reconcile loop, but only the replica
@@ -11,7 +12,7 @@
 //! Lifted from lumen's operator; the Lease name is now a parameter (the
 //! service's `MANAGER`) so two different operators never share one Lease.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -20,47 +21,12 @@ use k8s_openapi::apimachinery::pkg::apis::meta::v1::MicroTime;
 use kube::api::{Api, ObjectMeta, PostParams};
 use kube::Client;
 
+use crate::domain::leadership::{may_acquire, Election, LeaderLease};
+
 /// Lease timing. The renew interval is comfortably under the duration so a
 /// healthy leader never lets the lease lapse.
 const LEASE_DURATION_SECS: i32 = 15;
 const RENEW_INTERVAL: Duration = Duration::from_secs(5);
-
-/// Shared leadership flag, flipped by the background election task and read by
-/// the reconcile loop.
-pub struct Election {
-    pub is_leader: AtomicBool,
-    pub identity: String,
-}
-
-impl Election {
-    pub fn new(identity: String) -> Arc<Self> {
-        Arc::new(Self {
-            is_leader: AtomicBool::new(false),
-            identity,
-        })
-    }
-}
-
-/// Pure leadership decision: may `identity` hold the lease now? True when the
-/// lease is unheld, already held by us, or expired (renewal lapsed past the
-/// duration). False only when a *different* identity holds a still-fresh lease.
-/// Factored out for unit testing — no cluster, no clock.
-fn may_acquire(
-    holder: Option<&str>,
-    renew_epoch_secs: Option<i64>,
-    lease_dur_secs: i64,
-    identity: &str,
-    now_epoch_secs: i64,
-) -> bool {
-    match holder {
-        None => true,
-        Some(h) if h == identity => true,
-        Some(_) => match renew_epoch_secs {
-            Some(r) => now_epoch_secs.saturating_sub(r) > lease_dur_secs,
-            None => true,
-        },
-    }
-}
 
 /// Try to acquire or renew the lease once. Returns whether we hold it after the
 /// attempt. Any API error → treat as "not leader" (fail safe: a follower never
@@ -129,34 +95,31 @@ pub fn spawn(client: Client, namespace: String, lease_name: String, election: Ar
     });
 }
 
-#[cfg(test)]
-mod tests {
-    use super::may_acquire;
+/// The kube Lease behind [`LeaderLease`]: `start` runs [`spawn`] for the
+/// `lease_name` Lease in `namespace`.
+pub(crate) struct KubeLease {
+    client: Client,
+    namespace: String,
+    lease_name: String,
+}
 
-    #[test]
-    fn unheld_lease_is_acquirable() {
-        assert!(may_acquire(None, None, 15, "me", 1000));
+impl KubeLease {
+    pub(crate) fn new(client: Client, namespace: String, lease_name: String) -> Self {
+        Self {
+            client,
+            namespace,
+            lease_name,
+        }
     }
+}
 
-    #[test]
-    fn own_lease_is_renewable_even_when_fresh() {
-        assert!(may_acquire(Some("me"), Some(999), 15, "me", 1000));
-    }
-
-    #[test]
-    fn other_holder_fresh_lease_blocks() {
-        assert!(!may_acquire(Some("other"), Some(999), 15, "me", 1000));
-    }
-
-    #[test]
-    fn other_holder_expired_lease_is_taken_over() {
-        assert!(may_acquire(Some("other"), Some(980), 15, "me", 1000));
-        // exactly at the boundary (== duration) is NOT yet expired.
-        assert!(!may_acquire(Some("other"), Some(985), 15, "me", 1000));
-    }
-
-    #[test]
-    fn other_holder_missing_renew_time_is_acquirable() {
-        assert!(may_acquire(Some("other"), None, 15, "me", 1000));
+impl LeaderLease for KubeLease {
+    fn start(&self, election: Arc<Election>) {
+        spawn(
+            self.client.clone(),
+            self.namespace.clone(),
+            self.lease_name.clone(),
+            election,
+        );
     }
 }

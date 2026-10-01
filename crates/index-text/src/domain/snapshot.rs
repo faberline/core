@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::document::TextDocument;
 use super::error::{IndexError, Result};
 use super::schema::TextSchema;
+use super::{DocumentId, DocumentVersion};
 
 pub const SNAPSHOT_FORMAT_VERSION: u32 = 1;
 
@@ -16,7 +17,7 @@ pub struct TextIndexSnapshot {
     /// Highest observed delete version for each absent document. Older version
     /// 1 snapshots omit this field and decode with an empty tombstone table.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub tombstones: BTreeMap<String, u64>,
+    pub tombstones: BTreeMap<DocumentId, DocumentVersion>,
 }
 
 impl TextIndexSnapshot {
@@ -32,3 +33,6 @@ impl TextIndexSnapshot {
         })
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -265,7 +265,7 @@ pub struct ShardedStatefulSet<'a> {
 /// The downward-API StatefulSet: `replicas = shard_count * replicas_per_shard`,
 /// `podManagementPolicy: Parallel`, and the env quartet
 /// (`POD_NAME`/`POD_NAMESPACE`/`SHARD_COUNT`/`REPLICAS_PER_SHARD`/`VOTER_COUNT`)
-/// together with `<headless_env_key>`, which `raft_runtime::cluster::ClusterTopology::from_env`
+/// together with `<headless_env_key>`, which `raft_runtime::ClusterTopology::from_env`
 /// reads to derive node id / membership / peers.
 pub fn sharded_statefulset(p: ShardedStatefulSet) -> Value {
     let volume_claim = p.volume_claim.map(|template| {
@@ -299,7 +299,7 @@ pub fn sharded_statefulset(p: ShardedStatefulSet) -> Value {
         replicas_per_shard: p.replicas_per_shard,
         voter_count: p.voter_count,
         headless_env_key: p.headless_env_key,
-        service_account_name: Some(p.cx.name),
+        service_account_name: Some(p.cx.name()),
         env: p.extra_env,
         env_from: vec![],
         resources: requested_resources(p.cpu, p.memory),

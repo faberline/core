@@ -6,8 +6,8 @@ use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
 
+use super::wire::{NotLeader, PublishEnvelope};
 use crate::application::{decode_backpressure, ProposalOutcome, Shared};
-use crate::infrastructure::{NotLeader, PublishEnvelope};
 
 const PUBLISH_BODY_LIMIT: usize = 2 * 1024 * 1024;
 
@@ -26,7 +26,7 @@ pub(crate) async fn publish_handler(
     // A well-formed foreign envelope is a caller error on every host. This is
     // the only body verdict that precedes the follower routing response.
     if let Ok(env) = serde_json::from_slice::<PublishEnvelope>(&body) {
-        if env.group_id != s.group_id.0 {
+        if env.group_id != s.group_id.as_str() {
             return (StatusCode::BAD_REQUEST, "group id mismatch").into_response();
         }
     }
@@ -61,7 +61,7 @@ pub(crate) async fn publish_handler(
         Ok(env) => env,
         Err(rejection) => return rejection.into_response(),
     };
-    if env.group_id != s.group_id.0 {
+    if env.group_id != s.group_id.as_str() {
         return (StatusCode::BAD_REQUEST, "group id mismatch").into_response();
     }
     match s.try_propose_applied(env.command).await {

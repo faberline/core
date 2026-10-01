@@ -11,12 +11,13 @@ use std::collections::HashMap;
 
 use tree_sitter::Node;
 
+use crate::domain::frameworks::registry::FrameworkRegistry;
+use crate::domain::modules::import::{parse_import, ModuleInfo};
+use crate::domain::stubs::bundled::bundled_stubs;
 use crate::domain::type_system::builtins::add_builtins;
 use crate::domain::type_system::class_info::ClassInfo;
 use crate::domain::type_system::ty::{Type, TypeVarId, Variance};
 use crate::domain::type_system::type_env::TypeEnv;
-use crate::type_inference::imports::parse_import;
-use crate::type_inference::{FrameworkRegistry, ImportResolver, StubLoader};
 
 /// Type inferencer for Python code
 pub struct TypeInferencer<'a> {
@@ -32,11 +33,9 @@ pub struct TypeInferencer<'a> {
     next_type_var: usize,
     /// Type overrides from narrowing (checked before env)
     type_overrides: Option<HashMap<String, Type>>,
-    /// Stub loader for builtin/typing/collections stubs
-    #[allow(dead_code)]
-    stubs: StubLoader,
-    /// Import resolver for module resolution
-    resolver: ImportResolver,
+    /// Modules imports resolve against: the bundled builtin, typing,
+    /// collections and typeshed stubs (module path -> info)
+    modules: HashMap<String, ModuleInfo>,
     /// Overloaded function signatures (name -> list of Callable signatures)
     overload_signatures: HashMap<String, Vec<Type>>,
     /// Current class name (for Self type resolution)
@@ -51,15 +50,6 @@ impl<'a> TypeInferencer<'a> {
         // Add builtins
         add_builtins(&mut env);
 
-        // Initialize stubs and resolver
-        let mut stubs = StubLoader::new();
-        stubs.load_builtins();
-
-        let mut resolver = ImportResolver::new();
-        for (path, info) in stubs.modules() {
-            resolver.register_module(path, info.clone());
-        }
-
         Self {
             source,
             env,
@@ -67,8 +57,7 @@ impl<'a> TypeInferencer<'a> {
             type_vars: HashMap::new(),
             next_type_var: 0,
             type_overrides: None,
-            stubs,
-            resolver,
+            modules: bundled_stubs(),
             overload_signatures: HashMap::new(),
             current_class: None,
             framework_registry: FrameworkRegistry::new(),
@@ -240,7 +229,7 @@ impl<'a> TypeInferencer<'a> {
     /// Analyze an import statement and add imported names to the environment
     pub fn analyze_import(&mut self, node: &Node) {
         if let Some(import) = parse_import(self.source, node) {
-            let resolved = self.resolver.resolve_import(&import);
+            let resolved = import.resolve_in(&self.modules);
             for (name, ty) in resolved {
                 self.env.bind(name, ty);
             }

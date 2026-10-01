@@ -84,15 +84,6 @@ pub(super) async fn apply_object(
     Ok(())
 }
 
-/// The condition type the controller authors on its own behalf when a prune
-/// target's API is not served (#3079).
-///
-/// Named rather than inlined because it is read back off the watched object as
-/// well as written: `Patch::Merge` replaces a `conditions` array only when the
-/// array is re-sent, so the pass that recovers has to recognise the block it
-/// wrote on an earlier pass in order to clear it.
-pub(super) const PRUNE_BLOCKED: &str = "PruneBlocked";
-
 /// How one prune target's pass ended (#3079).
 ///
 /// `prune_object` used to answer `Result<(), Error>`, which folded three
@@ -137,9 +128,9 @@ pub(super) async fn prune_object(
     owner_uid: &str,
     target: &service::PruneTarget,
 ) -> Result<PruneOutcome, Error> {
-    let ar = api_resource(target.api_version, target.kind);
+    let ar = api_resource(target.api_version(), target.kind());
     let api: Api<DynamicObject> = Api::namespaced_with(client.clone(), ns, &ar);
-    let live = match api.get_opt(&target.name).await {
+    let live = match api.get_opt(target.name()).await {
         Ok(Some(live)) => live,
         Ok(None) => return Ok(PruneOutcome::Settled),
         // A 404 that reaches this arm is not an absent object. `get_opt` maps
@@ -163,8 +154,8 @@ pub(super) async fn prune_object(
         // `reconcile_errors_total` rather than in a status condition.
         Err(kube::Error::Api(e)) if e.code == 404 => {
             tracing::warn!(
-                api_version = %target.api_version, kind = %target.kind,
-                name = %target.name, namespace = %ns,
+                api_version = %target.api_version(), kind = %target.kind(),
+                name = %target.name(), namespace = %ns,
                 "prune: this cluster does not serve the target's API — nothing \
                  was removed; reporting it on the CR and retrying next pass"
             );
@@ -180,16 +171,16 @@ pub(super) async fn prune_object(
         .any(|r| r.uid == owner_uid && r.controller.unwrap_or(false));
     if !owned {
         tracing::warn!(
-            kind = %target.kind, name = %target.name, namespace = %ns,
+            kind = %target.kind(), name = %target.name(), namespace = %ns,
             "prune: an object of this kind exists at the CR's name but is not \
              controller-owned by it — leaving it alone"
         );
         return Ok(PruneOutcome::Foreign);
     }
-    match api.delete(&target.name, &Default::default()).await {
+    match api.delete(target.name(), &Default::default()).await {
         Ok(_) => {
             tracing::info!(
-                kind = %target.kind, name = %target.name, namespace = %ns,
+                kind = %target.kind(), name = %target.name(), namespace = %ns,
                 "prune: deleted a child the spec no longer asks for"
             );
             Ok(PruneOutcome::Settled)
@@ -234,13 +225,13 @@ pub(super) async fn prune_cluster_scoped_object(
     manager: &str,
     target: &service::ClusterScopedChild,
 ) -> Result<ClusterPruneOutcome, Error> {
-    let ar = api_resource(target.api_version, target.kind);
+    let ar = api_resource(target.api_version(), target.kind());
     let api: Api<DynamicObject> = Api::all_with(client.clone(), &ar);
-    let Some(live) = api.get_opt(&target.name).await? else {
+    let Some(live) = api.get_opt(target.name()).await? else {
         return Ok(ClusterPruneOutcome::Absent);
     };
 
-    let labels_match = target.expected_labels.iter().all(|(key, value)| {
+    let labels_match = target.expected_labels().iter().all(|(key, value)| {
         live.metadata
             .labels
             .as_ref()
@@ -249,8 +240,8 @@ pub(super) async fn prune_cluster_scoped_object(
     });
     if !labels_match {
         return Err(Error::ClusterOwnership {
-            kind: target.kind.to_string(),
-            name: target.name.clone(),
+            kind: target.kind().to_string(),
+            name: target.name().to_string(),
             reason: "expected owner labels do not match the live object".to_string(),
         });
     }
@@ -263,16 +254,16 @@ pub(super) async fn prune_cluster_scoped_object(
         .any(|entry| entry.manager.as_deref() == Some(manager));
     if !managed {
         return Err(Error::ClusterOwnership {
-            kind: target.kind.to_string(),
-            name: target.name.clone(),
+            kind: target.kind().to_string(),
+            name: target.name().to_string(),
             reason: format!("managedFields does not contain field manager {manager}"),
         });
     }
 
     let Some(uid) = live.metadata.uid.clone() else {
         return Err(Error::ClusterOwnership {
-            kind: target.kind.to_string(),
-            name: target.name.clone(),
+            kind: target.kind().to_string(),
+            name: target.name().to_string(),
             reason: "live object has no UID for a safe delete precondition".to_string(),
         });
     };
@@ -284,7 +275,7 @@ pub(super) async fn prune_cluster_scoped_object(
         ..DeleteParams::default()
     };
 
-    match api.delete(&target.name, &delete_params).await {
+    match api.delete(target.name(), &delete_params).await {
         Ok(_) => Ok(ClusterPruneOutcome::DeleteRequested),
         Err(kube::Error::Api(error)) if error.code == 404 => Ok(ClusterPruneOutcome::Absent),
         Err(error) => Err(error.into()),

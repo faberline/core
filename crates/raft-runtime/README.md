@@ -24,13 +24,28 @@ A promise with no gate under it is not claimed.
 Services can host Raft state machines through a shared h2c driver instead of
 duplicating peer transport and read consistency plumbing.
 
+State-machine ports return `StateMachineError` and `MembershipPolicy` returns
+`MembershipError`. An implementor's `anyhow::Error` converted with `?` comes
+back from the host unchanged, so a caller's `downcast_ref` still finds the
+implementor's own error type.
+
+The host holds its store and its peers only through raft-core's
+`RaftStorage` and `RaftDelivery` ports. The public `RaftHost::spawn*`
+constructors (in the composition root, `src/app`) take the caller's
+`RaftStore` and plug it in together with the HTTP peer client. Ids are
+newtypes (`NodeId`, `Term`, `Index`, `AssignmentEpoch`: `new` / `get`;
+`GroupId`: `new` / `as_str`), and `HostConfig` and `ClusterDims` are built
+through constructors and `with_*` methods rather than struct literals.
+
 - Root WI: none; this capability predates the tracker.
 - Surfaces: Rust API: `raft_runtime`.
 - Gate — behavior: `cargo test -p raft-runtime` - host, config, store, and read
   consistency coverage
 - Gate: `cargo test -p raft-runtime`
-- Source: `crates/raft-runtime/src/lib.rs`
-- Evidence: `cargo test -p raft-runtime`; crates/raft-runtime/src/lib.rs
+- Gate: `cargo test -p raft-runtime --test it -- port_error_downcast::`
+- Source: `crates/raft-runtime/src/application/host.rs`,
+  `crates/raft-runtime/src/app/host.rs`
+- Evidence: `cargo test -p raft-runtime`; crates/raft-runtime/src/application/host.rs
 
 ### Shared Peer mTLS Transport
 
@@ -61,7 +76,8 @@ and late outcomes from an earlier owner are rejected. The service continues to
 own assignment keys, domain commands, capacity policy, and external effects.
 
 - Root WI: #1854
-- Surfaces: Rust API: `FencedAssignment`, `FenceToken`, `AssignmentError`.
+- Surfaces: Rust API: `FencedAssignment`, `FenceToken`, `AssignmentEpoch`,
+  `AssignmentError`.
 - Gate — behavior: `cargo test -p raft-runtime --test it -- fenced_assignment::` -
   commit-before-effect, explicit expiry, reassignment, and stale-owner
   rejection

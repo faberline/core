@@ -11,15 +11,14 @@ use service_k8s::render::{service_statefulset, RenderCtx, ServiceStatefulSet};
 use service_k8s::service::ConditionStatus;
 
 fn test_cx() -> RenderCtx<'static> {
-    RenderCtx {
-        app: "lumen",
-        manager: "lumen-operator",
-        api_version: "lumen.axiom.dev/v1alpha1",
-        kind: "Lumen",
-        name: "test-svc",
-        ns: "default",
-        owner: None,
-    }
+    RenderCtx::new(
+        "lumen",
+        "lumen-operator",
+        "lumen.axiom.dev/v1alpha1",
+        "Lumen",
+        "test-svc",
+        "default",
+    )
 }
 
 fn test_pod_template<'a>(cx: &'a RenderCtx<'a>) -> ServicePodTemplate<'a> {

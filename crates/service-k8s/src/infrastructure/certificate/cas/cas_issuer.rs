@@ -8,7 +8,7 @@ use crate::domain::certificate::digest::hex_sha256;
 use crate::domain::certificate::issuer::{
     IssuanceRequest, IssuedMaterial, Issuer, IssuerError, IssuerId,
 };
-use crate::infrastructure::certificate::secret_layout::parse_leaf;
+use crate::infrastructure::certificate::leaf_parser::parse_leaf;
 
 /// Issues from a CA Service pool.
 pub struct CasIssuer {

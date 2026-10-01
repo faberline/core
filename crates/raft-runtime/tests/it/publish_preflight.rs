@@ -173,7 +173,7 @@ async fn canonical_publish_path_rejects_foreign_groups_on_direct_hosts() {
         .await
         .expect("the three-voter cluster elects one leader");
     let follower = (leader + 1) % nodes.len();
-    let group_id = nodes[leader].host.group_id().0.clone();
+    let group_id = nodes[leader].host.group_id().as_str().to_owned();
     let foreign_group = format!("{group_id}-foreign");
     let client = h2c_client();
 
@@ -210,7 +210,7 @@ async fn follower_preflight_precedes_json_rejection_for_direct_host_and_registry
         .expect("the three-voter cluster elects one leader");
     let follower = (leader + 1) % nodes.len();
     let expected_leader = leader as u64;
-    let group_id = nodes[follower].host.group_id().0.clone();
+    let group_id = nodes[follower].host.group_id().as_str().to_owned();
     let client = h2c_client();
     let (registry_url, registry_serve) =
         serve_single_host_registry(Arc::clone(&nodes[follower].host)).await;
@@ -238,7 +238,7 @@ async fn leader_retains_json_rejection_statuses_for_direct_host_and_registry() {
     let leader = await_leader(&nodes)
         .await
         .expect("the three-voter cluster elects one leader");
-    let group_id = nodes[leader].host.group_id().0.clone();
+    let group_id = nodes[leader].host.group_id().as_str().to_owned();
     let client = h2c_client();
     let (registry_url, registry_serve) =
         serve_single_host_registry(Arc::clone(&nodes[leader].host)).await;

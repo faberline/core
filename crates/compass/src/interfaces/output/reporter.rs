@@ -1,9 +1,8 @@
 use std::path::{Path, PathBuf};
 
-use crate::checker::FileResult;
-use crate::diagnostic::DiagnosticSeverity;
-use crate::graph::ImportGraph;
-use crate::semantic::symbols::SymbolTable;
+use crate::application::report::{ImportGraphView, SymbolTableView};
+use crate::domain::check::file_result::FileResult;
+use crate::domain::diagnostic::model::{Diagnostic, DiagnosticSeverity};
 use serde::Serialize;
 
 use super::output_format::OutputFormat;
@@ -40,26 +39,22 @@ impl Reporter {
         }
     }
 
-    /// Generate agent-format output with additional SymbolTable and ImportGraph data.
+    /// Generate agent-format output from the lint results and the symbol
+    /// table and import graph views.
     ///
-    /// Agent format requires per-file symbol tables and a project-wide import graph
-    /// in addition to the lint results. This method delegates to `AgentOutputBuilder`
-    /// to produce symbol-centric JSON optimized for LLM agent consumption.
-    ///
-    /// # Arguments
-    /// - `results` — lint/check results per file
-    /// - `symbol_tables` — per-file symbol tables (keyed by absolute path)
-    /// - `import_graph` — project-wide import dependency graph
-    /// - `project_root` — project root for computing relative paths
-    pub fn generate_agent(
+    /// `Reporter::generate_agent` (in the composition root) builds the views
+    /// from symbol tables and the import graph. This method delegates to
+    /// `AgentOutputBuilder` to produce symbol-centric JSON optimized for LLM
+    /// agent consumption.
+    pub(crate) fn generate_agent_views(
         &self,
         results: &[FileResult],
-        symbol_tables: &[(PathBuf, SymbolTable)],
-        import_graph: &ImportGraph,
+        symbol_tables: &[(PathBuf, SymbolTableView)],
+        imports: &ImportGraphView,
         project_root: &Path,
     ) -> String {
         let builder = super::agent::AgentOutputBuilder::new(project_root);
-        let agent_output = builder.build(results, symbol_tables, import_graph);
+        let agent_output = builder.build_views(results, symbol_tables, imports);
         // Compact JSON — no pretty-printing by default (R9)
         serde_json::to_string(&agent_output).unwrap_or_default()
     }
@@ -75,7 +70,7 @@ impl Reporter {
         struct JsonFile<'a> {
             path: String,
             language: &'a str,
-            diagnostics: &'a [crate::diagnostic::Diagnostic],
+            diagnostics: &'a [Diagnostic],
         }
 
         #[derive(Serialize)]
@@ -232,11 +227,11 @@ impl Reporter {
 
             for diag in &file_result.diagnostics {
                 // Register rule if not seen yet
-                let rule_idx = if let Some(&idx) = rule_ids.get(&diag.code) {
+                let rule_idx = if let Some(&idx) = rule_ids.get(diag.code.as_str()) {
                     idx
                 } else {
                     let idx = rules.len();
-                    rule_ids.insert(diag.code.clone(), idx);
+                    rule_ids.insert(diag.code.to_string(), idx);
                     rules.push(json!({
                         "id": diag.code,
                         "shortDescription": { "text": diag.code },

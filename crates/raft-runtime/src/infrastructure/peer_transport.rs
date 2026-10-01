@@ -140,7 +140,7 @@ fn build_snapshot(
     config: &peer_tls::PeerTlsConfig,
     generation: u64,
 ) -> Result<PeerTransportSnapshot> {
-    if !config.required {
+    if !config.required() {
         bail!("raft peer transport requires mutual TLS; set the peer mTLS posture to on");
     }
     let client_config = Arc::new(config.rustls_client_config()?);

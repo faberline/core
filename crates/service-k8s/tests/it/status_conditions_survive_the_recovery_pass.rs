@@ -125,10 +125,7 @@ impl ManagedService for RecoveringService {
     }
 
     fn readiness_targets(&self) -> Vec<ReadinessTarget> {
-        vec![ReadinessTarget {
-            kind: "Deployment",
-            name: self.spec.child.clone(),
-        }]
+        vec![ReadinessTarget::new("Deployment", self.spec.child.clone())]
     }
 
     fn status_patch(&self, ready: &ReadyFacts) -> Value {
@@ -160,11 +157,11 @@ impl ManagedService for RecoveringService {
     }
 
     fn prunes(&self) -> Vec<PruneTarget> {
-        vec![PruneTarget {
-            api_version: "networking.k8s.io/v1",
-            kind: "NetworkPolicy",
-            name: PRUNE_TARGET.to_string(),
-        }]
+        vec![PruneTarget::new(
+            "networking.k8s.io/v1",
+            "NetworkPolicy",
+            PRUNE_TARGET,
+        )]
     }
 }
 
@@ -293,7 +290,10 @@ async fn a_recovery_pass_removes_only_the_condition_the_controller_authored() {
             (200, cr_response())
         }
         ("POST", p) if p.ends_with("/events") => (201, json!({ "metadata": { "name": "e" } })),
-        _ => (500, json!({ "kind": "Status", "status": "Failure", "code": 500 })),
+        _ => (
+            500,
+            json!({ "kind": "Status", "status": "Failure", "code": 500 }),
+        ),
     });
 
     reconcile_once(
@@ -345,12 +345,19 @@ async fn without_a_stale_block_the_same_pass_writes_no_conditions_at_all() {
             (200, cr_response())
         }
         ("POST", p) if p.ends_with("/events") => (201, json!({ "metadata": { "name": "e" } })),
-        _ => (500, json!({ "kind": "Status", "status": "Failure", "code": 500 })),
+        _ => (
+            500,
+            json!({ "kind": "Status", "status": "Failure", "code": 500 }),
+        ),
     });
 
-    reconcile_once(client, subject(vec![condition("Degraded", "True", SINCE)]), leader())
-        .await
-        .expect("nothing blocked, nothing declared");
+    reconcile_once(
+        client,
+        subject(vec![condition("Degraded", "True", SINCE)]),
+        leader(),
+    )
+    .await
+    .expect("nothing blocked, nothing declared");
 
     let body = status_write(&log);
     assert!(
@@ -376,7 +383,10 @@ async fn a_declared_set_still_replaces_the_array_wholesale() {
             (200, cr_response())
         }
         ("POST", p) if p.ends_with("/events") => (201, json!({ "metadata": { "name": "e" } })),
-        _ => (500, json!({ "kind": "Status", "status": "Failure", "code": 500 })),
+        _ => (
+            500,
+            json!({ "kind": "Status", "status": "Failure", "code": 500 }),
+        ),
     });
 
     reconcile_once(
@@ -416,7 +426,10 @@ async fn a_block_still_lands_beside_the_service_conditions() {
             (200, cr_response())
         }
         ("POST", p) if p.ends_with("/events") => (201, json!({ "metadata": { "name": "e" } })),
-        _ => (500, json!({ "kind": "Status", "status": "Failure", "code": 500 })),
+        _ => (
+            500,
+            json!({ "kind": "Status", "status": "Failure", "code": 500 }),
+        ),
     });
 
     reconcile_once(client, subject(Vec::new()), leader())

@@ -47,6 +47,6 @@ impl RequestHandler {
 
     /// Flush the disk cache manifest to disk. Call on shutdown.
     pub async fn flush_cache(&self) {
-        self.disk_cache.flush_manifest().await;
+        self.disk_cache.flush().await;
     }
 }

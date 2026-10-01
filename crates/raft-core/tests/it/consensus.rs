@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use raft_core::{auto_membership, AppendResp, NodeId, RaftMsg, RaftNode, Role};
+use raft_core::{auto_membership, AppendResp, Index, NodeId, RaftMsg, RaftNode, Role, Term};
 
 struct Cluster {
     nodes: HashMap<NodeId, RaftNode>,
@@ -17,9 +17,12 @@ impl Cluster {
     fn new(n: u64) -> Cluster {
         let m = auto_membership(n);
         Cluster {
-            nodes: (0..n).map(|id| (id, RaftNode::new(id, &m))).collect(),
+            nodes: (0..n)
+                .map(NodeId::new)
+                .map(|id| (id, RaftNode::new(id, &m)))
+                .collect(),
             dropped: HashSet::new(),
-            applied: (0..n).map(|id| (id, Vec::new())).collect(),
+            applied: (0..n).map(NodeId::new).map(|id| (id, Vec::new())).collect(),
         }
     }
 
@@ -105,7 +108,7 @@ fn elects_one_leader_and_replicates_in_order() {
         c.propose(vec![i]);
     }
     let expected: Vec<Vec<u8>> = (0..5u8).map(|i| vec![i]).collect();
-    for id in 0..3 {
+    for id in (0..3).map(NodeId::new) {
         assert_eq!(c.applied[&id], expected, "node {id} converged in order");
     }
 }
@@ -121,11 +124,11 @@ fn kill_leader_reelects_without_losing_committed() {
     c.dropped.insert(old);
     let new = c.run_until_leader();
     assert_ne!(new, old);
-    for id in (0..3).filter(|id| *id != old) {
+    for id in (0..3).map(NodeId::new).filter(|id| *id != old) {
         assert_eq!(&c.applied[&id][..3], &before[..], "survivor kept committed");
     }
     c.propose(vec![9]);
-    for id in (0..3).filter(|id| *id != old) {
+    for id in (0..3).map(NodeId::new).filter(|id| *id != old) {
         assert_eq!(c.applied[&id].last(), Some(&vec![9u8]));
     }
 }
@@ -133,28 +136,31 @@ fn kill_leader_reelects_without_losing_committed() {
 #[test]
 fn learner_applies_but_never_votes_or_counts() {
     let m = auto_membership(4);
-    assert_eq!(m.voters, vec![0, 1, 2]);
-    assert_eq!(m.learners, vec![3]);
+    assert_eq!(
+        m.voters(),
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+    );
+    assert_eq!(m.learners(), vec![NodeId::new(3)]);
 
     let mut c = Cluster::new(4);
     let leader = c.run_until_leader();
-    assert!(m.voters.contains(&leader));
+    assert!(m.voters().contains(&leader));
     for i in 0..3u8 {
         c.propose(vec![i]);
     }
     assert_eq!(
-        c.applied[&3],
+        c.applied[&NodeId::new(3)],
         vec![vec![0], vec![1], vec![2]],
         "learner applied"
     );
     assert_eq!(
-        c.nodes[&3].role(),
+        c.nodes[&NodeId::new(3)].role(),
         Role::Follower,
         "learner never campaigns"
     );
 
     // Drop 2 of 3 voters: the lone voter + learner cannot form a majority.
-    let other_voters: Vec<NodeId> = (0..3).filter(|v| *v != leader).collect();
+    let other_voters: Vec<NodeId> = (0..3).map(NodeId::new).filter(|v| *v != leader).collect();
     c.dropped.insert(leader);
     c.dropped.insert(other_voters[0]);
     for _ in 0..50 {
@@ -172,14 +178,14 @@ fn stale_leader_steps_down_on_higher_term() {
     let leader = c.run_until_leader();
     let term = c.nodes[&leader].current_term();
     c.nodes.get_mut(&leader).unwrap().handle(
-        99,
+        NodeId::new(99),
         RaftMsg::AppendResp(AppendResp {
-            term: term + 5,
+            term: Term::new(term.get() + 5),
             success: false,
-            match_index: 0,
+            match_index: Index::new(0),
         }),
     );
     assert_eq!(c.nodes[&leader].role(), Role::Follower);
-    assert_eq!(c.nodes[&leader].current_term(), term + 5);
+    assert_eq!(c.nodes[&leader].current_term(), Term::new(term.get() + 5));
 }
 // CODEGEN-END

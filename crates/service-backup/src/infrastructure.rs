@@ -10,11 +10,15 @@ mod sink;
 mod source;
 
 #[cfg(feature = "http-client")]
+pub(crate) use admin_snapshot::AdminSnapshotEndpoint;
+#[cfg(feature = "http-client")]
 pub use admin_snapshot::{
-    fetch_admin_snapshot, AdminSnapshotDiagnostic, AdminSnapshotOperation, AdminSnapshotRequest,
+    AdminSnapshotDiagnostic, AdminSnapshotOperation, AdminSnapshotRequest,
     AdminSnapshotRequestError, AdminSnapshotTransport, AdminSnapshotTransportConfig,
     AdminSnapshotTransportError,
 };
 pub use gcs::GcsSink;
-pub use sink::{sink_from_destination, BackupSink, LocalFsSink, UnsupportedCloudSink};
+#[cfg(feature = "s3")]
+pub(crate) use s3::S3Sink;
+pub use sink::{LocalFsSink, UnsupportedCloudSink};
 pub use source::fetch_backup_object;

@@ -94,10 +94,7 @@ impl ManagedService for FollowerService {
     }
 
     fn readiness_targets(&self) -> Vec<ReadinessTarget> {
-        vec![ReadinessTarget {
-            kind: "Deployment",
-            name: self.spec.child.clone(),
-        }]
+        vec![ReadinessTarget::new("Deployment", self.spec.child.clone())]
     }
 
     fn status_patch(&self, ready: &ReadyFacts) -> Value {
@@ -148,7 +145,10 @@ fn routes(method: &str, path: &str) -> (u16, Value) {
         ("GET", p) if p.ends_with("/deployments/follower-child") => (200, applied_child()),
         ("PATCH", p) if p.ends_with("/followerservices/follower/status") => (200, cr_response()),
         ("POST", p) if p.ends_with("/events") => (201, json!({ "metadata": { "name": "e" } })),
-        _ => (500, json!({ "kind": "Status", "status": "Failure", "code": 500 })),
+        _ => (
+            500,
+            json!({ "kind": "Status", "status": "Failure", "code": 500 }),
+        ),
     }
 }
 

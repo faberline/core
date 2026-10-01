@@ -5,6 +5,8 @@ use std::io::{Read, Write};
 
 use raft_core::Index;
 
+use super::port_error::StateMachineError;
+
 /// Opaque committed-entry bytes (raft_core's `RaftEntry.command`). The host never
 /// looks inside — the state machine encodes/decodes its own commands.
 pub type Command = Vec<u8>;
@@ -19,7 +21,10 @@ pub trait SnapshotPreparation: Send + 'static {
     /// Freeze exactly `index` while the host serializes state-machine changes.
     /// This step must not perform file I/O or wait for memory or a save permit.
     /// A consumer that cannot represent this exact prefix must return an error.
-    fn capture_at(self: Box<Self>, index: Index) -> anyhow::Result<Box<dyn PreparedSnapshot>>;
+    fn capture_at(
+        self: Box<Self>,
+        index: Index,
+    ) -> Result<Box<dyn PreparedSnapshot>, StateMachineError>;
 }
 
 /// An immutable captured state whose output no longer needs the host's apply
@@ -27,7 +32,7 @@ pub trait SnapshotPreparation: Send + 'static {
 pub trait PreparedSnapshot: Send + 'static {
     /// Encode the captured prefix outside the host's state-machine lease.
     /// Failure prevents compaction; it must not be reported as a complete cut.
-    fn write_to(self: Box<Self>, writer: &mut dyn Write) -> anyhow::Result<()>;
+    fn write_to(self: Box<Self>, writer: &mut dyn Write) -> Result<(), StateMachineError>;
 }
 
 /// The consumer's replicated state machine. The host owns the **only** applier:
@@ -44,7 +49,10 @@ pub trait RaftStateMachine: Send + Sync + 'static {
     ///
     /// A returned permit becomes host-owned once an index is allocated. The
     /// default preserves the existing unadmitted behavior for all consumers.
-    fn admit_proposal(&self, _command: &[u8]) -> anyhow::Result<Option<AdmissionPermit>> {
+    fn admit_proposal(
+        &self,
+        _command: &[u8],
+    ) -> Result<Option<AdmissionPermit>, StateMachineError> {
         Ok(None)
     }
 
@@ -59,13 +67,13 @@ pub trait RaftStateMachine: Send + Sync + 'static {
         index: Index,
         command: &[u8],
         permit: Option<AdmissionPermit>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), StateMachineError> {
         let _permit = permit;
         match self.apply(index, command) {
             Ok(()) => Ok(()),
             Err(error) if self.applied_index() >= index => {
                 tracing::warn!(
-                    index,
+                    index = index.get(),
                     error = %error,
                     "state machine reported an error after advancing its applied floor; preserving legacy completed no-op"
                 );
@@ -93,17 +101,19 @@ pub trait RaftStateMachine: Send + Sync + 'static {
     /// is incomplete: the host stops and retains this committed head for
     /// recovery before any later command. An `apply_admitted` override controls
     /// its own error handling.
-    fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()>;
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError>;
 
     /// Serialize the full state as of the last applied index. The host ships
     /// these bytes via `InstallSnapshot` and stores them through `node.compact`.
-    fn snapshot(&self, writer: &mut dyn Write) -> anyhow::Result<()>;
+    fn snapshot(&self, writer: &mut dyn Write) -> Result<(), StateMachineError>;
 
     /// Prepare an optional immutable snapshot path outside apply serialization.
     /// File validation and waits for checkpoint capacity belong here. The host
     /// then calls `capture_at` under its lease and exports after releasing it.
     /// `None` preserves `snapshot_at` and its existing serialization behavior.
-    fn preflight_snapshot(&self) -> anyhow::Result<Option<Box<dyn SnapshotPreparation>>> {
+    fn preflight_snapshot(
+        &self,
+    ) -> Result<Option<Box<dyn SnapshotPreparation>>, StateMachineError> {
         Ok(None)
     }
 
@@ -113,12 +123,10 @@ pub trait RaftStateMachine: Send + Sync + 'static {
     /// this default, which refuses an older prefix instead of attaching the
     /// wrong state to a Raft snapshot index. Durable log-backed products can
     /// override this hook and return a checkpoint backed by their own storage.
-    fn snapshot_at(&self, index: Index, writer: &mut dyn Write) -> anyhow::Result<()> {
+    fn snapshot_at(&self, index: Index, writer: &mut dyn Write) -> Result<(), StateMachineError> {
         let applied = self.applied_index();
         if index != applied {
-            anyhow::bail!(
-                "state machine cannot snapshot Raft prefix {index}; current applied index is {applied}"
-            );
+            return Err(StateMachineError::PrefixUnavailable { index, applied });
         }
         self.snapshot(writer)
     }
@@ -129,14 +137,14 @@ pub trait RaftStateMachine: Send + Sync + 'static {
     /// Implementors with a strict snapshot format should override it. The
     /// default keeps existing consumers source-compatible; a later restore
     /// failure still latches the host as failed.
-    fn validate_snapshot(&self, _reader: &mut dyn Read) -> anyhow::Result<()> {
+    fn validate_snapshot(&self, _reader: &mut dyn Read) -> Result<(), StateMachineError> {
         Ok(())
     }
 
     /// Replace the entire state from snapshot bytes (a follower installing a
     /// leader's snapshot, or cold-start). After this, [`applied_index`](RaftStateMachine::applied_index) must
     /// return the snapshot's index.
-    fn restore(&self, reader: &mut dyn Read) -> anyhow::Result<()>;
+    fn restore(&self, reader: &mut dyn Read) -> Result<(), StateMachineError>;
 
     /// Highest index durably applied by this state machine (survives restart).
     /// Drives the host's commit-wait (read-your-write) and the idempotency floor.

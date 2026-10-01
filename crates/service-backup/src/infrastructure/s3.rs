@@ -43,7 +43,7 @@ use anyhow::{anyhow, bail, Context, Result};
 use aws_config::{BehaviorVersion, Region};
 use aws_sdk_s3::{primitives::ByteStream, Client};
 
-use crate::{BackupDestination, BackupSink};
+use crate::domain::{BackupDestination, BackupSink, BackupSinkError};
 
 const DEFAULT_S3_REGION: &str = "us-east-1";
 const OBJECT_NAME_PREFIX: &str = "backup-";
@@ -98,7 +98,7 @@ impl S3Sink {
 }
 
 impl BackupSink for S3Sink {
-    fn put(&self, timestamp: SystemTime, payload: &[u8]) -> Result<String> {
+    fn put(&self, timestamp: SystemTime, payload: &[u8]) -> Result<String, BackupSinkError> {
         let bucket = self.bucket.clone();
         let key = self.key_for_timestamp(timestamp);
         let body = payload.to_vec();
@@ -117,9 +117,10 @@ impl BackupSink for S3Sink {
                 .with_context(|| format!("put s3://{bucket}/{key}"))?;
             Ok(key_for_result)
         })
+        .map_err(BackupSinkError::other)
     }
 
-    fn prune(&self, max_age_seconds: u64) -> Result<usize> {
+    fn prune(&self, max_age_seconds: u64) -> Result<usize, BackupSinkError> {
         let cutoff = SystemTime::now()
             .checked_sub(Duration::from_secs(max_age_seconds))
             .unwrap_or(UNIX_EPOCH);
@@ -131,6 +132,7 @@ impl BackupSink for S3Sink {
             let client = build_client(region, endpoint).await?;
             prune_matching_objects(client, bucket, prefix, unix_seconds(cutoff)).await
         })
+        .map_err(BackupSinkError::other)
     }
 
     fn identity(&self) -> String {

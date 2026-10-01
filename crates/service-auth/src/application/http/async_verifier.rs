@@ -103,14 +103,14 @@ pub async fn async_auth_middleware<V: AsyncVerifier>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::role_map::{Role, RoleMapPrincipal, StaticRoleMapVerifier, TokenClaims};
+    use crate::{Role, RoleMapPrincipal, StaticRoleMapVerifier, TokenClaims};
     use std::collections::HashMap;
 
     fn claims() -> TokenClaims {
-        TokenClaims {
-            subject: "tester".into(),
-            roles: HashMap::from([("products".to_string(), Role::Read)]),
-        }
+        TokenClaims::new(
+            "tester",
+            HashMap::from([("products".to_string(), Role::Read)]),
+        )
     }
 
     #[tokio::test]

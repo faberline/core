@@ -18,30 +18,30 @@ pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
     let (committed_voters, incoming_voters, membership_phase) = match &conf.outgoing {
         Some(outgoing) => (
             outgoing.clone(),
-            Some(conf.membership.voters.clone()),
+            Some(conf.membership.voters().to_vec()),
             MembershipPhase::Joint,
         ),
         None => (
-            conf.membership.voters.clone(),
+            conf.membership.voters().to_vec(),
             None,
             MembershipPhase::Stable,
         ),
     };
-    let learners = conf.membership.learners.clone();
+    let learners = conf.membership.learners().to_vec();
     let role = if !n.is_voter() {
         "Learner".to_string()
     } else {
         format!("{:?}", n.role())
     };
     RaftStatus {
-        group_id: s.group_id.0.clone(),
+        group_id: s.group_id.as_str().to_owned(),
         id: s.id,
         role,
-        term: n.current_term(),
-        commit_index: n.commit_index(),
-        last_index: n.last_index(),
-        snapshot_index: n.snapshot_index(),
-        applied_index: s.completed_applied_index(),
+        term: n.current_term().get(),
+        commit_index: n.commit_index().get(),
+        last_index: n.last_index().get(),
+        snapshot_index: n.snapshot_index().get(),
+        applied_index: s.completed_applied_index().get(),
         leader: n.leader(),
         is_leader: n.is_leader(),
         durability_error,
@@ -50,7 +50,7 @@ pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
         learners,
         membership_phase,
         undeliverable_never_addressed: s.undeliverable_never_addressed.load(Ordering::Relaxed),
-        undeliverable_withdrawn_address: s.undeliverable_withdrawn_address.load(Ordering::Relaxed),
+        undeliverable_withdrawn_address: s.undeliverable_withdrawn_address(),
         proposal_rejected_before_routing: s
             .proposal_rejected_before_routing
             .load(Ordering::Relaxed),

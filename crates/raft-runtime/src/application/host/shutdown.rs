@@ -8,7 +8,7 @@ pub(super) fn shutdown_phase_cutoffs(
     deadline: ShutdownDeadline,
     started_at: tokio::time::Instant,
 ) -> [tokio::time::Instant; 4] {
-    let usable_end = deadline.expires_at - deadline.reserve;
+    let usable_end = deadline.expires_at() - deadline.reserve();
     let usable_interval = usable_end.saturating_duration_since(started_at);
     let quarter = usable_interval / 4;
 
@@ -281,7 +281,7 @@ impl RaftHost {
     /// prevents active HTTP/2 streams from being torn down with the Tokio
     /// runtime.
     pub async fn shutdown(&self) -> Result<()> {
-        let timeout = self.shared.cfg.rpc_timeout + self.shared.cfg.rpc_timeout;
+        let timeout = self.shared.cfg.rpc_timeout() + self.shared.cfg.rpc_timeout();
         let deadline =
             ShutdownDeadline::from_now(timeout, Duration::ZERO).map_err(|e| anyhow!("{e}"))?;
         let report = self.shutdown_within(deadline).await;

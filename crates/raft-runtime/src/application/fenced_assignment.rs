@@ -14,7 +14,46 @@ use raft_core::NodeId;
 use serde::{Deserialize, Serialize};
 
 /// Monotonic token identifying one committed ownership generation.
-pub type AssignmentEpoch = u64;
+///
+/// Build one with [`AssignmentEpoch::new`] and read the number back with
+/// [`AssignmentEpoch::get`]. It serializes as the bare number, and `{:?}` /
+/// `{}` print the bare number. `AssignmentEpoch::default()` (0) is the idle
+/// epoch before the first assignment.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct AssignmentEpoch(u64);
+
+impl AssignmentEpoch {
+    /// The epoch with this number.
+    pub const fn new(epoch: u64) -> Self {
+        Self(epoch)
+    }
+
+    /// The bare number.
+    pub const fn get(self) -> u64 {
+        self.0
+    }
+
+    /// The epoch after this one, or `None` when the number space is used up.
+    pub const fn checked_next(self) -> Option<Self> {
+        match self.0.checked_add(1) {
+            Some(epoch) => Some(Self(epoch)),
+            None => None,
+        }
+    }
+}
+
+impl fmt::Debug for AssignmentEpoch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.0, f)
+    }
+}
+
+impl fmt::Display for AssignmentEpoch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
 
 /// Proof that one replica owns an assignment at one fencing epoch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -48,7 +87,7 @@ impl FencedAssignment {
     /// Empty ownership state. The first assignment receives epoch 1.
     pub const fn idle() -> Self {
         Self {
-            epoch: 0,
+            epoch: AssignmentEpoch::new(0),
             active: None,
         }
     }
@@ -91,7 +130,7 @@ impl FencedAssignment {
         }
         let epoch = self
             .epoch
-            .checked_add(1)
+            .checked_next()
             .ok_or(AssignmentError::EpochExhausted)?;
         let token = FenceToken { owner, epoch };
         self.epoch = epoch;
@@ -272,93 +311,4 @@ impl fmt::Display for AssignmentError {
 impl Error for AssignmentError {}
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn no_token_exists_before_assignment() {
-        let state = FencedAssignment::idle();
-        assert_eq!(state.epoch(), 0);
-        assert_eq!(state.token(), None);
-    }
-
-    #[test]
-    fn assignment_is_exclusive_until_explicit_release_or_expiry() {
-        let mut state = FencedAssignment::idle();
-        let token = state.assign(1, 10, 20).unwrap();
-        assert_eq!(token, FenceToken { owner: 1, epoch: 1 });
-        assert!(matches!(
-            state.assign(2, 21, 30),
-            Err(AssignmentError::AlreadyAssigned(_))
-        ));
-        assert!(matches!(
-            state.expire(19),
-            Err(AssignmentError::NotExpired { .. })
-        ));
-        state.expire(20).unwrap();
-        let next = state.assign(2, 20, 30).unwrap();
-        assert_eq!(next, FenceToken { owner: 2, epoch: 2 });
-    }
-
-    #[test]
-    fn stale_owner_is_rejected_after_reassignment() {
-        let mut state = FencedAssignment::idle();
-        let old = state.assign(1, 0, 10).unwrap();
-        state.expire(10).unwrap();
-        let current = state.assign(2, 10, 20).unwrap();
-        assert!(matches!(
-            state.validate(old, 11),
-            Err(AssignmentError::StaleEpoch {
-                current: 2,
-                provided: 1
-            })
-        ));
-        assert_eq!(state.validate(current, 11).unwrap().token, current);
-    }
-
-    #[test]
-    fn renewal_requires_current_owner_epoch_and_later_expiry() {
-        let mut state = FencedAssignment::idle();
-        let token = state.assign(3, 100, 200).unwrap();
-        assert!(matches!(
-            state.renew(FenceToken { owner: 4, ..token }, 150, 250),
-            Err(AssignmentError::OwnerMismatch { .. })
-        ));
-        assert!(matches!(
-            state.renew(token, 150, 200),
-            Err(AssignmentError::ExpiryNotExtended { .. })
-        ));
-        assert_eq!(state.renew(token, 150, 250).unwrap().expires_at_ms, 250);
-    }
-
-    #[test]
-    fn release_retains_epoch_and_fences_late_completion() {
-        let mut state = FencedAssignment::idle();
-        let token = state.assign(5, 0, 100).unwrap();
-        state.release(token, 50).unwrap();
-        assert_eq!(state.epoch(), 1);
-        assert!(matches!(
-            state.validate(token, 51),
-            Err(AssignmentError::Unassigned { current_epoch: 1 })
-        ));
-        assert_eq!(state.assign(5, 51, 100).unwrap().epoch, 2);
-    }
-
-    #[test]
-    fn identical_commands_produce_identical_replica_state() {
-        let mut a = FencedAssignment::idle();
-        let mut b = FencedAssignment::idle();
-        for state in [&mut a, &mut b] {
-            let first = state.assign(1, 1_000, 2_000).unwrap();
-            state.renew(first, 1_500, 2_500).unwrap();
-            state.expire(2_500).unwrap();
-            state.assign(2, 2_500, 3_500).unwrap();
-        }
-        assert_eq!(a, b);
-        let bytes = serde_json::to_vec(&a).unwrap();
-        assert_eq!(
-            serde_json::from_slice::<FencedAssignment>(&bytes).unwrap(),
-            a
-        );
-    }
-}
+mod tests;

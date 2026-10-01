@@ -1,5 +1,6 @@
 use super::RustChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl RustChecker {
@@ -17,7 +18,7 @@ impl RustChecker {
                             if let Some(last_node) = last {
                                 if last_node.kind() == "return_expression" {
                                     diagnostics.push(Diagnostic::new(
-                                        Range::from_node(&last_node),
+                                        last_node.to_range(),
                                         DiagnosticSeverity::Hint,
                                         "RS006",
                                         DiagnosticCategory::Style,
@@ -54,7 +55,7 @@ impl RustChecker {
                                         };
                                         if count > 4 {
                                             diagnostics.push(Diagnostic::warning(
-                                                Range::from_node(&variant), "RS007", DiagnosticCategory::Style,
+                                                variant.to_range(), "RS007", DiagnosticCategory::Style,
                                                 format!("Large enum variant with {} fields — consider boxing", count),
                                             ));
                                         }
@@ -66,7 +67,7 @@ impl RustChecker {
                                         };
                                         if count > 3 {
                                             diagnostics.push(Diagnostic::warning(
-                                                Range::from_node(&variant), "RS007", DiagnosticCategory::Style,
+                                                variant.to_range(), "RS007", DiagnosticCategory::Style,
                                                 format!("Large enum variant with {} tuple fields — consider a struct", count),
                                             ));
                                         }
@@ -100,7 +101,7 @@ impl RustChecker {
                         let has_none = text0.contains("None") || text1.contains("None");
                         if has_some && has_none {
                             diagnostics.push(Diagnostic::new(
-                                Range::from_node(node),
+                                node.to_range(),
                                 DiagnosticSeverity::Hint,
                                 "RS008",
                                 DiagnosticCategory::Style,
@@ -132,7 +133,7 @@ impl RustChecker {
                             let rhs = arm1_text.trim_start_matches("_ =>").trim();
                             if rhs == "()" || rhs == "{}," || rhs == "{}" || rhs == "()," {
                                 diagnostics.push(Diagnostic::new(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     DiagnosticSeverity::Hint,
                                     "RS009",
                                     DiagnosticCategory::Style,
@@ -154,7 +155,7 @@ impl RustChecker {
         file.walk(|node, _depth| {
             if node.kind() == "use_wildcard" {
                 diagnostics.push(Diagnostic::warning(
-                    Range::from_node(node),
+                    node.to_range(),
                     "RS010",
                     DiagnosticCategory::Style,
                     "Wildcard import — prefer explicit imports for clarity",
@@ -179,7 +180,7 @@ impl RustChecker {
                     });
                     if !has_doc {
                         diagnostics.push(Diagnostic::new(
-                            Range::from_node(node),
+                            node.to_range(),
                             DiagnosticSeverity::Information,
                             "RS011",
                             DiagnosticCategory::Style,
@@ -212,7 +213,7 @@ impl RustChecker {
                                     let expected = format!("({})", param_name);
                                     if args_text == expected {
                                         diagnostics.push(Diagnostic::new(
-                                            Range::from_node(node),
+                                            node.to_range(),
                                             DiagnosticSeverity::Hint,
                                             "RS012",
                                             DiagnosticCategory::Style,
@@ -239,7 +240,7 @@ impl RustChecker {
                     let name = file.node_text(&macro_node);
                     if name == "print" || name == "println" {
                         diagnostics.push(Diagnostic::new(
-                            Range::from_node(node),
+                            node.to_range(),
                             DiagnosticSeverity::Hint,
                             "RS013",
                             DiagnosticCategory::Style,
@@ -265,7 +266,7 @@ impl RustChecker {
                                 if let Some(val) = func.child_by_field_name("value") {
                                     if val.kind() == "string_literal" {
                                         diagnostics.push(Diagnostic::new(
-                                            Range::from_node(node),
+                                            node.to_range(),
                                             DiagnosticSeverity::Hint,
                                             "RS014",
                                             DiagnosticCategory::Style,
@@ -293,7 +294,7 @@ impl RustChecker {
                         if let Some(func) = child.child_by_field_name("function") {
                             if func.kind() == "field_expression" {
                                 diagnostics.push(Diagnostic::new(
-                                    Range::from_node(node), DiagnosticSeverity::Information,
+                                    node.to_range(), DiagnosticSeverity::Information,
                                     "RS015", DiagnosticCategory::Logic,
                                     "Method return value is unused — consider binding or handling it",
                                 ));

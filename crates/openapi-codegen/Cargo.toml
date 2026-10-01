@@ -16,6 +16,9 @@ cli-std = { path = "../cli-std", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true
+# Domain errors (SpecParseError, FileBearerAuthError, ...) are typed; the
+# application layer keeps anyhow and converts with `?`.
+thiserror.workspace = true
 toml = "0.8"
 
 [lints]

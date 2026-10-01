@@ -1,7 +1,6 @@
 use super::{extract_go_doc_comment, parse_go_type};
-use crate::domain::diagnostic::model::Range;
 use crate::domain::semantic::symbols::{SymbolKind, SymbolTableBuilder};
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 impl SymbolTableBuilder {
     /// Extract type declarations (struct, interface, type alias)
@@ -23,7 +22,7 @@ impl SymbolTableBuilder {
         let name = name_node
             .map(|n| file.node_text(&n).to_string())
             .unwrap_or_default();
-        let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+        let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
         let doc = extract_go_doc_comment(node, file).or_else(|| {
             // type_spec is inside type_declaration, try parent
@@ -66,7 +65,7 @@ impl SymbolTableBuilder {
                     let name = name_node
                         .map(|n| file.node_text(&n).to_string())
                         .unwrap_or_default();
-                    let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+                    let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
                     let type_info = child
                         .child_by_field_name("type")
@@ -95,7 +94,7 @@ impl SymbolTableBuilder {
                 let name = name_node
                     .map(|n| file.node_text(&n).to_string())
                     .unwrap_or_default();
-                let location = name_node.map(|n| Range::from_node(&n)).unwrap_or_default();
+                let location = name_node.map(|n| n.to_range()).unwrap_or_default();
 
                 if !name.is_empty() {
                     self.table.add_symbol(

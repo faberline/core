@@ -1,10 +1,10 @@
-use crate::SUPPORTED_SCHEMES;
+use crate::application::{destination_schemes, SinkSupport};
 
 /// Agent-facing topic describing backup destinations, sinks, and seed fetches.
-pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic {
-    id: "service-backup",
-    summary: "Shared backup destination, policy, sink, runner, and bootstrap-object contract.",
-    body: r#"# service-backup shared topic
+pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
+    "service-backup",
+    "Shared backup destination, policy, sink, runner, and bootstrap-object contract.",
+    r#"# service-backup shared topic
 
 ## Ownership boundary
 The service owns snapshot consistency, snapshot bytes, restore semantics, and
@@ -35,7 +35,7 @@ feature. GCS uses workload identity in production and
 restore or empty-PVC bootstrap. It is a cold seed path, not live replica
 synchronization.
 "#,
-};
+);
 
 /// Return the shared backup topic for CLI composition.
 pub fn topic() -> &'static cli_std::llm::Topic {
@@ -45,7 +45,7 @@ pub fn topic() -> &'static cli_std::llm::Topic {
 /// Static prose companion to the `TopicSection::Generated` destination
 /// section in [`SECTIONED_TOPICS`] — everything from [`TOPIC`]'s body
 /// except the hand-copied scheme list, which the generated section below
-/// derives from [`crate::SUPPORTED_SCHEMES`] instead.
+/// derives from the `destination_schemes` query instead.
 const OWNERSHIP_BOUNDARY: &str = r#"# service-backup shared topic
 
 ## Ownership boundary
@@ -64,25 +64,28 @@ const RESTORE_AND_BOOTSTRAP: &str = r#"## Restore and bootstrap
 destination contract above) for restore or empty-PVC bootstrap. It is a cold
 seed path, not live replica synchronization."#;
 
-/// Render the `## Destination contract` section from
-/// [`crate::SUPPORTED_SCHEMES`] — the same table `BackupDestination::from_uri`
-/// and `sink_from_destination` use — instead of a hand-copied scheme list
-/// (#2494). `sink_available` reports this build's actual linked feature set
-/// via `cfg!`, so a rebuild with a different feature set changes this
-/// section's output without any hand edit.
+/// Render the `## Destination contract` section from the application's
+/// `destination_schemes` query over [`crate::SUPPORTED_SCHEMES`] — the same
+/// table `BackupDestination::from_uri` and `sink_from_destination` use —
+/// instead of a hand-copied scheme list (#2494). Each scheme's sink support
+/// reflects this build's actual linked feature set via `cfg!`, so a rebuild
+/// with a different feature set changes this section's output without any
+/// hand edit.
 fn destination_contract_section() -> String {
     let mut s = String::from(
         "## Destination contract\n\nSupported destination URI schemes in this build:\n\n",
     );
-    for info in SUPPORTED_SCHEMES {
-        let availability = if info.sink_available {
-            "sink linked into this build"
-        } else {
-            "parses, but no sink linked — uploads fail loud until rebuilt with the adapter feature"
+    for view in destination_schemes() {
+        let availability = match view.support() {
+            SinkSupport::Linked => "sink linked into this build",
+            SinkSupport::ParseOnly => {
+                "parses, but no sink linked — uploads fail loud until rebuilt with the adapter feature"
+            }
         };
         s.push_str(&format!(
             "- `{}` — {} ({availability})\n",
-            info.scheme, info.description
+            view.scheme(),
+            view.description()
         ));
     }
     s.push_str(
@@ -94,10 +97,10 @@ fn destination_contract_section() -> String {
 /// [`cli_std::llm::SectionedTopic`] form of [`TOPIC`] (#2494). One topic per
 /// slice element, matching the `&[SectionedTopic]` shape
 /// `cli_std::llm::render_sectioned`/`assert_topics_render` expect.
-pub const SECTIONED_TOPICS: &[cli_std::llm::SectionedTopic] = &[cli_std::llm::SectionedTopic {
-    id: "service-backup",
-    summary: "Shared backup destination, policy, sink, runner, and bootstrap-object contract.",
-    sections: &[
+pub const SECTIONED_TOPICS: &[cli_std::llm::SectionedTopic] = &[cli_std::llm::SectionedTopic::new(
+    "service-backup",
+    "Shared backup destination, policy, sink, runner, and bootstrap-object contract.",
+    &[
         cli_std::llm::TopicSection::Prose(OWNERSHIP_BOUNDARY),
         cli_std::llm::TopicSection::Generated {
             id: "destination-contract",
@@ -105,7 +108,7 @@ pub const SECTIONED_TOPICS: &[cli_std::llm::SectionedTopic] = &[cli_std::llm::Se
         },
         cli_std::llm::TopicSection::Prose(RESTORE_AND_BOOTSTRAP),
     ],
-}];
+)];
 
 /// Return the shared backup topic in [`cli_std::llm::SectionedTopic`] form.
 pub fn sectioned_topic() -> &'static cli_std::llm::SectionedTopic {
@@ -115,14 +118,15 @@ pub fn sectioned_topic() -> &'static cli_std::llm::SectionedTopic {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::SUPPORTED_SCHEMES;
 
     #[test]
     fn llm_topic_is_nonempty() {
         let topic = super::topic();
-        assert_eq!(topic.id, "service-backup");
-        assert!(topic.body.contains("BackupDestination"));
-        assert!(topic.body.contains("fetch_backup_object"));
-        assert!(topic.body.contains("http-client"));
+        assert_eq!(topic.id(), "service-backup");
+        assert!(topic.body().contains("BackupDestination"));
+        assert!(topic.body().contains("fetch_backup_object"));
+        assert!(topic.body().contains("http-client"));
     }
 
     #[test]
@@ -144,7 +148,7 @@ mod tests {
 
     #[test]
     fn sectioned_topic_matches_static_topic_identity() {
-        assert_eq!(sectioned_topic().id, TOPIC.id);
-        assert_eq!(sectioned_topic().summary, TOPIC.summary);
+        assert_eq!(sectioned_topic().id(), TOPIC.id());
+        assert_eq!(sectioned_topic().summary(), TOPIC.summary());
     }
 }

@@ -8,16 +8,17 @@ use super::{
     NodeView, PendingEnvelope, StateMachineOperation, StepError,
 };
 use crate::application::{
-    apply_ready, cold_start, persist_node, PeerLaneQueue, SnapshotPolicy, SNAPSHOT_CHUNK_SIZE,
+    apply_ready, cold_start, persist_node, HostStorage, PeerLaneQueue, RaftStateMachine,
+    SnapshotPolicy, SNAPSHOT_CHUNK_SIZE,
 };
-use crate::{RaftStateMachine, RaftStore};
 
 /// One deterministic Raft host.  Drop it to model a crash, then call `open`
-/// with the same [`RaftStore`] and a new state machine to model restart.
+/// with the same [`RaftStore`](crate::RaftStore) and a new state machine to
+/// model restart.
 pub struct DeterministicHost {
     id: NodeId,
     node: RaftNode,
-    store: RaftStore,
+    storage: Box<dyn HostStorage>,
     sm: Arc<dyn RaftStateMachine>,
     lanes: HashMap<NodeId, PeerLaneQueue>,
     envelope_epoch: u32,
@@ -25,27 +26,16 @@ pub struct DeterministicHost {
 }
 
 impl DeterministicHost {
-    /// Open a host from an empty or durable store.  Unlike the historical
-    /// production `spawn_inner`, this test host surfaces a corrupt-store load.
-    pub fn open(
+    /// Open a host over `storage`.  The public `open` constructors in the
+    /// composition root (`src/app/conformance.rs`) hand it a `RaftStore`.
+    pub(crate) fn from_storage(
         id: NodeId,
         membership: Membership,
-        store: RaftStore,
-        sm: Arc<dyn RaftStateMachine>,
-    ) -> Result<Self, StepError> {
-        Self::open_with_envelope_epoch(id, membership, store, sm, id as u32)
-    }
-
-    /// Open with a trace-owned epoch.  Assign a new epoch when a trace drops
-    /// and reopens a host so envelope ids remain unique and replayable.
-    pub fn open_with_envelope_epoch(
-        id: NodeId,
-        membership: Membership,
-        store: RaftStore,
+        storage: Box<dyn HostStorage>,
         sm: Arc<dyn RaftStateMachine>,
         envelope_epoch: u32,
     ) -> Result<Self, StepError> {
-        let mut node = match store.load().map_err(|e| StepError::Store {
+        let mut node = match storage.load().map_err(|e| StepError::Store {
             operation: "load",
             kind: e.kind(),
         })? {
@@ -59,7 +49,7 @@ impl DeterministicHost {
         let mut host = Self {
             id,
             node,
-            store,
+            storage,
             sm,
             lanes: HashMap::new(),
             envelope_epoch,
@@ -212,7 +202,7 @@ impl DeterministicHost {
                 Role::Candidate => ConformanceRole::Candidate,
                 Role::Leader => ConformanceRole::Leader,
             },
-            term: self.node.current_term(),
+            term: self.node.current_term().get(),
             leader: self.node.leader(),
             commit_index: self.node.commit_index(),
             last_index: self.node.last_index(),
@@ -223,8 +213,9 @@ impl DeterministicHost {
         }
     }
 
-    pub fn store(&self) -> &RaftStore {
-        &self.store
+    /// The storage port this host was opened over.
+    pub(crate) fn storage(&self) -> &dyn HostStorage {
+        self.storage.as_ref()
     }
 
     fn settle(&mut self) -> Result<(), StepError> {
@@ -246,7 +237,7 @@ impl DeterministicHost {
     }
 
     fn persist(&self) -> Result<(), StepError> {
-        persist_node(&self.store, &self.node).map_err(|e| StepError::Store {
+        persist_node(self.storage.as_ref(), &self.node).map_err(|e| StepError::Store {
             operation: "save",
             kind: e.kind(),
         })

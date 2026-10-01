@@ -7,11 +7,11 @@ pub(crate) fn page_bounds(body: &CatalogPageBody) -> Result<(u64, String, String
             entries.len() as u64,
             entries
                 .first()
-                .map(|entry| entry.key.clone())
+                .map(|entry| entry.key().to_string())
                 .unwrap_or_default(),
             entries
                 .last()
-                .map(|entry| entry.key.clone())
+                .map(|entry| entry.key().to_string())
                 .unwrap_or_default(),
         )),
         CatalogPageBody::Branch { children } => Ok((

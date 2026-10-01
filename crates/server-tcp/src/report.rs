@@ -20,16 +20,16 @@ pub struct TcpServerReport {
 
 impl TcpServerReport {
     pub(crate) fn record(&mut self, result: TcpConnectionResult) {
-        match result.terminal {
+        match result.terminal() {
             TcpConnectionTerminal::Completed => self.completed += 1,
             TcpConnectionTerminal::Failed => self.failed += 1,
             TcpConnectionTerminal::TimedOut => self.timed_out += 1,
         }
-        self.streams_completed += result.streams_completed;
-        self.streams_admitted += result.streams_admitted;
-        self.streams_active_at_drain += result.streams_active_at_drain;
-        self.streams_refused += result.streams_refused;
-        self.streams_timed_out += result.streams_timed_out;
-        self.streams_ambiguous += result.streams_ambiguous;
+        self.streams_completed += result.streams_completed();
+        self.streams_admitted += result.streams_admitted();
+        self.streams_active_at_drain += result.streams_active_at_drain();
+        self.streams_refused += result.streams_refused();
+        self.streams_timed_out += result.streams_timed_out();
+        self.streams_ambiguous += result.streams_ambiguous();
     }
 }

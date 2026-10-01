@@ -1,6 +1,6 @@
 use super::RaftNode;
 use crate::domain::conf_state::ConfState;
-use crate::domain::ids::NodeId;
+use crate::domain::ids::{Index, NodeId};
 use crate::domain::membership::Membership;
 use crate::domain::persisted_state::{PersistedState, PersistedStateRef};
 
@@ -29,7 +29,7 @@ impl RaftNode {
             .max(node.snapshot_index)
             .min(node.last_index());
         node.last_applied = node.snapshot_index;
-        if node.snapshot_index > 0 && !node.snapshot.is_empty() {
+        if node.snapshot_index > Index::new(0) && !node.snapshot.is_empty() {
             node.installed_snapshot = Some(node.snapshot.clone());
         }
         node

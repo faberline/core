@@ -1,5 +1,5 @@
 use super::*;
-use crate::infrastructure::PublishEnvelope;
+use crate::domain::{ForwardReply, PUBLISH_PATH};
 
 impl Shared {
     /// Try a leader-side proposal and return its index once the **state machine
@@ -52,7 +52,7 @@ impl Shared {
                     .pending_admission
                     .lock()
                     .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .insert((idx, term), permit);
+                    .insert((idx, term.get()), permit);
                 debug_assert!(previous.is_none(), "Raft index permit was replaced");
             }
             if let Err(e) = self.persist(&n) {
@@ -76,7 +76,7 @@ impl Shared {
             return Some(ProposalOutcome::Completed { index });
         }
         let mut rx = self.applied_tx.subscribe();
-        let deadline = Instant::now() + self.cfg.propose_timeout;
+        let deadline = Instant::now() + self.cfg.propose_timeout();
         loop {
             {
                 let mut n = self.node.lock().await;
@@ -143,7 +143,7 @@ impl RaftHost {
                 failure: err,
             };
         }
-        let deadline = Instant::now() + s.cfg.propose_timeout;
+        let deadline = Instant::now() + s.cfg.propose_timeout();
         let mut last_route_error = None;
         loop {
             let route = {
@@ -205,114 +205,32 @@ impl RaftHost {
     /// Forward a command to the leader and wait until **this node's** state
     /// machine applies the returned index (read-your-write on a follower).
     pub(super) async fn forward(&self, leader_url: &str, command: &[u8]) -> ProposalOutcome {
-        let resp = match self
-            .shared
-            .http_client()
-            .post(format!("{leader_url}{}", Self::PUBLISH_PATH))
-            // Unlike Vote/AppendEntries, publish includes durable quorum
-            // commit and local state-machine apply. Its request budget is the
-            // proposal deadline, not the short peer transport timeout.
-            .timeout(self.shared.cfg.propose_timeout)
-            .json(&PublishEnvelope {
-                group_id: self.shared.group_id.0.clone(),
-                command: command.to_vec(),
-            })
-            .send()
-            .await
-        {
-            Ok(r) => r,
-            Err(e) => {
-                return ProposalOutcome::Ambiguous {
-                    index: None,
-                    reason: e.to_string(),
+        let seq = match self.shared.peer_client.forward(leader_url, command).await {
+            ForwardReply::Accepted { seq } => Index::new(seq),
+            ForwardReply::Backpressure {
+                reason,
+                retry_after_seconds,
+            } => {
+                return ProposalOutcome::RejectedBeforeAdmission {
+                    reason: encode_backpressure(&ProposalBackpressure {
+                        reason,
+                        retry_after_seconds,
+                    }),
                 };
             }
-        };
-        let status = resp.status();
-        if status == StatusCode::TOO_MANY_REQUESTS {
-            let value: serde_json::Value = match resp.json().await {
-                Ok(value) => value,
-                Err(error) => {
-                    return ProposalOutcome::Ambiguous {
-                        index: None,
-                        reason: error.to_string(),
-                    }
-                }
-            };
-            let Some(reason) = value.get("error").and_then(|value| value.as_str()) else {
-                return ProposalOutcome::Ambiguous {
-                    index: None,
-                    reason: "raft: leader backpressure reply missing error".to_string(),
-                };
-            };
-            let Some(retry_after_seconds) = value
-                .get("retry_after_seconds")
-                .and_then(|value| value.as_u64())
-            else {
-                return ProposalOutcome::Ambiguous {
-                    index: None,
-                    reason: "raft: leader backpressure reply missing retry_after_seconds"
-                        .to_string(),
-                };
-            };
-            return ProposalOutcome::RejectedBeforeAdmission {
-                reason: encode_backpressure(&ProposalBackpressure {
-                    reason: reason.to_string(),
-                    retry_after_seconds,
-                }),
-            };
-        }
-        if status == StatusCode::SERVICE_UNAVAILABLE {
-            let v: serde_json::Value = match resp.json().await {
-                Ok(v) => v,
-                Err(e) => {
-                    return ProposalOutcome::Ambiguous {
-                        index: None,
-                        reason: e.to_string(),
-                    };
-                }
-            };
-            if v.get("outcome").and_then(|outcome| outcome.as_str())
-                == Some("rejected_before_admission")
-            {
-                if let Some(reason) = v.get("error").and_then(|error| error.as_str()) {
-                    return ProposalOutcome::RejectedBeforeAdmission {
-                        reason: reason.to_string(),
-                    };
-                }
+            ForwardReply::Rejected { reason } => {
+                return ProposalOutcome::RejectedBeforeAdmission { reason };
             }
-            return ProposalOutcome::Ambiguous {
-                index: None,
-                reason: format!("raft: leader redirect returned {status}"),
-            };
-        }
-        if status != StatusCode::OK {
-            return ProposalOutcome::Ambiguous {
-                index: None,
-                reason: format!("raft: leader redirect returned {status}"),
-            };
-        }
-        let v: serde_json::Value = match resp.json().await {
-            Ok(v) => v,
-            Err(e) => {
+            ForwardReply::Failed { reason } => {
                 return ProposalOutcome::Ambiguous {
                     index: None,
-                    reason: e.to_string(),
-                };
-            }
-        };
-        let seq = match v.get("seq").and_then(|s| s.as_u64()) {
-            Some(s) => s,
-            None => {
-                return ProposalOutcome::Ambiguous {
-                    index: None,
-                    reason: "raft: leader reply missing seq".to_string(),
+                    reason,
                 };
             }
         };
         // Wait for our own apply (the leader's commit propagates via AppendEntries).
         let mut rx = self.shared.applied_tx.subscribe();
-        let deadline = Instant::now() + self.shared.cfg.propose_timeout;
+        let deadline = Instant::now() + self.shared.cfg.propose_timeout();
         while self.shared.completed_applied_index() < seq {
             tokio::select! {
                 _ = rx.changed() => {}
@@ -330,7 +248,7 @@ impl RaftHost {
 
     /// The leader-side write target. The direct router, registry router, and
     /// follower forward client all use this one public path.
-    pub const PUBLISH_PATH: &'static str = "/raft/publish";
+    pub const PUBLISH_PATH: &'static str = PUBLISH_PATH;
 }
 
 enum Route {

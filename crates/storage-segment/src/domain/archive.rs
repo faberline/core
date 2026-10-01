@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use storage_object::ObjectVersion;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ArchiveObject {
@@ -24,7 +23,23 @@ pub struct ArchivedObject {
     pub size: u64,
     pub content_type: String,
     pub sha256: String,
-    pub version: ObjectVersion,
+    pub version: ArchivedObjectVersion,
+}
+
+/// The object store's version of an archived object, such as a GCS
+/// generation or a local content hash. It serializes as a bare string.
+#[derive(Clone, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[serde(transparent)]
+pub struct ArchivedObjectVersion(String);
+
+impl ArchivedObjectVersion {
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 /// Receipt returned only after the final manifest write succeeds.

@@ -1,8 +1,9 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use std::collections::HashSet;
 
 use super::gitlab_ci_rules;
-use crate::checker::LintConfig;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
+use crate::domain::check::lint_config::LintConfig;
 use crate::syntax::{Language, ParsedFile};
 
 mod job_rules;
@@ -43,7 +44,7 @@ impl GitlabCiChecker {
             file.walk(|node, _depth| {
                 if node.is_error() || node.is_missing() {
                     diagnostics.push(Diagnostic::error(
-                        Range::from_node(node),
+                        node.to_range(),
                         "GL001",
                         DiagnosticCategory::Syntax,
                         "YAML syntax error in CI configuration",

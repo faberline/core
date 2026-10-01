@@ -3,17 +3,74 @@ use anyhow::{bail, Context, Result};
 use semver::Version;
 use std::io::Read;
 
-/// Flags for an upgrade run.
+#[cfg(feature = "online")]
+use crate::domain::{
+    prompt::Confirm,
+    release::{ReleaseSource, SelfInstall},
+    remote::RemoteError,
+};
+
+/// Flags for an upgrade run; `Default` leaves every flag unset.
+///
+/// ```
+/// let opts = cli_std::upgrade::Options::default()
+///     .with_tag("1.2.3".to_string())
+///     .with_yes(true);
+/// assert_eq!(opts.tag(), Some("1.2.3"));
+/// assert!(opts.yes() && !opts.check() && !opts.force());
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct Options {
-    /// Report current vs latest without changing the binary.
-    pub check: bool,
-    /// Install this exact version (`X.Y.Z` or `<project>@X.Y.Z`).
-    pub tag: Option<String>,
-    /// Reinstall even when already on the selected version.
-    pub force: bool,
-    /// Skip the confirmation prompt.
-    pub yes: bool,
+    check: bool,
+    tag: Option<String>,
+    force: bool,
+    yes: bool,
+}
+
+impl Options {
+    /// Reports current vs latest without changing the binary.
+    pub fn with_check(mut self, check: bool) -> Self {
+        self.check = check;
+        self
+    }
+
+    /// Installs this exact version (`X.Y.Z` or `<project>@X.Y.Z`).
+    pub fn with_tag(mut self, tag: impl Into<Option<String>>) -> Self {
+        self.tag = tag.into();
+        self
+    }
+
+    /// Reinstalls even when already on the selected version.
+    pub fn with_force(mut self, force: bool) -> Self {
+        self.force = force;
+        self
+    }
+
+    /// Skips the confirmation prompt.
+    pub fn with_yes(mut self, yes: bool) -> Self {
+        self.yes = yes;
+        self
+    }
+
+    /// Whether the run only reports.
+    pub fn check(&self) -> bool {
+        self.check
+    }
+
+    /// The pinned version, if any.
+    pub fn tag(&self) -> Option<&str> {
+        self.tag.as_deref()
+    }
+
+    /// Whether the run reinstalls the selected version.
+    pub fn force(&self) -> bool {
+        self.force
+    }
+
+    /// Whether the confirmation prompt is skipped.
+    pub fn yes(&self) -> bool {
+        self.yes
+    }
 }
 
 /// Decision after comparing the installed and selected versions.
@@ -98,57 +155,61 @@ pub fn decide_action(current: &Version, selected: &Version, force: bool) -> Acti
 #[cfg(any(feature = "online", test))]
 fn check_next_command(tool: &ToolInfo, current: &Version, selected: &Version) -> String {
     if selected > current {
-        format!("{} upgrade", tool.project)
+        format!("{} upgrade", tool.project())
     } else {
         "done".to_string()
     }
 }
 
-/// Run `<tool> upgrade`. Offline builds (no `online` feature) only support the
-/// install path through a clear error; `--check` still degrades clearly.
+/// Run `<tool> upgrade`. `open` builds the HTTP client once the installed
+/// version parses; `prompt` asks before installing; `installer` replaces the
+/// running binary.
 #[cfg(feature = "online")]
-pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
+pub(crate) async fn run<A: ReleaseSource>(
+    tool: &ToolInfo,
+    opts: Options,
+    prompt: &impl Confirm,
+    installer: &impl SelfInstall,
+    open: impl FnOnce() -> Result<A, RemoteError>,
+) -> Result<()> {
     let prefix = tool.tag_prefix();
-    let current = Version::parse(tool.version).context("parse current version")?;
-    let client = reqwest::Client::builder()
-        .user_agent(format!("{}-upgrade/{}", tool.project, tool.version))
-        .build()
-        .context("build HTTP client")?;
+    let current = Version::parse(tool.version()).context("parse current version")?;
+    let api = open()?;
 
-    let tags = list_release_tags(&client, tool.repo).await?;
-    let Some((tag, selected)) = select_version(&tags, &prefix, opts.tag.as_deref()) else {
-        if opts.check && opts.tag.is_none() {
+    let tags = list_release_tags(&api, tool.repo()).await?;
+    let Some((tag, selected)) = select_version(&tags, &prefix, opts.tag()) else {
+        if opts.check() && opts.tag().is_none() {
             println!("current: {current}");
             println!("latest:  none");
             println!(
                 "→ no stable {} release found (scanned {} tags)",
-                tool.project,
+                tool.project(),
                 tags.len()
             );
             println!("next: done");
             return Ok(());
         }
-        match opts.tag.as_deref() {
+        match opts.tag() {
             Some(t) => bail!(
                 "no {} release matching `{t}` (scanned {} tags)",
-                tool.project,
+                tool.project(),
                 tags.len()
             ),
             None => bail!(
                 "no stable {} release found (scanned {} tags)",
-                tool.project,
+                tool.project(),
                 tags.len()
             ),
         }
     };
 
-    if opts.check {
+    if opts.check() {
         println!("current: {current}");
         println!("latest:  {selected} ({tag})");
         println!(
             "{}",
             if selected > current {
-                format!("→ run `{} upgrade` to update", tool.project)
+                format!("→ run `{} upgrade` to update", tool.project())
             } else {
                 "→ up to date".to_string()
             }
@@ -157,24 +218,29 @@ pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
         return Ok(());
     }
 
-    if decide_action(&current, &selected, opts.force) == Action::UpToDate {
+    if decide_action(&current, &selected, opts.force()) == Action::UpToDate {
         println!("already up to date ({current})");
         println!("next: done");
         return Ok(());
     }
 
     let asset = tool.asset_name();
-    let (tar_url, sha_url) = asset_urls(&client, tool.repo, &tag, &asset).await?;
+    let (tar_url, sha_url) = asset_urls(&api, tool.repo(), &tag, &asset).await?;
 
-    if !opts.yes && !crate::confirm(&format!("upgrade {} {current} → {selected}?", tool.project))?
+    if !opts.yes()
+        && !prompt.confirm(&format!(
+            "upgrade {} {current} → {selected}?",
+            tool.project()
+        ))?
     {
         println!("aborted");
         println!("next: done");
         return Ok(());
     }
 
-    let tar_bytes = crate::download_bytes(&client, &tar_url).await?;
-    let expected = crate::download_text(&client, &sha_url)
+    let tar_bytes = api.download_bytes(&tar_url).await?;
+    let expected = api
+        .download_text(&sha_url)
         .await?
         .split_whitespace()
         .next()
@@ -185,7 +251,7 @@ pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
     }
 
     let bin = extract_binary(&tar_bytes, &tool.inner_binary_path())?;
-    crate::install_over_self(&bin, &format!("{}-upgrade", tool.project))?;
+    installer.install_over_self(&bin, &format!("{}-upgrade", tool.project()))?;
     println!("upgraded {current} → {selected}");
     println!("next: done");
     Ok(())
@@ -194,8 +260,8 @@ pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
 /// Without the `online` feature the HTTP client is not linked.
 #[cfg(not(feature = "online"))]
 pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
-    if opts.check {
-        println!("current: {}", tool.version);
+    if opts.check() {
+        println!("current: {}", tool.version());
         println!("latest:  unavailable (this build has no `online` feature)");
         println!("→ rebuild with self-update support to query GitHub releases");
         println!("next: done");
@@ -203,18 +269,13 @@ pub async fn run(tool: &ToolInfo, opts: Options) -> Result<()> {
     }
     anyhow::bail!(
         "this {} build was compiled without self-update support (the `online` feature)",
-        tool.project
+        tool.project()
     )
 }
 
 #[cfg(feature = "online")]
-async fn list_release_tags(client: &reqwest::Client, repo: &str) -> Result<Vec<String>> {
-    let url = format!("https://api.github.com/repos/{repo}/releases?per_page=100");
-    let value: serde_json::Value = crate::github_get(client, &url)
-        .await?
-        .json()
-        .await
-        .context("parse releases")?;
+async fn list_release_tags(api: &impl ReleaseSource, repo: &str) -> Result<Vec<String>> {
+    let value = api.releases(repo).await?;
     Ok(value
         .as_array()
         .map(|arr| {
@@ -227,17 +288,12 @@ async fn list_release_tags(client: &reqwest::Client, repo: &str) -> Result<Vec<S
 
 #[cfg(feature = "online")]
 async fn asset_urls(
-    client: &reqwest::Client,
+    api: &impl ReleaseSource,
     repo: &str,
     tag: &str,
     asset: &str,
 ) -> Result<(String, String)> {
-    let url = format!("https://api.github.com/repos/{repo}/releases/tags/{tag}");
-    let value: serde_json::Value = crate::github_get(client, &url)
-        .await?
-        .json()
-        .await
-        .context("parse release")?;
+    let value = api.release(repo, tag).await?;
     let assets = value.get("assets").and_then(|a| a.as_array());
     let find = |name: &str| -> Option<String> {
         assets?.iter().find_map(|a| {
@@ -291,26 +347,9 @@ mod tests {
     #[test]
     fn check_next_command_prefers_upgrade_only_when_newer() {
         let current = Version::new(0, 4, 11);
+        assert_eq!(check_next_command(&TOOL, &current, &current), "done");
         assert_eq!(
-            check_next_command(
-                &ToolInfo {
-                    version: "0.4.11",
-                    ..TOOL
-                },
-                &current,
-                &current
-            ),
-            "done"
-        );
-        assert_eq!(
-            check_next_command(
-                &ToolInfo {
-                    version: "0.4.11",
-                    ..TOOL
-                },
-                &current,
-                &Version::new(0, 4, 12)
-            ),
+            check_next_command(&TOOL, &current, &Version::new(0, 4, 12)),
             "lumen upgrade"
         );
     }
@@ -335,12 +374,12 @@ mod tests {
         assert!(extract_binary(&gz, "lumen-t/other").is_err());
     }
 
-    const TOOL: ToolInfo = ToolInfo {
-        project: "lumen",
-        repo: "faberline/lumen",
-        target: "aarch64-apple-darwin",
-        version: "0.4.11",
-        git_sha: "abc1234",
-        built_at: "1700000000",
-    };
+    const TOOL: ToolInfo = ToolInfo::new(
+        "lumen",
+        "faberline/lumen",
+        "aarch64-apple-darwin",
+        "0.4.11",
+        "abc1234",
+        "1700000000",
+    );
 }

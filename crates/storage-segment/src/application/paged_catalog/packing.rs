@@ -1,8 +1,8 @@
 use super::PagedCatalog;
 use crate::domain::{
-    validate_catalog_key, CatalogEntry, CatalogPageBody, CatalogPageRef, Result, SegmentError,
+    encode_page, validate_catalog_key, CatalogEntry, CatalogPageBody, CatalogPageRef, Result,
+    SegmentError,
 };
-use crate::infrastructure::encode_page;
 
 impl PagedCatalog {
     pub(super) fn pack_leaves(&self, entries: Vec<CatalogEntry>) -> Result<Vec<Vec<CatalogEntry>>> {

@@ -36,7 +36,7 @@ impl FramedLogReader {
             };
             if seq > from_seq {
                 max_seq = max_seq.max(seq);
-                visit(LogFrame { seq, payload })?;
+                visit(LogFrame::new(seq, payload))?;
             }
             off = next;
         }
@@ -70,7 +70,7 @@ impl FramedLogReader {
                 break;
             };
             if seq > from_seq {
-                out.push(LogFrame { seq, payload });
+                out.push(LogFrame::new(seq, payload));
             }
             off = next;
         }
@@ -114,7 +114,7 @@ impl FramedLogReader {
                 if file.read_exact(&mut payload).is_err() || crc32fast::hash(&payload) != crc {
                     break;
                 }
-                out.push(LogFrame { seq, payload });
+                out.push(LogFrame::new(seq, payload));
             }
             off = frame_end;
         }

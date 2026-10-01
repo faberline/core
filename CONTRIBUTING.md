@@ -711,10 +711,10 @@ operator defaults.
 | **`crates/transport-h2c`** | the **HTTP/2 wire transport/client**: h2c client helpers (`h2c_client`/`H2cPool`) plus an optional per-connection HTTP/1.1+h2c handler; it never binds or owns a listener. |
 | **`crates/service-observability`** | the **protocol-neutral observability integration**: typed logging configuration, stable service identity, optional OTLP exporter + W3C propagation primitives, the `MetricsProvider` contract, and lifecycle connection counters backed by `metrics-prometheus`. It owns no HTTP routes or request middleware. |
 | **`crates/service-http`** | the **HTTP service policy shell**: standard probe/admin routes, lifecycle readiness/signal adapters, HTTP request-context propagation, runtime delegation, and the shared **HTTP error envelope** (`ErrorEnvelope` + the `ApiErr` status/kind builder). Existing observability names are compatibility re-exports from `service-observability`; it owns no protocol-neutral observability state, listener, or drain state. |
-| **`crates/service-auth`** | the **request-auth shell**: shared `Authorization: Bearer` extraction, reject/inject middleware, the `Verifier` trait every service implements, and **`role_map`** — the standard token-registry verifier (`Role` hierarchy, `TokenClaims` with wildcard grants, registry-file loader, `StaticRoleMapVerifier`) implementing the archetype's `<SVC>_TOKEN_REGISTRY_FILE` contract. Token crypto belongs in **`crates/claim-token`** when signed tokens are needed; resource-policy *decisions* stay in the service handlers (`role_map` supplies the mechanism). |
+| **`crates/service-auth`** | the **request-auth shell**: shared `Authorization: Bearer` extraction, reject/inject middleware, the `Verifier` trait every service implements, and the standard **token-registry verifier** (`Role` hierarchy, `TokenClaims` with wildcard grants, registry-file loader, `StaticRoleMapVerifier` and `ReloadableRoleMapVerifier`, all at the crate root) implementing the archetype's `<SVC>_TOKEN_REGISTRY_FILE` contract. Token crypto belongs in **`crates/claim-token`** when signed tokens are needed; resource-policy *decisions* stay in the service handlers (the registry verifier supplies the mechanism). |
 | **`crates/claim-token`** | the **scoped claim-check token primitive**: HMAC signing and verification over bounded key scopes shared by issuers and storage services. |
 | **`crates/storage-durable`** | the **durable local storage primitive layer**: shared `FsyncPolicy`, temp-file atomic replace with file + parent-dir sync, CRC-framed append logs with torn-tail recovery/compaction, and sequence-named local snapshot stores. Services supply domain codecs and state-machine semantics; they do not hand-roll fsync/rename/frame parsing. |
-| **`crates/service-backup`** | the **backup contract**: tagged runtime destination/policy schema, the flat CRD-safe `ScheduledBackupPolicy` (`schedule`/`destination`/`retentionSecs`) with validated runtime conversion, `BackupSink`, local + S3-compatible object-store sinks (feature `s3`; GCS destinations parse/round-trip but runners fail loudly until a real GCS adapter lands), and a runner primitive. Services produce consistent snapshot bytes; runners upload them; operators add only app-specific auth/secret fields around the shared schedule policy. |
+| **`crates/service-backup`** | the **backup contract**: tagged runtime destination/policy schema, the flat CRD-safe `ScheduledBackupPolicy` (`schedule`/`destination`/`retentionSecs`) with validated runtime conversion, `BackupSink`, the always-linked local and GCS sinks (`LocalFsSink`, `GcsSink`; GCS uses workload identity in production and `STORAGE_EMULATOR_HOST` locally), an S3-compatible sink behind feature `s3` (without it, an `s3://` destination gets an `UnsupportedCloudSink` that fails loudly), and a runner primitive. Services produce consistent snapshot bytes; runners upload them; operators add only app-specific auth/secret fields around the shared schedule policy. |
 | **`crates/peer-tls`** | **peer mTLS material loading**: `PeerTlsConfig::from_env(<PREFIX>)`, PEM cert/key/CA loaders, rustls server/client config builders, and the Once-guarded default-crypto-provider install. (h2c stays cleartext by design; this covers the mutually-authenticated peer/replication port.) |
 | **`crates/metrics-prometheus`** | the **Prometheus metric primitives**: dep-free counter/gauge primitives + the text-format encoder — the standard implementation behind `service-observability`'s `MetricsProvider` implementations and HTTP `/metrics` adapters. |
 | **`crates/openapi-codegen`** | the **typed client generator**: one OpenAPI IR with TypeScript, Python, and Rust emitters consumed by each service's `spec gen` command. |
@@ -722,8 +722,8 @@ operator defaults.
 | **`crates/build-stamp`** | the **build stamp** (a `[build-dependencies]` crate): `stamp("<PREFIX>")` emits the `<PREFIX>_GIT_SHA` / `<PREFIX>_BUILT_AT` / `<PREFIX>_TARGET` rustc-env lines that feed `cli-std`'s `ToolInfo` — one implementation instead of a per-service `build.rs` copy. |
 
 **k8s-native auto-mode + discovery.** A StatefulSet-profile service defaults to
-single-node and turns on raft **only when the StatefulSet scales out** — `raft_runtime::cluster::
-replica_mode()` is `true` when `REPLICAS_PER_SHARD > 1` (a downward-API value). So
+single-node and turns on raft **only when the StatefulSet scales out** — `raft_runtime::replica_mode()`
+is `true` when `REPLICAS_PER_SHARD > 1` (a downward-API value). So
 `<svc> serve` needs **no flags or cluster env** for local/single-node dev; k8s
 scaling flips it to replica mode automatically, with node id / membership / peers
 derived from the downward API by `ClusterTopology::from_env` (a local
@@ -796,7 +796,7 @@ Each row names what the app is allowed to keep after the move.
 | `raft.rs` — peer transport, apply loop, snapshot/compaction, topology, peer DNS | `raft-runtime` | `raft_sm.rs` |
 | `tls.rs` / `peer_tls.rs` — PEM loading, rustls builders | `peer-tls` | the env-prefix constant |
 | `metrics.rs` — registry, text encoder, the `/metrics` handler | `metrics-prometheus` + `service-http` | domain metric *declarations* |
-| `auth.rs` — bearer extraction, middleware, registry-file loading | `service-auth::role_map` | the domain `Role` mapping and resource decisions |
+| `auth.rs` — bearer extraction, middleware, registry-file loading | `service-auth` (the token-registry verifier) | the domain `Role` mapping and resource decisions |
 | `backup.rs` — sinks, upload, retention | `service-backup` | producing consistent snapshot bytes |
 | hand-rolled fsync / atomic rename / CRC framing | `storage-durable` | the domain codec |
 | a hand-rolled h2c client, or any `bind`/`listen` | `transport-h2c` / `server-http` | — |
@@ -903,7 +903,7 @@ long-running service uses `crates/service-auth` for request authentication:
 extract `Authorization: Bearer <token>`, verify it through a service-supplied
 `Verifier`, reject with the shared JSON error shape, and inject the authenticated
 principal into handlers. Services use the shared registry verifier
-(`service_auth::role_map::StaticRoleMapVerifier` — role hierarchy, wildcard
+(`service_auth::StaticRoleMapVerifier` — role hierarchy, wildcard
 grants, registry-file loader) or signed tokens through `crates/claim-token`, but
 the HTTP contract and middleware shape stay the same.
 
@@ -1457,7 +1457,8 @@ Implementation notes not obvious from the signature:
 The logic for all three lives in the shared **`crates/cli-std`** crate (`cli_std`),
 which is **clap-agnostic**: each CLI keeps its own clap registration — so it owns
 the convention's flag shape (`--topic`, not a positional) — and delegates the
-behavior to the crate, parameterized by a `cli_std::ToolInfo` it fills from its
+behavior to the crate, parameterized by a `cli_std::ToolInfo` it builds with
+`ToolInfo::new` from its
 own `build.rs` stamps (project, repo, target triple, version, git sha — emit
 them with `crates/build-stamp`'s `stamp("<PREFIX>")`, not a hand-rolled
 `build.rs`). A tool
@@ -1467,8 +1468,8 @@ search/view/create) sit behind cli-std's `online` feature — enable it in relea
 builds. Reference adopters: `apps/jet` and `apps/lumen`.
 
 - **`llm`** — `cli_std::llm::render(project, version, topics, topic, format)`. The
-  tool supplies `&[cli_std::llm::Topic]` (`id`/`summary`/`body` — the one in-code
-  source of truth) and cli-std renders the `outline` topic map + the
+  tool supplies `&[cli_std::llm::Topic]` (`Topic::new(id, summary, body)` — the
+  one in-code source of truth) and cli-std renders the `outline` topic map + the
   standard-command footer. Pure offline; always builds.
 - **`upgrade`** — `cli_std::upgrade::run(&tool, opts)`: the in-binary form of
   `projects/<project>/install.sh` — detect target (`<arch>-<os>`) → download the
@@ -1477,7 +1478,7 @@ builds. Reference adopters: `apps/jet` and `apps/lumen`.
 - **`issue`** — `cli_std::issue::{search, view, create}`. `search`/`view` are
   read-only GitHub API GETs (tokenless on public repos); `create` submits via the
   API when `GITHUB_TOKEN` is set, else prints a pre-filled `issues/new` URL. Pass
-  the tracker's `app:<name>` label in `CreateOptions.label` so it is applied
+  the tracker's `app:<name>` label with `CreateOptions::with_label` so it is applied
   on submit **and** carried into the URL fallback's `&labels=`; `search` filters
   to that same label. The group is named `issue` (**not** `report`), leaving
   domain `report` verbs (`jet report` = HTML **test** reports) untouched.
@@ -1494,9 +1495,8 @@ implementation home is `cli_std::connect`
 (`crates/cli-std/src/{domain,application,infrastructure}/connect.rs`, behind
 the `k8s` feature): the port-forward process lifecycle (`ChildGuard`,
 `free_local_port`, `wait_for_local_port_ready`) and the token-registry Secret
-resolution chain (`kubectl_get_json`, `cr_tokens_secret`,
-`resolve_cr_tokens_secret`, `secret_data_bytes`, `select_token`,
-`resolve_token`) are universal to any k8s-native service CLI — a tool adopts
+resolution chain (`cr_tokens_secret`, `resolve_cr_tokens_secret`,
+`select_token`, `resolve_token`) are universal to any k8s-native service CLI — a tool adopts
 `connect` by supplying only its own flag surface, its CR-kind lookup
 convention (the `resource_kind` string passed to `resolve_cr_tokens_secret`),
 and a role mapping into `cli_std::connect::Role`. `apps/lumen`

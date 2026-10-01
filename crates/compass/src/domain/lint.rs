@@ -1,12 +1,10 @@
 //! Language lint checkers: the Checker trait, its registry and one checker per language.
 
 pub(crate) mod asyncapi;
-pub(crate) mod autofix;
 pub(crate) mod checker;
 pub(crate) mod css;
 pub(crate) mod custom;
 pub(crate) mod dockerfile;
-pub(crate) mod embedded_markdown;
 pub(crate) mod gitlab_ci;
 pub(crate) mod gitlab_ci_rules;
 pub(crate) mod go;

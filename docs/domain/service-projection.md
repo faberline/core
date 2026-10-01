@@ -12,14 +12,27 @@ log, metric and trace projections with it.
 
 ## Model
 
+- **Identity types** — `ProjectionName` and `ProjectionEventId` wrap strings
+  (`new`, `as_str`). `ProjectionCursor` and `SourceGeneration` wrap separate
+  numbers (`new`, `get`). The record and source ports, descriptors, checkpoints,
+  lag reports and runtime cursor methods use these types. JSON, saved state
+  and the three published OpenAPI schemas keep their exact bytes.
+
 - **Projection descriptor** — `ProjectionDescriptor`: a name, a schema
-  version and a retention label that the runtime does not interpret.
+  version and a retention label that the runtime does not interpret. The
+  fields are private: `ProjectionDescriptor::try_new(name, schema_version,
+  retention)` returns `InvalidName` for an invalid name, and `name()`,
+  `schema_version()` and `retention()` read it. Deserializing does not check
+  the name; the runtime checks it again when it opens a projection.
 - **Projection cursor** — the `u64` cursor of the last source record applied.
 - **Source generation** — the generation of the retained source a projection
   was built from. A source bumps it when retention or repair removes or
   replaces records without moving its cursor high-water mark.
 - **Projection checkpoint** — `ProjectionCheckpoint`: name, schema version,
   cursor, source generation, last event id, state sha256 and update time.
+  The domain does not read the clock: `ProjectionCheckpoint::empty` and the
+  checkpoint builder take `now: DateTime<Utc>`, which the runtime reads, and
+  write it as RFC 3339 UTC with milliseconds (`2026-01-02T03:04:05.678Z`).
 - **Projection snapshot** — the state bytes, saved in a
   `ProjectionStateEnvelope` with a format version and the checkpoint.
 - **Projection quarantine** — a state file that failed to load, renamed aside.
@@ -27,6 +40,9 @@ log, metric and trace projections with it.
   with the required and current cursors and a retry-after in seconds.
 - **Rebuild comparison** — `RebuildComparison`: the live and rebuilt semantic
   digests at one source cursor, and whether they are equal.
+- **Projection error** — `ProjectionError`: `InvalidName` ("projection name
+  is invalid") and `Other`, which wraps an implementation's error with its
+  message unchanged. The registry and handle keep returning `anyhow::Result`.
 - **Registry and handle** — `ProjectionRegistry` binds one source to named
   projections; `ProjectionHandle` is the typed handle of one.
   `ProjectionRuntimeConfig::new` raises batch size, snapshot interval and
@@ -34,7 +50,9 @@ log, metric and trace projections with it.
 
 ## Ports
 
-sift implements all four. Every fallible method returns `anyhow::Result`.
+sift implements all four. Every fallible method returns
+`Result<_, ProjectionError>`; an implementation wraps its own error, such as
+an `anyhow::Error`, with `ProjectionError::other`.
 
 - `ProjectionRecord` — a source record's cursor and event id.
 - `ProjectionSource<Record>` — the current cursor, `read_after`, and
@@ -44,6 +62,16 @@ sift implements all four. Every fallible method returns `anyhow::Result`.
 - `Projection<Record>` — the descriptor, `apply_idempotent`, `snapshot`,
   `restore`, `checkpoint_committed` and `semantic_digest` (by default the
   sha256 of the snapshot).
+
+The runtime saves state through one crate-internal port, which products do
+not see:
+
+- `ProjectionStateStore` — `prepare_root`, `read` a projection's saved
+  bytes, `restore` (decode and check them against the descriptor), `quarantine`
+  and `persist`. Infrastructure implements it with the envelope file of each
+  projection. The composition root (`src/app`) keeps the public
+  `ProjectionRegistry::new(root, source, config)`: it builds the file store
+  under `root` and passes it to the registry, which hands it to every handle.
 
 ## Invariants
 
@@ -72,27 +100,28 @@ No core context depends on service-projection. sift re-exports
 `ProjectionCheckpoint`, `ProjectionDescriptor`, `ProjectionLag`,
 `ProjectionStateEnvelope`, `RebuildComparison` and
 `PROJECTION_STATE_FORMAT_VERSION`, and its API error carries a
-`ProjectionLag`. The envelope is a persisted format that P1 does not change.
-P1 keeps every root export; there is no old module path. sift's structure
-test checks its own sources for `service_projection::ProjectionRegistry`.
+`ProjectionLag`. The envelope is a persisted format. Every export is at the
+crate root; there is no old module path. sift's structure test checks its
+own sources for `service_projection::ProjectionRegistry`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B2 (`anyhow`): the `Projection`, `ProjectionSource` and
-    `ProjectionReadSession` ports return `anyhow::Result`, and sift implements
-    them. P2 returns a `thiserror` error (ADR D4).
-  - B2 (`utoipa`): `ProjectionDescriptor`, `ProjectionCheckpoint` and
-    `ProjectionLag` derive `ToSchema`, and sift's OpenAPI document uses those
-    schema names. P2 moves the schemas to interfaces types with the same names.
-  - B2 (`chrono::Utc::now`): `ProjectionCheckpoint::empty` and the checkpoint
-    builder stamp `updated_at` from the wall clock. P2 adds a `Clock` port.
-  - B3 `application->infrastructure`: `ProjectionHandle` and
-    `ProjectionRegistry` call the file-state functions directly. P2 adds a
-    state-store port.
-- **Tracked for P2:**
-  - `anyhow` in `ProjectionSource`, `ProjectionReadSession` and `Projection`
-    (ADR D4).
-  - `ProjectionDescriptor` built with struct literals by sift (ADR D2); the
-    checkpoint, envelope, lag and comparison types also have public fields.
-  - Bare ids: cursors and generations are `u64`, names and event ids `String`.
+- **Checker exceptions:**
+  - B2 (`utoipa`), long-term: `ProjectionDescriptor`, `ProjectionCheckpoint`
+    and `ProjectionLag` derive `ToSchema`, a compile-time description of the
+    same serde wire shape with no I/O. sift serves them as-is in its OpenAPI
+    document under these schema names, so an interfaces copy would duplicate
+    the wire contract.
+- **Public fields kept:** `ProjectionCheckpoint`, `ProjectionLag` and
+  `RebuildComparison` are built only inside this crate;
+  `ProjectionStateEnvelope` is the persisted state format.
+  `ProjectionRuntimeConfig` has public fields and a `new` that raises each
+  value to at least 1.
+- **Debts:**
+  - `anyhow` in the `ProjectionRegistry` and `ProjectionHandle` methods
+    (these are not ports, so ADR D4 does not cover them).
+
+  P2 made the projection ports return `ProjectionError` (D4), and made
+  the `ProjectionDescriptor` fields private behind `try_new` (D2).
+
+P2 typed projection names, event ids, cursors and source generations (W5).

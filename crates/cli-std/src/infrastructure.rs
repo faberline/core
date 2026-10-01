@@ -10,6 +10,8 @@ pub(crate) mod courier;
 #[cfg(feature = "online")]
 pub(crate) mod github;
 #[cfg(feature = "online")]
+pub(crate) mod http;
+#[cfg(feature = "online")]
 pub(crate) mod issue;
 #[cfg(feature = "online")]
 pub(crate) mod self_install;

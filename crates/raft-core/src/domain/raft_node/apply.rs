@@ -12,7 +12,10 @@ impl RaftNode {
         if index > self.commit_index {
             return None;
         }
-        let offset = index.checked_sub(self.snapshot_index)?.checked_sub(1)?;
+        let offset = index
+            .get()
+            .checked_sub(self.snapshot_index.get())?
+            .checked_sub(1)?;
         let entry = self.log.get(usize::try_from(offset).ok()?)?;
         (entry.index == index).then_some((index, entry.term, entry.kind))
     }
@@ -27,7 +30,7 @@ impl RaftNode {
             return false;
         }
         if kind == EntryKind::Config {
-            let offset = (index - self.snapshot_index - 1) as usize;
+            let offset = (index.get() - self.snapshot_index.get() - 1) as usize;
             if let Some(conf) = ConfState::decode(&self.log[offset].command) {
                 self.adopt_conf(conf);
                 if self.role == Role::Leader && self.is_joint() {
@@ -45,8 +48,8 @@ impl RaftNode {
     pub fn take_committed(&mut self) -> Vec<RaftEntry> {
         let mut out = Vec::new();
         while self.last_applied < self.commit_index {
-            let idx = self.last_applied + 1;
-            let pos = (idx - self.snapshot_index - 1) as usize;
+            let idx = self.last_applied.next();
+            let pos = (idx.get() - self.snapshot_index.get() - 1) as usize;
             let entry = &self.log[pos];
             if entry.kind == EntryKind::Config {
                 if let Some(conf) = ConfState::decode(&entry.command) {

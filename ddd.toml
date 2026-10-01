@@ -7,8 +7,8 @@
 schema = 1
 
 [migration]
-# P1 moved every crate into this layout; its last commit set enforce = true,
-# so any error-level finding fails the check.
+# P1 established the layout and enforcement. P2 removed the planned exceptions.
+# Only long-term exceptions remain; any error-level finding fails the check.
 enforce = true
 
 [policy]
@@ -120,18 +120,27 @@ mod_module_files = "deny"
 [shared_kernel]
 path = "crates/surface/src"
 
-# Compatibility facades: src/compat/<old>.rs holds only `pub use` lines that
-# keep an old public module path working. Added crate by crate.
+# src/api preserves public module paths. src/app is the composition root
+# that builds adapters and passes them to application code through ports.
 [assembly]
 modules = [
-  "crates/cli-std/src/compat",
-  "crates/compass/src/compat",
-  "crates/openapi-codegen/src/compat",
-  "crates/raft-runtime/src/compat",
-  "crates/service-auth/src/compat",
-  "crates/service-backup/src/compat",
-  "crates/service-http/src/compat",
-  "crates/service-k8s/src/compat",
+  "crates/cli-std/src/api",
+  "crates/cli-std/src/app",
+  "crates/compass/src/api",
+  "crates/compass/src/app",
+  "crates/openapi-codegen/src/api",
+  "crates/openapi-codegen/src/app",
+  "crates/raft-runtime/src/api",
+  "crates/raft-runtime/src/app",
+  "crates/service-auth/src/api",
+  "crates/service-auth/src/app",
+  "crates/service-backup/src/api",
+  "crates/service-backup/src/app",
+  "crates/service-http/src/api",
+  "crates/service-k8s/src/api",
+  "crates/service-k8s/src/app",
+  "crates/service-projection/src/app",
+  "crates/storage-segment/src/app",
 ]
 
 [[contexts]]
@@ -207,6 +216,7 @@ domain = "crates/raft-core/src/domain"
 name = "raft-runtime"
 depends_on = ["cli-std", "peer-tls", "raft-core", "server-lifecycle", "storage-durable", "transport-h2c"]
 [contexts.layers]
+domain = "crates/raft-runtime/src/domain"
 application = "crates/raft-runtime/src/application"
 infrastructure = "crates/raft-runtime/src/infrastructure"
 interfaces = "crates/raft-runtime/src/interfaces"
@@ -334,19 +344,7 @@ interfaces = "crates/transport-otlp/src"
 name = "ui-runtime"
 depends_on = []
 [contexts.layers]
-domain = "crates/ui-runtime/src"
-
-[[exceptions]]
-rule = "B1"
-subject = "surface"
-paths = ["crates/surface/Cargo.toml"]
-reason = "The shared kernel keeps its crate name while ui-runtime is a whole-src domain crate; SPEC-MANAGED, not split in P1 (ADR D18). P2: D8 moves ui-runtime to src/domain, which removes the split-crate naming rule."
-
-[[exceptions]]
-rule = "B1"
-subject = "ui-runtime"
-paths = ["crates/ui-runtime/Cargo.toml"]
-reason = "SPEC-MANAGED crate kept whole in P1 (ADR D18), so it is a whole-src domain crate without the split-crate name. P2: D8 splits it into src/domain."
+domain = "crates/ui-runtime/src/domain"
 
 [[exceptions]]
 rule = "B2"
@@ -361,42 +359,6 @@ paths = ["crates/index-text/src/domain/tokenize.rs"]
 reason = "The Jieba analyzer is a persisted schema choice (Analyzer::Jieba) and jieba-rs is its segmentation algorithm over an embedded dictionary, with no I/O; it sits behind the optional `jieba` feature. Long-term."
 
 [[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/storage-segment/src/application/paged_catalog/packing.rs",
-  "crates/storage-segment/src/application/paged_catalog/page_store.rs",
-]
-reason = "Moved as-is in P1: PagedCatalog packs and stores pages through the page codec and put_immutable directly. P2: a CatalogPageStore port implemented in infrastructure."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = ["crates/storage-segment/src/application/archive.rs"]
-reason = "Moved as-is in P1: ArchiveTransaction writes objects with put_immutable directly. P2: it writes through a port that infrastructure implements."
-
-[[exceptions]]
-rule = "B4"
-subject = "storage-object.infrastructure"
-paths = ["crates/storage-segment/src/domain/segment_error.rs"]
-reason = "Moved as-is in P1: SegmentError::ObjectStore wraps ObjectStoreError via #[from]. P2: a domain-owned error variant, converted at the infrastructure boundary."
-
-[[exceptions]]
-rule = "B4"
-subject = "storage-object.infrastructure"
-paths = ["crates/storage-segment/src/domain/archive.rs"]
-reason = "Moved as-is in P1: ArchivedObject.version is storage-object's ObjectVersion. P2: a domain-owned version type, or ObjectVersion moves into the shared kernel."
-
-[[exceptions]]
-rule = "B2"
-subject = "anyhow"
-paths = [
-  "crates/service-projection/src/domain/projection.rs",
-  "crates/service-projection/src/domain/source.rs",
-]
-reason = "Moved as-is in P1: the Projection, ProjectionSource and ProjectionReadSession ports return anyhow::Result, sift implements them, and validate_descriptor uses bail!. P2: the ports return a thiserror error (W3)."
-
-[[exceptions]]
 rule = "B2"
 subject = "utoipa"
 paths = [
@@ -404,50 +366,7 @@ paths = [
   "crates/service-projection/src/domain/lag.rs",
   "crates/service-projection/src/domain/projection.rs",
 ]
-reason = "Moved as-is in P1: ProjectionDescriptor, ProjectionCheckpoint and ProjectionLag derive utoipa::ToSchema, and sift's OpenAPI document uses these schema names. P2: the schemas move to interfaces body types that keep the schema names."
-
-[[exceptions]]
-rule = "B2"
-subject = "chrono::Utc::now"
-paths = ["crates/service-projection/src/domain/checkpoint.rs"]
-reason = "Moved as-is in P1: ProjectionCheckpoint::empty and the checkpoint builder stamp updated_at from the wall clock. P2: they take the time from a Clock port, which changes the empty() signature."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/service-projection/src/application/handle.rs",
-  "crates/service-projection/src/application/handle/locked.rs",
-  "crates/service-projection/src/application/registry.rs",
-]
-reason = "Moved as-is in P1: ProjectionHandle restores, persists and quarantines its state file, and ProjectionRegistry sets the state root's mode, through direct calls to the file-state functions. P2: a projection state store port in domain, implemented in infrastructure."
-
-[[exceptions]]
-rule = "B2"
-subject = "anyhow"
-paths = [
-  "crates/openapi-codegen/src/domain/emit/py.rs",
-  "crates/openapi-codegen/src/domain/emit/rust.rs",
-  "crates/openapi-codegen/src/domain/emit/ts.rs",
-  "crates/openapi-codegen/src/domain/generation/file_bearer_auth.rs",
-  "crates/openapi-codegen/src/domain/target.rs",
-]
-reason = "Moved as-is in P1: the per-language generate functions, FileBearerAuth::new and the target-profile parsers (TargetProfile::from_id, FromStr) return anyhow::Result and use bail!/anyhow!. P2: give the domain a thiserror error enum and convert to anyhow in application and infrastructure."
-
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->domain"
-paths = ["crates/openapi-codegen/src/interfaces/cli.rs"]
-reason = "Moved as-is in P1: the CLI entry `run` builds GenOptions and prints the MANIFEST_FILE path, both domain items, around its call to application::generate. P2: let application take a CLI request (spec path, output dir, language, client name) and return the written paths, so interfaces uses application only."
-
-[[exceptions]]
-rule = "B2"
-subject = "anyhow"
-paths = [
-  "crates/service-backup/src/domain/destination.rs",
-  "crates/service-backup/src/domain/policy.rs",
-]
-reason = "Moved as-is in P1: BackupDestination::from_uri and ScheduledBackupPolicy::to_runtime_policy return anyhow::Result, and TryFrom<&ScheduledBackupPolicy> for BackupPolicy has Error = anyhow::Error, which downstream operators match on. P2: a thiserror destination/policy error (W3)."
+reason = "utoipa::ToSchema is a compile-time description of the same serde wire shape. ProjectionDescriptor, ProjectionCheckpoint and ProjectionLag are served as-is in sift's OpenAPI document under these schema names, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
 
 [[exceptions]]
 rule = "B2"
@@ -456,78 +375,16 @@ paths = [
   "crates/service-backup/src/domain/destination.rs",
   "crates/service-backup/src/domain/policy.rs",
 ]
-reason = "Moved as-is in P1: BackupDestination, ScheduledBackupPolicy and RetentionPolicy derive schemars::JsonSchema because downstream CRDs embed them and their generated schemas must not change. P2: the schema derive moves to interfaces CRD body types, or stays as a documented long-term exception."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/service-backup/src/application/admin_snapshot_backup.rs",
-  "crates/service-backup/src/application/runner.rs",
-]
-reason = "Moved as-is in P1: run_backup_once takes &dyn BackupSink and run_admin_snapshot_backup calls fetch_admin_snapshot and sink_from_destination, all defined in infrastructure. P2: the BackupSink port and a snapshot source port move to domain, and the lenient fetch_admin_snapshot is deleted (W1)."
-
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->domain"
-paths = ["crates/service-backup/src/interfaces/llm.rs"]
-reason = "Moved as-is in P1: the LLM topic lists the supported destination schemes straight from the domain SUPPORTED_SCHEMES table so the text cannot drift from the parser. P2: the topic reads the schemes through an application query."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/cli-std/src/application/connect.rs",
-  "crates/cli-std/src/application/issue/comment.rs",
-  "crates/cli-std/src/application/issue/create.rs",
-  "crates/cli-std/src/application/issue/search.rs",
-  "crates/cli-std/src/application/issue/view.rs",
-  "crates/cli-std/src/application/upgrade.rs",
-]
-reason = "Moved as-is in P1: the connect, issue and upgrade use cases call the kubectl, GitHub, courier, terminal-prompt and self-install adapters directly. P2: define ports in domain that infrastructure implements, and inject them into the use cases."
-
-[[exceptions]]
-rule = "B2"
-subject = "anyhow"
-paths = ["crates/service-auth/src/domain/authorization/registry.rs"]
-reason = "Moved as-is in P1: the public Registry::parse and Registry::try_merge return anyhow::Result built with bail! and Context, and the registry loaders and ReloadableRoleMapVerifier pass those errors on unchanged. P2: a thiserror RegistryError in domain, converted to anyhow::Error at the loaders."
+reason = "schemars::JsonSchema is a compile-time description of the same serde wire shape. BackupDestination, ScheduledBackupPolicy, BackupPolicy and RetentionPolicy are embedded as-is in downstream CRD specs (lumen, tape, relay, defer, keep), whose generated schemas must not change, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
 
 [[exceptions]]
 rule = "B3"
 subject = "infrastructure->application"
 paths = [
   "crates/service-auth/src/infrastructure/google/http.rs",
-  "crates/service-auth/src/infrastructure/k8s/kube_backend.rs",
   "crates/service-auth/src/infrastructure/k8s/kube_token_minter.rs",
 ]
-reason = "Moved as-is in P1: HttpJwksSource, HttpAccessTokenIntrospection, KubeReviewBackend and KubeTokenMinter implement the #[async_trait] ports JwksSource, AccessTokenIntrospection, ReviewBackend and TokenMinter, which B2 keeps out of domain, together with their request and outcome types; KubeTokenMinter also reads the k8s SystemClock, and GoogleVerifier::google() in http.rs wires the HTTP sources and a ReloadableRoleMapVerifier into a GoogleVerifier. P2: the ports and their value types move to domain as native async-fn traits, SystemClock becomes an infrastructure adapter behind the domain Clock port, and google() moves to an assembly constructor."
-
-[[exceptions]]
-rule = "B4"
-subject = "service-auth.infrastructure"
-paths = ["crates/service-backup/src/infrastructure/admin_snapshot/transport.rs"]
-reason = "Moved as-is in P1: the admin snapshot transport authenticates with service_auth::k8s::ProjectedTokenFile, which reads a projected ServiceAccount token from disk and so sits in service-auth's infrastructure layer. P2: service-auth offers the projected token through an application-layer token source port, and service-backup depends on that."
-
-[[exceptions]]
-rule = "B2"
-subject = "futures"
-paths = [
-  "crates/service-k8s/src/domain/certificate/issuer.rs",
-  "crates/service-k8s/src/domain/certificate/secret_store.rs",
-]
-reason = "Moved as-is in P1: the Issuer and SecretStore ports return futures::future::BoxFuture so the reconciler can hold them as trait objects. P2: return Pin<Box<dyn Future<Output = T> + Send + 'a>> from std, the same type without the futures crate."
-
-[[exceptions]]
-rule = "B2"
-subject = "rcgen"
-paths = ["crates/service-k8s/src/domain/certificate/issuer.rs"]
-reason = "Moved as-is in P1: IssuanceRequest::build generates the keypair and CSR with rcgen (generate_key_and_csr), and issuer.rs moved whole (336 lines, D17) with the Issuer port and its request types. P2: move keypair and CSR generation behind a port implemented in infrastructure, so the domain carries only the CSR PEM."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = ["crates/service-k8s/src/application/certificate/reconcile.rs"]
-reason = "Moved as-is in P1: Reconciler reads and builds the Secret layout directly with infrastructure secret_layout::{read_state, material_secret, trust_bundle_secret}. P2: put the Secret layout behind a port (or the SecretStore port) that infrastructure implements."
+reason = "Long-term: HttpJwksSource (http.rs) implements the application port JwksSource, whose fetch returns jsonwebtoken::jwk::JwkSet, a type outside the domain allowlist, so the port cannot move to domain without a second copy of the RFC 7517 key set. KubeTokenMinter (kube_token_minter.rs) implements the application port TokenMinter with MintedToken, TokenRequestTarget and TokenRequestError; the interfaces LoopbackProxy::next_fatal returns TokenRequestError, so moving the port and its error to domain would make interfaces name a domain type (B3). Both adapters therefore keep implementing application ports."
 
 [[exceptions]]
 rule = "B2"
@@ -537,127 +394,28 @@ paths = [
   "crates/service-k8s/src/domain/condition.rs",
   "crates/service-k8s/src/domain/lifecycle.rs",
 ]
-reason = "Moved as-is in P1: ReplicaLayerPolicy, ShardSplitPolicy, Condition, ProbeTiming and LifecyclePolicy derive JsonSchema because service CRD specs and statuses embed them directly. P2: keep these as plain domain values and give the CRD wire shapes their own JsonSchema types in interfaces, converting at the boundary."
-
-[[exceptions]]
-rule = "B2"
-subject = "chrono::Utc::now"
-paths = ["crates/service-k8s/src/domain/condition.rs"]
-reason = "Moved as-is in P1: now_rfc3339 reads the wall clock for the lastTransitionTime that project stamps; its only caller is the operator's reconcile, which already passes the result to project as `now`. P2: take the time from a Clock port (or move now_rfc3339 to the operator), so domain/condition.rs only receives `now`."
-
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->domain"
-paths = [
-  "crates/service-k8s/src/interfaces/operator/managed_service.rs",
-  "crates/service-k8s/src/interfaces/operator/reconcile.rs",
-]
-reason = "Moved as-is in P1: the ManagedService trait hands back Condition and ConditionFact values, and the operator's reconcile builds ConditionFacts and projects them onto the CR status with project and now_rfc3339. P2: pull the reconcile sequence into an application use case behind the ports the mapping lists, so interfaces reaches the condition rules only through application."
-
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->infrastructure"
-paths = ["crates/service-k8s/src/interfaces/operator.rs"]
-reason = "Moved as-is in P1: the operator entry points run and reconcile_once create the leader Election, spawn the Lease renewal loop and keep the Election in the reconcile context, all from infrastructure::lease. P2: move the leadership rule (Election, may_acquire) into domain and start the Lease renewal from an application use case through a port that infrastructure implements."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/raft-runtime/src/application/host.rs",
-  "crates/raft-runtime/src/application/host/propose.rs",
-  "crates/raft-runtime/src/application/replica_host.rs",
-]
-reason = "Moved as-is in P1: RaftHost holds the concrete RaftStore and PeerTransport, propose forwards a PublishEnvelope to the leader, and ReplicaHostBuilder opens the RaftStore and builds the PeerTransport itself. P2: a raft log store port and a peer client port in application, implemented by infrastructure and injected at spawn."
-
-[[exceptions]]
-rule = "B3"
-subject = "infrastructure->application"
-paths = [
-  "crates/raft-runtime/src/infrastructure/peer_rpc.rs",
-  "crates/raft-runtime/src/infrastructure/store.rs",
-  "crates/raft-runtime/src/infrastructure/topology_env.rs",
-]
-reason = "Moved as-is in P1: the outbound peer RPC client is an impl block on the host's Shared state and decodes RaftStatus, RaftStore names its files by GroupId and LEGACY_GROUP_ID, and the env reader builds ClusterDims and ClusterTopology and calls peer_ordinal. P2: GroupId, RaftStatus and the topology value types move to a domain layer both sides use, and the RPC client becomes a peer client adapter that owns its own state."
-
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->infrastructure"
-paths = [
-  "crates/raft-runtime/src/interfaces/conformance/deterministic_host.rs",
-  "crates/raft-runtime/src/interfaces/peer_http/handlers.rs",
-  "crates/raft-runtime/src/interfaces/peer_http/publish.rs",
-  "crates/raft-runtime/src/interfaces/peer_http/registry.rs",
-]
-reason = "Moved as-is in P1: the peer HTTP handlers and the group registry decode the same wire envelopes the outbound RPC client sends, and DeterministicHost::open takes a RaftStore. P2: the envelope DTOs move to a wire module shared by the peer_http interface and the RPC adapter, and the conformance host takes the store port."
-
-[[exceptions]]
-rule = "B2"
-subject = "anyhow"
-paths = ["crates/compass/src/domain/search/index.rs"]
-reason = "Moved as-is in P1: SearchIndex::to_bytes and from_bytes serialise the index with bincode and return anyhow::Result. P2: move the byte (de)serialisation into an infrastructure index store with its own error type."
-
-[[exceptions]]
-rule = "B2"
-subject = "bincode"
-paths = ["crates/compass/src/domain/search/index.rs"]
-reason = "Moved as-is in P1: SearchIndex::to_bytes and from_bytes serialise the index with bincode and return anyhow::Result. P2: move the byte (de)serialisation into an infrastructure index store with its own error type."
-
-[[exceptions]]
-rule = "B2"
-subject = "regex_lite"
-paths = [
-  "crates/compass/src/domain/checker_config/argus_config.rs",
-  "crates/compass/src/domain/import_graph/extract.rs",
-  "crates/compass/src/domain/lint/custom.rs",
-  "crates/compass/src/domain/ts_type_system/advanced.rs",
-]
-reason = "Moved as-is in P1: custom lint rules compile user-configured patterns, ArgusConfig's glob matcher, the per-language import extractors and TypeScript template-literal matching all build regex_lite patterns (compass E6). P2: switch them to regex, which the domain allowlist already has."
+reason = "schemars::JsonSchema is a compile-time description of the same serde wire shape. ReplicaLayerPolicy, ShardSplitPolicy, Condition, ProbeTiming and LifecyclePolicy are embedded as-is in downstream CRD specs and statuses (for example lumen crd.rs and tape crd.rs `Vec<service_k8s::Condition>`), whose generated schemas must not change, and a separate interfaces copy would duplicate the wire contract. The derive does no I/O. Long-term."
 
 [[exceptions]]
 rule = "B2"
 subject = "serde_yaml"
 paths = ["crates/compass/src/domain/spec/statemachine/mermaid_plus.rs"]
-reason = "Moved as-is in P1: MermaidPlusGenerator writes the YAML frontmatter with serde_yaml::to_string. P2: move the YAML serialisation behind an infrastructure adapter, or add serde_yaml to the domain allowlist."
-
-[[exceptions]]
-rule = "B2"
-subject = "std::time::Instant::now"
-paths = [
-  "crates/compass/src/domain/incremental/dirty_file_tracker.rs",
-  "crates/compass/src/domain/search/query/call_hierarchy.rs",
-  "crates/compass/src/domain/search/query/documentation.rs",
-  "crates/compass/src/domain/search/query/implementations.rs",
-  "crates/compass/src/domain/search/query/similar_code.rs",
-  "crates/compass/src/domain/search/query/type_signature.rs",
-  "crates/compass/src/domain/search/query/usages.rs",
-]
-reason = "Moved as-is in P1: DirtyFileTracker stamps changes with Instant::now and each search mode times itself for SearchStats. P2: a Clock port in domain, with application passing the clock or the timestamps in."
+reason = "serde_yaml is a pure data-format codec like serde_json (on the allowlist): it formats or parses text in memory and does no I/O. MermaidPlusGenerator::generate_frontmatter calls serde_yaml::to_string to write the state machine's YAML frontmatter. Long-term."
 
 [[exceptions]]
 rule = "B2"
 subject = "toml"
 paths = ["crates/compass/src/domain/lint/toml_checker.rs"]
-reason = "Moved as-is in P1: the TM001 checker parses the linted text as a toml::Value to report syntax errors and reads no files. P2: add toml to the domain allowlist as a parser, or run the parse in infrastructure and hand the checker the result."
-
-[[exceptions]]
-rule = "B2"
-subject = "tracing"
-paths = ["crates/compass/src/domain/lint/custom.rs"]
-reason = "Moved as-is in P1: CustomRuleChecker logs rules whose regex or tree-sitter query fails to compile with tracing. P2: return the rejected rules as data and log them in the infrastructure custom rules loader."
+reason = "toml is a pure data-format codec like serde_json (on the allowlist): it formats or parses text in memory and does no I/O. TomlChecker::check_syntax parses the linted text as a toml::Value to report TM001 syntax errors. Long-term."
 
 [[exceptions]]
 rule = "B2"
 subject = "tree_sitter"
 paths = [
-  "crates/compass/src/domain/diagnostic/model.rs",
-  "crates/compass/src/domain/error/argus_error.rs",
-  "crates/compass/src/domain/lint/css_rules.rs",
   "crates/compass/src/domain/lint/custom.rs",
   "crates/compass/src/domain/lint/go/function_rules.rs",
   "crates/compass/src/domain/lint/go/import_rules.rs",
   "crates/compass/src/domain/lint/html.rs",
-  "crates/compass/src/domain/lint/html_rules.rs",
   "crates/compass/src/domain/lint/python/import_rules.rs",
   "crates/compass/src/domain/lint/python/inspection_rules.rs",
   "crates/compass/src/domain/lint/python/pydantic_rules.rs",
@@ -672,16 +430,6 @@ paths = [
   "crates/compass/src/domain/python_inference/inferencer/functions.rs",
   "crates/compass/src/domain/python_inference/inferencer/special_classes.rs",
   "crates/compass/src/domain/python_inference/inferencer/type_vars.rs",
-  "crates/compass/src/domain/rust_type_system/infer.rs",
-  "crates/compass/src/domain/rust_type_system/infer/bound_syntax.rs",
-  "crates/compass/src/domain/rust_type_system/infer/compound_expr.rs",
-  "crates/compass/src/domain/rust_type_system/infer/expr.rs",
-  "crates/compass/src/domain/rust_type_system/infer/type_syntax.rs",
-  "crates/compass/src/domain/rust_type_system/symbols.rs",
-  "crates/compass/src/domain/rust_type_system/symbols/bounds.rs",
-  "crates/compass/src/domain/rust_type_system/symbols/fields.rs",
-  "crates/compass/src/domain/rust_type_system/symbols/helpers.rs",
-  "crates/compass/src/domain/rust_type_system/symbols/signature.rs",
   "crates/compass/src/domain/semantic/pdg/cfg/builder.rs",
   "crates/compass/src/domain/semantic/pdg/cfg/builder/branch.rs",
   "crates/compass/src/domain/semantic/pdg/cfg/builder/loops.rs",
@@ -698,22 +446,12 @@ paths = [
   "crates/compass/src/domain/semantic/symbols/rust/type_defs.rs",
   "crates/compass/src/domain/semantic/symbols/terraform.rs",
   "crates/compass/src/domain/semantic/symbols/typescript.rs",
-  "crates/compass/src/domain/semantic/types/go.rs",
-  "crates/compass/src/domain/semantic/types/go/type_nodes.rs",
   "crates/compass/src/domain/semantic_model/builder.rs",
   "crates/compass/src/domain/semantic_model/builder/params.rs",
   "crates/compass/src/domain/semantic_model/builder/visit.rs",
   "crates/compass/src/domain/semantic_search/engine/call_graph.rs",
   "crates/compass/src/domain/semantic_search/engine/docstrings.rs",
-  "crates/compass/src/domain/semantic_search/rust_provider.rs",
-  "crates/compass/src/domain/semantic_search/rust_provider/usages.rs",
   "crates/compass/src/domain/syntax/parsed_file.rs",
-  "crates/compass/src/domain/ts_type_system/infer.rs",
-  "crates/compass/src/domain/ts_type_system/infer/compound_expr.rs",
-  "crates/compass/src/domain/ts_type_system/infer/expr.rs",
-  "crates/compass/src/domain/ts_type_system/infer/narrowing.rs",
-  "crates/compass/src/domain/ts_type_system/infer/type_annotation.rs",
-  "crates/compass/src/domain/ts_type_system/infer/type_operators.rs",
   "crates/compass/src/domain/type_checking/checker.rs",
   "crates/compass/src/domain/type_checking/checker/calls.rs",
   "crates/compass/src/domain/type_checking/checker/control_flow.rs",
@@ -723,57 +461,14 @@ paths = [
   "crates/compass/src/domain/type_refactoring/engine/ast_cache.rs",
   "crates/compass/src/domain/type_system/annotation.rs",
 ]
-reason = "Moved as-is in P1: ParsedFile wraps a tree_sitter::Tree, Range::from_node and ArgusError's parser variant take tree-sitter types, and the lint checkers, semantic visitors, CFG builder, Python, Rust and TypeScript inference, type checker, semantic search and refactoring AST cache walk tree_sitter::Node directly (compass E1, about 20k lines on the hot path); domain/lint/css_rules.rs and html_rules.rs are undeclared files the build never compiles. P2: stays as the long-term E1 exception with the grammar crates kept in infrastructure/syntax, Range::from_node becomes an infrastructure extension trait (W7), and the two undeclared files are deleted (W1)."
-
-[[exceptions]]
-rule = "B3"
-subject = "application->infrastructure"
-paths = [
-  "crates/compass/src/application/analysis/file_cache.rs",
-  "crates/compass/src/application/analysis/request_handler.rs",
-  "crates/compass/src/application/check/check_paths.rs",
-  "crates/compass/src/application/codegen/registry.rs",
-  "crates/compass/src/application/daemon/background_analysis.rs",
-  "crates/compass/src/application/daemon/config.rs",
-  "crates/compass/src/application/outline/function_outline.rs",
-]
-reason = "Moved as-is in P1: RequestHandler owns the on-disk DiskCache and a StubLoader and resolves its cache directories, the file cache, check_paths, the function outline and the request handler build a MultiParser, check_paths calls the source walker, the background loop consumes watch-bridge events, DaemonConfig resolves its socket path through index storage, and GeneratorRegistry dispatches over the CodeGenerator trait that E5 puts in infrastructure. P2: parser, file-walker, cache, stub and path ports in application implemented by infrastructure and injected at construction, a watch event type owned by application, and CodeGenerator moved to application as a port."
-
-[[exceptions]]
-rule = "B3"
-subject = "domain->infrastructure"
-paths = [
-  "crates/compass/src/domain/python_inference/inferencer.rs",
-  "crates/compass/src/domain/semantic_search/engine/call_graph.rs",
-  "crates/compass/src/domain/semantic_search/engine/docstrings.rs",
-  "crates/compass/src/domain/type_refactoring/engine/ast_cache.rs",
-]
-reason = "Moved as-is in P1: TypeInferencer resolves imports through ImportResolver and StubLoader, and the semantic search call graph, docstring extraction and refactoring AST cache build a MultiParser to parse source text themselves. P2: application passes parsed files and resolved modules in, or domain declares parser and module-resolver ports that infrastructure implements."
-
-[[exceptions]]
-rule = "B3"
-subject = "infrastructure->application"
-paths = ["crates/compass/src/infrastructure/daemon/client.rs"]
-reason = "Moved as-is in P1: DaemonClient reads DaemonConfig for its socket path and speaks the Request and Response protocol types defined in application/daemon. P2: move the protocol and config types to a module both sides may use, such as domain or an interfaces wire module the client adapter shares."
+reason = "compass E1: the syntax model is tree-sitter's. ParsedFile wraps a tree_sitter::Tree, and the lint checkers, semantic visitors, CFG builder, type inference, type checker, semantic search and refactoring AST cache walk tree_sitter::Node directly on the hot path (about 20k lines). Only the core tree-sitter crate is used here; the 13 grammar crates stay in infrastructure/syntax. Long-term."
 
 [[exceptions]]
 rule = "B3"
 subject = "interfaces->domain"
 paths = [
   "crates/compass/src/interfaces/lsp/argus_server.rs",
-  "crates/compass/src/interfaces/lsp/code_actions.rs",
-  "crates/compass/src/interfaces/lsp/completion.rs",
-  "crates/compass/src/interfaces/lsp/language_server.rs",
   "crates/compass/src/interfaces/output/agent.rs",
   "crates/compass/src/interfaces/output/reporter.rs",
 ]
-reason = "Moved as-is in P1: the LSP server builds symbol tables and calls the checker registry, semantic search and refactoring engines itself, its code actions, completion and language server convert Diagnostic, Language, Type and refactoring results to lsp_types, and the agent and text reporters render FileResult, Diagnostic, ImportGraph and SymbolTable. P2: the LSP server calls application use cases instead of domain services; reading Diagnostic, Range and FileResult, which are the agent and LSP wire format (compass E2), stays as a long-term reason."
-
-[[exceptions]]
-rule = "B3"
-subject = "interfaces->infrastructure"
-paths = [
-  "crates/compass/src/interfaces/daemon/argus_daemon.rs",
-  "crates/compass/src/interfaces/lsp/argus_server.rs",
-]
-reason = "Moved as-is in P1: ArgusDaemon starts the watch bridge and runs scope discovery itself, and the LSP server builds a MultiParser and a StubLoader for its documents. P2: move that wiring behind application services that take parser, stub and watch ports."
+reason = "compass E2, long-term: these files read only the agent and LSP wire value objects. lsp/argus_server.rs converts Diagnostic, DiagnosticSeverity, Range and Position to and from lsp_types; output/agent.rs renders FileResult, DiagnosticSeverity and Range; output/reporter.rs renders FileResult, Diagnostic and DiagnosticSeverity. Symbol tables and the import graph reach the reporters as application report views, and the LSP server reads everything else through the application editor session."

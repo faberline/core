@@ -41,8 +41,8 @@ impl FramedLogWriter {
         );
         // Preserve the existing owned-frame payload limit on this separate API.
         while let Some(frame) = frames.next_frame()? {
-            if frame.seq > through {
-                write_frame(&mut dst, frame.seq, &frame.payload)?;
+            if frame.seq() > through {
+                write_frame(&mut dst, frame.seq(), frame.payload())?;
             }
         }
         dst.flush().context("flush log compaction temp")?;

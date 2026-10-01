@@ -1,3 +1,4 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use std::collections::HashMap;
 
 use super::PythonChecker;
@@ -43,7 +44,7 @@ impl PythonChecker {
 
             if is_import || is_from_import {
                 let line = node.start_position().row as u32;
-                let range = Range::from_node(node);
+                let range = node.to_range();
 
                 // Check if import is after non-import code
                 if let Some(first_code) = first_non_import_line {

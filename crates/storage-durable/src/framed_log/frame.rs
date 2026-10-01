@@ -11,8 +11,30 @@ use super::codec::{
 /// One validated log frame.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogFrame {
-    pub seq: u64,
-    pub payload: Vec<u8>,
+    seq: u64,
+    payload: Vec<u8>,
+}
+
+impl LogFrame {
+    /// A frame with sequence number `seq` and its payload bytes.
+    pub fn new(seq: u64, payload: Vec<u8>) -> Self {
+        Self { seq, payload }
+    }
+
+    /// The frame's sequence number.
+    pub fn seq(&self) -> u64 {
+        self.seq
+    }
+
+    /// The frame's payload bytes.
+    pub fn payload(&self) -> &[u8] {
+        &self.payload
+    }
+
+    /// The payload, moved out of the frame.
+    pub fn into_payload(self) -> Vec<u8> {
+        self.payload
+    }
 }
 
 /// A validated read-only frame view.

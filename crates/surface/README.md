@@ -25,5 +25,5 @@ trees without depending on a specific frontend backend.
 - Gate — behavior: `cargo test -p surface` - surface model and snapshot
   coverage
 - Gate: `cargo test -p surface`
-- Source: `crates/surface/src/lib.rs`
-- Evidence: `cargo test -p surface`; crates/surface/src/lib.rs
+- Source: `crates/surface/src/`
+- Evidence: `cargo test -p surface`; crates/surface/src/

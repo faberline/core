@@ -15,7 +15,8 @@ relay, sift, tape, defer and courier use it.
 - **Peer TLS config** — `PeerTlsConfig`: certificate, key and CA paths plus
   whether client certificates are required, read by `from_env(prefix)` from
   `<prefix>_TLS_CERT`, `<prefix>_TLS_KEY`, `<prefix>_TLS_CA` and
-  `<prefix>_MTLS`. It builds the rustls configs with ALPN `h2`.
+  `<prefix>_MTLS`, or built with `new(cert, key, ca, required)`, which does
+  not check the paths. It builds the rustls configs with ALPN `h2`.
 - **Material** — `MaterialPem`: the three PEM bodies. Its `Debug` prints sizes
   only.
 - **Identity expectation** — `IdentityExpectation` (`serving()`, `peer()`): what
@@ -70,9 +71,8 @@ stay public.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. Reading files and the clock is the job
+- **Checker exceptions:** None. Reading files and the clock is the job
   of an infrastructure crate.
-- **Tracked for P2:** `PeerTlsConfig` public fields, built with struct literals
-  by relay and, in tests, by lumen, relay, sift, tape, defer and raft-runtime.
-  `anyhow` in public signatures: `from_env` and the rustls config builders
-  (ADR D4).
+- **Debts:** `anyhow` in `from_env` and the rustls config builders (these
+  are not ports, so ADR D4 does not cover them). P2 made the
+  `PeerTlsConfig` fields private (D2).

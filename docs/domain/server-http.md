@@ -15,15 +15,16 @@ downstream, pgpool serves its admin port with it.
 - **HTTP server options** — `HttpServerOptions` (older name
   `H2cServerOptions`): the HTTP/2 stream cap per connection (4096 by default),
   a drain timeout (5 s), an optional `ConnectionBudget`, a `DrainController`,
-  `TcpSocketOptions` and a `ConnectionMetrics` sink.
+  `TcpSocketOptions` and a `ConnectionMetrics` sink, set through `with_*`
+  builders on `Default` (`set_drain_timeout` changes a built value).
 - **HTTP server report** — `HttpServerReport`: the connection and stream totals
-  of one lifecycle-driven run, field for field the same as server-tcp's
+  of one lifecycle-driven run. It is a type alias of server-tcp's
   `TcpServerReport`.
 - **Server config source** — `ServerConfigSource`: a type alias for a shared
   closure that returns the rustls `ServerConfig` active right now, or `None`
   when nothing valid is active. `config_source` wraps a closure as one.
 - **TLS server options** — `TlsServerOptions`: `HttpServerOptions` plus the
-  listener's `TlsListenerMetrics`.
+  listener's `TlsListenerMetrics`, set with `with_http` and `with_metrics`.
 - **Metrics snapshot** — `TlsListenerSnapshot`: handshakes established,
   handshake failures, and connections refused because no material was active.
 - **server-http trace layer** — `trace_layer`: a tower-http request trace layer
@@ -58,7 +59,7 @@ The crate root also re-exports server-lifecycle as `core` and server-tcp as
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** `HttpServerReport` duplicates `TcpServerReport` (ADR D7).
-  server-http builds server-tcp's `TcpConnectionResult` and transport-h2c's
-  `ConnectionOptions` with struct literals.
+- **Checker exceptions:** None.
+- **Debts:** none tracked. P2 made `HttpServerReport` an alias of
+  `TcpServerReport` (D7), and made the `HttpServerOptions` and
+  `TlsServerOptions` fields private (D2).

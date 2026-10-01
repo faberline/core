@@ -4,10 +4,14 @@ use crate::ToolInfo;
 /// Render the diagnostics block from the tool identity (+ optional node line).
 pub fn render_diagnostics(tool: &ToolInfo, node: Option<&str>) -> String {
     let mut s = String::from("## Diagnostics\n");
-    s.push_str(&format!("- {} version: {}\n", tool.project, tool.version));
-    s.push_str(&format!("- target: {}\n", tool.target));
-    s.push_str(&format!("- git sha: {}\n", tool.git_sha));
-    s.push_str(&format!("- built at: {}\n", tool.built_at));
+    s.push_str(&format!(
+        "- {} version: {}\n",
+        tool.project(),
+        tool.version()
+    ));
+    s.push_str(&format!("- target: {}\n", tool.target()));
+    s.push_str(&format!("- git sha: {}\n", tool.git_sha()));
+    s.push_str(&format!("- built at: {}\n", tool.built_at()));
     s.push_str(&format!(
         "- os/arch: {}/{}\n",
         std::env::consts::OS,

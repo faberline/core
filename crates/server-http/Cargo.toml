@@ -16,7 +16,6 @@ axum = { workspace = true }
 tokio = { workspace = true }
 tower-http = { workspace = true, features = ["trace"] }
 tracing = { workspace = true }
-anyhow = { workspace = true }
 # Serving TLS on the shared listener (#3112). The listener terminates TLS; it
 # never parses PEM or decides what is fit to serve — that stays in `peer-tls`,
 # which is why there is no dependency on it here.

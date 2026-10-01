@@ -1,15 +1,10 @@
-use std::sync::Arc;
-use std::time::Duration;
-
 use async_trait::async_trait;
 use jsonwebtoken::jwk::JwkSet;
 
-use super::system_clock::SystemClock;
-use crate::application::google::{
-    AccessTokenIntrospection, GoogleVerifier, IntrospectedToken, JwksSource,
+use crate::application::google::JwksSource;
+use crate::domain::google::{
+    AccessTokenIntrospection, IntrospectedToken, GOOGLE_JWKS_URL, GOOGLE_TOKENINFO_URL,
 };
-use crate::application::role_map::ReloadableRoleMapVerifier;
-use crate::domain::google::{GoogleAuthConfig, GOOGLE_JWKS_URL, GOOGLE_TOKENINFO_URL};
 
 // ---------------------------------------------------------------------------
 // HTTP implementations
@@ -105,26 +100,5 @@ impl AccessTokenIntrospection for HttpAccessTokenIntrospection {
             .await
             .map(Some)
             .map_err(|e| format!("tokeninfo response was not understood: {}", e.without_url()))
-    }
-}
-
-impl GoogleVerifier {
-    /// Build a verifier against the real Google endpoints.
-    pub fn google(
-        required: bool,
-        registry: Arc<ReloadableRoleMapVerifier>,
-        config: GoogleAuthConfig,
-    ) -> anyhow::Result<Self> {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()?;
-        Self::with_sources(
-            required,
-            registry,
-            config,
-            Arc::new(HttpJwksSource::google(client.clone())),
-            Some(Arc::new(HttpAccessTokenIntrospection::google(client))),
-            Arc::new(SystemClock),
-        )
     }
 }

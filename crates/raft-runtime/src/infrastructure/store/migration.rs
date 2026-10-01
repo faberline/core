@@ -100,7 +100,7 @@ impl RaftStore {
         target_group: GroupId,
         fsync: FsyncPolicy,
     ) -> io::Result<RaftStore> {
-        if target_group.0 == LEGACY_GROUP_ID {
+        if target_group.as_str() == LEGACY_GROUP_ID {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
                 "cannot migrate legacy state to legacy group ID",
@@ -118,7 +118,7 @@ impl RaftStore {
         }
 
         let mut s = String::new();
-        for b in target_group.0.as_bytes() {
+        for b in target_group.as_str().as_bytes() {
             use std::fmt::Write;
             write!(&mut s, "{:02x}", b).unwrap();
         }

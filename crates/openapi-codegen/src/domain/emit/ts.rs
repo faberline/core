@@ -19,10 +19,11 @@ pub mod types_emit;
 use crate::domain::ir::build_type_map;
 use crate::domain::ir::openapi::Spec;
 use crate::domain::{FileBearerAuth, GenOptions, GeneratedFile, GeneratedOutput, TypeScriptTarget};
-use anyhow::{Context, Result};
+
+use super::SpecParseError;
 
 /// Pure TS generation: spec JSON text → in-memory files. No filesystem access.
-pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput> {
+pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, None, None)
 }
 
@@ -30,7 +31,7 @@ pub fn generate_with_file_bearer_auth(
     spec_json: &str,
     opts: &GenOptions,
     auth: &FileBearerAuth,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, None, Some(auth))
 }
 
@@ -39,7 +40,7 @@ pub fn generate_for_target(
     spec_json: &str,
     opts: &GenOptions,
     target: TypeScriptTarget,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, Some(target), None)
 }
 
@@ -48,7 +49,7 @@ pub fn generate_for_target_with_file_bearer_auth(
     opts: &GenOptions,
     target: TypeScriptTarget,
     auth: &FileBearerAuth,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, Some(target), Some(auth))
 }
 
@@ -57,29 +58,29 @@ fn generate_impl(
     opts: &GenOptions,
     target: Option<TypeScriptTarget>,
     auth: Option<&FileBearerAuth>,
-) -> Result<GeneratedOutput> {
-    let spec: Spec = serde_json::from_str(spec_json).context("failed to parse OpenAPI spec")?;
+) -> Result<GeneratedOutput, SpecParseError> {
+    let spec: Spec = serde_json::from_str(spec_json).map_err(SpecParseError::new)?;
     let tm = build_type_map(&spec);
     let plans = plan::build(&spec, &tm);
 
     let mut files = Vec::new();
-    if opts.emit_types {
+    if opts.emit_types() {
         files.push(GeneratedFile {
             rel_path: "types.ts".to_string(),
             contents: types_emit::emit(&spec, &tm, &plans),
         });
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         files.push(GeneratedFile {
             rel_path: "runtime.ts".to_string(),
-            contents: client_emit::emit_runtime(opts.http_client, auth),
+            contents: client_emit::emit_runtime(opts.http_client(), auth),
         });
         files.push(GeneratedFile {
             rel_path: "client.ts".to_string(),
             contents: client_emit::emit_client(&plans, opts),
         });
     }
-    if opts.emit_hooks {
+    if opts.emit_hooks() {
         files.push(GeneratedFile {
             rel_path: "hooks.ts".to_string(),
             contents: hooks_emit::emit(&plans),
@@ -99,14 +100,14 @@ fn generate_impl(
 
 fn emit_index(opts: &GenOptions) -> String {
     let mut out = String::from(types_emit::HEADER);
-    if opts.emit_types {
+    if opts.emit_types() {
         out.push_str("export * from \"./types\";\n");
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         out.push_str("export * from \"./runtime\";\n");
         out.push_str("export * from \"./client\";\n");
     }
-    if opts.emit_hooks {
+    if opts.emit_hooks() {
         out.push_str("export * from \"./hooks\";\n");
     }
     out

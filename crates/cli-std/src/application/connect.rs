@@ -1,29 +1,28 @@
 use anyhow::Result;
 
-use crate::domain::connect::{cr_tokens_secret, select_token, Role, TOKEN_REGISTRY_SECRET_KEY};
-use crate::infrastructure::connect::{bearer_secrets, kubectl_get_json, secret_data_bytes};
+use crate::domain::connect::kubectl::Kubectl;
+use crate::domain::connect::{
+    bearer_secrets, cr_tokens_secret, select_token, Role, TOKEN_REGISTRY_SECRET_KEY,
+};
 
-/// Resolve a CR's `spec.tokensSecret` (`None` when unset). `resource_kind`
-/// is the CRD's kubectl resource name (e.g. `"lumen"`) — the CR-kind lookup
-/// convention stays each adopter's own.
-pub fn resolve_cr_tokens_secret(
+/// Resolve a CR's `spec.tokensSecret` (`None` when unset), reading the CR
+/// through `kubectl`.
+pub(crate) fn resolve_cr_tokens_secret(
+    kubectl: &impl Kubectl,
     context: Option<&str>,
     namespace: &str,
     resource_kind: &str,
     cr: &str,
 ) -> Result<Option<String>> {
-    let cr_json = kubectl_get_json(context, resource_kind, cr, namespace)?;
+    let cr_json = kubectl.get_json(context, resource_kind, cr, namespace)?;
     Ok(cr_tokens_secret(&cr_json))
 }
 
-/// Resolve a usable bearer token without the caller decoding the
-/// Secret/JSON by hand. Precedence: `explicit_token` (an already-resolved
-/// flag/env value) wins; otherwise, when `namespace`/`secret` are both set,
-/// fetch the Secret via kubectl, decode its `token-registry.json` key (the
-/// same schema `lumen llm --topic auth` documents), and pick a token whose
-/// role covers `role` for `collection` (or `*`). Returns `None` when no
-/// token can be resolved (e.g. auth-disabled deployments).
-pub fn resolve_token(
+/// Resolve a usable bearer token, reading the token-registry Secret through
+/// `kubectl`. `explicit_token` wins; without both `namespace` and `secret`
+/// there is nothing to read and the answer is `None`.
+pub(crate) fn resolve_token(
+    kubectl: &impl Kubectl,
     explicit_token: Option<&str>,
     context: Option<&str>,
     namespace: Option<&str>,
@@ -37,8 +36,7 @@ pub fn resolve_token(
     let (Some(namespace), Some(secret)) = (namespace, secret) else {
         return Ok(None);
     };
-    let secret_json = kubectl_get_json(context, "secret", secret, namespace)?;
-    let bytes = secret_data_bytes(&secret_json, TOKEN_REGISTRY_SECRET_KEY)?;
+    let bytes = kubectl.secret_data(context, namespace, secret, TOKEN_REGISTRY_SECRET_KEY)?;
     let registry = bearer_secrets(&bytes)?;
     Ok(select_token(&registry, role, collection))
 }

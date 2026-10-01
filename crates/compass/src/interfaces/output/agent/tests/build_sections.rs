@@ -35,7 +35,7 @@ fn test_build_symbols_from_symbol_table() {
         make_symbol_table_with_function("get_user", SymbolKind::Function, 41, 50, type_info);
 
     let symbol_tables = vec![(PathBuf::from("/project/src/db.py"), table)];
-    let symbols = builder.build_symbols(&symbol_tables);
+    let symbols = builder.build_symbols(&table_views(&symbol_tables));
 
     // Should contain "db.get_user" (module stem + "." + name)
     let sym = symbols
@@ -86,7 +86,7 @@ fn test_build_symbols_skips_imports_and_parameters() {
     );
 
     let symbol_tables = vec![(PathBuf::from("/project/app.py"), table)];
-    let symbols = builder.build_symbols(&symbol_tables);
+    let symbols = builder.build_symbols(&table_views(&symbol_tables));
 
     // Only "main" should be present
     assert_eq!(symbols.len(), 1);
@@ -112,7 +112,7 @@ fn test_build_imports_from_graph() {
         vec![],
     )];
 
-    let imports = builder.build_imports(&results, &graph);
+    let imports = builder.build_imports(&results, &import_view(&graph, &results));
 
     // handler.py should have import entries
     if let Some(handler_imports) = imports.get("handler.py") {

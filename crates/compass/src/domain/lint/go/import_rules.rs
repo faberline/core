@@ -1,5 +1,6 @@
 use super::GoChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl GoChecker {
@@ -12,7 +13,7 @@ impl GoChecker {
                 if let Some(name_node) = node.child_by_field_name("name") {
                     if file.node_text(&name_node) == "_" {
                         diagnostics.push(Diagnostic::new(
-                            Range::from_node(node),
+                            node.to_range(),
                             DiagnosticSeverity::Information,
                             "GO002",
                             DiagnosticCategory::Style,

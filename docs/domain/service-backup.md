@@ -31,7 +31,8 @@ defer, keep, loom, lumen, relay, sift and tape.
   this are pruned after a successful put. `None` turns pruning off.
 - **Backup sink** — `LocalFsSink`, `GcsSink`, an S3 sink (with the `s3`
   feature), or `UnsupportedCloudSink` for S3 in a build without it.
-  `sink_from_destination` is the only place a destination becomes a sink.
+  `sink_from_destination` is the only place a destination becomes a sink;
+  it is wiring and lives in the `src/app` composition root.
 - **Backup run** — `run_backup_once` puts one payload and applies retention.
   Its `BackupRunResult` holds the `BackupObject` written (sink identity, key,
   byte count, Unix seconds) and the number of objects pruned.
@@ -40,31 +41,43 @@ defer, keep, loom, lumen, relay, sift and tape.
   cold seed path, not live replica synchronization.
 - **admin snapshot** — the body a service returns from `GET /admin/backup` and
   accepts on `POST /admin/restore`. `AdminSnapshotTransport` moves it within an
-  `AdminSnapshotTransportConfig`; an `AdminSnapshotRequest` adds a static or
+  `AdminSnapshotTransportConfig` (`Default` plus `with_*` builders for the
+  connect, operation and idle timeouts and the diagnostic size, read through
+  getters); an `AdminSnapshotRequest` adds a static or
   projected bearer and extra headers; an `AdminSnapshotDiagnostic` describes a
   failed request.
 
 ## Ports
 
-- **`BackupSink`** — `put` stores a payload at a timestamp and returns its key;
-  `prune` removes objects older than a maximum age and returns how many;
-  `identity` names the sink. It is `Send + Sync + 'static`. Only the sinks
-  above implement it; no downstream repo does.
+- **`BackupSink`** (domain) — `put` stores a payload at a timestamp and
+  returns its key; `prune` removes objects older than a maximum age and
+  returns how many; both fail with `BackupSinkError`. `identity` names the
+  sink. It is `Send + Sync + 'static`. Only the infrastructure sinks above
+  implement it; no downstream repo does.
+- **Snapshot source** (domain, crate-internal, `http-client` feature) —
+  fetches the exact admin snapshot bytes for `run_admin_snapshot_backup`,
+  failing with its own `SnapshotSourceError`. Its adapter wraps
+  `AdminSnapshotTransport::fetch_exact`.
+- **Bearer token source** (domain, crate-internal, `http-client` feature) —
+  the admin bearer the transport reads before every request. The adapter over
+  service-auth's projected token file lives in `src/app`, behind
+  `AdminSnapshotRequest::with_projected_bearer`; only the composition root
+  names service-auth.
 
 ## Invariants
 
-- `from_uri` trims its input and rejects an empty URI, a `file://` URI without
-  a path, and an `s3://` or `gs://` URI without a bucket; for any other scheme
-  the error lists `SUPPORTED_SCHEMES`. A URI never sets a region, an endpoint or
-  a credentials secret.
+- `from_uri` trims its input and returns a `DestinationError` for an empty
+  URI, a `file://` URI without a path, and an `s3://` or `gs://` URI without a
+  bucket; for any other scheme the error lists `SUPPORTED_SCHEMES`. A URI
+  never sets a region, an endpoint or a credentials secret.
 - An `s3://` destination parses in every build: S3 support is a question about
   the sink, not the URI. Without the `s3` feature, `put` and `prune` fail with a
   message naming `--features s3`.
 - `ScheduledBackupPolicy::to_runtime_policy` (also reached through `TryFrom`)
-  is the only validated conversion. It rejects a blank schedule and any
-  destination `from_uri` rejects, but does not parse the cron expression, so an
-  invalid cron fails in Kubernetes instead. A missing `retentionSecs` keeps
-  every object.
+  is the only validated conversion. It returns a `PolicyError` for a blank
+  schedule and for any destination `from_uri` rejects, whose message it passes
+  on unchanged, but does not parse the cron expression, so an invalid cron
+  fails in Kubernetes instead. A missing `retentionSecs` keeps every object.
 - `run_backup_once` prunes only after a successful put, and only when a
   maximum age is set. The caller passes the timestamp, and the payload must
   already be a consistent snapshot.
@@ -80,11 +93,14 @@ defer, keep, loom, lumen, relay, sift and tape.
     credentials (Workload Identity or ADC; the AWS environment).
 - The strict admin-snapshot transport never follows a redirect and never
   retries. Fetch accepts only 200 and restore only 204. Each chunk read is
-  bounded by the idle timeout and the whole call by the operation timeout. A
-  fetch with an unexpected status keeps at most `max_diagnostic_bytes` of the
-  body; `fetch_exact` and `restore_exact` return redacted errors that hold
+  bounded by the idle timeout and the whole call by the operation timeout
+  (defaults: 10 s connect, 2 h operation, 30 s idle, 8 KiB diagnostic). A
+  fetch with an unexpected status keeps at most the config's
+  `max_diagnostic_bytes()` of the body; `fetch_exact` and `restore_exact` return redacted errors that hold
   neither the body nor the token. A projected bearer token is re-read from its
   file before every request, so a kubelet rotation takes effect.
+- `run_admin_snapshot_backup` fetches through that strict transport and opens
+  the sink only after a successful fetch.
 
 ## Published language
 
@@ -95,36 +111,25 @@ the crate root, where every public name is re-exported: `run_backup_once` and
 (sift) and `SUPPORTED_SCHEMES` (tape). The one public module path is
 `service_backup::llm` (lumen, tape): the llm topic (v1) `TOPIC` and its
 sectioned form `SECTIONED_TOPICS`, whose destination section is rendered from
-`SUPPORTED_SCHEMES` at call time. P1 keeps every root re-export and the `llm`
-path.
+`SUPPORTED_SCHEMES` at call time. `llm` keeps its path (`src/api/`) because
+the root does not re-export its names.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B2 (`anyhow`, `schemars`): `BackupDestination`, `ScheduledBackupPolicy`
-    and `RetentionPolicy` derive `schemars::JsonSchema` because downstream CRDs
-    embed them, and `from_uri`, `to_runtime_policy` and the
-    `TryFrom<&ScheduledBackupPolicy>` impl return `anyhow` errors. P2 adds a
-    `thiserror` error (ADR D4), and moves the schema derive to interfaces CRD
-    types or keeps it with a long-term reason.
-  - B3 `application->infrastructure`: `run_backup_once` takes the
-    infrastructure `BackupSink`, and the admin-snapshot use case calls
-    `fetch_admin_snapshot` and `sink_from_destination` directly. P2 moves the
-    ports to the domain.
-  - B3 `interfaces->domain`: the `llm` topic lists the destination schemes
-    from the domain table. P2 reads them through an application query.
-  - B4: the admin-snapshot transport reads a projected token through
-    service-auth's `ProjectedTokenFile`, which service-auth does not yet
-    publish through its application layer. P2 publishes it there.
-- **Tracked for P2:**
-  - Public fields built with struct literals (ADR D2): `ScheduledBackupPolicy`
-    in lumen and relay tests and in tape's end-to-end tests;
-    `RetentionPolicy` in loom; `AdminSnapshotTransportConfig` in sift. lumen's
-    unit tests build `BackupDestination::Local` values, and sift destructures
-    every field of the `Gcs` variant (enum variant fields are always public).
-  - `anyhow` in the `BackupSink` port (ADR D4).
-  - Duplicate code (ADR D7): the lenient `fetch_admin_snapshot` duplicates the
-    strict transport. It accepts any 2xx status and puts the response body in
-    its error, and `run_admin_snapshot_backup` is built on it. lumen, relay and
-    tape call `fetch_admin_snapshot`; defer, lumen, relay and tape call
-    `run_admin_snapshot_backup`.
+- **Checker exceptions:**
+  - B2 (`schemars`), long-term: `BackupDestination`, `ScheduledBackupPolicy`,
+    `BackupPolicy` and `RetentionPolicy` derive `schemars::JsonSchema`
+    because downstream CRD specs embed them; a separate interfaces copy
+    would duplicate the wire contract.
+  - P2 removed the others: the sink and snapshot source ports moved to the
+    domain (B3 `application->infrastructure`), the `llm` topic lists schemes
+    through an application query (B3 `interfaces->domain`), and the
+    transport reads its bearer through a domain port whose service-auth
+    adapter lives in `src/app` (B4).
+- **Debts:**
+  - Public fields built with struct literals (ADR D2):
+    `ScheduledBackupPolicy` in lumen and relay tests and in tape's
+    end-to-end tests; `RetentionPolicy` in loom. lumen's unit tests build
+    `BackupDestination::Local` values, and sift destructures every field
+    of the `Gcs` variant (enum variant fields are always public).
+  - `LocalFsSink` has public `root` and `prefix` fields.

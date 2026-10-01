@@ -29,6 +29,59 @@ pub struct ImportedName {
     pub alias: Option<String>,
 }
 
+impl Import {
+    /// The names this import brings into scope, typed from the exports of
+    /// `modules` (module path → info). `import m` binds a module instance;
+    /// `from m import …` and `from m import *` bind the exported types
+    /// (wildcards skip `_`-prefixed names); unknown modules bind nothing.
+    pub(crate) fn resolve_in(
+        &self,
+        modules: &HashMap<String, ModuleInfo>,
+    ) -> HashMap<String, Type> {
+        let mut result = HashMap::new();
+
+        match self {
+            Import::Module { module, alias } => {
+                // For `import foo`, we don't directly import types
+                // The module name becomes available for attribute access
+                let name = alias.as_ref().unwrap_or(module);
+                result.insert(
+                    name.clone(),
+                    Type::Instance {
+                        name: format!("module:{}", module),
+                        module: Some(module.clone()),
+                        type_args: vec![],
+                    },
+                );
+            }
+            Import::FromModule { module, names } => {
+                if let Some(module_info) = modules.get(module) {
+                    for imported_name in names {
+                        let local_name =
+                            imported_name.alias.as_ref().unwrap_or(&imported_name.name);
+
+                        if let Some(ty) = module_info.exports.get(&imported_name.name) {
+                            result.insert(local_name.clone(), ty.clone());
+                        }
+                    }
+                }
+            }
+            Import::WildcardImport { module } => {
+                if let Some(module_info) = modules.get(module) {
+                    for (name, ty) in &module_info.exports {
+                        // Skip private names
+                        if !name.starts_with('_') {
+                            result.insert(name.clone(), ty.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        result
+    }
+}
+
 /// Loading state for a module (for circular import detection)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ModuleLoadState {

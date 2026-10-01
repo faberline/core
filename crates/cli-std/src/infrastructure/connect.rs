@@ -1,10 +1,9 @@
-use std::collections::HashMap;
 use std::process::{Child, Command};
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 
-use crate::domain::connect::TokenClaims;
+use crate::domain::connect::kubectl::{Kubectl, KubectlError};
 
 /// RAII child-process guard: kills + reaps on drop so a spawned `kubectl
 /// port-forward` never survives its wrapped command. Prior art:
@@ -55,74 +54,78 @@ pub fn wait_for_local_port_ready(port: u16, timeout: Duration) -> Result<()> {
     }
 }
 
-/// Run `kubectl get <resource> <name> -n <namespace> -o json` (optionally
-/// through `--context`) and parse the result.
-pub fn kubectl_get_json(
+/// The [`Kubectl`] port over the `kubectl` binary on `PATH`.
+pub(crate) struct KubectlCli;
+
+impl Kubectl for KubectlCli {
+    fn get_json(
+        &self,
+        context: Option<&str>,
+        resource: &str,
+        name: &str,
+        namespace: &str,
+    ) -> Result<serde_json::Value, KubectlError> {
+        run_kubectl_get(context, resource, name, namespace)
+    }
+
+    fn secret_data(
+        &self,
+        context: Option<&str>,
+        namespace: &str,
+        secret: &str,
+        key: &str,
+    ) -> Result<Vec<u8>, KubectlError> {
+        let secret_json = run_kubectl_get(context, "secret", secret, namespace)?;
+        decode_secret_data(&secret_json, key)
+    }
+}
+
+/// Runs `kubectl get <resource> <name> -n <namespace> -o json` (optionally
+/// through `--context`) and parses the result.
+fn run_kubectl_get(
     context: Option<&str>,
     resource: &str,
     name: &str,
     namespace: &str,
-) -> Result<serde_json::Value> {
+) -> Result<serde_json::Value, KubectlError> {
     let mut cmd = Command::new("kubectl");
     if let Some(ctx) = context {
         cmd.args(["--context", ctx]);
     }
     cmd.args(["get", resource, name, "-n", namespace, "-o", "json"]);
-    let output = cmd
-        .output()
-        .with_context(|| format!("run kubectl get {resource} {name} -n {namespace}"))?;
+    let output = cmd.output().map_err(|source| KubectlError::Run {
+        resource: resource.to_string(),
+        name: name.to_string(),
+        namespace: namespace.to_string(),
+        source,
+    })?;
     if !output.status.success() {
-        anyhow::bail!(
-            "kubectl get {resource} {name} -n {namespace} failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
+        return Err(KubectlError::Failed {
+            resource: resource.to_string(),
+            name: name.to_string(),
+            namespace: namespace.to_string(),
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
+        });
     }
-    serde_json::from_slice(&output.stdout)
-        .with_context(|| format!("parse kubectl get {resource} {name} JSON"))
+    serde_json::from_slice(&output.stdout).map_err(|source| KubectlError::Parse {
+        resource: resource.to_string(),
+        name: name.to_string(),
+        source,
+    })
 }
 
-/// Pure: decode a Kubernetes Secret's `data.<key>` (base64) field into raw
-/// bytes. `kubectl get secret -o json` always base64-encodes `.data`.
-pub fn secret_data_bytes(secret_json: &serde_json::Value, key: &str) -> Result<Vec<u8>> {
+/// Decodes a Kubernetes Secret's `data.<key>` (base64) field into raw bytes.
+/// `kubectl get secret -o json` always base64-encodes `.data`.
+fn decode_secret_data(secret_json: &serde_json::Value, key: &str) -> Result<Vec<u8>, KubectlError> {
     use base64::Engine;
     let encoded = secret_json["data"][key]
         .as_str()
-        .with_context(|| format!("secret has no data key `{key}`"))?;
+        .ok_or_else(|| KubectlError::MissingKey {
+            key: key.to_string(),
+        })?;
     base64::engine::general_purpose::STANDARD
         .decode(encoded)
-        .context("base64-decode secret data")
-}
-
-/// The bearer-secret half of a token-registry document, whichever shape it is
-/// written in.
-///
-/// A registry may be namespaced — `{"tokens": {…}, "identities": {…}}` — or the
-/// older flat map of secret to claims. Only `tokens` is a presentable
-/// credential: an `identities` entry names an email an external provider
-/// vouches for, and a CLI cannot present an email as a bearer token.
-///
-/// The discriminator has to match `service_auth::Registry::parse` exactly, or a
-/// registry the server reads one way is read the other way here. It is
-/// duplicated rather than shared because `service-auth` depends on `cli-std`,
-/// not the reverse; the two are pinned together by
-/// `both_registry_shapes_resolve_the_same_token`.
-pub(crate) fn bearer_secrets(bytes: &[u8]) -> Result<HashMap<String, TokenClaims>> {
-    let doc: serde_json::Value =
-        serde_json::from_slice(bytes).context("parse token-registry.json")?;
-    let map = doc
-        .as_object()
-        .context("token-registry.json must be a JSON object")?;
-    // Namespaced only when every key is a section name AND no top-level value
-    // is itself a claims object — otherwise a flat registry whose single secret
-    // is literally spelled `tokens` would be misread as a section.
-    let namespaced = map.keys().all(|key| key == "tokens" || key == "identities")
-        && !map.values().any(|value| value.get("subject").is_some());
-    let tokens = if namespaced {
-        map.get("tokens").cloned().unwrap_or(serde_json::json!({}))
-    } else {
-        doc
-    };
-    serde_json::from_value(tokens).context("parse token-registry.json bearer secrets")
+        .map_err(|e| KubectlError::Decode(Box::new(e)))
 }
 
 #[cfg(test)]

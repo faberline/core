@@ -7,10 +7,10 @@ use tokio::sync::{mpsc, oneshot};
 /// Limits owned by the shared group-commit runtime.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct GroupCommitConfig {
-    pub max_delay: Duration,
-    pub max_items: usize,
-    pub max_bytes: usize,
-    pub queue_capacity: usize,
+    max_delay: Duration,
+    max_items: usize,
+    max_bytes: usize,
+    queue_capacity: usize,
 }
 
 impl GroupCommitConfig {
@@ -36,6 +36,26 @@ impl GroupCommitConfig {
         self.queue_capacity = queue_capacity;
         self.validate()?;
         Ok(self)
+    }
+
+    /// Longest a batch stays open after its first request.
+    pub fn max_delay(&self) -> Duration {
+        self.max_delay
+    }
+
+    /// Most items one batch may hold.
+    pub fn max_items(&self) -> usize {
+        self.max_items
+    }
+
+    /// Most encoded bytes one batch may hold.
+    pub fn max_bytes(&self) -> usize {
+        self.max_bytes
+    }
+
+    /// Requests the queue holds before a submit waits.
+    pub fn queue_capacity(&self) -> usize {
+        self.queue_capacity
     }
 
     fn validate(self) -> Result<(), GroupCommitConfigError> {

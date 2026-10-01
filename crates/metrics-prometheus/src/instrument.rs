@@ -75,8 +75,8 @@ impl std::ops::Deref for Gauge {
 /// caller's metric name promises (lumen uses milliseconds).
 #[derive(Debug, Default)]
 pub struct Latency {
-    pub sum: Counter,
-    pub count: Counter,
+    sum: Counter,
+    count: Counter,
 }
 
 impl Latency {
@@ -91,6 +91,16 @@ impl Latency {
     pub fn observe(&self, value: u64) {
         self.sum.add(value);
         self.count.incr();
+    }
+
+    /// The running total of observed values, the `_sum` series.
+    pub fn sum(&self) -> &Counter {
+        &self.sum
+    }
+
+    /// The number of observations, the `_count` series.
+    pub fn count(&self) -> &Counter {
+        &self.count
     }
 }
 
@@ -130,7 +140,7 @@ mod tests {
         let l = Latency::new();
         l.observe(7);
         l.observe(9);
-        assert_eq!(l.sum.get(), 16);
-        assert_eq!(l.count.get(), 2);
+        assert_eq!(l.sum().get(), 16);
+        assert_eq!(l.count().get(), 2);
     }
 }

@@ -2,6 +2,7 @@ use super::RaftNode;
 use crate::domain::conf_state::ConfState;
 use crate::domain::entry::{EntryKind, RaftEntry};
 use crate::domain::ids::{Index, NodeId};
+use crate::domain::membership::Membership;
 use crate::domain::role::Role;
 
 impl RaftNode {
@@ -11,7 +12,7 @@ impl RaftNode {
         if self.role != Role::Leader || self.transfer_in_flight.is_some() {
             return None;
         }
-        let index = self.last_index() + 1;
+        let index = self.last_index().next();
         self.resident_log_bytes = self.resident_log_bytes.saturating_add(command.len());
         self.log.push(RaftEntry {
             term: self.current_term,
@@ -30,7 +31,7 @@ impl RaftNode {
         if self.role != Role::Leader || self.transfer_in_flight.is_some() {
             return None;
         }
-        let index = self.last_index() + 1;
+        let index = self.last_index().next();
         let command = conf.encode();
         self.resident_log_bytes = self.resident_log_bytes.saturating_add(command.len());
         self.log.push(RaftEntry {
@@ -52,9 +53,11 @@ impl RaftNode {
         }
         let mut conf = self.conf_state.clone();
         conf.generation += 1;
-        if !conf.membership.learners.contains(&peer) {
-            conf.membership.learners.push(peer);
-            conf.membership.learners.sort_unstable();
+        if !conf.membership.learners().contains(&peer) {
+            let (voters, mut learners) = conf.membership.into_parts();
+            learners.push(peer);
+            learners.sort_unstable();
+            conf.membership = Membership::new(voters, learners);
         }
         self.propose_config(conf)
     }

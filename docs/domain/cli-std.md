@@ -24,12 +24,16 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
 ## Model
 
 - **ToolInfo** — the calling binary's identity and build provenance: project,
-  repo, target, version, git sha and built-at, all static strings. It derives
+  repo, target, version, git sha and built-at, all static strings. A binary
+  builds it with the `const fn` `ToolInfo::new` and reads it through getters
+  of the same names. It derives
   the issue label `app:<project>`, the release tag prefix `<project>@`, the
   release asset `<project>-<target>.tar.gz` and the binary's path inside it.
 - **llm topic (v1)** — `llm::Topic`: a static help topic with an id, a summary
-  and a body. A `SectionedTopic` is made of `TopicSection`s. Each section is
-  either fixed prose or a generated section that renders at call time. `Format`
+  and a body, built with the `const fn` `Topic::new` and read through getters
+  of the same names. A `SectionedTopic` (built with the `const fn`
+  `SectionedTopic::new`) is made of `TopicSection`s. Each section is either
+  fixed prose or a generated section that renders at call time. `Format`
   selects Markdown or JSON output.
 - **llm topic (v2)** — `llm::v2::Topic`: a `Task` paired with a `Runbook`.
   - The `Task` says when to use the topic, what it requires, reads and
@@ -41,12 +45,19 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
   topic from a shared library can be attached to a v2 topic as
   `ProviderContent`.
 - **upgrade decision** — `upgrade::Options` holds the check, pinned tag, force
-  and yes flags. Comparing the installed and selected versions gives an
+  and yes flags: `Options::default()` leaves them unset, `with_*` builders set
+  them and getters of the same names read them. Comparing the installed and selected versions gives an
   `Action`: `UpToDate` or `Install`.
 - **issue report** — the diagnostics block (tool identity, OS and architecture,
   and optionally the status of a running node) and the body that an issue or a
   follow-up comment carries. The options of each verb are `CreateOptions`,
-  `CommentOptions` and `SearchOptions`.
+  `CommentOptions` and `SearchOptions`. `CreateOptions::new(title)` starts the
+  create flags, `with_*` builders set the rest, and getters of the same names
+  read them. `CommentOptions::try_new(number)` does the same for a comment and
+  rejects issue number 0 with `IssueNumberError` ("issue number must be
+  positive"). `SearchOptions::default()` (no query, state `open`, 20 results)
+  takes `with_query`, `with_state` and `with_limit`; the state is passed on
+  unchecked.
 - **connect role** — `connect::Role` (`Read`, `Write`, `Admin`) together with
   `TokenClaims`, which hold a subject and a role per collection (`*` grants
   every collection).
@@ -65,6 +76,33 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
 - **`RenderableTopic`** — how a v1 topic renders its sections. `Topic` and
   `SectionedTopic` implement it.
 
+The connect, issue and upgrade use cases reach the outside through ports that
+the domain defines and infrastructure implements. They are crate-internal: no
+downstream code implements them.
+- **`Kubectl`** (`k8s`) — reads a cluster object as JSON, and the decoded data
+  of a Secret key. `KubectlCli` runs the `kubectl` binary.
+- **`TrackerAccess`** (`online`) — the courier URL and the GitHub token, read
+  when a verb needs them. `EnvTracker` reads the environment and
+  `gh auth token`.
+- **`GitHubApi`**, **`CourierApi`** and **`NodeProbe`** (`online`) — the GitHub
+  issue endpoints, courier's `/v1/issues/...` endpoints, and the status of a
+  running node.
+- **`ReleaseSource`** (`online`) — the tool's GitHub releases and their asset
+  downloads. `HttpClient` implements it and the three ports above.
+- **`Confirm`** (`online`) — the yes-or-no question before a verb changes
+  anything. `TerminalPrompt` asks on the terminal.
+- **`SelfInstall`** (`online`) — replaces the running binary. `SelfReplace`
+  writes a sibling file and renames it over the executable.
+
+The port errors (`KubectlError`, `TokenRegistryError`, `RemoteError`,
+`PromptError`, `InstallError`) keep the messages of the `anyhow` context they
+replace; the public entry points still return `anyhow::Result`.
+
+The composition root, `src/app/`, holds the public entry points
+(`issue::{create, comment, search, view}`, `upgrade::run`,
+`connect::{resolve_token, resolve_cr_tokens_secret}`): each builds the
+adapters and calls its use case. Their signatures are unchanged.
+
 ## Invariants
 
 - **Version selection:**
@@ -81,6 +119,8 @@ lumen, mamba, mesh, meter, pgpool, relay, sift, tape and vat.
 - **Issue verbs:**
   - `issue create` always adds the `app:<project>` and `type:report` labels to
     the caller's labels.
+  - `issue comment` targets an issue number of at least 1; `CommentOptions`
+    cannot hold 0.
   - `issue comment` reopens the issue before it comments.
   - Without a GitHub token, both fall back to printing a pre-filled URL or the
     text of the comment. The token is read from `GH_TOKEN`, then
@@ -123,34 +163,35 @@ core contexts build their llm topics with it (ADR D19). The model is `Topic`,
 `SectionedTopic`, `TopicSection`, `render_sectioned` and
 `assert_topics_render`.
 
-Downstream CLIs use the whole public API. P1 keeps every public path:
-- the crate-root `ToolInfo`;
-- facades for `issue`, `upgrade`, `llm`, `llm::v2`, `connect`, `chainable`,
-  `artifact`, `registry` and `report_issue`.
+Downstream CLIs use the whole public API:
+- the crate-root `ToolInfo` and `IssueNumberError`;
+- the public modules `issue`, `upgrade`, `llm`, `llm::v2`, `connect`,
+  `chainable`, `artifact`, `registry` and `report_issue`. They keep their
+  paths (`src/api/`) because the root does not re-export their names.
 
 jet, mamba and meter register into `cli_std::registry::CLI_MODULES`, a
 `linkme` distributed slice, through that exact path with
-`#[distributed_slice(...)]`. The `registry` facade must keep that path working.
+`#[distributed_slice(...)]`. The `registry` module must keep that path working.
 
 `report_issue` is a deprecated alias of `issue`; cap and mamba still use it.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** B3 `application->infrastructure`: the connect,
-  issue and upgrade use cases call the kubectl, GitHub, courier,
-  terminal-prompt and self-install adapters directly. P2 defines ports in the
-  domain and injects the adapters. The upgrade version rules use `semver`,
-  which is not on the domain allowlist, so they sit in the application layer
-  and need no exception.
-- **Tracked for P2:**
-  - Public fields built with struct literals (ADR D2):
-    - `ToolInfo`, `llm::Topic`, `upgrade::Options` and the issue option
-      structs, in the CLIs of beam, cap, courier, defer, jet, keep, loom,
-      lumen, mamba, mesh, pgpool, relay, sift, tape and vat;
-    - `SectionedTopic` and `TopicSection`, in tape;
-    - the v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, in lumen.
+- **Checker exceptions:** none. The upgrade version rules use `semver`, which
+  is not on the domain allowlist, so they sit in the application layer and need
+  no exception.
+- **Public fields kept:**
+  - The v2 `Topic`, `Task`, `Runbook`, `Step` and `Input`, which lumen builds
+    with struct literals. They are wire types.
+  - `TopicSection` is an enum and keeps its public variants; tape builds its
+    `Generated` variant with named fields.
+- **Debts:**
   - `anyhow` in public signatures, including the `CliModule::execute` port
     that jet, mamba and meter implement (ADR D4).
   - The `issue` and `upgrade` handlers print their results directly. Moving the
     output to the interfaces layer must keep stdout byte-identical, so this is
     a behaviour risk.
+
+  P2 made the `ToolInfo`, `llm::Topic`, `SectionedTopic`, `upgrade::Options`
+  and issue option fields private (D2), and moved the connect, issue and
+  upgrade I/O behind crate-internal ports wired in `src/app/`.

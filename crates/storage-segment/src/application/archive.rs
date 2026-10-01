@@ -1,24 +1,25 @@
 use std::{collections::BTreeSet, sync::Arc};
 
-use storage_object::ObjectStore;
+use crate::domain::{
+    ArchiveCommit, ArchiveObject, ArchivedObject, ImmutableObjectStore, Result, SegmentError,
+};
 
-use crate::domain::{ArchiveCommit, ArchiveObject, ArchivedObject, Result, SegmentError};
-use crate::infrastructure::put_immutable;
-
+/// Starts manifest-last archive transactions. The public constructor that
+/// takes a storage-object `ObjectStore` lives in the composition root.
 #[derive(Clone)]
 pub struct ArchiveCoordinator {
-    store: Arc<dyn ObjectStore>,
+    objects: Arc<dyn ImmutableObjectStore>,
 }
 
 impl ArchiveCoordinator {
-    pub fn new(store: Arc<dyn ObjectStore>) -> Self {
-        Self { store }
+    pub(crate) fn from_port(objects: Arc<dyn ImmutableObjectStore>) -> Self {
+        Self { objects }
     }
 
     pub fn begin(&self) -> ArchiveTransaction {
         ArchiveTransaction {
-            store: self.store.clone(),
-            objects: Vec::new(),
+            objects: self.objects.clone(),
+            written: Vec::new(),
             keys: BTreeSet::new(),
             failed: false,
         }
@@ -26,8 +27,8 @@ impl ArchiveCoordinator {
 }
 
 pub struct ArchiveTransaction {
-    store: Arc<dyn ObjectStore>,
-    objects: Vec<ArchivedObject>,
+    objects: Arc<dyn ImmutableObjectStore>,
+    written: Vec<ArchivedObject>,
     keys: BTreeSet<String>,
     failed: bool,
 }
@@ -42,9 +43,9 @@ impl ArchiveTransaction {
         if !self.keys.insert(object.key.clone()) {
             return Err(SegmentError::DuplicateObject { key: object.key });
         }
-        match put_immutable(self.store.as_ref(), object) {
+        match self.objects.put_object(object) {
             Ok(receipt) => {
-                self.objects.push(receipt.clone());
+                self.written.push(receipt.clone());
                 Ok(receipt)
             }
             Err(error) => {
@@ -62,7 +63,7 @@ impl ArchiveTransaction {
         if self.keys.contains(&manifest.key) {
             return Err(SegmentError::ManifestKeyCollision { key: manifest.key });
         }
-        let manifest = match put_immutable(self.store.as_ref(), manifest) {
+        let manifest = match self.objects.put_object(manifest) {
             Ok(receipt) => receipt,
             Err(error) => {
                 self.failed = true;
@@ -70,7 +71,7 @@ impl ArchiveTransaction {
             }
         };
         Ok(ArchiveCommit {
-            objects: self.objects,
+            objects: self.written,
             manifest,
         })
     }

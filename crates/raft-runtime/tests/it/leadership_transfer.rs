@@ -46,6 +46,7 @@
 //! accumulation of spontaneous elections could have reached in its lifetime,
 //! and asserts the exact value that arrives. The clock is not consulted.
 
+use raft_runtime::NodeId;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -53,7 +54,7 @@ use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
 use raft_runtime::{
-    group::GroupId, FsyncPolicy, HostConfig, Membership, RaftHost, RaftRegistry, RaftStateMachine,
+    FsyncPolicy, GroupId, HostConfig, Membership, RaftHost, RaftRegistry, RaftStateMachine,
     RaftStatus, RaftStore, TransferRefused,
 };
 
@@ -136,7 +137,11 @@ async fn a_running_host_hands_leadership_to_the_peer_it_names() {
     // retried. Every other refusal fails the row where it stands.
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
-        match nodes[leader].host.transfer_leadership(target as u64).await {
+        match nodes[leader]
+            .host
+            .transfer_leadership(NodeId::new(target as u64))
+            .await
+        {
             Ok(()) => break,
             Err(TransferRefused::NotCaughtUp { .. }) => {
                 assert!(
@@ -179,7 +184,7 @@ async fn a_running_host_hands_leadership_to_the_peer_it_names() {
     );
     assert_eq!(
         nodes[target].host.leader().await,
-        Some(target as u64),
+        Some(NodeId::new(target as u64)),
         "the new leader must name itself as the group's leader"
     );
 }
@@ -198,7 +203,11 @@ async fn a_host_that_is_not_the_leader_returns_the_cores_own_refusal() {
     let follower = (leader + 1) % 3;
     let other = (leader + 2) % 3;
 
-    match nodes[follower].host.transfer_leadership(other as u64).await {
+    match nodes[follower]
+        .host
+        .transfer_leadership(NodeId::new(other as u64))
+        .await
+    {
         Err(TransferRefused::NotLeader) => {}
         Err(other) => panic!(
             "a follower must be told it is not the leader, not that its target \
@@ -233,18 +242,15 @@ async fn the_registry_routes_a_handoff_to_the_group_it_names() {
     let sm = TestSm::new();
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let host = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,

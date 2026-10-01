@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use super::{ConnectionProtocol, ConnectionReport, ConnectionTerminal};
+use crate::http_method::is_safe_method;
 
 pub(super) struct Accounting {
     admission: Mutex<AdmissionState>,
@@ -148,13 +149,6 @@ impl Drop for RequestGuard {
             }
         }
     }
-}
-
-fn is_safe_method(method: &Method) -> bool {
-    matches!(
-        *method,
-        Method::GET | Method::HEAD | Method::OPTIONS | Method::TRACE
-    )
 }
 
 pub(super) fn observe_drain(

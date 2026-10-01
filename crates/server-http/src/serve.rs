@@ -1,25 +1,15 @@
+use std::sync::Arc;
+
 use server_lifecycle::{BindConfig, DrainController, LifecycleController};
 use tokio::net::TcpListener;
 
 use crate::options::HttpServerOptions;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct HttpServerReport {
-    pub accepted: u64,
-    pub rejected: u64,
-    pub completed: u64,
-    pub failed: u64,
-    pub timed_out: u64,
-    pub unfinished: u64,
-    pub streams_completed: u64,
-    pub streams_admitted: u64,
-    pub streams_active_at_drain: u64,
-    pub streams_refused: u64,
-    pub streams_timed_out: u64,
-    pub streams_ambiguous: u64,
-    pub accept_errors: u64,
-    pub deadline_missing: bool,
-}
+/// Connection and request-stream totals of one lifecycle-driven HTTP run.
+///
+/// The HTTP listener reports exactly what server-tcp's accept loop counts, so
+/// this is the same type as [`server_tcp::TcpServerReport`].
+pub type HttpServerReport = server_tcp::TcpServerReport;
 
 /// Production HTTP composition. The supplied lifecycle owns listener drain,
 /// per-connection subscriptions, and the shutdown-time absolute deadline.
@@ -32,20 +22,16 @@ pub async fn serve_h2c_with_lifecycle(
     let local_addr = listener
         .local_addr()
         .unwrap_or_else(|_| BindConfig::default().socket_addr());
-    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig {
-        host: local_addr.ip(),
-        port: local_addr.port(),
-    })
-    .with_socket_options(options.socket)
-    .with_drain(DrainController::from_lifecycle(lifecycle.clone()))
-    .with_connection_metrics(options.connection_metrics);
-    if let Some(budget) = options.connection_budget {
-        tcp_config = tcp_config.with_connection_budget(budget);
+    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig::from(local_addr))
+        .with_socket_options(options.socket())
+        .with_drain(DrainController::from_lifecycle(lifecycle.clone()))
+        .with_connection_metrics(Arc::clone(options.connection_metrics()));
+    if let Some(budget) = options.connection_budget() {
+        tcp_config = tcp_config.with_connection_budget(budget.clone());
     }
-    let connection_options = transport_h2c::ConnectionOptions {
-        max_concurrent_streams: options.max_concurrent_streams,
-    };
-    let report = server_tcp::serve_with_report(
+    let connection_options =
+        transport_h2c::ConnectionOptions::new(options.max_concurrent_streams());
+    server_tcp::serve_with_report(
         listener,
         tcp_config,
         move |stream, cx: server_tcp::ConnectionContext| {
@@ -70,36 +56,18 @@ pub async fn serve_h2c_with_lifecycle(
                         server_tcp::TcpConnectionTerminal::Completed
                     }
                 };
-                server_tcp::TcpConnectionResult {
-                    terminal,
-                    streams_admitted: connection.admitted as u64,
-                    streams_active_at_drain: connection.active_at_drain as u64,
-                    streams_completed: connection.completed as u64,
-                    streams_refused: connection.refused as u64,
-                    streams_timed_out: connection.timed_out as u64,
-                    streams_ambiguous: connection.ambiguous as u64,
-                }
+                server_tcp::TcpConnectionResult::new(terminal)
+                    .with_streams_admitted(connection.admitted as u64)
+                    .with_streams_active_at_drain(connection.active_at_drain as u64)
+                    .with_streams_completed(connection.completed as u64)
+                    .with_streams_refused(connection.refused as u64)
+                    .with_streams_timed_out(connection.timed_out as u64)
+                    .with_streams_ambiguous(connection.ambiguous as u64)
             }
         },
         lifecycle,
     )
-    .await;
-    HttpServerReport {
-        accepted: report.accepted,
-        rejected: report.rejected,
-        completed: report.completed,
-        failed: report.failed,
-        timed_out: report.timed_out,
-        unfinished: report.unfinished,
-        streams_completed: report.streams_completed,
-        streams_admitted: report.streams_admitted,
-        streams_active_at_drain: report.streams_active_at_drain,
-        streams_refused: report.streams_refused,
-        streams_timed_out: report.streams_timed_out,
-        streams_ambiguous: report.streams_ambiguous,
-        accept_errors: report.accept_errors,
-        deadline_missing: report.deadline_missing,
-    }
+    .await
 }
 
 /// Serve HTTP/1.1 + h2c on one listener.
@@ -128,21 +96,17 @@ pub async fn serve_h2c_with_options(
     let local_addr = listener
         .local_addr()
         .unwrap_or_else(|_| BindConfig::default().socket_addr());
-    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig {
-        host: local_addr.ip(),
-        port: local_addr.port(),
-    })
-    .with_socket_options(options.socket)
-    .with_drain(options.drain)
-    .with_drain_timeout(options.drain_timeout)
-    .with_connection_metrics(options.connection_metrics);
-    if let Some(budget) = options.connection_budget {
-        tcp_config = tcp_config.with_connection_budget(budget);
+    let mut tcp_config = server_tcp::TcpServerConfig::new(BindConfig::from(local_addr))
+        .with_socket_options(options.socket())
+        .with_drain(options.drain().clone())
+        .with_drain_timeout(options.drain_timeout())
+        .with_connection_metrics(Arc::clone(options.connection_metrics()));
+    if let Some(budget) = options.connection_budget() {
+        tcp_config = tcp_config.with_connection_budget(budget.clone());
     }
 
-    let connection_options = transport_h2c::ConnectionOptions {
-        max_concurrent_streams: options.max_concurrent_streams,
-    };
+    let connection_options =
+        transport_h2c::ConnectionOptions::new(options.max_concurrent_streams());
     server_tcp::serve(
         listener,
         tcp_config,
@@ -152,7 +116,7 @@ pub async fn serve_h2c_with_options(
                 let _ = cx;
                 transport_h2c::serve_connection_with_options(stream, app, connection_options)
                     .await
-                    .map_err(|error| anyhow::anyhow!(error.to_string()))
+                    .map_err(|error| server_tcp::TcpHandlerError::other(error.to_string()))
             }
         },
         shutdown,

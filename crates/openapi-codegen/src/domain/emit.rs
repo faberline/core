@@ -7,4 +7,7 @@
 
 pub mod py;
 pub mod rust;
+mod spec_parse_error;
 pub mod ts;
+
+pub use spec_parse_error::SpecParseError;

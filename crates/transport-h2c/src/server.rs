@@ -23,7 +23,22 @@ use tower::ServiceExt;
 /// Per-connection h2c tuning owned by the transport layer.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ConnectionOptions {
-    pub max_concurrent_streams: u32,
+    max_concurrent_streams: u32,
+}
+
+impl ConnectionOptions {
+    /// Options that cap each connection at `max_concurrent_streams` HTTP/2
+    /// streams.
+    pub const fn new(max_concurrent_streams: u32) -> Self {
+        Self {
+            max_concurrent_streams,
+        }
+    }
+
+    /// The HTTP/2 stream cap per connection.
+    pub const fn max_concurrent_streams(&self) -> u32 {
+        self.max_concurrent_streams
+    }
 }
 
 pub type ConnectionError = Box<dyn std::error::Error + Send + Sync>;
@@ -108,7 +123,7 @@ where
     // WAN-only tuning with no local benefit.
     builder
         .http2()
-        .max_concurrent_streams(options.max_concurrent_streams);
+        .max_concurrent_streams(options.max_concurrent_streams());
 
     let io = TokioIo::new(stream);
     // axum's Router is Service<Request<Incoming>>; oneshot drives one request.
@@ -178,7 +193,7 @@ where
         let mut builder = auto::Builder::new(TokioExecutor::new());
         builder
             .http2()
-            .max_concurrent_streams(options.max_concurrent_streams);
+            .max_concurrent_streams(options.max_concurrent_streams());
         let io = TokioIo::new(stream);
         let shared = Arc::clone(&accounting);
         let service_lifecycle = Arc::clone(&service_lifecycle);

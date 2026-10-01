@@ -3,20 +3,8 @@ use std::time::Duration;
 
 use tokio::sync::mpsc;
 
-use crate::watch::{FileWatcher, WatchConfig, WatchEvent};
-
-/// Events from the watch bridge
-#[derive(Debug, Clone)]
-pub enum BridgeEvent {
-    /// Files were modified and need re-analysis
-    FilesChanged(Vec<PathBuf>),
-    /// Watch error occurred
-    Error(String),
-    /// Watcher is ready
-    Ready,
-    /// Watcher stopped
-    Stopped,
-}
+use crate::domain::daemon::watch_event::BridgeEvent;
+use crate::infrastructure::watch::file_watcher::{FileWatcher, WatchConfig, WatchEvent};
 
 /// Configuration for the watch bridge
 #[derive(Debug, Clone)]

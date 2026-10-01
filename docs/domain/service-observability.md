@@ -19,7 +19,7 @@ lumen and defer use it in tests.
 - **Service identity** — `ServiceIdentity`: the name and version attached to
   every log line and exported span; neither may be blank.
 - **Observability config** — `ObservabilityConfig`: log level, log format and
-  an optional OTLP endpoint.
+  an optional OTLP endpoint. `new` takes every value; getters read them.
 - **Tracing mode** — `TracingMode` (`LoggingOnly`, `Otel`, `OtelUnavailable`
   with an `OtelFallback` of `FeatureDisabled` or `InvalidEndpoint`): what
   `tracing_mode` resolves from the config and the `otlp` feature.
@@ -85,8 +85,11 @@ layer. The root re-exports the items of `config`, `filesystem`, `jsonl`,
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** `ServiceLogEventV1` and `ServiceLogIdentityV1` public
-  fields, built with struct literals by a sift test fixture. `anyhow` in public
-  signatures: `ServiceIdentity::new`, `init_tracing`,
-  `init_tracing_with_identity`, `process_usage` and `filesystem_usage` (ADR D4).
+- **Checker exceptions:** None.
+- **Public fields kept:** `ServiceLogEventV1` and `ServiceLogIdentityV1`,
+  which a sift test fixture builds with struct literals. They are wire
+  types.
+- **Debts:** `anyhow` in public signatures: `ServiceIdentity::new`,
+  `init_tracing`, `init_tracing_with_identity`, `process_usage` and
+  `filesystem_usage` (these are not ports, so ADR D4 does not cover them).
+  P2 made the `ObservabilityConfig` fields private (D2).

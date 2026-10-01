@@ -1,7 +1,6 @@
 use super::ScopeAnalyzer;
-use crate::domain::diagnostic::model::Range;
 use crate::domain::semantic::scope::{ScopeKind, SymbolKind};
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 impl ScopeAnalyzer {
     pub(super) fn visit_node(&mut self, node: &tree_sitter::Node<'_>, file: &ParsedFile) {
@@ -11,7 +10,7 @@ impl ScopeAnalyzer {
                 if let Some(name_node) = node.child_by_field_name("name") {
                     let name = file.node_text(&name_node).to_string();
                     self.current()
-                        .define(name, SymbolKind::Function, Range::from_node(&name_node));
+                        .define(name, SymbolKind::Function, name_node.to_range());
                 }
 
                 // Check if this is a stub function (body is just ... or pass)
@@ -43,7 +42,7 @@ impl ScopeAnalyzer {
                 if let Some(name_node) = node.child_by_field_name("name") {
                     let name = file.node_text(&name_node).to_string();
                     self.current()
-                        .define(name, SymbolKind::Class, Range::from_node(&name_node));
+                        .define(name, SymbolKind::Class, name_node.to_range());
                 }
 
                 // Create new scope for class body
@@ -116,11 +115,8 @@ impl ScopeAnalyzer {
                     if child.kind() == "as_pattern" {
                         if let Some(alias) = child.child_by_field_name("alias") {
                             let name = file.node_text(&alias).to_string();
-                            self.current().define(
-                                name,
-                                SymbolKind::Variable,
-                                Range::from_node(&alias),
-                            );
+                            self.current()
+                                .define(name, SymbolKind::Variable, alias.to_range());
                         }
                     }
                 }
@@ -142,23 +138,17 @@ impl ScopeAnalyzer {
                         self.current().define(
                             base_name.to_string(),
                             SymbolKind::Import,
-                            Range::from_node(&child),
+                            child.to_range(),
                         );
                     } else if child.kind() == "aliased_import" {
                         if let Some(alias) = child.child_by_field_name("alias") {
                             let name = file.node_text(&alias).to_string();
-                            self.current().define(
-                                name,
-                                SymbolKind::Import,
-                                Range::from_node(&alias),
-                            );
+                            self.current()
+                                .define(name, SymbolKind::Import, alias.to_range());
                         } else if let Some(name_node) = child.child_by_field_name("name") {
                             let name = file.node_text(&name_node).to_string();
-                            self.current().define(
-                                name,
-                                SymbolKind::Import,
-                                Range::from_node(&name_node),
-                            );
+                            self.current()
+                                .define(name, SymbolKind::Import, name_node.to_range());
                         }
                     }
                 }
@@ -175,18 +165,12 @@ impl ScopeAnalyzer {
                     if child.kind() == "aliased_import" {
                         if let Some(alias) = child.child_by_field_name("alias") {
                             let name = file.node_text(&alias).to_string();
-                            self.current().define(
-                                name,
-                                SymbolKind::Import,
-                                Range::from_node(&alias),
-                            );
+                            self.current()
+                                .define(name, SymbolKind::Import, alias.to_range());
                         } else if let Some(name_node) = child.child_by_field_name("name") {
                             let name = file.node_text(&name_node).to_string();
-                            self.current().define(
-                                name,
-                                SymbolKind::Import,
-                                Range::from_node(&name_node),
-                            );
+                            self.current()
+                                .define(name, SymbolKind::Import, name_node.to_range());
                         }
                     }
                 }
@@ -199,7 +183,7 @@ impl ScopeAnalyzer {
                     if child.kind() == "identifier" {
                         let name = file.node_text(&child).to_string();
                         self.current()
-                            .define(name, SymbolKind::Global, Range::from_node(&child));
+                            .define(name, SymbolKind::Global, child.to_range());
                     }
                 }
                 return;
@@ -211,7 +195,7 @@ impl ScopeAnalyzer {
                     if child.kind() == "identifier" {
                         let name = file.node_text(&child).to_string();
                         self.current()
-                            .define(name, SymbolKind::Nonlocal, Range::from_node(&child));
+                            .define(name, SymbolKind::Nonlocal, child.to_range());
                     }
                 }
                 return;

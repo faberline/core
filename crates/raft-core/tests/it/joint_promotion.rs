@@ -79,20 +79,22 @@ use raft_core::{Membership, NodeId, PromotionRefused, RaftNode};
 /// Voters 0,1,2. Odd, so an outgoing majority can be one short of an incoming
 /// one — the size at which the outgoing-alone row can measure anything.
 fn three_voters() -> Membership {
-    Membership {
-        voters: vec![0, 1, 2],
-        learners: vec![],
-    }
+    Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![])
 }
 
 /// Voters 0,1,2,3. Even, so an incoming majority that leans on the new voter is
 /// not an outgoing majority — the size at which the incoming-alone row can
 /// measure anything.
 fn four_voters() -> Membership {
-    Membership {
-        voters: vec![0, 1, 2, 3],
-        learners: vec![],
-    }
+    Membership::new(
+        vec![
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        vec![],
+    )
 }
 
 struct Bus {
@@ -270,7 +272,7 @@ impl Bus {
 
     /// The voters of the configuration `node` currently has in force.
     fn voters_of(&self, node: NodeId) -> Vec<NodeId> {
-        self.nodes[&node].conf_state().membership.voters.clone()
+        self.nodes[&node].conf_state().membership.voters().to_vec()
     }
 }
 
@@ -305,12 +307,21 @@ fn group_with_caught_up_learner(
 /// on one configuration with the learner gone from the learner list.
 #[test]
 fn a_caught_up_learner_becomes_a_voter_and_the_group_leaves_the_joint_state() {
-    let (mut bus, leader) = group_with_caught_up_learner(&[0, 1, 2, 3], &three_voters(), 3);
+    let (mut bus, leader) = group_with_caught_up_learner(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        &three_voters(),
+        NodeId::new(3),
+    );
 
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(3)
+        .promote_learner(NodeId::new(3))
         .expect("a leader promotes a caught-up learner");
     bus.settle();
 
@@ -327,11 +338,20 @@ fn a_caught_up_learner_becomes_a_voter_and_the_group_leaves_the_joint_state() {
     );
     assert_eq!(
         bus.voters_of(leader),
-        vec![0, 1, 2, 3],
+        vec![
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3)
+        ],
         "node 3 was promoted, so it belongs in the voter set"
     );
     assert!(
-        !node.conf_state().membership.learners.contains(&3),
+        !node
+            .conf_state()
+            .membership
+            .learners()
+            .contains(&NodeId::new(3)),
         "node 3 is a voter now; leaving it in the learner list would let it be \
          counted twice, once for each role"
     );
@@ -342,25 +362,37 @@ fn a_caught_up_learner_becomes_a_voter_and_the_group_leaves_the_joint_state() {
 /// reachable nodes are an outgoing majority and one short of an incoming one.
 #[test]
 fn while_joint_a_majority_of_the_outgoing_voters_alone_cannot_commit() {
-    let (mut bus, leader) = group_with_caught_up_learner(&[0, 1, 2, 3], &three_voters(), 3);
+    let (mut bus, leader) = group_with_caught_up_learner(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        &three_voters(),
+        NodeId::new(3),
+    );
 
     // Keep the leader and one other outgoing voter. Dropping the third outgoing
     // voter and the newcomer leaves exactly {leader, other}: 2 of the outgoing 3
     // and 2 of the incoming 4.
-    let other = [0, 1, 2].into_iter().find(|v| *v != leader).unwrap();
-    for id in [0, 1, 2]
+    let other = [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+        .into_iter()
+        .find(|v| *v != leader)
+        .unwrap();
+    for id in [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
         .into_iter()
         .filter(|v| *v != leader && *v != other)
     {
         bus.dropped.insert(id);
     }
-    bus.dropped.insert(3);
+    bus.dropped.insert(NodeId::new(3));
 
     let joint_at = bus
         .nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(3)
+        .promote_learner(NodeId::new(3))
         .expect("a leader promotes a caught-up learner");
     bus.settle();
 
@@ -402,13 +434,23 @@ fn while_joint_a_majority_of_the_outgoing_voters_alone_cannot_commit() {
 /// uses — see this file's header.
 #[test]
 fn while_joint_a_majority_of_the_incoming_voters_alone_cannot_commit() {
-    let (mut bus, leader) = group_with_caught_up_learner(&[0, 1, 2, 3, 4], &four_voters(), 4);
+    let (mut bus, leader) = group_with_caught_up_learner(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+            NodeId::new(4),
+        ],
+        &four_voters(),
+        NodeId::new(4),
+    );
 
     let joint_at = bus
         .nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(4)
+        .promote_learner(NodeId::new(4))
         .expect("a leader promotes a caught-up learner");
 
     // The joint entry commits under the outgoing configuration, which needs 3 of
@@ -416,10 +458,23 @@ fn while_joint_a_majority_of_the_incoming_voters_alone_cannot_commit() {
     // also let it in. So enter the joint state with everyone reachable, then
     // partition down to {leader, other, 4} before the next delivery pass.
     bus.round_until_joint(leader);
-    let other = [0, 1, 2, 3].into_iter().find(|v| *v != leader).unwrap();
-    for id in [0, 1, 2, 3]
-        .into_iter()
-        .filter(|v| *v != leader && *v != other)
+    let other = [
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+    ]
+    .into_iter()
+    .find(|v| *v != leader)
+    .unwrap();
+    for id in [
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+    ]
+    .into_iter()
+    .filter(|v| *v != leader && *v != other)
     {
         bus.dropped.insert(id);
     }
@@ -466,20 +521,40 @@ fn while_joint_a_majority_of_the_incoming_voters_alone_cannot_commit() {
 /// inert everywhere they look.
 #[test]
 fn while_joint_a_majority_of_the_outgoing_voters_alone_cannot_elect() {
-    let (mut bus, leader) = group_with_caught_up_learner(&[0, 1, 2, 3], &three_voters(), 3);
+    let (mut bus, leader) = group_with_caught_up_learner(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        &three_voters(),
+        NodeId::new(3),
+    );
 
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(3)
+        .promote_learner(NodeId::new(3))
         .expect("a leader promotes a caught-up learner");
-    bus.round_until_all_joint(&[0, 1, 2, 3], leader);
+    bus.round_until_all_joint(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        leader,
+    );
 
     // Lose the leader and the newcomer. The survivors are the other two
     // outgoing voters: 2 of the outgoing 3, and 2 of the incoming 4.
-    let survivors: Vec<NodeId> = [0, 1, 2].into_iter().filter(|v| *v != leader).collect();
+    let survivors: Vec<NodeId> = [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+        .into_iter()
+        .filter(|v| *v != leader)
+        .collect();
     bus.dropped.insert(leader);
-    bus.dropped.insert(3);
+    bus.dropped.insert(NodeId::new(3));
 
     assert_eq!(
         bus.run_until_reachable_leader(200),
@@ -492,7 +567,7 @@ fn while_joint_a_majority_of_the_outgoing_voters_alone_cannot_elect() {
     // Restoring the newcomer makes the reachable set a majority of both, so a
     // leader must appear. Without this half, refusing every election while joint
     // would pass the assertion above.
-    bus.dropped.remove(&3);
+    bus.dropped.remove(&NodeId::new(3));
     let elected = bus.run_until_reachable_leader(200).expect(
         "with the newcomer reachable the survivors are 2 of the outgoing 3 and 3 of the \
          incoming 4 — a majority of both — so they must be able to elect",
@@ -513,18 +588,44 @@ fn while_joint_a_majority_of_the_outgoing_voters_alone_cannot_elect() {
 /// pair — it is unmeasurable at the size the row above uses.
 #[test]
 fn while_joint_a_majority_of_the_incoming_voters_alone_cannot_elect() {
-    let (mut bus, leader) = group_with_caught_up_learner(&[0, 1, 2, 3, 4], &four_voters(), 4);
+    let (mut bus, leader) = group_with_caught_up_learner(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+            NodeId::new(4),
+        ],
+        &four_voters(),
+        NodeId::new(4),
+    );
 
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(4)
+        .promote_learner(NodeId::new(4))
         .expect("a leader promotes a caught-up learner");
-    bus.round_until_all_joint(&[0, 1, 2, 3, 4], leader);
+    bus.round_until_all_joint(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+            NodeId::new(4),
+        ],
+        leader,
+    );
 
     // Lose the leader and one more outgoing voter. The survivors are two
     // outgoing voters plus the newcomer: 3 of the incoming 5, 2 of the outgoing 4.
-    let mut rest = [0, 1, 2, 3].into_iter().filter(|v| *v != leader);
+    let mut rest = [
+        NodeId::new(0),
+        NodeId::new(1),
+        NodeId::new(2),
+        NodeId::new(3),
+    ]
+    .into_iter()
+    .filter(|v| *v != leader);
     let a = rest.next().unwrap();
     let b = rest.next().unwrap();
     let c = rest.next().unwrap();
@@ -562,20 +663,32 @@ fn while_joint_a_majority_of_the_incoming_voters_alone_cannot_elect() {
 #[test]
 fn a_leader_lost_mid_transition_is_replaced_and_the_group_converges_on_the_incoming_configuration()
 {
-    let (mut bus, leader) = group_with_caught_up_learner(&[0, 1, 2, 3], &three_voters(), 3);
+    let (mut bus, leader) = group_with_caught_up_learner(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        &three_voters(),
+        NodeId::new(3),
+    );
 
-    let other = [0, 1, 2].into_iter().find(|v| *v != leader).unwrap();
-    let third = [0, 1, 2]
+    let other = [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+        .into_iter()
+        .find(|v| *v != leader)
+        .unwrap();
+    let third = [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
         .into_iter()
         .find(|v| *v != leader && *v != other)
         .unwrap();
     bus.dropped.insert(third);
-    bus.dropped.insert(3);
+    bus.dropped.insert(NodeId::new(3));
 
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(3)
+        .promote_learner(NodeId::new(3))
         .expect("a leader promotes a caught-up learner");
     bus.settle();
     assert!(
@@ -618,7 +731,12 @@ fn a_leader_lost_mid_transition_is_replaced_and_the_group_converges_on_the_incom
     );
     assert_eq!(
         bus.voters_of(elected),
-        vec![0, 1, 2, 3],
+        vec![
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3)
+        ],
         "the group converged, and the configuration it converged on must be the \
          incoming one — converging back onto the outgoing set would silently undo \
          a promotion the operator was told had begun"
@@ -629,7 +747,15 @@ fn a_leader_lost_mid_transition_is_replaced_and_the_group_converges_on_the_incom
 /// two indices that justify it rather than being reported as a bare failure.
 #[test]
 fn promoting_a_learner_that_has_not_caught_up_is_refused_with_both_indices() {
-    let mut bus = Bus::new(&[0, 1, 2, 3], &three_voters());
+    let mut bus = Bus::new(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
     for i in 0..5u8 {
         bus.commit(leader, vec![i]);
@@ -637,15 +763,15 @@ fn promoting_a_learner_that_has_not_caught_up_is_refused_with_both_indices() {
 
     // Admitted while unreachable: the configuration entry still commits on the
     // three voters, so node 3 is a learner that has replicated nothing.
-    bus.dropped.insert(3);
+    bus.dropped.insert(NodeId::new(3));
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .add_learner(3)
+        .add_learner(NodeId::new(3))
         .expect("a leader admits a learner");
     bus.settle();
     assert_eq!(
-        bus.nodes[&leader].learner_read_eligible(3),
+        bus.nodes[&leader].learner_read_eligible(NodeId::new(3)),
         Some(false),
         "this row needs a learner that has demonstrably not caught up"
     );
@@ -654,7 +780,7 @@ fn promoting_a_learner_that_has_not_caught_up_is_refused_with_both_indices() {
         .nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(3)
+        .promote_learner(NodeId::new(3))
         .expect_err("a learner that has not caught up must not be promoted");
 
     match refusal {
@@ -666,7 +792,7 @@ fn promoting_a_learner_that_has_not_caught_up_is_refused_with_both_indices() {
             );
             assert_eq!(
                 Some(matched),
-                bus.nodes[&leader].learner_matched(3),
+                bus.nodes[&leader].learner_matched(NodeId::new(3)),
                 "the refusal must report the leader's own record of this \
                  learner's progress, not a figure derived somewhere else"
             );
@@ -683,7 +809,7 @@ fn promoting_a_learner_that_has_not_caught_up_is_refused_with_both_indices() {
     );
     assert_eq!(
         bus.voters_of(leader),
-        vec![0, 1, 2],
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
         "a refused promotion must leave the voter set untouched"
     );
 }
@@ -692,12 +818,21 @@ fn promoting_a_learner_that_has_not_caught_up_is_refused_with_both_indices() {
 /// configuration is in flight is refused rather than queued.
 #[test]
 fn a_second_promotion_while_a_transition_is_in_flight_is_refused() {
-    let mut bus = Bus::new(&[0, 1, 2, 3, 4], &three_voters());
+    let mut bus = Bus::new(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+            NodeId::new(4),
+        ],
+        &three_voters(),
+    );
     let leader = bus.run_until_leader();
     for i in 0..5u8 {
         bus.commit(leader, vec![i]);
     }
-    for newcomer in [3, 4] {
+    for newcomer in [NodeId::new(3), NodeId::new(4)] {
         bus.nodes
             .get_mut(&leader)
             .unwrap()
@@ -708,20 +843,23 @@ fn a_second_promotion_while_a_transition_is_in_flight_is_refused() {
 
     // Hold the group joint: {leader, other} is a majority of the outgoing 3 and
     // one short of the incoming 4.
-    let other = [0, 1, 2].into_iter().find(|v| *v != leader).unwrap();
-    for id in [0, 1, 2]
+    let other = [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+        .into_iter()
+        .find(|v| *v != leader)
+        .unwrap();
+    for id in [NodeId::new(0), NodeId::new(1), NodeId::new(2)]
         .into_iter()
         .filter(|v| *v != leader && *v != other)
     {
         bus.dropped.insert(id);
     }
-    bus.dropped.insert(3);
-    bus.dropped.insert(4);
+    bus.dropped.insert(NodeId::new(3));
+    bus.dropped.insert(NodeId::new(4));
 
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(3)
+        .promote_learner(NodeId::new(3))
         .expect("a leader promotes a caught-up learner");
     bus.settle();
     assert!(
@@ -733,7 +871,7 @@ fn a_second_promotion_while_a_transition_is_in_flight_is_refused() {
         .nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(4)
+        .promote_learner(NodeId::new(4))
         .expect_err("a second promotion must be refused while one is in flight");
     assert!(
         matches!(refusal, PromotionRefused::TransitionInFlight),
@@ -744,13 +882,21 @@ fn a_second_promotion_while_a_transition_is_in_flight_is_refused() {
 
     let node = &bus.nodes[&leader];
     assert_eq!(
-        node.conf_state().membership.voters,
-        vec![0, 1, 2, 3],
+        node.conf_state().membership.voters(),
+        vec![
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3)
+        ],
         "the refused second promotion must not have altered the transition \
          already in flight"
     );
     assert!(
-        node.conf_state().membership.learners.contains(&4),
+        node.conf_state()
+            .membership
+            .learners()
+            .contains(&NodeId::new(4)),
         "node 4 was not promoted, so it is still a learner"
     );
 }
@@ -768,7 +914,16 @@ fn a_second_promotion_while_a_transition_is_in_flight_is_refused() {
 /// the request.
 #[test]
 fn promoting_on_a_node_that_is_not_the_leader_names_that_and_not_a_transition() {
-    let (mut bus, leader) = group_with_caught_up_learner(&[0, 1, 2, 3], &three_voters(), 3);
+    let (mut bus, leader) = group_with_caught_up_learner(
+        &[
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3),
+        ],
+        &three_voters(),
+        NodeId::new(3),
+    );
 
     let mut followers: Vec<NodeId> = bus
         .voters_of(leader)
@@ -790,7 +945,7 @@ fn promoting_on_a_node_that_is_not_the_leader_names_that_and_not_a_transition() 
         .nodes
         .get_mut(&follower)
         .unwrap()
-        .promote_learner(3)
+        .promote_learner(NodeId::new(3))
         .expect_err("a node that is not the leader cannot promote a learner");
     assert!(
         matches!(refusal, PromotionRefused::NotLeader),
@@ -801,14 +956,14 @@ fn promoting_on_a_node_that_is_not_the_leader_names_that_and_not_a_transition() 
 
     assert_eq!(
         bus.voters_of(follower),
-        vec![0, 1, 2],
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
         "a refused promotion must leave the configuration alone"
     );
 
     bus.nodes
         .get_mut(&leader)
         .unwrap()
-        .promote_learner(3)
+        .promote_learner(NodeId::new(3))
         .expect(
             "the same promotion on the leader must succeed, or the refusal \
                  above was about the request rather than the node asked",
@@ -816,7 +971,12 @@ fn promoting_on_a_node_that_is_not_the_leader_names_that_and_not_a_transition() 
     bus.settle();
     assert_eq!(
         bus.voters_of(leader),
-        vec![0, 1, 2, 3],
+        vec![
+            NodeId::new(0),
+            NodeId::new(1),
+            NodeId::new(2),
+            NodeId::new(3)
+        ],
         "the leader's promotion committed, so node 3 is a voter"
     );
 }

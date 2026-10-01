@@ -1,10 +1,11 @@
+use raft_runtime::NodeId;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tempfile::TempDir;
 
 use raft_runtime::{
-    group::{GroupId, LEGACY_GROUP_ID},
-    FsyncPolicy, HostConfig, Membership, RaftHost, RaftStateMachine, RaftStore,
+    FsyncPolicy, GroupId, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
+    LEGACY_GROUP_ID,
 };
 
 use crate::support::cluster;
@@ -23,19 +24,16 @@ async fn row1_request_vote_refusal() {
     let sm = TestSm::new();
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -108,19 +106,16 @@ async fn row2_append_entries_refusal() {
     let sm = TestSm::new();
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -259,14 +254,16 @@ async fn row2_append_entries_refusal() {
 async fn row3_absent_group_id_refused() {
     let dir = TempDir::new().unwrap();
     let sm = TestSm::new();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn(
-        0,
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -383,19 +380,16 @@ async fn row5_timeout_now_refusal() {
     let sm = TestSm::new();
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -463,30 +457,30 @@ fn row4_durable_file_paths() {
 
     let s_alpha1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let s_beta = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("beta".to_string()),
+        NodeId::new(0),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let s_alpha2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let s_adv = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("../../../foo".to_string()),
+        NodeId::new(0),
+        GroupId::new("../../../foo"),
         FsyncPolicy::Os,
     )
     .unwrap();
@@ -514,19 +508,16 @@ async fn row6_install_snapshot_refusal() {
     let sm = TestSm::new();
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
@@ -609,7 +600,7 @@ async fn row6_install_snapshot_refusal() {
         z1.get("snapshot_index").unwrap().as_u64().unwrap(),
         z2.get("snapshot_index").unwrap().as_u64().unwrap()
     );
-    assert_eq!(sm.applied_index(), 0);
+    assert_eq!(sm.applied_index(), Index::new(0));
 
     let req_alpha = serde_json::json!({
         "group_id": "alpha",
@@ -642,19 +633,16 @@ async fn row7_publish_refusal() {
     let sm = TestSm::new();
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
     let (l, url) = bind().await;
     let host = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
@@ -732,7 +720,7 @@ async fn row7_publish_refusal() {
         z1.get("snapshot_index").unwrap().as_u64().unwrap(),
         z2.get("snapshot_index").unwrap().as_u64().unwrap()
     );
-    assert_eq!(sm.applied_index(), 0);
+    assert_eq!(sm.applied_index(), Index::new(0));
 
     let req_alpha = serde_json::json!({
         "group_id": "alpha",

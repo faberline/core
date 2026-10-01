@@ -28,10 +28,10 @@ async fn a_preshared_secret_resolves_from_the_registry_without_asking_google() {
         true,
         HashMap::from([(
             "preshared-secret".to_string(),
-            TokenClaims {
-                subject: "svc:legacy".to_string(),
-                roles: HashMap::from([("products".to_string(), Role::Write)]),
-            },
+            TokenClaims::new(
+                "svc:legacy".to_string(),
+                HashMap::from([("products".to_string(), Role::Write)]),
+            ),
         )]),
     ));
     let verifier = GoogleVerifier::with_sources(

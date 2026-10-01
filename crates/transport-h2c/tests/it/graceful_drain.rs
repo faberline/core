@@ -284,8 +284,7 @@ async fn mutation_ambiguity() {
             .serve_connection_with_upgrades(io, svc)
             .await
     });
-    let mut config = ManagerConfig::default();
-    config.request_timeout = Some(Duration::from_secs(2));
+    let config = ManagerConfig::default().with_request_timeout(Some(Duration::from_secs(2)));
     let manager = H2cManager::with_config(&authority.to_string(), config)
         .await
         .unwrap();

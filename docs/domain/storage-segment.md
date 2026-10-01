@@ -11,7 +11,11 @@ event archive and catalogs on it.
 
 ## Model
 
-- **Catalog entry** — `CatalogEntry`: a key and opaque value bytes.
+- **Catalog entry** — `CatalogEntry`: a key and opaque value bytes. The
+  fields are private: `CatalogEntry::try_new(key, value)` rejects a key that
+  is empty, longer than 1024 bytes or contains a NUL, and `key()`, `value()`
+  and `into_parts()` read it. Deserializing does not check the key; the
+  catalog checks every key when it builds or loads a page.
 - **Catalog page** — a JSON leaf of entries or branch of child references.
   `CatalogPageRef` names a page by key and records its sha256, size, entry
   count and first and last keys.
@@ -25,10 +29,14 @@ event archive and catalogs on it.
   a failed build may have written, for cleanup.
 - **Archive object** — `ArchiveObject` (key, bytes, content type), written as
   an `ArchivedObject` receipt with size, sha256 and object version.
+  `ArchivedObjectVersion` is the store's version as a bare JSON string;
+  infrastructure converts storage-object's `ObjectVersion` into it.
 - **manifest** — the last object of an archive transaction. The archive
   commit writes it after every object it names; `ArchiveCommit` is the receipt.
 - **Segment error** — `SegmentError`: codec, partition, catalog, transaction
-  and wrapped `ObjectStoreError` failures.
+  and object-store failures. `SegmentError::ObjectStore` boxes the
+  underlying error; infrastructure converts storage-object's
+  `ObjectStoreError` into it, and the message is that error's own.
 
 ## Ports
 
@@ -36,8 +44,16 @@ event archive and catalogs on it.
   segment. Implemented by sift.
 - `Partitioner<Record>` — the product policy that picks a stable partition
   for a record. Implemented by sift.
-- `SegmentStore<Record>` — a durable segment boundary with no implementation
-  in core or downstream.
+- `ImmutableObjectStore` (crate-internal) — write-once storage for catalog
+  pages and archive objects, plus page reads and cleanup deletes. The
+  infrastructure adapter implements it over a storage-object `ObjectStore`.
+
+`PagedCatalog` and `ArchiveCoordinator` hold the `ImmutableObjectStore` port.
+Their public constructors, `PagedCatalog::new`,
+`PagedCatalog::with_page_bytes` and `ArchiveCoordinator::new`, take an
+`Arc<dyn ObjectStore>`; they live in the composition root (`src/app`), which
+wraps the store in the adapter. The page codec and the SHA-256 content hash
+are pure domain functions under `domain/catalog`.
 
 ## Invariants
 
@@ -61,21 +77,11 @@ event archive and catalogs on it.
 No core context depends on storage-segment. sift imports from the crate root:
 `PagedCatalog`, the catalog types, `ArchiveCoordinator`, `ArchiveTransaction`,
 `ArchiveObject`, `RecordCodec`, `Partitioner`, `SegmentError` and `Result`.
-P1 keeps every root export; sift's structure test checks for the exact path
-`storage_segment::RecordCodec`.
+Every export is at the crate root; sift's structure test checks for the
+exact path `storage_segment::RecordCodec`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B3 `application->infrastructure`: `PagedCatalog` packs and stores pages,
-    and `ArchiveTransaction` writes objects, through the page codec and
-    `put_immutable` directly. P2 adds page-store and object-write ports.
-  - B4 (`storage-object.infrastructure`): `SegmentError::ObjectStore` wraps
-    storage-object's `ObjectStoreError`, and `ArchivedObject.version` is its
-    `ObjectVersion`. P2 gives the domain its own error variant and version
-    type.
-- **Tracked for P2:**
-  - `CatalogEntry` public fields, built with struct literals by sift in five
-    places (ADR D2).
-  - The unimplemented `SegmentStore` trait (ADR D7); sift has an unrelated
-    `SegmentStore` struct of the same name.
+- **Checker exceptions:** none.
+- **Debts:** none tracked. P2 deleted the unimplemented `SegmentStore`
+  trait (D7) and made the `CatalogEntry` fields private (D2).

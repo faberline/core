@@ -1,4 +1,4 @@
-use crate::application::daemon::protocol::*;
+use crate::domain::daemon::protocol::*;
 use crate::semantic::{CfgBuilder, PdgJson, ProgramDependenceGraph};
 use crate::syntax::{Language, ParsedFile};
 

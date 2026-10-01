@@ -8,13 +8,51 @@ use crate::install_default_crypto_provider;
 
 #[derive(Debug, Clone)]
 pub struct PeerTlsConfig {
-    pub cert: PathBuf,
-    pub key: PathBuf,
-    pub ca: PathBuf,
-    pub required: bool,
+    cert: PathBuf,
+    key: PathBuf,
+    ca: PathBuf,
+    required: bool,
 }
 
 impl PeerTlsConfig {
+    /// A config for the given certificate, key and CA paths. `required`
+    /// turns on mutual TLS: the server then demands a client certificate
+    /// signed by the CA. The paths are not checked here; loading a rustls
+    /// config reports a missing or unreadable file.
+    pub fn new(
+        cert: impl Into<PathBuf>,
+        key: impl Into<PathBuf>,
+        ca: impl Into<PathBuf>,
+        required: bool,
+    ) -> Self {
+        Self {
+            cert: cert.into(),
+            key: key.into(),
+            ca: ca.into(),
+            required,
+        }
+    }
+
+    /// The PEM certificate chain path.
+    pub fn cert(&self) -> &Path {
+        &self.cert
+    }
+
+    /// The PEM private key path.
+    pub fn key(&self) -> &Path {
+        &self.key
+    }
+
+    /// The PEM CA bundle path.
+    pub fn ca(&self) -> &Path {
+        &self.ca
+    }
+
+    /// Whether peers must present a client certificate (mutual TLS).
+    pub fn required(&self) -> bool {
+        self.required
+    }
+
     /// Load from env, deriving `<prefix>_TLS_CERT` / `<prefix>_TLS_KEY` /
     /// `<prefix>_TLS_CA` / `<prefix>_MTLS` from `prefix` (lumen passes
     /// `"LUMEN_PEER"`, reproducing its `LUMEN_PEER_TLS_*`/`LUMEN_PEER_MTLS`
@@ -33,12 +71,7 @@ impl PeerTlsConfig {
             .unwrap_or(false);
         match (cert, key, ca) {
             (Some(cert), Some(key), Some(ca)) => {
-                let cfg = Self {
-                    cert,
-                    key,
-                    ca,
-                    required,
-                };
+                let cfg = Self::new(cert, key, ca, required);
                 cfg.verify_paths()?;
                 Ok(Some(cfg))
             }

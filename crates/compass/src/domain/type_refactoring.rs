@@ -1,6 +1,5 @@
-//! Type-aware refactoring: requests, results, the engine and multi-language support.
+//! Type-aware refactoring: requests, results and the engine.
 
 pub(crate) mod engine;
-pub(crate) mod multilang;
 pub(crate) mod request;
 pub(crate) mod result;

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use super::{DocumentId, DocumentVersion};
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MatchOperator {
@@ -54,7 +56,7 @@ impl TextQuery {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct TextHit {
-    pub external_id: String,
-    pub version: u64,
+    pub external_id: DocumentId,
+    pub version: DocumentVersion,
     pub score: f32,
 }

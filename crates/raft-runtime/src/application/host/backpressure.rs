@@ -42,8 +42,8 @@ pub(crate) fn decode_backpressure(reason: &str) -> Option<ProposalBackpressure> 
     })
 }
 
-pub(super) fn rejected_admission(error: anyhow::Error) -> ProposalOutcome {
-    if let Some(backpressure) = error.downcast_ref::<ProposalBackpressure>() {
+pub(super) fn rejected_admission(error: StateMachineError) -> ProposalOutcome {
+    if let Some(backpressure) = error.find::<ProposalBackpressure>() {
         ProposalOutcome::RejectedBeforeAdmission {
             reason: encode_backpressure(backpressure),
         }

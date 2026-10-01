@@ -6,7 +6,7 @@ use jsonwebtoken::{encode, EncodingKey, Header};
 
 use super::*;
 use crate::gcp::*;
-use crate::role_map::{Registry, Role, TokenClaims};
+use crate::{Registry, Role, TokenClaims};
 
 /// A throwaway RSA key generated for this test suite alone. It signs
 /// nothing real; the matching JWKS below is what makes offline
@@ -152,10 +152,10 @@ fn id_token() -> String {
 }
 
 fn dev_claims() -> TokenClaims {
-    TokenClaims {
-        subject: "dev:lumen-dev".to_string(),
-        roles: HashMap::from([("products".to_string(), Role::Read)]),
-    }
+    TokenClaims::new(
+        "dev:lumen-dev".to_string(),
+        HashMap::from([("products".to_string(), Role::Read)]),
+    )
 }
 
 /// The registry keyed by IAM identity instead of by secret. The key is a

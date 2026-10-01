@@ -25,16 +25,65 @@ impl ConnectionMetrics for Metrics {
 fn report_is_typed_and_bounded() {
     let report = TcpServerReport::default();
     assert_eq!(report.accepted, 0);
-    let result = TcpConnectionResult {
-        terminal: TcpConnectionTerminal::Completed,
-        streams_admitted: 1,
-        streams_active_at_drain: 0,
-        streams_completed: 1,
-        streams_refused: 0,
-        streams_timed_out: 0,
-        streams_ambiguous: 0,
-    };
-    assert_eq!(result.streams_completed, 1);
+    let result = TcpConnectionResult::new(TcpConnectionTerminal::Completed)
+        .with_streams_admitted(1)
+        .with_streams_completed(1);
+    assert_eq!(result.terminal(), TcpConnectionTerminal::Completed);
+    assert_eq!(result.streams_admitted(), 1);
+    assert_eq!(result.streams_completed(), 1);
+    assert_eq!(result.streams_refused(), 0);
+    assert_eq!(
+        result,
+        TcpConnectionResult::default()
+            .with_streams_admitted(1)
+            .with_streams_completed(1)
+    );
+}
+
+#[test]
+fn connection_result_builders_set_each_counter() {
+    let result = TcpConnectionResult::new(TcpConnectionTerminal::TimedOut)
+        .with_streams_admitted(6)
+        .with_streams_active_at_drain(5)
+        .with_streams_completed(1)
+        .with_streams_refused(2)
+        .with_streams_timed_out(3)
+        .with_streams_ambiguous(4);
+    assert_eq!(result.terminal(), TcpConnectionTerminal::TimedOut);
+    assert_eq!(result.streams_admitted(), 6);
+    assert_eq!(result.streams_active_at_drain(), 5);
+    assert_eq!(result.streams_completed(), 1);
+    assert_eq!(result.streams_refused(), 2);
+    assert_eq!(result.streams_timed_out(), 3);
+    assert_eq!(result.streams_ambiguous(), 4);
+}
+
+#[test]
+fn config_getters_report_defaults_and_builder_settings() {
+    let bind = server_lifecycle::BindConfig::localhost(0);
+    let config = server_tcp::TcpServerConfig::new(bind.clone());
+    assert_eq!(config.bind(), &bind);
+    assert!(config.connection_budget().is_none());
+    assert_eq!(config.socket(), server_tcp::TcpSocketOptions::default());
+    assert_eq!(config.drain_timeout(), Duration::from_secs(5));
+
+    let socket = server_tcp::TcpSocketOptions::default()
+        .with_backlog(64)
+        .with_reuse_addr(false)
+        .with_nodelay(false);
+    let drain = server_lifecycle::DrainController::new();
+    let config = config
+        .with_connection_budget(ConnectionBudget::new(3))
+        .with_socket_options(socket)
+        .with_drain_timeout(Duration::from_millis(250))
+        .with_drain(drain.clone());
+    assert!(config.connection_budget().is_some());
+    assert_eq!(config.socket().backlog(), 64);
+    assert!(!config.socket().reuse_addr());
+    assert!(!config.socket().nodelay());
+    assert_eq!(config.drain_timeout(), Duration::from_millis(250));
+    drain.start_drain();
+    assert!(config.drain().is_draining());
 }
 
 #[tokio::test]
@@ -66,10 +115,7 @@ async fn listener_report_covers_success_failure_and_rejection() {
                         gate.notified().await;
                         TcpConnectionResult::default()
                     } else {
-                        TcpConnectionResult {
-                            terminal: TcpConnectionTerminal::Failed,
-                            ..Default::default()
-                        }
+                        TcpConnectionResult::new(TcpConnectionTerminal::Failed)
                     }
                 }
             }

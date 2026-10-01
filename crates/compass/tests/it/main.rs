@@ -7,3 +7,6 @@ mod behavior_spec_parser_and_state_machine_validation_contract;
 mod behavior_structured_refactoring_contract;
 mod behavior_symbol_outline_and_propagated_type_query_contract;
 mod behavior_watch_bridge_and_incremental_dirty_file_contract;
+mod golden_daemon_protocol;
+mod golden_diagnostic;
+mod golden_semantic_model_cache;

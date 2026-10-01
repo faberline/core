@@ -12,6 +12,11 @@ downstream, sift runs its collectors on it.
 
 ## Model
 
+- **Source offset** — `SourceOffset` wraps a byte position (`new`, `get`).
+  `SourceProgress::new`, `start_offset` and `final_offset` use it. Byte counts,
+  lost-source counts and delivery counts remain numbers. A source's own
+  cursor type remains its associated `Cursor` type.
+
 - **Collector cursor** — the source's own `Cursor` type: where a record sits
   in the source. Every record and every rejection carries one.
 - **Read outcome** — `ReadOutcome`: a `Record`, a `Rejection`, `Pending` or
@@ -25,15 +30,22 @@ downstream, sift runs its collectors on it.
   with `save_json_checkpoint` and read with `load_json_checkpoint`.
 - **Delivery receipt** — `DeliveryReceipt`: how many records of a batch the
   sink accepted and how many it saw as duplicates.
+  `DeliveryReceipt::new(accepted, duplicates)` builds it, and `accepted()`
+  and `duplicates()` read it.
 - **Delivery failure** — `DeliveryFailure`: a message that is either
   `retryable` or `permanent`.
 - **Source commit** — acknowledging the cursors of a batch to the source,
   with `CommitStats` (accepted, duplicates, rejected).
 - **Source progress** — `SourceProgress`: start and final offsets and the
-  bytes and sources the source reports lost.
+  bytes and sources the source reports lost. `SourceProgress::new(start_offset,
+  final_offset, lost_bytes, lost_sources)` builds it, and getters named after
+  the fields read it.
 - **RuntimeConfig** — the collector's `RuntimeConfig`: batch size, record
   byte limit, `RetryPolicy`, whether to follow the source, and the follow
-  poll interval. `DeliveryRetryMode` is `Bounded` or `UntilCancelled`.
+  poll interval. The fields are private: `RuntimeConfig::try_new(batch_size,
+  max_record_bytes, retry, follow, follow_poll_interval)` builds it, and
+  getters named after the fields read it. `DeliveryRetryMode` is `Bounded`
+  or `UntilCancelled`.
 - **Run report** — `RunReport`: lines read, accepted, duplicates, rejected,
   and the final progress.
 
@@ -62,9 +74,10 @@ downstream, sift runs its collectors on it.
   same batch is retried until it succeeds or the run is dropped.
 - The retry delay doubles from `initial_backoff` per attempt, at most 64
   times the initial value, and never exceeds `max_backoff`.
-- `RuntimeConfig` and `RetryPolicy` are validated before the first read:
-  batch size, record byte limit, follow poll interval and initial backoff
+- Batch size, record byte limit, follow poll interval and initial backoff
   must be positive, and `max_backoff` not below `initial_backoff`.
+  `RuntimeConfig::try_new` checks its three limits when the config is built;
+  the runtime checks the `RetryPolicy` again before the first read.
 - `Pending` or `Exhausted` ends the batch. With `follow`, the runtime sleeps
   one poll interval and refreshes the source; without it, the run ends.
 - `JsonlQuarantine` fsyncs before it returns. A JSON checkpoint is saved with
@@ -76,18 +89,26 @@ No core context depends on service-collector. sift implements
 `CollectorSource`, `RecordDecoder`, `BatchSink` and the record and rejection
 traits, and uses `run_collector_with_delivery_mode`, `JsonlQuarantine`, the
 JSON checkpoint and JSONL helpers and the model types, all from the crate
-root. P1 keeps every root export; there is no old module
+root. Every export is at the crate root; there is no old module
 path to keep. sift's structure test checks its own sources for the exact
 paths `service_collector::run_collector`, `service_collector::RecordDecoder`,
 `service_collector::BatchSink` and `service_collector::save_json_checkpoint`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. `BatchSink` is declared with
+- **Checker exceptions:** None. `BatchSink` is declared with
   `#[async_trait]`, which is not on the domain allowlist, so it sits in the
   application layer; the runtime and the file helpers are outside the domain.
-- **Tracked for P2:**
-  - Public fields built with struct literals by sift (ADR D2):
-    `RuntimeConfig`, `SourceProgress` and `DeliveryReceipt`. `CommitStats`,
-    `RetryPolicy` and `RunReport` also expose public fields.
-  - Bare ids: offsets and counters are `u64`.
+- **Public fields kept:** `CommitStats` and `RunReport` are built only
+  inside this crate. `RetryPolicy` has public fields, but sift builds it
+  with `RetryPolicy::new`, and the runtime checks it again before the
+  first read.
+- **Debts:**
+  - `anyhow` in `run_collector`, `run_collector_with_delivery_mode`,
+    `load_json_checkpoint`, `save_json_checkpoint` and `append_jsonl`
+    (these are not ports, so ADR D4 does not cover them).
+
+  P2 made the `RuntimeConfig`, `SourceProgress` and `DeliveryReceipt`
+  fields private (D2).
+
+P2 typed source byte positions as `SourceOffset` (W5). Counts stay numbers.

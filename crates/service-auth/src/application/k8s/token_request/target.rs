@@ -111,11 +111,6 @@ impl TokenRequestTarget {
         self.expiration_seconds
     }
 
-    /// `<namespace>/<serviceaccount>`, for messages that name the target.
-    pub fn qualified_name(&self) -> String {
-        format!("{}/{}", self.namespace, self.service_account)
-    }
-
     /// The subresource this request POSTs to.
     ///
     /// A `k8s`-gated test checks this against the path `kube` derives on its

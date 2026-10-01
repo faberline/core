@@ -1,5 +1,5 @@
 //! Adapters: registry file loading, the tracing audit sink, Google's HTTP
-//! endpoints and metadata server, and the Kubernetes review/TokenRequest
+//! endpoints, and the Kubernetes review/TokenRequest
 //! transports, projected token file and verifying client.
 
 pub(crate) mod google;

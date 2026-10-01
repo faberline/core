@@ -27,7 +27,7 @@ fn load_registry_prefers_file_over_legacy_json() {
     .unwrap();
     std::fs::remove_file(&path).ok();
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens.get("file-token").unwrap().subject, "alice");
+    assert_eq!(tokens.get("file-token").unwrap().subject(), "alice");
     assert!(tokens.get("env-token").is_none());
 }
 
@@ -42,7 +42,7 @@ fn load_registry_falls_back_to_legacy_json() {
     )
     .unwrap();
     assert_eq!(tokens.len(), 1);
-    assert_eq!(tokens.get("t1").unwrap().subject, "alice");
+    assert_eq!(tokens.get("t1").unwrap().subject(), "alice");
 }
 
 #[test]

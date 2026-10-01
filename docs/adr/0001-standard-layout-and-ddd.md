@@ -1,7 +1,7 @@
 # ADR 0001: Standard layout and DDD layers
 
-- **Status:** Accepted. P1 in progress on `refactor/ddd-p1`; P2 follows on
-  `refactor/ddd-p2`.
+- **Status:** Accepted. P1 is implemented on `refactor/ddd-p1`; P2 is
+  implemented on `refactor/ddd-p2`. Both branches await review and merge.
 - **Date:** 2026-09-29
 - **Applies to:** every crate under `crates/`. `vendor/` is not a workspace
   member and is out of scope.
@@ -146,7 +146,7 @@ threads can cite them.
   the new file.
 - **Public paths.** Every crate-root `pub use` stays, and every old `pub mod`
   becomes a compatibility facade under `src/compat/` (see
-  [architecture](../architecture.md#public-api-and-compatibility-facades)).
+  [architecture](../architecture.md#public-api-modules-and-the-composition-root)).
   Special cases that the facades must preserve exactly: lumen glob-imports
   `service_k8s::lease::*`; jet re-exports `ui_runtime::*`;
   `cli_std::registry::CLI_MODULES` is a `linkme` distributed slice used through
@@ -209,6 +209,54 @@ chase purity beyond that.
   reachable at the crate root without a clash. The rest become permanent
   public modules under `src/api/<name>.rs` with the same path.
 
+## P2 outcome
+
+P2 implements the scope above as of 2026-10-01. The earlier decisions are the
+P1 record. The final source and the [migration guide](../migration/ddd-p2.md)
+show the P2 API. These points qualify that record:
+
+- Every exception with a planned fix was removed. The ten exception entries
+  left have long-term reasons. The policy and enforcement setting are unchanged.
+- raft-runtime now has its own domain layer for `GroupId` and `PeerClient`.
+  raft-core remains its consensus model. The host holds storage and delivery
+  ports from raft-core. Public constructors wire the adapters in `src/app`.
+  The inbound and outbound peer DTOs are separate; golden tests compare their
+  bytes. This replaces the P1 choice to give raft-runtime no domain layer.
+- W5 is complete for the listed contexts. claim-token has separate read keys,
+  write keys and expiry values. index-text has document ids and versions.
+  service-collector has source byte offsets. service-projection has projection
+  names, event ids, cursors and source generations. Raft has node ids, terms,
+  indexes, assignment epochs and a private group-id field. ui-runtime's
+  existing `FiberId` field is private. Counters remain primitive values.
+- Schema derives stay on domain wire types where a second DTO would duplicate
+  the contract: `schemars` in service-backup and service-k8s, and `utoipa` in
+  service-projection. New projection id fields describe the original primitive
+  schemas; a golden test pins all three published schemas.
+- `JwksSource` and `TokenMinter` stay in service-auth's application layer for
+  the long-term reasons in `ddd.toml`. Domain async ports use the same boxed
+  future signatures that `async_trait` generates, so downstream implementations
+  can keep their `#[async_trait]` attributes.
+- D2 keeps public fields on wire and output types. `RenderCtx::with_owner`
+  accepts `impl Into<Option<Value>>` because callers already have optional owners.
+- D4 converted the listed state-machine, membership, TCP, data-root, backup
+  and projection ports. `McpApplication` never returned `anyhow`; its name stays
+  because sift implements it. `CliModule::execute` keeps `anyhow` and is recorded
+  as a remaining cli-std debt. Non-port helpers also keep their existing errors.
+- compass's unused public `search`, `refactoring` and `format` modules were
+  deleted under D7 even though the README had listed them. `NodeRange` is in
+  domain syntax because tree-sitter is the accepted domain syntax model; putting
+  the trait in infrastructure would introduce a new dependency exception.
+  The regex-lite translator is a parser port rather than a small rewrite, to
+  keep case-insensitive matching behavior. The Markdown file-existence check
+  remains a recorded debt outside the checker's detected scope.
+- D8 removed the source markers and split surface and ui-runtime. Their old
+  design overviews contained source placeholders, with no prose to move into
+  `docs/design`. Crate STATUS and ROADMAP files stay beside their READMEs as D9
+  already records.
+- The admin snapshot backup now uses the strict transport: no redirects,
+  exact status 200 and bounded timeouts. This behavior change and error downcast
+  differences are explicit in the migration guide.
+
 ## Consequences
 
 - P1 is invisible to downstream code. Only documents that cite core `src/`
@@ -216,8 +264,8 @@ chase purity beyond that.
 - P2 is a breaking release. Each affected downstream repo gets its own list of
   changed paths and call sites, and changes itself when it upgrades its core
   tag.
-- Until P2 lands, `ddd.toml` carries exceptions. Each one names the exact files
-  and either a long-term reason or its P2 fix, so the list can only shrink.
+- `ddd.toml` now carries only long-term exceptions. Each names the exact
+  files and its reason; the ratchet still permits only a shrinking list.
 - Contributors place new code by the rules in
   [architecture.md](../architecture.md); the checker enforces them once
   `[migration] enforce = true`.

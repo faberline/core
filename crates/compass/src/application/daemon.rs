@@ -1,4 +1,4 @@
-//! Daemon configuration, JSON-RPC protocol and background analysis loop.
+//! Daemon use cases: the per-scope request handlers, the background analysis
+//! loop and the file watch that feeds it.
 pub(crate) mod background_analysis;
-pub(crate) mod config;
-pub(crate) mod protocol;
+pub(crate) mod service;

@@ -1,0 +1,173 @@
+//! The Secret a certificate is projected into: the objects written for a
+//! leaf or a trust bundle, and the facts read back out of them.
+//!
+//! Pure layout. Reading validity and a fingerprint out of a leaf needs an X.509
+//! parser, so that step sits behind the [`LeafParser`] port.
+
+use std::collections::BTreeMap;
+
+use chrono::{DateTime, Utc};
+use serde_json::{json, Value};
+
+use super::issuer::{IssuedMaterial, IssuerId};
+use super::profile::{InstanceScope, Purpose};
+use super::projection::{
+    Owner, ProjectedState, TrustBundle, CERT_KEY, IDENTITY_DIGEST_ANNOTATION,
+    LEAF_ISSUER_ANNOTATION, PRIVATE_KEY_KEY, TRUST_BUNDLE_ANNOTATION, TRUST_BUNDLE_KEY,
+};
+use super::state::ObservedLeaf;
+
+/// Labels every object this lifecycle writes carries, so a sweep can find them
+/// and an operator can tell at a glance what created them.
+fn labels(scope: &InstanceScope, purpose: Purpose) -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("app.kubernetes.io/name".to_string(), scope.instance.clone()),
+        (
+            "app.kubernetes.io/managed-by".to_string(),
+            "service-k8s".to_string(),
+        ),
+        (
+            "app.kubernetes.io/component".to_string(),
+            format!("{}-tls", purpose.as_str()),
+        ),
+    ])
+}
+
+impl Owner {
+    fn reference(&self) -> Value {
+        json!({
+            "apiVersion": self.api_version,
+            "kind": self.kind,
+            "name": self.name,
+            "uid": self.uid,
+            "controller": true,
+            "blockOwnerDeletion": true,
+        })
+    }
+}
+
+/// Read a Secret's data back into the facts the state machine reasons about.
+///
+/// `data` is the decoded Secret data (the `kube` client hands out base64; the
+/// caller decodes, because this module has no opinion about transport).
+/// `leaves` reads the stored leaf; a leaf it cannot read counts as no leaf.
+pub fn read_state(
+    data: &BTreeMap<String, Vec<u8>>,
+    annotations: &BTreeMap<String, String>,
+    leaves: &dyn LeafParser,
+) -> ProjectedState {
+    let bundle = data
+        .get(TRUST_BUNDLE_KEY)
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+        .map(|pem| {
+            TrustBundle::parse(
+                pem,
+                annotations.get(TRUST_BUNDLE_ANNOTATION).map(String::as_str),
+            )
+        })
+        .unwrap_or_default();
+
+    let leaf = data
+        .get(CERT_KEY)
+        .and_then(|bytes| std::str::from_utf8(bytes).ok())
+        .and_then(|pem| {
+            let issuer = annotations.get(LEAF_ISSUER_ANNOTATION)?;
+            let identity_digest = annotations.get(IDENTITY_DIGEST_ANNOTATION)?;
+            let facts = leaves.parse_leaf(pem).ok()?;
+            Some(ObservedLeaf {
+                issuer: IssuerId::new(issuer.clone()),
+                not_before: facts.not_before,
+                not_after: facts.not_after,
+                fingerprint: facts.fingerprint,
+                identity_digest: identity_digest.clone(),
+            })
+        });
+
+    ProjectedState { leaf, bundle }
+}
+
+/// Facts read from the leaf itself.
+pub struct LeafFacts {
+    pub not_before: DateTime<Utc>,
+    pub not_after: DateTime<Utc>,
+    pub fingerprint: String,
+}
+
+/// Reads validity and fingerprint out of a PEM leaf.
+///
+/// A port because it needs an X.509 parser and a base64 decoder, neither of
+/// which the domain carries; `X509LeafParser` in infrastructure implements it.
+pub trait LeafParser: Send + Sync {
+    /// The facts of the first PEM block in `pem`, or why it is not a leaf.
+    fn parse_leaf(&self, pem: &str) -> Result<LeafFacts, String>;
+}
+
+/// The Secret carrying a full set of material: leaf, key, and trust bundle.
+///
+/// `type` is `Opaque` rather than `kubernetes.io/tls` on purpose. The TLS type
+/// requires both `tls.crt` and `tls.key` to be present at all times, which
+/// would make [`trust_bundle_secret`] — the bootstrap step that publishes trust
+/// *before* any leaf exists — unrepresentable. The keys are what consumers read;
+/// the type is what would stop the sequence from having a first step.
+pub fn material_secret(
+    scope: &InstanceScope,
+    purpose: Purpose,
+    owner: &Owner,
+    material: &IssuedMaterial,
+    private_key_pem: &str,
+    bundle: &TrustBundle,
+    identity_digest: &str,
+) -> Value {
+    let mut secret = base_secret(scope, purpose, owner);
+    secret["metadata"]["annotations"] = json!({
+        TRUST_BUNDLE_ANNOTATION: bundle.annotation(),
+        LEAF_ISSUER_ANNOTATION: material.issuer.as_str(),
+        IDENTITY_DIGEST_ANNOTATION: identity_digest,
+    });
+    secret["stringData"] = json!({
+        CERT_KEY: material.certificate_pem,
+        PRIVATE_KEY_KEY: private_key_pem,
+        TRUST_BUNDLE_KEY: bundle.to_pem(),
+    });
+    secret
+}
+
+/// The Secret carrying only a trust bundle.
+///
+/// Applied with a merge patch so it widens `ca.crt` without touching
+/// `tls.crt`/`tls.key`. That is R5's "a failed step retains the last valid
+/// serving material" at the point where it is easiest to get wrong: publishing
+/// the next issuer's anchor must never be able to blank the leaf that is
+/// currently serving traffic.
+pub fn trust_bundle_secret(
+    scope: &InstanceScope,
+    purpose: Purpose,
+    owner: &Owner,
+    bundle: &TrustBundle,
+) -> Value {
+    let mut secret = base_secret(scope, purpose, owner);
+    secret["metadata"]["annotations"] = json!({
+        TRUST_BUNDLE_ANNOTATION: bundle.annotation(),
+    });
+    secret["stringData"] = json!({
+        TRUST_BUNDLE_KEY: bundle.to_pem(),
+    });
+    secret
+}
+
+fn base_secret(scope: &InstanceScope, purpose: Purpose, owner: &Owner) -> Value {
+    json!({
+        "apiVersion": "v1",
+        "kind": "Secret",
+        "type": "Opaque",
+        "metadata": {
+            "name": scope.secret_name(purpose),
+            "namespace": scope.namespace,
+            "labels": labels(scope, purpose),
+            "ownerReferences": [owner.reference()],
+        },
+    })
+}
+
+#[cfg(test)]
+mod tests;

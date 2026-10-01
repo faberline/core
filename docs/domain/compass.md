@@ -15,17 +15,23 @@ functions it instruments.
 ## Model
 
 - **Syntax** — `Language` names the 17 languages, from Python and Rust to
-  Dockerfile, Mermaid, SQL and GraphQL. `MultiParser` detects a file's language
-  from its path and parses it into a `ParsedFile`: source, tree-sitter tree,
-  language, whether the parse had errors, and whether it is line-based.
+  Dockerfile, Mermaid, SQL and GraphQL; `Language::from_path` detects a file's
+  language from its path. A `SourceParser` parses source into a `ParsedFile`:
+  source, tree-sitter tree, language, whether the parse had errors, and whether
+  it is line-based. A node's `Range` comes from the `NodeRange` trait
+  (`node.to_range()`).
 - **Diagnostics** — `Diagnostic` is one finding: a `Range` of two `Position`s,
   a `DiagnosticSeverity` (Error, Warning, Information, Hint, numbered 1–4 as in
-  LSP), a rule code, a `DiagnosticCategory` (Syntax, Type, Names, Logic,
+  LSP), a `RuleCode` (the rule's code, such as `PY001`, serialized as a bare
+  string), a `DiagnosticCategory` (Syntax, Type, Names, Logic,
   Security, Style, Custom), a message, and `QuickFix`es made of `TextEdit`s.
 - **Checking** — a `Checker` lints one language; `CheckerRegistry` holds them.
-  `LintConfig` selects languages, path exclusions and a minimum severity;
+  `LintConfig` selects languages, path exclusions and a minimum severity
+  (private fields: start from `Default` and use the `with_*` builders);
   `FileResult` is one file's diagnostics. `detect_sql_injection` is a
-  standalone security check over source text.
+  standalone security check over source text. `CustomLintEngine` runs
+  user-defined rules; a regex rule whose pattern does not compile is kept as
+  a `RejectedRule` (`rejected_rules()`), and the file loader logs it.
 - **Outline** — `FunctionDef` is one callable definition (name, `FunctionKind`,
   first and last line); `outline` lists them for Rust, Python, TypeScript,
   JavaScript and Go.
@@ -36,28 +42,57 @@ functions it instruments.
   `PropagationResult` (propagated types, cycles, stats). `SemanticModel` is the
   analysis the disk cache persists.
 - **Search and refactoring** — `SemanticSearchEngine` runs semantic code
-  search. A `RefactorKind` (rename, extract, inline, move definition, change
-  signature) is applied by `RefactoringEngine` or `RefactoringRegistry`.
+  search; it indexes a parsed file's call graph and docstrings
+  (`build_call_graph_parsed`, `extract_docstrings_parsed`). A `RefactorKind`
+  (rename, extract, inline, move definition, change signature) is applied by
+  `RefactoringEngine`, which parses through a `SourceParser`
+  (`RefactoringEngine::with_parser`).
 - **Incremental analysis** — `DirtyFileTracker` records each file's
   `FileChangeKind`; `DependencyGraph` records imports;
   `IncrementalUpdateManager` combines them into the files to re-analyze.
+- **Serving** — the daemon's JSON-RPC protocol (`Request`, `Response`,
+  `RpcError` and the per-method params), `DaemonConfig` and the watch
+  `BridgeEvent` are domain values. In application, `RequestHandler` answers one
+  scope's requests over a parser and an `AnalysisCache`, and `DaemonService`
+  routes requests to the handler of the longest matching scope and starts the
+  background watch through an injected start function. The LSP server's
+  documents, analyses, hover, definition, references, completions and
+  refactorings are use cases of an application editor session; the server
+  itself only translates LSP messages. The agent and text reporters render the
+  check results together with application views of the symbol tables and the
+  import graph.
 - **Specs and generation** — `SpecIR` is a data model, REST API, event API,
   state machine or control flow spec. `StateMachineValidator` checks a
   `StateMachineDef` into a `ValidationResult`; `MermaidPlusGenerator` renders
   it. `GeneratorRegistry` picks a `CodeGenerator` to emit `GeneratedCode`.
 - **Errors** — `ArgusError` and `Result<T>`. The legacy names Argus and Lens
-  stay unchanged in P1.
+  are kept (ADR compass #5).
 
 ## Ports
 
+- `SourceParser` — parses source into a `ParsedFile`, or a line-based one;
+  `MultiParser` (the tree-sitter grammars, `infrastructure/syntax`) implements
+  it.
+- `SourceWalker` (crate-private) — the files under a path and their source;
+  `FsSourceWalker` implements it.
+- `AnalysisCache` (crate-private) — loads, stores and invalidates a file's
+  cached semantic model; the daemon's `DiskCache` implements it. The public
+  `type_inference::AnalysisCache` is an unrelated module-cache struct.
 - `Checker` — lints one `ParsedFile`; one implementation per `Language`
   (`PythonChecker`, `RustChecker`, …, `YamlDispatcher` for YAML).
-- `CodeGenerator` — emits code for a serialized spec; implemented by ten stack
-  generators such as `AxumGenerator`, `SqlxGenerator` and `SerdeGenerator`.
-- `RefactoringOp` — applies one refactor request; implemented by the rename,
-  extract, inline, move-definition and signature engines.
+- `CodeGenerator` — emits code for a serialized spec. The contract is in
+  domain; ten stack generators in infrastructure, such as `AxumGenerator`,
+  `SqlxGenerator` and `SerdeGenerator`, implement it.
 - `FrameworkTypeProvider` — types of framework attributes and methods; Django,
   FastAPI and Pydantic providers implement it.
+
+The composition root (`src/app.rs` and `src/app/`) builds these adapters and
+keeps the public entry points that need them: `check_paths`,
+`check_paths_with_propagation`, `outline`, `RequestHandler::new`,
+`ArgusDaemon::new`, `ArgusServer::new`, `run_server`, `run_server_tcp`,
+`RefactoringEngine::new`, the source-text `SemanticSearchEngine` methods,
+`AgentOutputBuilder::build` and `Reporter::generate_agent`. Their paths and
+signatures are unchanged.
 
 ## Invariants
 
@@ -80,65 +115,50 @@ functions it instruments.
 
 ## Published language
 
-No other core context depends on compass. guard imports `checker::{check_paths,
-LintConfig}`, `diagnostic::{DiagnosticCategory, DiagnosticSeverity}`,
+No other core context depends on compass. guard imports `check_paths` and
+`LintConfig` (by the `checker::` path, which P2 deleted),
+`diagnostic::{DiagnosticCategory, DiagnosticSeverity}`,
 `lint::detect_sql_injection` and `syntax::Language`; meter imports `outline`,
 `FunctionKind` and `syntax::Language`. The daemon's JSON-RPC 2.0 methods
 (`check`, `type_at`, `symbols`, `diagnostics`, `hover`, `definition`,
 `references`, `pdg`, `slice`, `impact`, `taint` and housekeeping) and the LSP
-server use `Diagnostic` and `Range` as wire format. P1 compat facades keep all
-22 old public modules, every crate-root re-export, and nested paths such as
-`server::incremental`, which a doctest imports.
+server use `Diagnostic` and `Range` as wire format. Sixteen public modules
+keep their paths because they hold names the root does not re-export
+(`src/api/`), with nested paths such as `server::incremental`, which a doctest
+imports. P2 deleted the old modules `checker`, `outline` and `watch`: every
+name in them is at the crate root, and `compass::outline` is now only the
+function.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B2 `tree_sitter` in 72 domain files: `ParsedFile` holds a tree,
-    `ArgusError` wraps its language error, and the checkers, semantic visitors,
-    type inference, search and refactoring walk nodes directly. This is a
-    long-term exception (E1); the grammar crates stay in
-    `infrastructure/syntax`.
-  - B2 `regex_lite` in custom lint rules, the config glob matcher, the import
-    extractors and TypeScript template-literal matching (E6); P2 switches them
-    to `regex`.
-  - B2 `serde_yaml` (Mermaid+ frontmatter), `toml` (the TM001 syntax check),
-    `tracing` (rejected custom rules), and `anyhow` with `bincode`
-    (`SearchIndex` bytes).
-  - B2 `Instant::now` in `DirtyFileTracker` and the six search modes; P2 adds
-    a `Clock` port.
-  - B3 `application->infrastructure` and `domain->infrastructure`: use cases
-    and domain engines build a `MultiParser`, load stubs, resolve imports, or
-    hold the disk cache themselves; P2 adds parser, stub, cache and path
-    ports. `GeneratorRegistry` dispatches over the `CodeGenerator` trait in
-    infrastructure (E5).
-  - B3 `infrastructure->application`: `DaemonClient` uses `DaemonConfig` and
-    the protocol types.
-  - B3 `interfaces->infrastructure`: the daemon starts the watch bridge and
-    scope discovery, and the LSP server builds its parser and stubs.
-  - B3 `interfaces->domain`: the LSP server calls domain services directly;
-    P2 routes those calls through application. The reporters and LSP types
-    read `Diagnostic`, `Range` and `FileResult`, which are the wire format;
-    that stays with a long-term reason.
+- **Checker exceptions (all long-term):**
+  - B2 `tree_sitter` in 48 domain files (E1): the syntax model is
+    tree-sitter's. `ParsedFile` wraps a `tree_sitter::Tree`, and the lint
+    checkers, semantic visitors, CFG builder, type inference, type checker,
+    semantic search and refactoring AST cache walk `tree_sitter::Node`
+    directly on the hot path. Only the core `tree-sitter` crate is named in
+    domain; the 13 grammar crates stay in infrastructure.
+  - B2 `serde_yaml` (Mermaid+ frontmatter) and `toml` (the TM001 syntax
+    check): pure in-memory data-format codecs, like `serde_json`.
+  - B3 `interfaces->domain` (E2): `lsp/argus_server.rs` converts
+    `Diagnostic`, `DiagnosticSeverity`, `Range` and `Position` to and from
+    `lsp_types`; `output/agent.rs` and `output/reporter.rs` render
+    `FileResult`, `Diagnostic`, `DiagnosticSeverity` and `Range`. These are
+    the wire value objects; everything else reaches interfaces through
+    application.
   - Serde derives on domain values are allowed by policy and need no
     exception.
-- **Not checker findings:** the Markdown relative-link check (MD011) probes
-  the file system with `Path::exists` from the domain; P2 adds a file-system
-  port for it. The import-path probe (`resolve_import_path`) now lives in
-  infrastructure, and the clock reads in propagation, background analysis and
-  incremental analysis sit in application or infrastructure, where policy
-  allows them.
-- **Tracked for P2:** `CodeGenerator` takes `serde_json::Value` to avoid a
-  circular crate dependency. Public fields on `Position`, `Range`, `TextEdit`,
-  `Diagnostic`, `LintConfig` and the `SpecIR` structs. Bare identities:
-  `PathBuf` as file identity, the rule code as a `String`, id newtypes with a
-  public `.0` (`ScopeId`, `NodeId`), and two unrelated `SymbolId` types.
-  `SchemaRegistry::global` is a `OnceLock` singleton. `Range::from_node` takes
-  a tree-sitter node: an inherent method in P1, an extension trait in P2. Dead
-  or duplicated code (ADR D7): `search::SearchEngine` duplicates
-  `SemanticSearchEngine` and has no callers; `RefactoringRegistry` and
-  `RefactoringEngine` are two refactoring engines; an unused
-  `type_inference::CodeGenerator` struct shares the port's name; `format`,
-  `lint::{autofix, custom, embedded_markdown}`, `semantic::types` and
-  `GoImportGraph` are unused; the `type_inference` Rust and TypeScript modules
-  have no outside users; and dependencies such as `tera`, `heck`, `indexmap`
-  and `crossterm` are never used in source.
+- **Not checker findings:** the Markdown relative-link check (MD011) still
+  probes the file system with `Path::exists` from the domain; it needs a
+  file-system port. `SchemaRegistry::global` and the frontmatter validators
+  are `OnceLock` singletons in `infrastructure/schema_validation`.
+- **Debts:** `CodeGenerator` takes `serde_json::Value` to avoid a
+  circular crate dependency. `Position`, `Range`, `TextEdit`, `Diagnostic`,
+  `QuickFix` and the `SpecIR` structs keep public fields by design (wire value
+  objects and spec IR). Other aggregates with public fields that code outside
+  their module writes: `ModuleNode`, `ParsedFile`, `RustStruct` and
+  `RustEnum`, `SearchResult`, `FileAnalysis`, and `MutableNode` with
+  `NodeId`. Bare identities: `PathBuf` as file identity, `NodeId` with a
+  public `.0`, and the symbol table's `SymbolId` with a public `.0`, unrelated
+  to the semantic model's `SymbolId` (whose value is private, like
+  `ScopeId`'s).

@@ -1,5 +1,5 @@
 use super::RaftNode;
-use crate::domain::ids::NodeId;
+use crate::domain::ids::{Index, NodeId};
 use crate::domain::message::{RaftMsg, TimeoutNowReq};
 use crate::domain::refusal::TransferRefused;
 use crate::domain::role::Role;
@@ -15,12 +15,12 @@ impl RaftNode {
         let last_index = self.last_index();
         self.conf_state
             .membership
-            .voters
+            .voters()
             .iter()
             .copied()
             .filter(|&id| id != self.id)
             .find(|&id| {
-                let matched = self.match_index.get(&id).copied().unwrap_or(0);
+                let matched = self.match_index.get(&id).copied().unwrap_or(Index::new(0));
                 matched >= last_index
             })
     }
@@ -30,13 +30,16 @@ impl RaftNode {
         if self.role != Role::Leader {
             return Err(TransferRefused::NotLeader);
         }
-        if !self.conf_state.membership.voters.contains(&target) {
+        if !self.conf_state.membership.voters().contains(&target) {
             return Err(TransferRefused::NotAVoter { target });
         }
         let matched = if target == self.id {
             self.last_index()
         } else {
-            self.match_index.get(&target).copied().unwrap_or(0)
+            self.match_index
+                .get(&target)
+                .copied()
+                .unwrap_or(Index::new(0))
         };
         let last_index = self.last_index();
         if matched < last_index {

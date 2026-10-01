@@ -1,8 +1,8 @@
 /// Agent-facing topic describing raft-runtime topology and service boundaries.
-pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic {
-    id: "raft-runtime",
-    summary: "Shared raft host topology, peer transport, snapshots, and read-your-write surface.",
-    body: r#"# raft-runtime shared topic
+pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
+    "raft-runtime",
+    "Shared raft host topology, peer transport, snapshots, and read-your-write surface.",
+    r#"# raft-runtime shared topic
 
 ## Ownership boundary
 `raft-runtime` drives `raft-core` for a service-supplied `RaftStateMachine`. The
@@ -74,7 +74,7 @@ A new feature-gated implementation must add a matching compile command and a
 negative compile proof. A cold run can compile most of the workspace. Keep this
 gate in release verification, not in a hot edit loop.
 "#,
-};
+);
 
 /// Return the shared raft topic for CLI composition.
 pub fn topic() -> &'static cli_std::llm::Topic {
@@ -86,11 +86,13 @@ mod tests {
     #[test]
     fn llm_topic_is_nonempty() {
         let topic = super::topic();
-        assert_eq!(topic.id, "raft-runtime");
-        assert!(topic.body.contains("RaftStateMachine"));
-        assert!(topic.body.contains("REPLICAS_PER_SHARD > 1"));
-        assert!(topic.body.contains("scripts/raft-implementor-build.sh"));
-        assert!(topic.body.contains("implementor_build_coverage"));
-        assert!(topic.body.contains("does not infer arbitrary future `cfg`"));
+        assert_eq!(topic.id(), "raft-runtime");
+        assert!(topic.body().contains("RaftStateMachine"));
+        assert!(topic.body().contains("REPLICAS_PER_SHARD > 1"));
+        assert!(topic.body().contains("scripts/raft-implementor-build.sh"));
+        assert!(topic.body().contains("implementor_build_coverage"));
+        assert!(topic
+            .body()
+            .contains("does not infer arbitrary future `cfg`"));
     }
 }

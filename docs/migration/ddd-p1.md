@@ -1,5 +1,8 @@
 # Migrating to DDD P1
 
+P2 changes are in [ddd-p2.md](ddd-p2.md); later source paths are in
+[ddd-p2-paths.md](ddd-p2-paths.md).
+
 P1 (branch `refactor/ddd-p1`) moves core's source files into the layered
 layout described in [architecture](../architecture.md) and
 [ADR 0001](../adr/0001-standard-layout-and-ddd.md). It moves code and does not

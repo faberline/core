@@ -2,11 +2,11 @@
 //!
 //! Generates task handlers from AsyncAPI specs for the cclab.meteor task queue.
 
-use crate::domain::spec::ir::{ChannelDef, DataModelSpec, EventApiSpec, OperationDef};
-use crate::infrastructure::codegen::python::type_to_python;
-use crate::infrastructure::codegen::traits::{
+use crate::domain::codegen::traits::{
     CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
 };
+use crate::domain::spec::ir::{ChannelDef, DataModelSpec, EventApiSpec, OperationDef};
+use crate::infrastructure::codegen::python::type_to_python;
 
 /// Swarm (event handlers) code generator
 pub struct SwarmGenerator;

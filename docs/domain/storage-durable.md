@@ -21,14 +21,23 @@ lumen, sift and tape use it directly.
   treat a directory that cannot be opened for fsync as success.
 - **Framed log** — `FramedLogWriter` and `FramedLogReader`: frames of a
   16-byte header (`seq`, `len`, CRC-32 of the payload) and the payload, read
-  back as `LogFrame` or memory-mapped `MappedLogFrame`.
+  back as `LogFrame` or memory-mapped `MappedLogFrame`. A `LogFrame` is built
+  with `LogFrame::new(seq, payload)` and read with `seq()`, `payload()` and
+  `into_payload()`.
 - **Snapshot file** — `SnapshotFile`: a file named `{prefix}-{seq}.{ext}` in
   a `SnapshotFileStore`.
 - **Directory generation** — an immutable child directory of a
   `GenerationStore`, named by a `GenerationName`; a generation commit switches
   `CURRENT` to one of them. The caller owns the bytes and their validation.
 - **Data root** — `DataRoot`: a service's private data directory with a
-  layout manifest, held under an exclusive lock.
+  layout manifest, held under an exclusive lock. `DataRoot::open` and
+  `replace_manifest` return `Result<_, DataRootError>`. `DataRootError` names
+  what the crate raises (a symlink, a path of the wrong kind, an unsafe
+  directory, legacy data, a manifest that does not decode or encode, and I/O
+  with its context) and wraps a policy's own failure as `Other`. Its text is
+  the text the `anyhow` API printed. The path helpers `reject_symlink`,
+  `set_private_directory_mode` and `set_private_file_mode` still return
+  `anyhow::Result`.
 - **Capacity** — `CapacityGuard` tracks used and reserved bytes against a
   maximum and a free-space floor. `CapacityLevel` is `Normal`, `Warning`,
   capacity backpressure (`Backpressure`) or `Critical`, set by
@@ -38,7 +47,10 @@ lumen, sift and tape use it directly.
 
 - `DataRootPolicy` — a service's manifest and compatibility hooks: product
   name, manifest file, directories, legacy markers, manifest creation and
-  validation. Implemented by sift.
+  validation, and the legacy error. `create_manifest` and `validate_manifest`
+  return `Result<_, DataRootError>`, and `legacy_error` returns a
+  `DataRootError`; an implementation wraps its own errors with
+  `DataRootError::other`. Implemented by sift.
 - `SpaceProbe` — free space under a root; `FileSystemSpaceProbe` implements
   it.
 
@@ -69,11 +81,14 @@ layer. Every export is at the crate root and has no old module path to keep.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. File-system access is the job of an
+- **Checker exceptions:** None. File-system access is the job of an
   infrastructure crate.
-- **Tracked for P2:**
-  - `anyhow` in the `DataRootPolicy` port and in `DataRoot` (ADR D4); sift
-    implements the port.
-  - Public fields built with struct literals (ADR D2): `LogFrame`, in lumen's
-    tests. `SnapshotFile`, `MappedLogFrame` and `CapacityError` also expose
-    public fields.
+- **Public fields kept:** `SnapshotFile`, `MappedLogFrame`
+  (its `seq`) and `CapacityError` are built only inside this crate; nothing
+  downstream builds them with a struct literal.
+- **Debts:** `anyhow` in the public signatures of the framed log,
+  `SnapshotFileStore`, `atomic_write` and the directory syncs,
+  `CapacityThresholds::new`, `CapacityGuard::open` and `reconcile`, and the
+  path helpers. These are not ports, so ADR D4 does not cover them. P2 made
+  `DataRoot` and its policy port return `DataRootError` (D4), made the
+  `LogFrame` fields private (D2), and deleted four unused methods (D7).

@@ -2,11 +2,11 @@
 //!
 //! Generates Rust structs with sqlx derives for database operations.
 
-use crate::domain::spec::ir::{DataModelSpec, FieldDef, ModelDef, StringFormat};
-use crate::infrastructure::codegen::rust::{format_to_rust_type, type_to_rust};
-use crate::infrastructure::codegen::traits::{
+use crate::domain::codegen::traits::{
     CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
 };
+use crate::domain::spec::ir::{DataModelSpec, FieldDef, ModelDef, StringFormat};
+use crate::infrastructure::codegen::rust::{format_to_rust_type, type_to_rust};
 use crate::type_inference::Type;
 
 /// Sqlx code generator

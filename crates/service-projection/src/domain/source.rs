@@ -1,8 +1,9 @@
-use anyhow::Result;
+use super::projection_error::ProjectionError;
+use super::{ProjectionCursor, ProjectionEventId, SourceGeneration};
 
 pub trait ProjectionRecord: Clone + Send + Sync + 'static {
-    fn projection_cursor(&self) -> u64;
-    fn projection_event_id(&self) -> &str;
+    fn projection_cursor(&self) -> ProjectionCursor;
+    fn projection_event_id(&self) -> ProjectionEventId;
 }
 
 /// One forward-only retained-source scan.
@@ -14,22 +15,26 @@ pub trait ProjectionReadSession<Record>: Send
 where
     Record: ProjectionRecord,
 {
-    fn read_next(&mut self, limit: usize) -> Result<Vec<Record>>;
+    fn read_next(&mut self, limit: usize) -> Result<Vec<Record>, ProjectionError>;
 }
 
 pub trait ProjectionSource<Record>: Send + Sync + 'static
 where
     Record: ProjectionRecord,
 {
-    fn current_cursor(&self) -> u64;
-    fn read_after(&self, after: u64, limit: usize) -> Result<Vec<Record>>;
+    fn current_cursor(&self) -> ProjectionCursor;
+    fn read_after(
+        &self,
+        after: ProjectionCursor,
+        limit: usize,
+    ) -> Result<Vec<Record>, ProjectionError>;
 
     /// Open a stateful forward scan when the source can avoid stateless page
     /// restarts. Existing sources keep the default and use `read_after`.
     fn open_read_session(
         &self,
-        _after: u64,
-    ) -> Result<Option<Box<dyn ProjectionReadSession<Record>>>> {
+        _after: ProjectionCursor,
+    ) -> Result<Option<Box<dyn ProjectionReadSession<Record>>>, ProjectionError> {
         Ok(None)
     }
 
@@ -38,7 +43,7 @@ where
     /// Append-only sources can keep the default value. A source increments the
     /// generation when retention or repair removes or replaces records without
     /// moving its cursor high-water mark.
-    fn generation(&self) -> u64 {
-        0
+    fn generation(&self) -> SourceGeneration {
+        SourceGeneration::default()
     }
 }

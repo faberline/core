@@ -1,4 +1,5 @@
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Position, Range};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 /// PY301: `eval()` usage
@@ -35,7 +36,7 @@ pub(super) fn check_pickle_usage(file: &ParsedFile) -> Vec<Diagnostic> {
                     || func_text == "cPickle.load"
                 {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         "PY303",
                         DiagnosticCategory::Security,
                         format!(
@@ -80,7 +81,7 @@ pub(super) fn check_subprocess_shell(file: &ParsedFile) -> Vec<Diagnostic> {
                                     if let Some(value) = child.child_by_field_name("value") {
                                         if file.node_text(&value) == "True" {
                                             diagnostics.push(Diagnostic::warning(
-                                                Range::from_node(node),
+                                                node.to_range(),
                                                 "PY304",
                                                 DiagnosticCategory::Security,
                                                 format!(
@@ -193,7 +194,7 @@ fn check_function_call(
                 let func_text = file.node_text(&func);
                 if func_text == func_name {
                     diagnostics.push(Diagnostic::warning(
-                        Range::from_node(node),
+                        node.to_range(),
                         code,
                         DiagnosticCategory::Security,
                         message,

@@ -1,10 +1,13 @@
 //! Domain layer.
 
+pub(crate) mod analysis_cache;
 pub(crate) mod ast_editing;
 pub(crate) mod check;
 pub(crate) mod checker_config;
+pub(crate) mod codegen;
 pub(crate) mod config;
 pub(crate) mod cross_file;
+pub(crate) mod daemon;
 pub(crate) mod diagnostic;
 pub(crate) mod error;
 pub(crate) mod frameworks;
@@ -19,19 +22,14 @@ pub(crate) mod narrowing;
 pub(crate) mod package;
 pub(crate) mod python_env;
 pub(crate) mod python_inference;
-pub(crate) mod refactoring;
 pub(crate) mod rust_source_scan;
-pub(crate) mod rust_type_system;
-pub(crate) mod search;
 pub(crate) mod semantic;
 pub(crate) mod semantic_model;
 pub(crate) mod semantic_search;
 pub(crate) mod spec;
 pub(crate) mod stubs;
 pub(crate) mod syntax;
-pub(crate) mod ts_type_system;
 pub(crate) mod type_checking;
-pub(crate) mod type_codegen;
 pub(crate) mod type_refactoring;
 pub(crate) mod type_system;
 pub(crate) mod typeshed;

@@ -31,6 +31,7 @@ mod client;
 // `H2cPool` (below) is the simpler reqwest-level round-robin option.
 mod conn;
 mod error;
+mod http_method;
 pub mod llm;
 mod manager;
 mod pool;

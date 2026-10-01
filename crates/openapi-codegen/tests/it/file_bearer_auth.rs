@@ -11,7 +11,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use openapi_codegen::{
     generate_for_target_with_file_bearer_auth, FileBearerAuth, FileBearerScheme, GenOptions,
-    GeneratedOutput, HttpClient, Lang, PythonTarget, RustTarget, TargetProfile, TypeScriptTarget,
+    GeneratedOutput, Lang, PythonTarget, RustTarget, TargetProfile, TypeScriptTarget,
 };
 
 const SPEC: &str = r##"{
@@ -28,17 +28,9 @@ const SPEC: &str = r##"{
 }"##;
 
 fn opts(lang: Lang, target: TargetProfile) -> GenOptions {
-    GenOptions {
-        lang,
-        target: Some(target),
-        spec_path: PathBuf::new(),
-        out_dir: PathBuf::new(),
-        client_name: "createClient".to_string(),
-        http_client: HttpClient::Fetch,
-        emit_types: true,
-        emit_client: true,
-        emit_hooks: false,
-    }
+    GenOptions::new(lang, PathBuf::new(), PathBuf::new(), "createClient")
+        .with_target(target)
+        .with_emit_hooks(false)
 }
 
 fn temp_dir(label: &str) -> PathBuf {

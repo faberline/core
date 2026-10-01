@@ -16,8 +16,8 @@ use super::tree::validate_real_directory;
 ///
 /// It can register only same-relative hard links to that current generation.
 /// The value is single-use and is consumed by
-/// [`GenerationStore::commit_from_current`]. Ordinary staging remains fully
-/// synced by [`GenerationStore::commit`].
+/// [`GenerationStore::commit_from_current_with_publication_guard`]. Ordinary
+/// staging remains fully synced by [`GenerationStore::commit`].
 #[derive(Debug)]
 pub struct CurrentGenerationStaging {
     staged: StagedGeneration,
@@ -152,20 +152,13 @@ impl GenerationStore {
         ))
     }
 
-    /// Durably activate a stage derived from the exact current generation.
+    /// Durably activate a stage derived from the exact current generation,
+    /// holding a caller domain guard through CURRENT publication. Pass
+    /// `|| Ok(())` when there is no guard.
     ///
     /// Only registered, still-identical Unix hard links skip `SyncFile`.
     /// Every unregistered file and every directory and pointer durability step
     /// uses the ordinary commit policy.
-    pub fn commit_from_current(
-        &self,
-        staged: CurrentGenerationStaging,
-    ) -> Result<GenerationName, CommitError> {
-        self.commit_from_current_with_publication_guard(staged, || Ok(()))
-    }
-
-    /// Commit an inherited-current stage while holding a caller domain guard
-    /// through CURRENT publication.
     pub fn commit_from_current_with_publication_guard<G>(
         &self,
         staged: CurrentGenerationStaging,

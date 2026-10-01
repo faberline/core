@@ -1,3 +1,5 @@
+//! Weighted quota admission with an RAII concurrency lease.
+
 use std::{
     collections::HashMap,
     fmt,
@@ -8,10 +10,10 @@ use std::{
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct WeightedAdmissionConfig {
-    pub max_concurrent_per_key: usize,
-    pub max_weight_per_window: usize,
-    pub window: Duration,
-    pub max_keys: usize,
+    max_concurrent_per_key: usize,
+    max_weight_per_window: usize,
+    window: Duration,
+    max_keys: usize,
 }
 
 impl WeightedAdmissionConfig {
@@ -39,6 +41,26 @@ impl WeightedAdmissionConfig {
             window,
             max_keys,
         })
+    }
+
+    /// Leases one key may hold at once.
+    pub fn max_concurrent_per_key(&self) -> usize {
+        self.max_concurrent_per_key
+    }
+
+    /// Total weight one key may acquire in one window.
+    pub fn max_weight_per_window(&self) -> usize {
+        self.max_weight_per_window
+    }
+
+    /// Length of the weight quota window.
+    pub fn window(&self) -> Duration {
+        self.window
+    }
+
+    /// Keys tracked at once before an idle one is evicted.
+    pub fn max_keys(&self) -> usize {
+        self.max_keys
     }
 }
 

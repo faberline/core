@@ -1,4 +1,5 @@
 use super::*;
+use crate::app::operator::reconcile_once;
 use crate::interfaces::operator::children::{prune_object, PruneOutcome};
 
 // ---- #3079: an unserved prune API is scoped to the prune ----------------

@@ -1,7 +1,8 @@
+use crate::domain::syntax::parsed_file::NodeRange;
 use std::collections::HashMap;
 
 use super::CssChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity};
 use crate::syntax::ParsedFile;
 
 impl CssChecker {
@@ -11,7 +12,7 @@ impl CssChecker {
         file.walk(|node, _depth| {
             if node.kind() == "id_selector" {
                 diagnostics.push(Diagnostic::new(
-                    Range::from_node(node),
+                    node.to_range(),
                     DiagnosticSeverity::Information,
                     "CSS006",
                     DiagnosticCategory::Style,
@@ -79,7 +80,7 @@ impl CssChecker {
                             for &(short, longs) in &shorthands {
                                 if seen_short.contains(&short) && longs.contains(&name.as_str()) {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(&child),
+                                        child.to_range(),
                                         "CSS007",
                                         DiagnosticCategory::Logic,
                                         format!(
@@ -110,7 +111,7 @@ impl CssChecker {
                             if let Ok(n) = val_text.parse::<i64>() {
                                 if n > 9999 {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(node),
+                                        node.to_range(),
                                         "CSS008",
                                         DiagnosticCategory::Style,
                                         format!(
@@ -140,7 +141,7 @@ impl CssChecker {
                     let len = hex_part.len();
                     if len != 3 && len != 4 && len != 6 && len != 8 {
                         diagnostics.push(Diagnostic::error(
-                            Range::from_node(node),
+                            node.to_range(),
                             "CSS009",
                             DiagnosticCategory::Syntax,
                             format!(
@@ -180,7 +181,7 @@ impl CssChecker {
                             let has_generic = generics.iter().any(|g| val_text.contains(g));
                             if !has_generic {
                                 diagnostics.push(Diagnostic::warning(
-                                    Range::from_node(node), "CSS010", DiagnosticCategory::Style,
+                                    node.to_range(), "CSS010", DiagnosticCategory::Style,
                                     "font-family missing a generic family keyword (e.g., sans-serif)",
                                 ));
                             }
@@ -206,7 +207,7 @@ impl CssChecker {
                             let name = file.node_text(&prop).trim().to_string();
                             if let Some(&prev_line) = seen.get(&name) {
                                 diagnostics.push(Diagnostic::warning(
-                                    Range::from_node(&child),
+                                    child.to_range(),
                                     "CSS011",
                                     DiagnosticCategory::Style,
                                     format!(
@@ -270,7 +271,7 @@ impl CssChecker {
                                 }
                                 if name == short && seen_long.iter().any(|l| longs.contains(&l.as_str())) {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(&child), "CSS012", DiagnosticCategory::Logic,
+                                        child.to_range(), "CSS012", DiagnosticCategory::Logic,
                                         format!("Shorthand '{}' overrides preceding longhand properties", short),
                                     ));
                                 }
@@ -294,7 +295,7 @@ impl CssChecker {
             }
             if node.kind() == "id_selector" && seen_class {
                 diagnostics.push(Diagnostic::new(
-                    Range::from_node(node),
+                    node.to_range(),
                     DiagnosticSeverity::Information,
                     "CSS013",
                     DiagnosticCategory::Style,
@@ -327,7 +328,7 @@ impl CssChecker {
                                 let unit = &text[idx..];
                                 if !known.contains(&unit) {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(&child),
+                                        child.to_range(),
                                         "CSS014",
                                         DiagnosticCategory::Syntax,
                                         format!("Unknown CSS unit '{}'", unit),
@@ -361,7 +362,7 @@ impl CssChecker {
                         });
                         if !has_content {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(node),
+                                node.to_range(),
                                 "CSS015",
                                 DiagnosticCategory::Style,
                                 "Empty block — remove the at-rule or add declarations",

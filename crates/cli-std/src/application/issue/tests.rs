@@ -9,14 +9,14 @@ use crate::domain::issue::payload::{comment_payload, issue_payload};
 use crate::domain::issue::url::prefilled_url;
 use crate::ToolInfo;
 
-const TOOL: ToolInfo = ToolInfo {
-    project: "lumen",
-    repo: "faberline/lumen",
-    target: "aarch64-apple-darwin",
-    version: "0.4.3",
-    git_sha: "abc1234",
-    built_at: "1700000000",
-};
+const TOOL: ToolInfo = ToolInfo::new(
+    "lumen",
+    "faberline/lumen",
+    "aarch64-apple-darwin",
+    "0.4.3",
+    "abc1234",
+    "1700000000",
+);
 
 #[test]
 fn diagnostics_and_body() {
@@ -129,6 +129,31 @@ fn comment_payload_and_followup_body() {
 
     let default_body = followup_comment_body(&TOOL, Some("  "));
     assert!(default_body.contains("User-side verification failed after closure"));
+}
+
+#[test]
+fn golden_diagnostics_and_followup_bytes() {
+    let os_arch = format!("{}/{}", std::env::consts::OS, std::env::consts::ARCH);
+    let diagnostics = format!(
+        "## Diagnostics\n- lumen version: 0.4.3\n- target: aarch64-apple-darwin\n- git sha: abc1234\n- built at: 1700000000\n- os/arch: {os_arch}\n"
+    );
+    assert_eq!(render_diagnostics(&TOOL, None), diagnostics);
+    assert_eq!(
+        render_diagnostics(&TOOL, Some("node-1 ok")),
+        format!("{diagnostics}- node: node-1 ok\n")
+    );
+    assert_eq!(
+        followup_comment_body(&TOOL, Some("still broken")),
+        format!("still broken\n\n---\n{diagnostics}")
+    );
+    assert_eq!(
+        TOOL.issue_label(),
+        "app:lumen",
+        "the tracker label is part of every filed issue"
+    );
+    assert_eq!(TOOL.tag_prefix(), "lumen@");
+    assert_eq!(TOOL.asset_name(), "lumen-aarch64-apple-darwin.tar.gz");
+    assert_eq!(TOOL.inner_binary_path(), "lumen-aarch64-apple-darwin/lumen");
 }
 
 #[test]

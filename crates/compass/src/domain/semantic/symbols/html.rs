@@ -9,7 +9,7 @@
 
 use super::{SymbolKind, SymbolTableBuilder};
 use crate::domain::diagnostic::model::Range;
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 impl SymbolTableBuilder {
     /// Walk HTML AST to extract symbols
@@ -193,7 +193,7 @@ fn extract_attr<'a>(
         }
         if matches!(child.kind(), "quoted_attribute_value" | "attribute_value") {
             value = file.node_text(&child).to_string();
-            value_range = Range::from_node(&child);
+            value_range = child.to_range();
         }
     }
     if name.is_empty() {

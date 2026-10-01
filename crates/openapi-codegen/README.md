@@ -37,10 +37,11 @@ library does not publish npm, PyPI, or crates.io packages.
 
 ## Select a target profile
 
-`GenOptions::target` is the explicit target contract. `target: None` preserves
-the legacy output and emits no target manifest. `target: Some(profile)` or
-`generate_for_target` enables version-aware syntax and records the selected
-compiler or language floor.
+`GenOptions::with_target` sets the explicit target contract. Options built
+without it (`GenOptions::target()` is `None`) preserve the legacy output and
+emit no target manifest. `with_target(profile)` or `generate_for_target`
+enables version-aware syntax and records the selected compiler or language
+floor.
 
 | Language | Profiles | Current effect |
 |---|---|---|

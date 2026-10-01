@@ -27,13 +27,17 @@ impl AppliedIndexStore {
 
     pub fn load(&self) -> io::Result<Index> {
         match std::fs::read_to_string(&self.path) {
-            Ok(value) => value.trim().parse::<Index>().map_err(|error| {
-                io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    format!("corrupt applied marker {}: {error}", self.path.display()),
-                )
-            }),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(0),
+            Ok(value) => value
+                .trim()
+                .parse::<u64>()
+                .map(Index::new)
+                .map_err(|error| {
+                    io::Error::new(
+                        io::ErrorKind::InvalidData,
+                        format!("corrupt applied marker {}: {error}", self.path.display()),
+                    )
+                }),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(Index::new(0)),
             Err(error) => Err(error),
         }
     }
@@ -50,14 +54,14 @@ impl AppliedIndexStore {
 
 #[cfg(test)]
 mod tests {
-    use super::AppliedIndexStore;
+    use super::{AppliedIndexStore, Index};
 
     #[test]
     fn missing_is_zero_and_stored_floor_round_trips() {
         let dir = tempfile::tempdir().unwrap();
         let store = AppliedIndexStore::new(dir.path().join("applied.idx"));
-        assert_eq!(store.load().unwrap(), 0);
-        store.store(42).unwrap();
-        assert_eq!(store.load().unwrap(), 42);
+        assert_eq!(store.load().unwrap(), Index::new(0));
+        store.store(Index::new(42)).unwrap();
+        assert_eq!(store.load().unwrap(), Index::new(42));
     }
 }

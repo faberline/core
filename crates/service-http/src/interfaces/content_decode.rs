@@ -1,3 +1,5 @@
+//! Bounded request decoding for identity and gzip content encodings.
+
 use std::io::Read;
 
 use axum::http::HeaderMap;
@@ -5,8 +7,8 @@ use flate2::read::GzDecoder;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ContentDecodeLimits {
-    pub max_compressed_bytes: usize,
-    pub max_decoded_bytes: usize,
+    max_compressed_bytes: usize,
+    max_decoded_bytes: usize,
 }
 
 impl ContentDecodeLimits {
@@ -24,6 +26,16 @@ impl ContentDecodeLimits {
             max_compressed_bytes,
             max_decoded_bytes,
         })
+    }
+
+    /// Largest request body accepted before decoding.
+    pub fn max_compressed_bytes(&self) -> usize {
+        self.max_compressed_bytes
+    }
+
+    /// Largest body accepted after decoding.
+    pub fn max_decoded_bytes(&self) -> usize {
+        self.max_decoded_bytes
     }
 }
 

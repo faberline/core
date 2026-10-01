@@ -67,6 +67,8 @@ and `transport_otlp::OtlpConsumer`, so those paths are a contract.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** `anyhow` in the result of `serve_grpc` (ADR D4); the two
-  ports return the crate's own `TransportError` and a gRPC status.
+- **Checker exceptions:** None.
+- **Debts:** `anyhow` in the result of `serve_grpc` (it is not a port, so
+  ADR D4 does not cover it); the two ports return the crate's own
+  `TransportError` and a gRPC status. P2 deleted the unused
+  `DecodedPayload::signal` (D7).

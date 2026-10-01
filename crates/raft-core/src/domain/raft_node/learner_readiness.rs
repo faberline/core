@@ -6,16 +6,16 @@ impl RaftNode {
     /// Highest index this leader has recorded as replicated to `peer`, or `None`
     /// if this node is not the leader or `peer` is not an admitted learner.
     pub fn learner_matched(&self, peer: NodeId) -> Option<Index> {
-        if self.role != Role::Leader || !self.conf_state.membership.learners.contains(&peer) {
+        if self.role != Role::Leader || !self.conf_state.membership.learners().contains(&peer) {
             return None;
         }
-        self.match_index.get(&peer).copied().or(Some(0))
+        self.match_index.get(&peer).copied().or(Some(Index::new(0)))
     }
 
     /// The index `peer` must replicate to before it is fit to serve reads, or
     /// `None` if `peer` is not an admitted learner.
     pub fn learner_read_target(&self, peer: NodeId) -> Option<Index> {
-        if !self.conf_state.membership.learners.contains(&peer) {
+        if !self.conf_state.membership.learners().contains(&peer) {
             return None;
         }
         self.learner_read_targets.get(&peer).copied()
@@ -27,15 +27,5 @@ impl RaftNode {
         let matched = self.learner_matched(peer)?;
         let target = self.learner_read_target(peer)?;
         Some(matched >= target)
-    }
-
-    /// Number of committed entries an admitted learner is behind, measured
-    /// against this leader's commit index when asked (the live freshness
-    /// question, as opposed to [`learner_read_eligible`](Self::learner_read_eligible)
-    /// which answers the admission question), or `None` if this node is not the
-    /// leader or `peer` is not an admitted learner.
-    pub fn learner_replication_gap(&self, peer: NodeId) -> Option<Index> {
-        let matched = self.learner_matched(peer)?;
-        Some(self.commit_index.saturating_sub(matched))
     }
 }

@@ -23,22 +23,24 @@ pub(super) fn apply_ready_with_admission(
     pending_admission: Option<&StdMutex<BTreeMap<(Index, u64), AdmissionPermit>>>,
 ) -> anyhow::Result<()> {
     if let Some(bytes) = node.take_installed_snapshot() {
-        sm.restore(&mut std::io::Cursor::new(bytes))?;
+        sm.restore(&mut std::io::Cursor::new(bytes))
+            .map_err(StateMachineError::into_anyhow)?;
     }
     let mut advanced = false;
     while let Some((index, term, kind)) = node.peek_next_committed_identity() {
         let permit = pending_admission.and_then(|pending| {
             let mut pending = pending.lock().unwrap_or_else(|p| p.into_inner());
-            pending.retain(|(at, entry_term), _| *at != index || *entry_term == term);
-            pending.remove(&(index, term))
+            pending.retain(|(at, entry_term), _| *at != index || *entry_term == term.get());
+            pending.remove(&(index, term.get()))
         });
         if kind == raft_core::EntryKind::Command && index > sm.applied_index() {
             // Cold start and deterministic conformance own the node directly.
             // Borrow exactly this command; never materialize a committed batch.
             let persisted = node.persisted_ref();
-            let offset = (index - persisted.snapshot_index - 1) as usize;
+            let offset = (index.get() - persisted.snapshot_index.get() - 1) as usize;
             let entry = &persisted.log[offset];
-            sm.apply_admitted(index, &entry.command, permit)?;
+            sm.apply_admitted(index, &entry.command, permit)
+                .map_err(StateMachineError::into_anyhow)?;
             if sm.applied_index() < index {
                 anyhow::bail!("state machine returned success without applying index {index}");
             }
@@ -57,13 +59,14 @@ pub(super) fn apply_ready_with_admission(
         return Ok(());
     };
     let applied = sm.applied_index();
-    if applied == 0 || applied.saturating_sub(node.snapshot_index()) < every {
+    if applied == Index::new(0) || applied.get().saturating_sub(node.snapshot_index().get()) < every
+    {
         return Ok(());
     }
     let mut sink = ChunkSink::new(SNAPSHOT_CHUNK_SIZE);
     match sm.snapshot_at(applied, &mut sink) {
         Ok(()) => node.compact(applied, sink.into_bytes()),
-        Err(e) if strict => return Err(e),
+        Err(e) if strict => return Err(e.into_anyhow()),
         Err(e) => tracing::warn!(error = %e, "raft: snapshot capture failed; skip compaction"),
     }
     Ok(())
@@ -84,8 +87,8 @@ pub(crate) fn cold_start(
 /// Persist exactly the core durable image.  The production wrapper adds its
 /// latched-failure policy; deterministic conformance returns this error to the
 /// scheduler.  Both therefore save identical bytes at identical step points.
-pub(crate) fn persist_node(store: &RaftStore, node: &RaftNode) -> std::io::Result<()> {
-    store.save_ref(&node.persisted_ref())
+pub(crate) fn persist_node(store: &dyn RaftStorage, node: &RaftNode) -> std::io::Result<()> {
+    store.save(&node.persisted_ref())
 }
 
 /// Advance one periodic tick without revalidating an unchanged durable image.

@@ -253,47 +253,7 @@ impl ImportResolver {
 
     /// Resolve an import and return the types it brings into scope
     pub fn resolve_import(&self, import: &Import) -> HashMap<String, Type> {
-        let mut result = HashMap::new();
-
-        match import {
-            Import::Module { module, alias } => {
-                // For `import foo`, we don't directly import types
-                // The module name becomes available for attribute access
-                let name = alias.as_ref().unwrap_or(module);
-                result.insert(
-                    name.clone(),
-                    Type::Instance {
-                        name: format!("module:{}", module),
-                        module: Some(module.clone()),
-                        type_args: vec![],
-                    },
-                );
-            }
-            Import::FromModule { module, names } => {
-                if let Some(module_info) = self.modules.get(module) {
-                    for imported_name in names {
-                        let local_name =
-                            imported_name.alias.as_ref().unwrap_or(&imported_name.name);
-
-                        if let Some(ty) = module_info.exports.get(&imported_name.name) {
-                            result.insert(local_name.clone(), ty.clone());
-                        }
-                    }
-                }
-            }
-            Import::WildcardImport { module } => {
-                if let Some(module_info) = self.modules.get(module) {
-                    for (name, ty) in &module_info.exports {
-                        // Skip private names
-                        if !name.starts_with('_') {
-                            result.insert(name.clone(), ty.clone());
-                        }
-                    }
-                }
-            }
-        }
-
-        result
+        import.resolve_in(&self.modules)
     }
 
     /// Resolve a module path to a file path

@@ -71,35 +71,35 @@ impl RaftNode {
     /// Create a node `id` within `membership` (starts as Follower at term 0).
     pub fn new(id: NodeId, membership: &Membership) -> RaftNode {
         let mut members: Vec<NodeId> = membership
-            .voters
+            .voters()
             .iter()
-            .chain(membership.learners.iter())
+            .chain(membership.learners().iter())
             .copied()
             .collect();
         members.sort_unstable();
         let peers = members.into_iter().filter(|m| *m != id).collect();
         let mut learner_read_targets = HashMap::new();
-        for &l in &membership.learners {
-            learner_read_targets.insert(l, 0);
+        for &l in membership.learners() {
+            learner_read_targets.insert(l, Index::new(0));
         }
         RaftNode {
             id,
             peers,
-            is_voter: membership.voters.contains(&id),
+            is_voter: membership.voters().contains(&id),
             conf_state: ConfState {
                 membership: membership.clone(),
                 outgoing: None,
                 generation: 0,
             },
             role: Role::Follower,
-            current_term: 0,
+            current_term: Term::new(0),
             voted_for: None,
             log: Vec::new(),
             resident_log_bytes: 0,
-            commit_index: 0,
-            last_applied: 0,
-            snapshot_index: 0,
-            snapshot_term: 0,
+            commit_index: Index::new(0),
+            last_applied: Index::new(0),
+            snapshot_index: Index::new(0),
+            snapshot_term: Term::new(0),
             snapshot: Vec::new(),
             installed_snapshot: None,
             next_index: HashMap::new(),
@@ -108,7 +108,7 @@ impl RaftNode {
             votes: HashSet::new(),
             election_elapsed: 0,
             // distinct per node so one voter always times out first.
-            election_timeout: ELECTION_TIMEOUT_FLOOR_TICKS + id,
+            election_timeout: ELECTION_TIMEOUT_FLOOR_TICKS + id.get(),
             heartbeat_elapsed: 0,
             leader_id: None,
             transfer_in_flight: None,

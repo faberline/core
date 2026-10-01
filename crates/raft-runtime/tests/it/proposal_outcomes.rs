@@ -19,6 +19,7 @@
 //! 8. A forwarded request that times out returns an `Ambiguous` routing-timeout outcome.
 //! 9. Negative control: sequential proposals on a healthy host strictly increase indices.
 
+use raft_runtime::NodeId;
 use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::sync::Arc;
@@ -26,7 +27,8 @@ use std::time::Duration;
 
 use axum::{http::StatusCode, routing::post, Json, Router};
 use raft_runtime::{
-    FsyncPolicy, HostConfig, Membership, ProposalOutcome, RaftHost, RaftStateMachine, RaftStore,
+    FsyncPolicy, HostConfig, Index, Membership, ProposalOutcome, RaftHost, RaftStateMachine,
+    RaftStore,
 };
 use tempfile::TempDir;
 use tokio::io::AsyncReadExt;
@@ -40,24 +42,20 @@ async fn custom_timeout_cluster(n: u64, timeout: Duration) -> (Vec<Node>, Durati
     for id in 0..n {
         let (l, url) = bind().await;
         listeners.push(l);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
-    let voters: Vec<u64> = (0..n).collect();
-    let mut cfg = HostConfig::default();
-    cfg.propose_timeout = timeout;
+    let voters: Vec<NodeId> = (0..n).map(NodeId::new).collect();
+    let cfg = HostConfig::default().with_propose_timeout(timeout);
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
-        let id = idx as u64;
+        let id = NodeId::new(idx as u64);
         let peers = peers_excluding(id, &all);
         let sm = TestSm::new();
         let dir = TempDir::new().unwrap();
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             peers,
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
@@ -83,7 +81,7 @@ async fn custom_timeout_cluster(n: u64, timeout: Duration) -> (Vec<Node>, Durati
             _dir: dir,
         });
     }
-    (nodes, cfg.tick)
+    (nodes, cfg.tick())
 }
 
 async fn publish_response_stub(status: StatusCode, body: serde_json::Value) -> String {
@@ -118,7 +116,10 @@ async fn single_voter_completed_outcome_matches_applied_index() {
 
     match outcome {
         ProposalOutcome::Completed { index } => {
-            assert!(index >= 1, "completed index must be >= 1, got {index}");
+            assert!(
+                index >= Index::new(1),
+                "completed index must be >= 1, got {index}"
+            );
             assert_eq!(
                 nodes[0].sm.applied_index(),
                 index,
@@ -169,15 +170,16 @@ async fn quiesced_host_rejects_before_admission_and_propose_preserves_error_stri
 async fn no_leader_elected_rejects_before_admission() {
     let sm = TestSm::new();
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
-    let mut cfg = HostConfig::default();
-    cfg.propose_timeout = Duration::from_millis(150);
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
+    let cfg = HostConfig::default().with_propose_timeout(Duration::from_millis(150));
     let host = RaftHost::spawn(
-        0,
-        Membership {
-            voters: vec![0, 1],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
@@ -217,7 +219,10 @@ async fn injected_save_failure_reports_durability_failure_with_allocated_index()
                 "first durability failure must have allocated index Some(i)"
             );
             let idx = index.unwrap();
-            assert!(idx >= 1, "allocated index must be >= 1, got {idx}");
+            assert!(
+                idx >= Index::new(1),
+                "allocated index must be >= 1, got {idx}"
+            );
             assert_eq!(failure.kind, ErrorKind::StorageFull);
         }
         other => {
@@ -286,7 +291,10 @@ async fn follower_forwarding_to_live_leader_completes_after_local_apply() {
 
     match outcome {
         ProposalOutcome::Completed { index } => {
-            assert!(index >= 1, "forwarded completed index must be positive");
+            assert!(
+                index >= Index::new(1),
+                "forwarded completed index must be positive"
+            );
             assert_eq!(
                 nodes[follower].sm.applied_index(),
                 index,
@@ -351,7 +359,7 @@ async fn follower_forwarding_transport_timeout_is_ambiguous_with_routing_timeout
     let (listener, stalled_url) = bind().await;
     nodes[follower]
         .host
-        .upsert_peer(leader as u64, stalled_url)
+        .upsert_peer(NodeId::new(leader as u64), stalled_url)
         .await;
 
     let stalled_request = tokio::spawn(async move {
@@ -411,7 +419,7 @@ async fn follower_forwarding_malformed_admission_body_remains_ambiguous() {
     .await;
     nodes[follower]
         .host
-        .upsert_peer(leader as u64, malformed_url)
+        .upsert_peer(NodeId::new(leader as u64), malformed_url)
         .await;
 
     let outcome = nodes[follower]
@@ -430,7 +438,7 @@ async fn follower_forwarding_malformed_admission_body_remains_ambiguous() {
 #[tokio::test]
 async fn sequential_successful_proposals_increase_indices() {
     let nodes = cluster(1).await;
-    let mut prev_index = 0;
+    let mut prev_index = Index::new(0);
 
     for i in 1..=4u8 {
         let outcome = nodes[0]

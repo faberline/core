@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use crate::domain::semantic_search::engine::{SemanticSearchEngine, SymbolLocation};
+use crate::domain::syntax::parsed_file::ParsedFile;
 use crate::semantic::SymbolTable;
 use crate::type_inference::Type;
 
@@ -88,25 +89,34 @@ impl SemanticSearchEngine {
         self.index_file(file, symbols);
     }
 
-    /// Index a symbol table for searching, also extracting docstrings from the
-    /// provided source code via AST traversal (R3.4).
+    /// Index a symbol table for searching, attaching the docstrings of the
+    /// parsed source file to matching symbols (R3.4).
     ///
-    /// This is the preferred variant when the source text is available.
-    pub fn index_symbol_table_with_source(
+    /// `index_symbol_table_with_source` (in the composition root) parses the
+    /// source first.
+    pub fn index_symbol_table_parsed(
         &mut self,
         file: PathBuf,
         symbol_table: &SymbolTable,
-        source: &str,
-        language: crate::syntax::Language,
+        parsed: &ParsedFile,
+    ) {
+        let docstrings = self.extract_docstrings_parsed(parsed);
+        self.index_symbol_table_with_docstrings(file, symbol_table, &docstrings);
+    }
+
+    /// Index a symbol table for searching, attaching `docstrings` (symbol
+    /// name -> docstring) to matching symbols.
+    pub(crate) fn index_symbol_table_with_docstrings(
+        &mut self,
+        file: PathBuf,
+        symbol_table: &SymbolTable,
+        docstrings: &std::collections::HashMap<String, String>,
     ) {
         let mut symbols = self.convert_symbol_table_to_locations(file.clone(), symbol_table);
 
-        // Extract docstrings from the AST and attach them to matching symbols
-        if let Ok(docstrings) = self.extract_docstrings(source, language) {
-            for loc in &mut symbols {
-                if let Some(doc) = docstrings.get(&loc.name) {
-                    loc.docstring = Some(doc.clone());
-                }
+        for loc in &mut symbols {
+            if let Some(doc) = docstrings.get(&loc.name) {
+                loc.docstring = Some(doc.clone());
             }
         }
 

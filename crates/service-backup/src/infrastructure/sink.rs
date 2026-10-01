@@ -1,7 +1,8 @@
-//! The sink trait, the local filesystem sink, and the sink that refuses.
+//! The local filesystem sink, and the sink that refuses.
 //!
-//! `sink_from_destination` is the only place a destination becomes a sink, which
-//! is what lets [`UnsupportedCloudSink`] carry two
+//! `sink_from_destination` (in the composition root, `src/app/`) is the only
+//! place a destination becomes a sink, which is what lets
+//! [`UnsupportedCloudSink`] carry two
 //! `unreachable!()` arms honestly: local always maps to `LocalFsSink` and GCS
 //! always maps to `GcsSink`, so only the S3 variant can ever reach it. GCS is
 //! always linked and S3 is behind the `s3` feature -- that asymmetry is the
@@ -31,24 +32,10 @@
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};
 
-use anyhow::{bail, Context, Result};
+use anyhow::{anyhow, bail, Context, Result};
 use storage_durable::{atomic_write, FsyncPolicy};
 
-#[cfg(feature = "s3")]
-use super::s3::S3Sink;
-use crate::{BackupDestination, GcsSink};
-
-/// Destination for snapshot bytes.
-pub trait BackupSink: Send + Sync + 'static {
-    /// Store bytes under a key derived from `timestamp`; returns the final key.
-    fn put(&self, timestamp: SystemTime, payload: &[u8]) -> Result<String>;
-
-    /// Apply age retention and return number of objects removed.
-    fn prune(&self, max_age_seconds: u64) -> Result<usize>;
-
-    /// Human-readable sink identity for logs/status.
-    fn identity(&self) -> String;
-}
+use crate::domain::{BackupDestination, BackupSink, BackupSinkError};
 
 /// Local filesystem sink for dev/tests/PVC-backed local deployments.
 #[derive(Debug, Clone)]
@@ -76,22 +63,8 @@ impl LocalFsSink {
             other => bail!("{} is not a local backup destination", other.identity()),
         }
     }
-}
 
-impl BackupSink for LocalFsSink {
-    fn put(&self, timestamp: SystemTime, payload: &[u8]) -> Result<String> {
-        let ts = timestamp
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        let name = format!("{}-{ts}.json", self.prefix);
-        let path = self.root.join(&name);
-        atomic_write(&path, payload, FsyncPolicy::Always)
-            .with_context(|| format!("write {}", path.display()))?;
-        Ok(name)
-    }
-
-    fn prune(&self, max_age_seconds: u64) -> Result<usize> {
+    fn remove_older_than(&self, max_age_seconds: u64) -> std::io::Result<usize> {
         let cutoff = SystemTime::now() - Duration::from_secs(max_age_seconds);
         let mut removed = 0usize;
         for entry in std::fs::read_dir(&self.root)? {
@@ -103,6 +76,26 @@ impl BackupSink for LocalFsSink {
             }
         }
         Ok(removed)
+    }
+}
+
+impl BackupSink for LocalFsSink {
+    fn put(&self, timestamp: SystemTime, payload: &[u8]) -> Result<String, BackupSinkError> {
+        let ts = timestamp
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let name = format!("{}-{ts}.json", self.prefix);
+        let path = self.root.join(&name);
+        atomic_write(&path, payload, FsyncPolicy::Always)
+            .with_context(|| format!("write {}", path.display()))
+            .map_err(BackupSinkError::other)?;
+        Ok(name)
+    }
+
+    fn prune(&self, max_age_seconds: u64) -> Result<usize, BackupSinkError> {
+        self.remove_older_than(max_age_seconds)
+            .map_err(BackupSinkError::other)
     }
 
     fn identity(&self) -> String {
@@ -133,31 +126,16 @@ impl UnsupportedCloudSink {
 }
 
 impl BackupSink for UnsupportedCloudSink {
-    fn put(&self, _timestamp: SystemTime, _payload: &[u8]) -> Result<String> {
-        bail!("{}", self.action_message())
+    fn put(&self, _timestamp: SystemTime, _payload: &[u8]) -> Result<String, BackupSinkError> {
+        Err(BackupSinkError::other(anyhow!("{}", self.action_message())))
     }
 
-    fn prune(&self, _max_age_seconds: u64) -> Result<usize> {
-        bail!("{}", self.action_message())
+    fn prune(&self, _max_age_seconds: u64) -> Result<usize, BackupSinkError> {
+        Err(BackupSinkError::other(anyhow!("{}", self.action_message())))
     }
 
     fn identity(&self) -> String {
         self.destination.identity()
-    }
-}
-
-pub fn sink_from_destination(destination: &BackupDestination) -> Result<Box<dyn BackupSink>> {
-    match destination {
-        BackupDestination::Local { .. } => {
-            Ok(Box::new(LocalFsSink::from_destination(destination)?))
-        }
-        BackupDestination::Gcs { .. } => Ok(Box::new(GcsSink::from_destination(destination)?)),
-        #[cfg(feature = "s3")]
-        BackupDestination::S3 { .. } => Ok(Box::new(S3Sink::from_destination(destination)?)),
-        #[cfg(not(feature = "s3"))]
-        BackupDestination::S3 { .. } => Ok(Box::new(UnsupportedCloudSink {
-            destination: destination.clone(),
-        })),
     }
 }
 
@@ -176,22 +154,5 @@ mod tests {
         assert_eq!(sink.prune(0).unwrap(), 1);
         assert!(std::fs::read_dir(&dir).unwrap().next().is_none());
         let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn gcs_destination_constructs_real_sink_without_network_io() {
-        let dest = BackupDestination::from_uri("gs://bucket/prefix").unwrap();
-        let sink = sink_from_destination(&dest).unwrap();
-        assert_eq!(sink.identity(), "gs://bucket/prefix");
-    }
-
-    #[cfg(not(feature = "s3"))]
-    #[test]
-    fn s3_sink_reports_feature_action_when_unlinked() {
-        let dest = BackupDestination::from_uri("s3://bucket/prefix").unwrap();
-        let sink = sink_from_destination(&dest).unwrap();
-        let err = sink.put(SystemTime::now(), b"x").unwrap_err().to_string();
-        assert!(err.contains("`s3` feature"));
-        assert!(err.contains("--features s3"));
     }
 }

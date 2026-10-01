@@ -144,12 +144,12 @@ pub fn stateful_instance(
     if plan.replicas == 0 {
         return Err(StatefulInstanceError::ZeroReplicas);
     }
-    if plan.cx.app.trim().is_empty() {
+    if plan.cx.app().trim().is_empty() {
         return Err(StatefulInstanceError::EmptyIdentity);
     }
-    nonempty(plan.cx.name, "name")?;
-    nonempty(plan.cx.ns, "namespace")?;
-    nonempty(plan.cx.app, "identity")?;
+    nonempty(plan.cx.name(), "name")?;
+    nonempty(plan.cx.ns(), "namespace")?;
+    nonempty(plan.cx.app(), "identity")?;
     nonempty(&plan.service_name, "service_name")?;
 
     nonempty(&plan.name, "statefulset name")?;

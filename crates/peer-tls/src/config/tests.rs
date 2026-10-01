@@ -75,12 +75,12 @@ fn write_tls_fixture(name: &str) -> PeerTlsConfig {
     std::fs::write(dir.join("cert.pem"), TEST_CERT).unwrap();
     std::fs::write(dir.join("key.pem"), TEST_KEY).unwrap();
     std::fs::write(dir.join("ca.pem"), TEST_CERT).unwrap();
-    PeerTlsConfig {
-        cert: dir.join("cert.pem"),
-        key: dir.join("key.pem"),
-        ca: dir.join("ca.pem"),
-        required: true,
-    }
+    PeerTlsConfig::new(
+        dir.join("cert.pem"),
+        dir.join("key.pem"),
+        dir.join("ca.pem"),
+        true,
+    )
 }
 
 #[test]
@@ -108,7 +108,10 @@ fn from_env_loads_when_all_set() {
         std::env::set_var("TEST_PEER_MTLS", "on");
     }
     let cfg = PeerTlsConfig::from_env(TEST_PREFIX).unwrap().expect("Some");
-    assert!(cfg.required);
+    assert!(cfg.required());
+    assert_eq!(cfg.cert(), dir.join("cert.pem"));
+    assert_eq!(cfg.key(), dir.join("key.pem"));
+    assert_eq!(cfg.ca(), dir.join("ca.pem"));
     std::fs::remove_dir_all(&dir).ok();
     clear_env();
 }
@@ -132,5 +135,5 @@ fn builds_rustls_peer_configs_from_pem_material() {
         .expect("server config should build");
     cfg.rustls_client_config()
         .expect("client config should build");
-    std::fs::remove_dir_all(cfg.cert.parent().unwrap()).ok();
+    std::fs::remove_dir_all(cfg.cert().parent().unwrap()).ok();
 }

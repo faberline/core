@@ -1,25 +1,16 @@
 use crate::domain::semantic_search::engine::SemanticSearchEngine;
+use crate::domain::syntax::parsed_file::ParsedFile;
 
 impl SemanticSearchEngine {
-    /// Extract docstrings from source code.
+    /// Extract the docstrings of a parsed file.
     /// Returns a map of symbol name -> docstring.
-    pub fn extract_docstrings(
+    ///
+    /// `extract_docstrings` (in the composition root) parses the source first.
+    pub fn extract_docstrings_parsed(
         &self,
-        content: &str,
-        language: crate::syntax::Language,
-    ) -> Result<std::collections::HashMap<String, String>, String> {
-        use crate::syntax::MultiParser;
-
-        let mut parser =
-            MultiParser::new().map_err(|e| format!("Failed to create parser: {:?}", e))?;
-        let parsed = parser
-            .parse(content, language)
-            .ok_or("Failed to parse file")?;
-
-        let docstrings =
-            self.extract_docstrings_from_ast(&parsed.tree.root_node(), content, language);
-
-        Ok(docstrings)
+        parsed: &ParsedFile,
+    ) -> std::collections::HashMap<String, String> {
+        self.extract_docstrings_from_ast(&parsed.tree.root_node(), &parsed.source, parsed.language)
     }
 
     /// Extract docstrings from AST nodes.

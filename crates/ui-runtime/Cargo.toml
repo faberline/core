@@ -1,5 +1,3 @@
-# SPEC-MANAGED: crates/ui-runtime/tech-design/semantic/source/libs-ui-runtime-cargo-toml.md#text-source-unit
-# CODEGEN-BEGIN
 [package]
 name = "ui-runtime"
 version.workspace = true
@@ -15,7 +13,6 @@ debug = ["serde_json"]
 [dependencies]
 surface = { path = "../surface" }
 serde_json = { version = "1", optional = true }
-# CODEGEN-END
 
 [lints]
 workspace = true

@@ -1,3 +1,4 @@
+use raft_core::NodeId;
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
@@ -8,6 +9,7 @@ use tokio::net::TcpListener;
 use raft_core::ELECTION_TIMEOUT_FLOOR_TICKS;
 use raft_runtime::{
     FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
+    StateMachineError,
 };
 
 const MIN_LEADER_POLL: Duration = Duration::from_millis(1);
@@ -80,31 +82,39 @@ impl RaftStateMachine for TestSm {
             .then_some("test-snapshot-v1")
     }
 
-    fn apply(&self, index: Index, _command: &[u8]) -> anyhow::Result<()> {
-        self.applied.store(index, Ordering::Release);
+    fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
-    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> Result<(), StateMachineError> {
         Ok(())
     }
-    fn snapshot_at(&self, _index: Index, _writer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn snapshot_at(
+        &self,
+        _index: Index,
+        _writer: &mut dyn std::io::Write,
+    ) -> Result<(), StateMachineError> {
         Ok(())
     }
-    fn validate_snapshot(&self, _reader: &mut dyn std::io::Read) -> anyhow::Result<()> {
+    fn validate_snapshot(&self, _reader: &mut dyn std::io::Read) -> Result<(), StateMachineError> {
         self.restore_attempts.fetch_add(1, Ordering::Relaxed);
         if self.fail_restore.load(Ordering::Acquire) {
-            anyhow::bail!("injected snapshot validation failure");
+            return Err(StateMachineError::other(
+                "injected snapshot validation failure",
+            ));
         }
         Ok(())
     }
-    fn restore(&self, _reader: &mut dyn std::io::Read) -> anyhow::Result<()> {
+    fn restore(&self, _reader: &mut dyn std::io::Read) -> Result<(), StateMachineError> {
         if self.fail_restore.load(Ordering::Acquire) {
-            anyhow::bail!("injected snapshot restore failure");
+            return Err(StateMachineError::other(
+                "injected snapshot restore failure",
+            ));
         }
         Ok(())
     }
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 
@@ -114,7 +124,7 @@ pub async fn bind() -> (TcpListener, String) {
     (l, format!("http://127.0.0.1:{port}"))
 }
 
-pub fn peers_excluding(me: u64, all: &[(u64, String)]) -> HashMap<u64, String> {
+pub fn peers_excluding(me: NodeId, all: &[(NodeId, String)]) -> HashMap<NodeId, String> {
     all.iter()
         .filter(|(id, _)| *id != me)
         .map(|(id, url)| (*id, url.clone()))
@@ -139,22 +149,19 @@ pub async fn cluster_with_config(n: u64, cfg: HostConfig) -> Vec<Node> {
     for id in 0..n {
         let (l, url) = bind().await;
         listeners.push(l);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
-    let voters: Vec<u64> = (0..n).collect();
+    let voters: Vec<NodeId> = (0..n).map(NodeId::new).collect();
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
-        let id = idx as u64;
+        let id = NodeId::new(idx as u64);
         let peers = peers_excluding(id, &all);
         let sm = TestSm::new();
         let dir = TempDir::new().unwrap();
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             peers,
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
@@ -184,7 +191,7 @@ pub async fn cluster_with_config(n: u64, cfg: HostConfig) -> Vec<Node> {
 }
 
 pub async fn await_leader(nodes: &[Node]) -> Option<usize> {
-    await_leader_with_tick(nodes, HostConfig::default().tick).await
+    await_leader_with_tick(nodes, HostConfig::default().tick()).await
 }
 
 /// Wait for a leader using the actual tick configured for these hosts.

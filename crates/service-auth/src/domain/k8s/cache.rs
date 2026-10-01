@@ -43,20 +43,15 @@ impl Clock for ManualClock {
 }
 
 /// How long each class of answer is reusable.
+///
+/// Start from [`CachePolicy::default`] (allow 300 s, deny 30 s, stale window
+/// 60 s, 8192 entries) and change what differs with the `with_*` builders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CachePolicy {
-    /// How long a successful authentication or an allow may be reused.
-    pub allow_ttl: Duration,
-    /// How long a deny may be reused. Short on purpose: this TTL is the delay
-    /// between granting access and access working.
-    pub deny_ttl: Duration,
-    /// How far past its TTL an entry may be served *only* when the apiserver
-    /// failed to answer. Zero disables serving stale entries entirely.
-    pub stale_window: Duration,
-    /// The hard ceiling on retained entries. An unauthenticated caller chooses
-    /// the token, and therefore the key, so an unbounded map is a memory
-    /// exhaustion primitive handed to anyone who can reach the port.
-    pub max_entries: usize,
+    allow_ttl: Duration,
+    deny_ttl: Duration,
+    stale_window: Duration,
+    max_entries: usize,
 }
 
 impl Default for CachePolicy {
@@ -71,6 +66,55 @@ impl Default for CachePolicy {
 }
 
 impl CachePolicy {
+    /// Set how long a successful authentication or an allow may be reused.
+    pub fn with_allow_ttl(mut self, allow_ttl: Duration) -> Self {
+        self.allow_ttl = allow_ttl;
+        self
+    }
+
+    /// Set how long a deny may be reused.
+    pub fn with_deny_ttl(mut self, deny_ttl: Duration) -> Self {
+        self.deny_ttl = deny_ttl;
+        self
+    }
+
+    /// Set how far past its TTL an entry may be served when the apiserver
+    /// failed to answer. Zero disables serving stale entries.
+    pub fn with_stale_window(mut self, stale_window: Duration) -> Self {
+        self.stale_window = stale_window;
+        self
+    }
+
+    /// Set the hard ceiling on retained entries.
+    pub fn with_max_entries(mut self, max_entries: usize) -> Self {
+        self.max_entries = max_entries;
+        self
+    }
+
+    /// How long a successful authentication or an allow may be reused.
+    pub fn allow_ttl(&self) -> Duration {
+        self.allow_ttl
+    }
+
+    /// How long a deny may be reused. Short on purpose: this TTL is the delay
+    /// between granting access and access working.
+    pub fn deny_ttl(&self) -> Duration {
+        self.deny_ttl
+    }
+
+    /// How far past its TTL an entry may be served *only* when the apiserver
+    /// failed to answer. Zero disables serving stale entries entirely.
+    pub fn stale_window(&self) -> Duration {
+        self.stale_window
+    }
+
+    /// The hard ceiling on retained entries. An unauthenticated caller chooses
+    /// the token, and therefore the key, so an unbounded map is a memory
+    /// exhaustion primitive handed to anyone who can reach the port.
+    pub fn max_entries(&self) -> usize {
+        self.max_entries
+    }
+
     /// The worst-case delay between a revocation taking effect in Kubernetes
     /// and this process refusing the caller.
     pub fn revocation_bound(&self) -> Duration {

@@ -2,11 +2,11 @@
 //!
 //! Generates MongoDB Document classes using cclab.nebula.
 
-use crate::domain::spec::ir::{DataModelSpec, FieldDef, ModelDef, StringFormat};
-use crate::infrastructure::codegen::python::type_to_python;
-use crate::infrastructure::codegen::traits::{
+use crate::domain::codegen::traits::{
     CodeGenerator, GenContext, GenResult, GeneratedCode, Language,
 };
+use crate::domain::spec::ir::{DataModelSpec, FieldDef, ModelDef, StringFormat};
+use crate::infrastructure::codegen::python::type_to_python;
 use crate::type_inference::Type;
 
 /// Nebula (MongoDB ORM) code generator

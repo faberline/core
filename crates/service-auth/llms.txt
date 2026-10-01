@@ -11,10 +11,13 @@
 
 ## Behaviour
 
-- [tests/scoped_authorization.rs](tests/scoped_authorization.rs): the crate's one
-  externally observable case:
-  `cargo test -p service-auth --test scoped_authorization`. A second case moves
-  both into `tests/it/` as modules of one test binary.
+- [tests/it/](tests/it/main.rs): the externally observable cases, as modules
+  of one test binary: `cargo test -p service-auth --test it`.
+  - [scoped_authorization.rs](tests/it/scoped_authorization.rs): the scoped
+    authorization middleware.
+  - [wire_golden.rs](tests/it/wire_golden.rs): the registry and claims
+    documents, the TokenRequest body and every registry, review and
+    token-request error text, pinned byte for byte.
 - Rules observable only inside the implementation stay as colocated unit tests
   under their `src/**` owner: `cargo test -p service-auth --lib`.
 

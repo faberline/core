@@ -1,11 +1,10 @@
 //! LLM topic provider for the shared Kubernetes operator scaffold.
 
 /// Agent-facing topic describing the shared operator primitive.
-pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic {
-    id: "operator",
-    summary:
-        "Shared Kubernetes controller, lease, render, and maintenance toolkit for service CRDs.",
-    body: r#"# Kubernetes operator shared topic
+pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
+    "operator",
+    "Shared Kubernetes controller, lease, render, and maintenance toolkit for service CRDs.",
+    r#"# Kubernetes operator shared topic
 
 ## Ownership boundary
 The `service-k8s` crate owns the reusable Kubernetes controller scaffold:
@@ -50,7 +49,7 @@ It is not a garbage collector for every prior child shape a service ever
 rendered; service migrations that change kind or durable storage boundaries
 must document an explicit handoff.
 "#,
-};
+);
 
 /// Return the shared operator topic for CLI composition.
 pub fn topic() -> &'static cli_std::llm::Topic {
@@ -62,11 +61,11 @@ mod tests {
     #[test]
     fn llm_topic_is_nonempty() {
         let topic = super::topic();
-        assert_eq!(topic.id, "operator");
-        assert!(topic.body.contains("ManagedService"));
-        assert!(topic.body.contains("server-side apply"));
-        assert!(topic.body.contains("strictly above 1 GiB"));
-        assert!(topic.body.contains("CPU and memory"));
-        assert!(topic.body.contains("Raft membership transition"));
+        assert_eq!(topic.id(), "operator");
+        assert!(topic.body().contains("ManagedService"));
+        assert!(topic.body().contains("server-side apply"));
+        assert!(topic.body().contains("strictly above 1 GiB"));
+        assert!(topic.body().contains("CPU and memory"));
+        assert!(topic.body().contains("Raft membership transition"));
     }
 }

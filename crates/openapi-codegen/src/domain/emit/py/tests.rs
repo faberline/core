@@ -7,7 +7,7 @@ mod runtime;
 mod tls_alpn;
 
 use super::*;
-use crate::{HttpClient, Lang};
+use crate::Lang;
 use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
@@ -126,17 +126,7 @@ const SPEC_32_QUERY: &str = r##"{
     }"##;
 
 fn opts() -> GenOptions {
-    GenOptions {
-        lang: Lang::Py,
-        target: None,
-        spec_path: PathBuf::new(),
-        out_dir: PathBuf::new(),
-        client_name: "Client".to_string(),
-        http_client: HttpClient::Fetch,
-        emit_types: true,
-        emit_client: true,
-        emit_hooks: false,
-    }
+    GenOptions::new(Lang::Py, PathBuf::new(), PathBuf::new(), "Client")
 }
 
 fn file<'a>(out: &'a GeneratedOutput, name: &str) -> &'a str {

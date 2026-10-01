@@ -1,5 +1,5 @@
-use crate::checker::LintConfig;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range};
+use crate::domain::check::lint_config::LintConfig;
 use crate::syntax::{Language, ParsedFile};
 
 /// AsyncAPI 2.x/3.x checker — line-based YAML analysis

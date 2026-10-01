@@ -13,7 +13,7 @@ use wiremock::matchers::{body_bytes, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 #[tokio::test]
-async fn fetches_exact_snapshot_bytes_with_bearer_auth() {
+async fn strict_backup_sends_the_bearer_and_returns_exact_bytes() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/admin/backup"))
@@ -22,14 +22,16 @@ async fn fetches_exact_snapshot_bytes_with_bearer_auth() {
         .mount(&server)
         .await;
 
-    let bytes = fetch_admin_snapshot(&server.uri(), Some("registry-token"))
+    let bytes = AdminSnapshotTransport::new()
+        .unwrap()
+        .fetch_exact(&server.uri(), Some("registry-token"))
         .await
         .expect("admin snapshot fetch succeeds");
     assert_eq!(bytes, b"snapshot");
 }
 
 #[tokio::test]
-async fn keeps_non_success_status_and_body_in_the_diagnostic() {
+async fn strict_backup_redacts_a_non_success_status_body() {
     let server = MockServer::start().await;
     Mock::given(method("GET"))
         .and(path("/admin/backup"))
@@ -37,11 +39,16 @@ async fn keeps_non_success_status_and_body_in_the_diagnostic() {
         .mount(&server)
         .await;
 
-    let error = fetch_admin_snapshot(&server.uri(), None)
+    let error = AdminSnapshotTransport::new()
+        .unwrap()
+        .fetch_exact(&server.uri(), None)
         .await
         .expect_err("non-success status must fail");
-    assert!(error.to_string().contains("503"));
-    assert!(error.to_string().contains("not ready"));
+    assert_eq!(
+        error.to_string(),
+        "admin snapshot Backup returned unexpected status 503 Service Unavailable"
+    );
+    assert!(!error.to_string().contains("not ready"));
 }
 
 #[tokio::test]

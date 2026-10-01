@@ -1,5 +1,6 @@
 use super::terraform::TerraformChecker;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 /// TF002: Deprecated resource attributes (lifecycle.prevent_destroy syntax)
@@ -22,7 +23,7 @@ pub(super) fn check_deprecated_attributes(
                                         == Some("lifecycle")
                                 {
                                     diagnostics.push(Diagnostic::warning(
-                                        Range::from_node(node),
+                                        node.to_range(),
                                         "TF002",
                                         DiagnosticCategory::Style,
                                         "Deprecated: 'prevent_destroy' in lifecycle — use the lifecycle meta-argument directly on the resource",
@@ -74,7 +75,7 @@ pub(super) fn check_empty_resource(
                 .get_block_label(node, file)
                 .unwrap_or_else(|| "<unknown>".to_string());
             diagnostics.push(Diagnostic::warning(
-                Range::from_node(node),
+                node.to_range(),
                 "TF003",
                 DiagnosticCategory::Logic,
                 format!(
@@ -155,7 +156,7 @@ pub(super) fn check_missing_tags(checker: &TerraformChecker, file: &ParsedFile) 
             let label = checker.get_block_label(node, file)
                 .unwrap_or_else(|| "<unknown>".to_string());
             diagnostics.push(Diagnostic::warning(
-                Range::from_node(node),
+                node.to_range(),
                 "TF009",
                 DiagnosticCategory::Style,
                 format!(
@@ -211,7 +212,7 @@ pub(super) fn check_s3_encryption(
             let resource_name = checker.get_second_block_label(node, file)
                 .unwrap_or_else(|| "<unnamed>".to_string());
             diagnostics.push(Diagnostic::warning(
-                Range::from_node(node),
+                node.to_range(),
                 "TF010",
                 DiagnosticCategory::Security,
                 format!(

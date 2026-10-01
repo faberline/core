@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::time::Instant;
 
 use super::file_change_kind::FileChangeKind;
 
@@ -16,8 +15,6 @@ use super::file_change_kind::FileChangeKind;
 pub struct DirtyFileTracker {
     /// Dirty files mapped to their most recent change kind.
     dirty: HashMap<PathBuf, FileChangeKind>,
-    /// Timestamp of the last `drain()` call.
-    last_drain: Option<Instant>,
 }
 
 impl DirtyFileTracker {
@@ -51,7 +48,6 @@ impl DirtyFileTracker {
     ///
     /// The internal set is cleared after the call, ready for the next cycle.
     pub fn drain(&mut self) -> HashMap<PathBuf, FileChangeKind> {
-        self.last_drain = Some(Instant::now());
         std::mem::take(&mut self.dirty)
     }
 

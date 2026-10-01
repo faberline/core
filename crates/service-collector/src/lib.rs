@@ -13,7 +13,7 @@ pub use application::{
 };
 pub use domain::{
     CollectorRecord, CollectorRejection, CommitStats, DeliveryFailure, DeliveryReceipt,
-    QuarantineSink, ReadOutcome, SourceProgress,
+    QuarantineSink, ReadOutcome, SourceOffset, SourceProgress,
 };
 pub use infrastructure::{
     append_jsonl, load_json_checkpoint, save_json_checkpoint, JsonlQuarantine,

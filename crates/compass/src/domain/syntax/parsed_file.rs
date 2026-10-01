@@ -1,3 +1,4 @@
+use crate::domain::diagnostic::model::{Position, Range};
 use crate::domain::syntax::language::Language;
 use crate::domain::syntax::parse_error::ParseError;
 use tree_sitter::Tree;
@@ -132,5 +133,25 @@ impl ParsedFile {
             current = sibling.next_sibling();
         }
         None
+    }
+}
+
+/// The source range a syntax node spans.
+///
+/// Implemented for `tree_sitter::Node` here, next to `ParsedFile`, so the
+/// diagnostic model's `Range` does not depend on tree-sitter.
+pub trait NodeRange {
+    /// The node's start and end, as 0-based lines and columns.
+    fn to_range(&self) -> Range;
+}
+
+impl NodeRange for tree_sitter::Node<'_> {
+    fn to_range(&self) -> Range {
+        let start = self.start_position();
+        let end = self.end_position();
+        Range::new(
+            Position::new(start.row as u32, start.column as u32),
+            Position::new(end.row as u32, end.column as u32),
+        )
     }
 }

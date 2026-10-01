@@ -44,8 +44,8 @@ pub(crate) struct PeerLane {
 }
 
 impl Shared {
-    /// Drain the outbox and deliver each request to its peer over h2c, one task
-    /// each (fire-and-forget). Replies feed back into the node + drive apply.
+    /// Drain the outbox and deliver each request to its peer through the
+    /// delivery port, one task per peer lane (fire-and-forget). Replies feed back into the node + drive apply.
     pub(super) async fn flush(self: &Arc<Self>) {
         let outs = {
             let mut n = self.node.lock().await;
@@ -56,12 +56,7 @@ impl Shared {
                 let lanes = self.peer_lanes.read().unwrap_or_else(|p| p.into_inner());
                 if let Some(l) = lanes.get(&o.to).cloned() {
                     Some(l)
-                } else if self
-                    .peers
-                    .read()
-                    .unwrap_or_else(|p| p.into_inner())
-                    .contains_key(&o.to)
-                {
+                } else if self.peer_client.address(&o.to).is_some() {
                     drop(lanes);
                     let mut lanes = self.peer_lanes.write().unwrap_or_else(|p| p.into_inner());
                     Some(
@@ -78,8 +73,8 @@ impl Shared {
                 self.undeliverable_never_addressed
                     .fetch_add(1, Ordering::Relaxed);
                 tracing::warn!(
-                    target = o.to,
-                    group = %self.group_id.0,
+                    target = o.to.get(),
+                    group = %self.group_id,
                     "raft: discarded message to peer with no registered address"
                 );
                 continue;

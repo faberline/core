@@ -4,11 +4,23 @@ use crate::domain::lint::custom::{CustomLintEngine, CustomRulesFile};
 
 impl CustomLintEngine {
     /// Load rules from an explicit file path.
+    ///
+    /// Regex rules whose pattern does not compile are skipped and logged at
+    /// `WARN` level.
     pub fn load_from_path(path: &Path) -> std::io::Result<Self> {
         let content = std::fs::read_to_string(path)?;
         let rules_file: CustomRulesFile = toml::from_str(&content)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?;
-        Ok(Self::from_rules_file(&rules_file))
+        let engine = Self::from_rules_file(&rules_file);
+        for rule in engine.rejected_rules() {
+            tracing::warn!(
+                "Custom rule '{}': invalid regex '{}': {}",
+                rule.id(),
+                rule.pattern(),
+                rule.reason()
+            );
+        }
+        Ok(engine)
     }
 
     /// Convenience loader: reads from `{workspace_root}/cclab/.index/rules.toml`.

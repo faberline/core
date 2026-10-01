@@ -8,7 +8,7 @@ renderer, a native desktop backend or a test recorder. Its user is jet, whose
 WASM runtime re-exports the whole crate (`pub use ui_runtime::*`) and whose
 TSX-to-Rust transpiler emits calls to its hooks.
 
-**Form:** whole-src domain · **Depends on:** surface (kernel) · **Crate:** [`crates/ui-runtime`](../../crates/ui-runtime)
+**Form:** domain only · **Depends on:** surface (kernel) · **Crate:** [`crates/ui-runtime`](../../crates/ui-runtime)
 
 ## Model
 
@@ -16,7 +16,8 @@ TSX-to-Rust transpiler emits calls to its hooks.
   hook slots, a hook cursor reset at the start of every render, and a dirty
   flag.
 - **FiberId** — the identity of a fiber, allocated in increasing order by the
-  runtime.
+  runtime. Its `u64` is private: `FiberId::new` wraps a raw id and `get`
+  returns it.
 - **hook slot** — one positional entry in a fiber: state (used by `use_state`
   and `use_reducer`), memo (`use_memo`, `use_callback`), ref (`use_ref`) or
   effect-once (`use_effect_once`).
@@ -33,7 +34,8 @@ TSX-to-Rust transpiler emits calls to its hooks.
   `set_update_scheduler`; every state write calls it so the renderer can
   coalesce dirty fibers into a frame.
 - **debug summaries** — with the `debug` feature, `debug_snapshot_fibers` and
-  `debug_snapshot_hooks` describe fibers and hook slots for tooling.
+  `debug_snapshot_hooks` describe fibers and hook slots for tooling; both
+  identify a fiber by its `FiberId`.
 
 ## Ports
 
@@ -58,18 +60,17 @@ None. The update scheduler is a registered callback, not a trait.
 
 ## Published language
 
-The whole public API; whole-src domain contexts have no application layer.
-Because jet re-exports it with a glob, every public name is part of jet's API,
-and any module P2 adds must be private with `pub use` re-exports.
+The whole public API; domain-only contexts have no application layer. The
+code lives in private modules under `src/domain/`, and `lib.rs` re-exports
+their public names. Because jet re-exports the crate with a glob, every public
+name is part of jet's API, so every module stays private.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
-  - B1 (naming): the crate is not split into the domain layout yet. It is
-    SPEC-MANAGED, so P1 leaves it untouched (ADR D18); P2 splits it after
-    confirming that nothing regenerates it (D8).
-
-  The single 693-line source file is a C1 size warning, not an exception; it
-  stays visible in the report until the P2 split.
-- **Tracked for P2:** bare ids. `FiberId` exposes its `u64`, and the debug API
-  takes and returns fiber ids as bare `u64` (jet's debug bridge passes one).
+- **Checker exceptions:** none. P2 removed the SPEC-MANAGED markers (nothing
+  regenerated the crate, D8), moved the code into one private module per
+  concept under `src/domain/`, and deleted the B1 naming exception; the C1
+  size warning went with the 693-line file.
+- **Debts:** none tracked. P2 made the `FiberId` field private (W5), and the
+  debug API now takes and returns `FiberId`; jet's debug bridge has to
+  convert at its edge with `FiberId::new(raw)` and `id.get()`.

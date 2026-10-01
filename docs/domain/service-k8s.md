@@ -19,9 +19,16 @@ and tape.
   context), `ReadinessTarget`s, a status patch, `ConditionFact`s,
   `PruneTarget`s and `ClusterScopedChild`ren.
 - **Condition** — a status condition in the metav1 shape; `project` builds
-  `Condition`s from `ConditionFact`s and a time the caller passes in.
+  `Condition`s from `ConditionFact`s and a time the caller passes in. The
+  operator's application step reads that time (`now_rfc3339`), adds the
+  controller's own `PruneBlocked` condition and writes the result into the
+  status patch.
 - **leader lease** — the Lease named by the service's `MANAGER`, which is also
-  its field manager. `Election` records whether this replica holds it.
+  its field manager. `Election` records whether this replica holds it;
+  `may_acquire` is the rule for taking it over. A reconcile pass acts only
+  while its leadership says "leader": the operator campaigns for the Lease,
+  while a one-shot pass (`reconcile_once`) takes the caller's `Election` as
+  given and never promotes it.
 - **Termination budget** — a `LifecyclePolicy` validated into a
   `TerminationBudget` that fits inside the pod's grace period.
 - **Capacity plan** — `plan_replica_layer` scales whole replica layers (one
@@ -32,13 +39,33 @@ and tape.
 - **Certificate profile** — what a service asks a certificate for, checked
   against an `InstanceScope`; `next_action` picks the next `Action` from the
   observed state and the current time.
+- **Secret layout** — the Secret a certificate is projected into
+  (`material_secret`, `trust_bundle_secret`) and the `ProjectedState` read back
+  out of it (`read_state`). Pure domain; reading the stored leaf goes through
+  `LeafParser`.
 
 ## Ports
 
 - `ManagedService` — implemented by each downstream operator's CRD root type.
+  It and its plan, readiness and child types sit in the application layer,
+  next to the condition step that stamps what it returns.
 - `Issuer` — signs a CSR; `EphemeralIssuer`, `CasIssuer`.
+- `KeyAndCsrGenerator` — a fresh keypair and a CSR for a profile, used by
+  `IssuanceRequest::build`; `RcgenCsrGenerator`.
+- `LeafParser` — validity and fingerprint of a stored PEM leaf, used by
+  `read_state`; `X509LeafParser`.
 - `SecretStore` — a certificate's Secret; `KubernetesSecretStore`, `MemoryStore`.
+- `LeaderLease` — acquires and renews the leader Lease for an `Election`;
+  the kube Lease loop (`lease::spawn`).
 - `AccessTokenSource` — the CA Service token; GKE metadata, workload identity.
+
+The composition root, `src/app/`, keeps three public entry points with
+their signatures unchanged:
+- `Reconciler::new(scope, owner, store, issuer)` wires `RcgenCsrGenerator`
+  and `X509LeafParser` into the certificate reconciler.
+- The operator's `run` builds the kube client and the Lease adapter,
+  campaigns for leadership and starts the controller loop.
+- `reconcile_once` runs one pass under the caller's `Election`.
 
 ## Invariants
 
@@ -58,35 +85,28 @@ and tape.
 ## Published language
 
 The `ManagedService` contract, render plans, capacity and resize planners,
-lifecycle validation and certificate lifecycle. In P1 the old paths `service`,
+lifecycle validation and certificate lifecycle. The public modules `service`,
 `crd`, `resize`, `lease`, `stateful`, `render` (and submodules), `controller`,
-`certificate` (including `certificate::profile`), `lifecycle`, `metrics`, `llm`
-and the root re-exports stay as facades with their feature gates. lumen
-glob-imports `service_k8s::lease::*`, so that facade must export exactly
-`Election` and `spawn`; lumen's release CI runs `stateful_instance_render` and
-`stateful_adapter_equivalence` by name.
+`certificate` (including `certificate::profile`), `lifecycle`, `metrics` and
+`llm` keep their paths and feature gates (`src/api/`), because each holds
+names the root does not re-export. lumen glob-imports `service_k8s::lease::*`,
+so that module must export exactly `Election` and `spawn`; lumen's release CI
+runs `stateful_instance_render` and `stateful_adapter_equivalence` by name.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):**
+- **Checker exceptions (long-term):**
   - B2 (`schemars`): `ReplicaLayerPolicy`, `ShardSplitPolicy`, `Condition`,
-    `ProbeTiming` and `LifecyclePolicy` derive `JsonSchema` because CRD specs
-    and statuses embed them. P2 gives the CRD wire shapes their own schema
-    types in interfaces.
-  - B2 (`chrono::Utc::now`): `now_rfc3339` reads the wall clock. P2 takes the
-    time from a `Clock` port or moves the call to the operator.
-  - B2 (`futures`, `rcgen`): the certificate `Issuer` and `SecretStore` ports
-    return `BoxFuture`, and `IssuanceRequest::build` generates the key and CSR
-    with `rcgen`. P2 uses std's boxed future and moves key generation behind an
-    infrastructure port.
-  - B3 `application->infrastructure`: the certificate `Reconciler` reads and
-    builds the Secret layout directly. P2 puts the layout behind a port.
-  - B3 `interfaces->domain` and `interfaces->infrastructure`: the operator's
-    reconcile builds and projects conditions itself, and `run` creates the
-    leader `Election` and starts the Lease renewal loop. P2 moves the reconcile
-    sequence into an application use case behind ports.
-- **Tracked for P2:** public fields on `Election`, `InstanceScope`,
-  `ReadyFacts`, `ReadinessTarget`, `PruneTarget`, `ClusterScopedChild`,
-  `ReconcilePlan`, `RenderCtx`, the render `*Plan` types, `Condition`,
-  `ClusterSpec`, `ResourceSpec`; bare id `IssuerId(pub String)`; `anyhow` in
-  `reconcile_plan`, `run` and `parse_storage_bytes`.
+    `ProbeTiming` and `LifecyclePolicy` derive `JsonSchema`, a compile-time
+    description of the same serde wire shape. Downstream CRD specs and
+    statuses embed them as-is (for example `Vec<service_k8s::Condition>` in
+    lumen and tape), so their generated schemas must not change, and an
+    interfaces copy would duplicate the wire contract. The derive does no I/O.
+- **Public fields kept:** the wire types `Condition`,
+  `ClusterSpec` and `ResourceSpec`, which downstream CRDs embed; and
+  `Election`, `InstanceScope`, the remaining render `*Plan` types and the
+  capacity plans, which nothing outside the crate builds as a literal.
+- **Debts:** public fields on `ContainerPlan` and `StatefulInstancePlan`,
+  which downstream builds with `new` and then sets field by field; bare id
+  `IssuerId(pub String)`; `anyhow` in `reconcile_plan`, `run` and
+  `parse_storage_bytes`.

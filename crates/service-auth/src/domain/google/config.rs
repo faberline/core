@@ -10,9 +10,6 @@ pub const GOOGLE_JWKS_URL: &str = "https://www.googleapis.com/oauth2/v3/certs";
 /// Google's access-token introspection endpoint.
 pub const GOOGLE_TOKENINFO_URL: &str = "https://oauth2.googleapis.com/tokeninfo";
 
-/// Default base URL for GCE/GKE Metadata Server ID-token fetching.
-pub const DEFAULT_METADATA_BASE_URL: &str = "http://metadata.google.internal";
-
 /// Floor between JWKS refetches. A caller presenting fabricated `kid` values
 /// gets at most one upstream fetch per window, not one per request.
 pub const DEFAULT_JWKS_REFETCH_MIN_INTERVAL: Duration = Duration::from_secs(60);

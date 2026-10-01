@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use storage_durable::{DataRoot, DataRootPolicy};
+use storage_durable::{DataRoot, DataRootError, DataRootPolicy};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 struct Manifest {
@@ -27,20 +27,22 @@ impl DataRootPolicy for Policy {
         &["legacy.data"]
     }
 
-    fn create_manifest(&self, _root: &Path) -> anyhow::Result<Self::Manifest> {
+    fn create_manifest(&self, _root: &Path) -> Result<Self::Manifest, DataRootError> {
         Ok(Manifest {
             version: 1,
             role: "store".into(),
         })
     }
 
-    fn validate_manifest(&self, manifest: &Self::Manifest) -> anyhow::Result<()> {
-        anyhow::ensure!(manifest.version == 1, "unsupported fixture format");
+    fn validate_manifest(&self, manifest: &Self::Manifest) -> Result<(), DataRootError> {
+        if manifest.version != 1 {
+            return Err(DataRootError::other("unsupported fixture format"));
+        }
         Ok(())
     }
 
-    fn legacy_error(&self, marker: &Path) -> anyhow::Error {
-        anyhow::anyhow!("legacy fixture data at {}", marker.display())
+    fn legacy_error(&self, marker: &Path) -> DataRootError {
+        DataRootError::other(format!("legacy fixture data at {}", marker.display()))
     }
 }
 

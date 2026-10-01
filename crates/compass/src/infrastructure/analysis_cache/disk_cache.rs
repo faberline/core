@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::diagnostic::Diagnostic;
+use crate::domain::analysis_cache::{AnalysisCache, CacheFuture};
 use crate::type_inference::SemanticModel;
 
 /// Current schema version. Bump when PersistedEntry layout changes.
@@ -192,6 +193,43 @@ impl DiskCache {
             Err(_) => return CacheManifest::default(),
         };
         bincode::deserialize(&bytes).unwrap_or_default()
+    }
+}
+
+impl AnalysisCache for DiskCache {
+    fn load<'a>(
+        &'a self,
+        path: &'a Path,
+        content_hash: u64,
+    ) -> CacheFuture<'a, Option<(SemanticModel, Vec<Diagnostic>)>> {
+        Box::pin(async move {
+            let entry = DiskCache::load(self, path, content_hash).await?;
+            Some((entry.semantic_model, entry.diagnostics))
+        })
+    }
+
+    fn store<'a>(
+        &'a self,
+        path: &'a Path,
+        content_hash: u64,
+        semantic_model: &'a SemanticModel,
+        diagnostics: &'a [Diagnostic],
+    ) -> CacheFuture<'a, ()> {
+        Box::pin(DiskCache::store(
+            self,
+            path,
+            content_hash,
+            semantic_model,
+            diagnostics,
+        ))
+    }
+
+    fn invalidate<'a>(&'a self, path: &'a Path) -> CacheFuture<'a, ()> {
+        Box::pin(DiskCache::invalidate(self, path))
+    }
+
+    fn flush(&self) -> CacheFuture<'_, ()> {
+        Box::pin(self.flush_manifest())
     }
 }
 

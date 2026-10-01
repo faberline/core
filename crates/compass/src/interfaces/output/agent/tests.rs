@@ -1,6 +1,6 @@
 use super::*;
-use crate::checker::FileResult;
 use crate::diagnostic::{Diagnostic, DiagnosticCategory, DiagnosticSeverity, Position, Range};
+use crate::domain::check::file_result::FileResult;
 use crate::graph::ImportGraph;
 use crate::semantic::symbols::{SymbolKind, SymbolTable, TypeInfo};
 use crate::syntax::Language;
@@ -10,6 +10,24 @@ mod build_sections;
 mod compact_json;
 mod helper_fns;
 mod issues_impact;
+
+/// Helper: the report views of symbol tables.
+fn table_views(tables: &[(PathBuf, SymbolTable)]) -> Vec<(PathBuf, SymbolTableView)> {
+    tables
+        .iter()
+        .map(|(path, table)| (path.clone(), SymbolTableView::of(table)))
+        .collect()
+}
+
+/// Helper: the import graph view of the checked files.
+fn import_view(graph: &ImportGraph, results: &[FileResult]) -> ImportGraphView {
+    ImportGraphView::of(graph, results.iter().map(|r| r.path.as_path()))
+}
+
+/// Helper: the agent kind string of a symbol kind.
+fn symbol_kind_to_agent_kind(kind: SymbolKind) -> &'static str {
+    category_to_agent_kind(SymbolCategory::of(kind))
+}
 
 /// Helper: create a Range from 0-indexed (start_line, start_char) to (end_line, end_char).
 fn make_range(sl: u32, sc: u32, el: u32, ec: u32) -> Range {

@@ -9,6 +9,11 @@
 //! - [`Lang::Py`]  → Python: pydantic models + generated sync/async HTTP/2 runtime
 //! - [`Lang::Rust`]→ Rust: serde models + reqwest client
 //!
+//! A versioned target ([`TargetProfile`], chosen through [`TargetPolicy`]) is
+//! intentionally separate from [`Lang`]: `Lang` selects an emitter, while a
+//! target selects the minimum language/toolchain contract and any syntax that is
+//! safe to use for that contract.
+//!
 //! OpenAPI 3.2 support: the `query` path-item keyword (RFC 10008's HTTP
 //! `QUERY` method) is a first-class [`ir::operations::OperationIR`] method
 //! alongside `get`/`post`/etc., and `additionalOperations` entries pass
@@ -24,26 +29,29 @@
 //! [`generate`] is the pure core (spec text → in-memory files, no I/O); [`run`]
 //! is the filesystem-writing CLI entry.
 
+mod api;
+mod app;
 mod application;
-mod compat;
 mod domain;
 mod infrastructure;
 mod interfaces;
 
+pub use api::{emit, ir, llm};
+pub use app::run;
 pub use application::{
     generate, generate_for_target, generate_for_target_with_file_bearer_auth,
     generate_with_file_bearer_auth,
 };
-pub use compat::{emit, ir, llm, target};
 pub use domain::ir::{build_type_map, TypeMap};
+pub use domain::SpecParseError;
 pub use domain::{
-    FileBearerAuth, FileBearerScheme, GenOptions, GeneratedFile, GeneratedOutput,
-    GenerationManifest, HttpClient, Lang, MANIFEST_FILE,
+    FileBearerAuth, FileBearerAuthError, FileBearerScheme, GenOptions, GeneratedFile,
+    GeneratedOutput, GenerationManifest, HttpClient, Lang, MANIFEST_FILE,
 };
 pub use domain::{
-    PythonTarget, RustTarget, TargetPolicy, TargetProfile, TargetRequirements, TypeScriptTarget,
+    PythonTarget, RustTarget, TargetPolicy, TargetPolicyError, TargetProfile, TargetRequirements,
+    TypeScriptTarget, UnknownTargetProfile,
 };
-pub use interfaces::run;
 
 #[cfg(test)]
 mod tests;

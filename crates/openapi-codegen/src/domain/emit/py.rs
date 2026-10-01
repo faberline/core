@@ -21,10 +21,11 @@ use crate::domain::ir::build_type_map;
 use crate::domain::ir::openapi::Spec;
 use crate::domain::ir::operations;
 use crate::domain::{FileBearerAuth, GenOptions, GeneratedFile, GeneratedOutput, PythonTarget};
-use anyhow::{Context, Result};
+
+use super::SpecParseError;
 
 /// Pure Python generation: spec JSON text → in-memory files. No filesystem access.
-pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput> {
+pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, None, None)
 }
 
@@ -32,7 +33,7 @@ pub fn generate_with_file_bearer_auth(
     spec_json: &str,
     opts: &GenOptions,
     auth: &FileBearerAuth,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, None, Some(auth))
 }
 
@@ -41,7 +42,7 @@ pub fn generate_for_target(
     spec_json: &str,
     opts: &GenOptions,
     target: PythonTarget,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, Some(target), None)
 }
 
@@ -50,7 +51,7 @@ pub fn generate_for_target_with_file_bearer_auth(
     opts: &GenOptions,
     target: PythonTarget,
     auth: &FileBearerAuth,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, Some(target), Some(auth))
 }
 
@@ -59,19 +60,19 @@ fn generate_impl(
     opts: &GenOptions,
     target: Option<PythonTarget>,
     auth: Option<&FileBearerAuth>,
-) -> Result<GeneratedOutput> {
-    let spec: Spec = serde_json::from_str(spec_json).context("failed to parse OpenAPI spec")?;
+) -> Result<GeneratedOutput, SpecParseError> {
+    let spec: Spec = serde_json::from_str(spec_json).map_err(SpecParseError::new)?;
     let tm = build_type_map(&spec);
     let ops = operations::build(&spec);
 
     let mut files = Vec::new();
-    if opts.emit_types {
+    if opts.emit_types() {
         files.push(GeneratedFile {
             rel_path: "models.py".to_string(),
             contents: models_emit::emit(&spec, &tm, target),
         });
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         files.push(GeneratedFile {
             rel_path: "h2c_runtime.py".to_string(),
             contents: runtime_emit::emit(target),
@@ -93,10 +94,10 @@ fn generate_impl(
 
 fn emit_init(opts: &GenOptions) -> String {
     let mut out = String::from(models_emit::HEADER);
-    if opts.emit_types {
+    if opts.emit_types() {
         out.push_str("from .models import *  # noqa: F401,F403\n");
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         out.push_str("from .client import AsyncClient, Client  # noqa: F401\n");
         out.push_str("from .h2c_runtime import AsyncH2CClient, AsyncH2CConnection, AsyncH2CStream, H2CClient, H2CConnection, H2CResponse, H2CStream  # noqa: F401\n");
     }

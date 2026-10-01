@@ -167,8 +167,8 @@ fn command_frames_from_encoded(
         let payload_crc = reader.read_u32()?;
         let payload = reader.read_slice(payload_len)?;
         let mut entry = CursorReader(&payload);
-        let term = entry.read_u64()?;
-        let index = entry.read_u64()?;
+        let term = Term::new(entry.read_u64()?);
+        let index = Index::new(entry.read_u64()?);
         let kind = match entry.read_u8()? {
             0 => EntryKind::Command,
             1 => EntryKind::Config,

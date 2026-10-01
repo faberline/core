@@ -20,7 +20,8 @@ sift uses the group commit and the job runner.
 - **Group-commit batch** — requests with the same key executed together by a
   single call of the batch function, whose outputs are fanned back out.
 - **Group-commit config** — `GroupCommitConfig`: the maximum delay, items and
-  bytes per batch, and the queue capacity (1024 by default).
+  bytes per batch, and the queue capacity (1024 by default). Built with the
+  checked `new` and `with_queue_capacity`; getters read it.
 - **Queue and worker** — `spawn_group_commit` returns a cloneable
   `GroupCommitQueue` for submitting and a `GroupCommitWorker` to join at
   shutdown.
@@ -68,8 +69,8 @@ tests check its own sources for the exact paths
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None. Task spawning and timers are the job of
+- **Checker exceptions:** None. Task spawning and timers are the job of
   an infrastructure crate.
-- **Tracked for P2:** None found. `GroupCommitConfig` and `JobRunReport`
-  expose public fields, but no downstream struct literal was found; sift
-  builds the config with `GroupCommitConfig::new`.
+- **Public fields kept:** `JobRunReport`, an output-only report.
+- **Debts:** none tracked. P2 made the `GroupCommitConfig` fields private
+  (D2).

@@ -13,6 +13,7 @@ pub(super) async fn preflight_snapshot_with_serial(
             // capacity. Keep the drain lease until that worker releases it.
             let _operation = preflight_operation;
             sm.preflight_snapshot()
+                .map_err(StateMachineError::into_anyhow)
         })
         .await??;
         match Arc::clone(&snapshot_install).try_lock_owned() {
@@ -101,7 +102,7 @@ impl RaftHost {
             }
             let applied = self.shared.completed_applied_index();
             let up_to = requested_index.unwrap_or(applied);
-            if up_to == 0 {
+            if up_to == Index::new(0) {
                 return Ok(SnapshotCompactionOutcome {
                     snapshot_index: n.snapshot_index(),
                     installed: false,
@@ -113,14 +114,14 @@ impl RaftHost {
                 ));
             }
             if up_to <= n.snapshot_index()
-                && (!require_every_voter || n.conf_state().membership.voters.len() <= 1)
+                && (!require_every_voter || n.conf_state().membership.voters().len() <= 1)
             {
                 return Ok(SnapshotCompactionOutcome {
                     snapshot_index: n.snapshot_index(),
                     installed: false,
                 });
             }
-            if !n.is_leader() && n.conf_state().membership.voters.len() > 1 {
+            if !n.is_leader() && n.conf_state().membership.voters().len() > 1 {
                 return Err(anyhow!(
                     "only the Raft leader can coordinate voter compaction"
                 ));
@@ -131,7 +132,7 @@ impl RaftHost {
                 (
                     n.current_term(),
                     persisted.snapshot_term,
-                    n.conf_state().membership.voters.clone(),
+                    n.conf_state().membership.voters().to_vec(),
                     persisted.snapshot_index,
                     Some(persisted.snapshot.to_vec()),
                 )
@@ -140,7 +141,7 @@ impl RaftHost {
                     anyhow!("Raft prefix {up_to} has no term and cannot be compacted")
                 })?;
                 let term = n.current_term();
-                let voters = n.conf_state().membership.voters.clone();
+                let voters = n.conf_state().membership.voters().to_vec();
                 drop(n);
                 (term, snapshot_term, voters, up_to, None)
             }
@@ -160,7 +161,9 @@ impl RaftHost {
                 let _serial = state_machine_lease
                     .take()
                     .expect("new snapshot must retain its state-machine lease");
-                preparation.capture_at(up_to)
+                preparation
+                    .capture_at(up_to)
+                    .map_err(StateMachineError::into_anyhow)
             })
             .await??;
             let export_operation = Arc::clone(&operation);
@@ -169,7 +172,9 @@ impl RaftHost {
                 // proceeds. Retain peer-work ownership until output ends.
                 let _operation = export_operation;
                 let mut sink = ChunkSink::new(SNAPSHOT_CHUNK_SIZE);
-                prepared.write_to(&mut sink)?;
+                prepared
+                    .write_to(&mut sink)
+                    .map_err(StateMachineError::into_anyhow)?;
                 Ok::<_, anyhow::Error>(sink.into_bytes())
             })
             .await??
@@ -182,7 +187,8 @@ impl RaftHost {
                     .take()
                     .expect("legacy snapshot must retain its state-machine lease");
                 let mut sink = ChunkSink::new(SNAPSHOT_CHUNK_SIZE);
-                sm.snapshot_at(up_to, &mut sink)?;
+                sm.snapshot_at(up_to, &mut sink)
+                    .map_err(StateMachineError::into_anyhow)?;
                 Ok::<_, anyhow::Error>(sink.into_bytes())
             })
             .await??
@@ -300,7 +306,7 @@ impl RaftHost {
 
         let mut n = self.shared.node.lock().await;
         if n.current_term() != term
-            || (!n.is_leader() && n.conf_state().membership.voters.len() > 1)
+            || (!n.is_leader() && n.conf_state().membership.voters().len() > 1)
         {
             return Err(anyhow!(
                 "raft leadership changed while coordinating snapshot {up_to}"

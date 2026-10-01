@@ -3,11 +3,10 @@ use std::time::Duration;
 
 use super::delegated_error::DelegatedAuthError;
 use super::metrics::DelegatedAuthMetrics;
-use super::review::{ResourceAttributes, ReviewBackend, ReviewError};
-use super::system_clock::SystemClock;
 use crate::domain::k8s::{
     digest, AuthRejection, CacheOutcome, Clock, DelegatedAuthConfig, PrincipalRejection,
-    ServiceAccountPrincipal, TokenDigest, TtlCache,
+    ResourceAttributes, ReviewBackend, ReviewError, ServiceAccountPrincipal, TokenDigest,
+    TokenReviewOutcome, TtlCache,
 };
 
 /// The cache key for one authorization decision.
@@ -35,12 +34,9 @@ pub struct DelegatedAuthenticator {
 }
 
 impl DelegatedAuthenticator {
-    pub fn new(backend: Arc<dyn ReviewBackend>, config: DelegatedAuthConfig) -> Self {
-        Self::with_clock(backend, config, Arc::new(SystemClock))
-    }
-
-    /// The same authenticator on an injectable clock, so a caller can prove its
-    /// own revocation bound without waiting for one.
+    /// The authenticator on an injectable clock, so a caller can prove its own
+    /// revocation bound without waiting for one. `new` is the same on the
+    /// system clock.
     pub fn with_clock(
         backend: Arc<dyn ReviewBackend>,
         config: DelegatedAuthConfig,
@@ -112,8 +108,8 @@ impl DelegatedAuthenticator {
 
         let resolved = self.judge(outcome);
         let ttl = match &resolved {
-            Ok(_) => self.config.cache.allow_ttl,
-            Err(_) => self.config.cache.deny_ttl,
+            Ok(_) => self.config.cache.allow_ttl(),
+            Err(_) => self.config.cache.deny_ttl(),
         };
         self.tokens.insert(key, resolved.clone(), ttl);
         self.finish_authentication(resolved)
@@ -165,9 +161,9 @@ impl DelegatedAuthenticator {
 
         let allowed = outcome.is_allowed();
         let ttl = if allowed {
-            self.config.cache.allow_ttl
+            self.config.cache.allow_ttl()
         } else {
-            self.config.cache.deny_ttl
+            self.config.cache.deny_ttl()
         };
         self.decisions.insert(key, allowed, ttl);
         self.finish_authorization(allowed, attributes)
@@ -185,24 +181,21 @@ impl DelegatedAuthenticator {
     /// then the identity shape. Reading the identity of a token that was not
     /// minted for this service would be treating an unrelated credential as an
     /// attempt to log in here.
-    fn judge(
-        &self,
-        outcome: super::review::TokenReviewOutcome,
-    ) -> Result<ServiceAccountPrincipal, AuthRejection> {
-        if !outcome.authenticated {
+    fn judge(&self, outcome: TokenReviewOutcome) -> Result<ServiceAccountPrincipal, AuthRejection> {
+        if !outcome.is_authenticated() {
             return Err(AuthRejection::Principal(
                 PrincipalRejection::NotAuthenticated,
             ));
         }
         let audience_accepted = self.config.kubernetes_default
             || outcome
-                .audiences
+                .audiences()
                 .iter()
                 .any(|granted| self.config.audiences.iter().any(|want| want == granted));
         if !audience_accepted {
             return Err(AuthRejection::AudienceMismatch);
         }
-        ServiceAccountPrincipal::from_review(true, outcome.identity)
+        ServiceAccountPrincipal::from_review(true, outcome.identity().clone())
             .map_err(AuthRejection::Principal)
     }
 

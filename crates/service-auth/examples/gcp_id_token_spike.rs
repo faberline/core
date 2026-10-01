@@ -36,8 +36,8 @@ use std::sync::Arc;
 
 use axum::http::HeaderMap;
 use service_auth::gcp::{GoogleAuthConfig, GoogleVerifier};
-use service_auth::role_map::{Registry, Role};
 use service_auth::{AsyncVerifier, ReloadableRoleMapVerifier};
+use service_auth::{Registry, Role};
 
 const SA: &str = "lumen-dev@axiom-502607.iam.gserviceaccount.com";
 const AUD_A: &str = "https://lumen.team-a.svc";

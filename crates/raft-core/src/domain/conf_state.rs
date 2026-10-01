@@ -16,23 +16,24 @@ impl ConfState {
     pub fn encode(&self) -> Vec<u8> {
         let outgoing_len = self.outgoing.as_ref().map(|o| o.len()).unwrap_or(0);
         let mut buf = Vec::with_capacity(
-            24 + (self.membership.voters.len() + self.membership.learners.len() + outgoing_len) * 8
+            24 + (self.membership.voters().len() + self.membership.learners().len() + outgoing_len)
+                * 8
                 + 8,
         );
         buf.extend_from_slice(&self.generation.to_le_bytes());
-        buf.extend_from_slice(&(self.membership.voters.len() as u64).to_le_bytes());
-        for &v in &self.membership.voters {
-            buf.extend_from_slice(&v.to_le_bytes());
+        buf.extend_from_slice(&(self.membership.voters().len() as u64).to_le_bytes());
+        for &v in self.membership.voters() {
+            buf.extend_from_slice(&v.get().to_le_bytes());
         }
-        buf.extend_from_slice(&(self.membership.learners.len() as u64).to_le_bytes());
-        for &l in &self.membership.learners {
-            buf.extend_from_slice(&l.to_le_bytes());
+        buf.extend_from_slice(&(self.membership.learners().len() as u64).to_le_bytes());
+        for &l in self.membership.learners() {
+            buf.extend_from_slice(&l.get().to_le_bytes());
         }
         match &self.outgoing {
             Some(outgoing) => {
                 buf.extend_from_slice(&(outgoing.len() as u64).to_le_bytes());
                 for &v in outgoing {
-                    buf.extend_from_slice(&v.to_le_bytes());
+                    buf.extend_from_slice(&v.get().to_le_bytes());
                 }
             }
             None => {
@@ -56,9 +57,9 @@ impl ConfState {
         }
         let mut voters = Vec::with_capacity(voters_len);
         for _ in 0..voters_len {
-            voters.push(u64::from_le_bytes(
+            voters.push(NodeId::new(u64::from_le_bytes(
                 bytes[offset..offset + 8].try_into().ok()?,
-            ));
+            )));
             offset += 8;
         }
         let learners_len = u64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?) as usize;
@@ -68,9 +69,9 @@ impl ConfState {
         }
         let mut learners = Vec::with_capacity(learners_len);
         for _ in 0..learners_len {
-            learners.push(u64::from_le_bytes(
+            learners.push(NodeId::new(u64::from_le_bytes(
                 bytes[offset..offset + 8].try_into().ok()?,
-            ));
+            )));
             offset += 8;
         }
         let outgoing = if offset == bytes.len() {
@@ -90,9 +91,9 @@ impl ConfState {
                 }
                 let mut outgoing_voters = Vec::with_capacity(outgoing_len);
                 for _ in 0..outgoing_len {
-                    outgoing_voters.push(u64::from_le_bytes(
+                    outgoing_voters.push(NodeId::new(u64::from_le_bytes(
                         bytes[offset..offset + 8].try_into().ok()?,
-                    ));
+                    )));
                     offset += 8;
                 }
                 Some(outgoing_voters)
@@ -100,7 +101,7 @@ impl ConfState {
         };
         Some((
             ConfState {
-                membership: Membership { voters, learners },
+                membership: Membership::new(voters, learners),
                 outgoing,
                 generation,
             },

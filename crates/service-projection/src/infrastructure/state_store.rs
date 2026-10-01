@@ -6,9 +6,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use super::file_mode::{set_directory_mode, set_file_mode};
-use crate::domain::{
-    sha256, Projection, ProjectionCheckpoint, ProjectionDescriptor, ProjectionRecord,
-};
+use crate::domain::{sha256, ProjectionCheckpoint, ProjectionDescriptor};
 
 pub const PROJECTION_STATE_FORMAT_VERSION: u16 = 1;
 
@@ -30,8 +28,8 @@ fn validate_envelope(
             envelope.format_version
         );
     }
-    if envelope.checkpoint.projection != descriptor.name
-        || envelope.checkpoint.schema_version != descriptor.schema_version
+    if &envelope.checkpoint.projection != descriptor.name()
+        || envelope.checkpoint.schema_version != descriptor.schema_version()
     {
         bail!("projection checkpoint descriptor does not match registered projection");
     }
@@ -41,15 +39,12 @@ fn validate_envelope(
     Ok(())
 }
 
-pub(crate) fn restore_snapshot<Record, P>(
+/// Decode a state file and check it against `descriptor`: returns the
+/// checkpoint and the state bytes whose sha256 it records.
+pub(super) fn decode_snapshot(
     descriptor: &ProjectionDescriptor,
-    implementation: &P,
     bytes: &[u8],
-) -> Result<ProjectionCheckpoint>
-where
-    Record: ProjectionRecord,
-    P: Projection<Record>,
-{
+) -> Result<(ProjectionCheckpoint, Vec<u8>)> {
     let envelope: ProjectionStateEnvelope =
         serde_json::from_slice(bytes).context("decode projection state envelope")?;
     validate_envelope(descriptor, &envelope)?;
@@ -59,11 +54,10 @@ where
     if sha256(&state) != envelope.checkpoint.state_sha256 {
         bail!(
             "projection {} state checksum does not match its checkpoint",
-            descriptor.name
+            descriptor.name()
         );
     }
-    implementation.restore(&state)?;
-    Ok(envelope.checkpoint)
+    Ok((envelope.checkpoint, state))
 }
 
 pub(crate) fn persist(path: &Path, checkpoint: &ProjectionCheckpoint, state: &[u8]) -> Result<()> {
@@ -87,3 +81,6 @@ pub(crate) fn persist(path: &Path, checkpoint: &ProjectionCheckpoint, state: &[u
     .with_context(|| format!("atomically persist projection state {}", path.display()))?;
     set_file_mode(path)
 }
+
+#[cfg(test)]
+mod tests;

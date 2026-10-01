@@ -15,7 +15,7 @@ impl RaftNode {
         let next = *self
             .next_index
             .get(&peer)
-            .unwrap_or(&(self.last_index() + 1));
+            .unwrap_or(&self.last_index().next());
         // Needed entries compacted away → ship the snapshot instead.
         if next <= self.snapshot_index {
             let (term, si, st) = (self.current_term, self.snapshot_index, self.snapshot_term);
@@ -63,7 +63,7 @@ impl RaftNode {
                 RaftMsg::AppendResp(AppendResp {
                     term,
                     success: false,
-                    match_index: 0,
+                    match_index: Index::new(0),
                 }),
             );
             return;
@@ -101,7 +101,7 @@ impl RaftNode {
             if e.index <= self.snapshot_index {
                 continue;
             }
-            let pos = (e.index - self.snapshot_index - 1) as usize;
+            let pos = (e.index.get() - self.snapshot_index.get() - 1) as usize;
             if pos < self.log.len() {
                 if self.log[pos].term != e.term {
                     let removed = self.log[pos..]
@@ -119,7 +119,7 @@ impl RaftNode {
                 self.log.push(e.clone());
             }
         }
-        let match_index = req.prev_log_index + req.entries.len() as Index;
+        let match_index = Index::new(req.prev_log_index.get() + req.entries.len() as u64);
         if req.leader_commit > self.commit_index {
             self.commit_index = req.leader_commit.min(self.last_index());
         }
@@ -146,30 +146,30 @@ impl RaftNode {
             // Multiple h2 requests to one peer can complete out of order.
             // Replication progress is monotonic: a stale success must never
             // move match_index/next_index behind a newer acknowledgement.
-            let matched = self.match_index.entry(from).or_insert(0);
+            let matched = self.match_index.entry(from).or_insert(Index::new(0));
             *matched = (*matched).max(resp.match_index);
-            let next = self.next_index.entry(from).or_insert(1);
+            let next = self.next_index.entry(from).or_insert(Index::new(1));
             *next = (*next).max(matched.saturating_add(1));
             let old = self.commit_index;
             self.maybe_commit();
             if self.commit_index > old {
                 // Propagate the new commit to everyone.
                 self.broadcast_append();
-            } else if *self.next_index.get(&from).unwrap_or(&1) <= self.last_index() {
+            } else if *self.next_index.get(&from).unwrap_or(&Index::new(1)) <= self.last_index() {
                 self.send_append_to(from);
             }
         } else {
             // Log mismatch: back off and retry (snapshot kicks in once next falls
             // to or below the compaction point). Ignore a delayed failure for
             // a prefix a newer response already proved replicated.
-            if resp.match_index < *self.match_index.get(&from).unwrap_or(&0) {
+            if resp.match_index < *self.match_index.get(&from).unwrap_or(&Index::new(0)) {
                 return;
             }
-            let n = self.next_index.entry(from).or_insert(1);
+            let n = self.next_index.entry(from).or_insert(Index::new(1));
             *n = (*n)
                 .saturating_sub(1)
                 .min(resp.match_index.saturating_add(1))
-                .max(1);
+                .max(Index::new(1));
             self.send_append_to(from);
         }
     }

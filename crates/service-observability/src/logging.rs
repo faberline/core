@@ -26,7 +26,7 @@ pub enum OtelFallback {
 }
 
 pub fn tracing_mode(config: &ObservabilityConfig, identity: &ServiceIdentity) -> TracingMode {
-    let Some(endpoint) = config.otlp_endpoint.as_deref() else {
+    let Some(endpoint) = config.otlp_endpoint() else {
         return TracingMode::LoggingOnly;
     };
     if !valid_otlp_endpoint(endpoint) {
@@ -69,9 +69,9 @@ pub fn init_tracing_with_identity(
     config: &ObservabilityConfig,
     identity: &ServiceIdentity,
 ) -> anyhow::Result<()> {
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(config.log_level.clone()));
-    let fmt_layer = match config.log_format {
+    let filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(config.log_level()));
+    let fmt_layer = match config.log_format() {
         LogFormat::Pretty => tracing_subscriber::fmt::layer().boxed(),
         LogFormat::Json => tracing_subscriber::fmt::layer()
             .fmt_fields(tracing_subscriber::fmt::format::JsonFields::new())

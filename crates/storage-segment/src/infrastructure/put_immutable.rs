@@ -1,7 +1,8 @@
 use storage_object::{ObjectStore, ObjectStoreError, PutCondition};
 
-use super::content_hash::hex_sha256;
-use crate::domain::{ArchiveObject, ArchivedObject, Result, SegmentError};
+use crate::domain::{
+    hex_sha256, ArchiveObject, ArchivedObject, ArchivedObjectVersion, Result, SegmentError,
+};
 
 pub(crate) fn put_immutable(
     store: &dyn ObjectStore,
@@ -17,10 +18,12 @@ pub(crate) fn put_immutable(
         Ok(meta) => meta,
         Err(ObjectStoreError::PreconditionFailed { .. }) => {
             let existing = store.get(&object.key)?;
-            if existing.bytes != object.bytes || existing.meta.content_type != object.content_type {
+            if existing.bytes() != object.bytes.as_slice()
+                || existing.meta().content_type() != object.content_type
+            {
                 return Err(SegmentError::ImmutableObjectChanged { key: object.key });
             }
-            existing.meta
+            existing.into_parts().0
         }
         Err(error) => return Err(error.into()),
     };
@@ -29,6 +32,6 @@ pub(crate) fn put_immutable(
         size: object.bytes.len() as u64,
         content_type: object.content_type,
         sha256,
-        version: meta.version,
+        version: ArchivedObjectVersion::new(meta.version().as_str()),
     })
 }

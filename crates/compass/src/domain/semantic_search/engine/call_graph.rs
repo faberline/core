@@ -2,31 +2,23 @@ use std::path::PathBuf;
 
 use crate::domain::ast_editing::mutable_ast::Span;
 use crate::domain::semantic_search::engine::{CallSite, SemanticSearchEngine};
+use crate::domain::syntax::parsed_file::ParsedFile;
 
 impl SemanticSearchEngine {
-    /// Build call graph from source code.
-    pub fn build_call_graph(
-        &mut self,
-        file: PathBuf,
-        content: &str,
-        language: crate::syntax::Language,
-    ) -> Result<(), String> {
-        use crate::syntax::MultiParser;
-
-        let mut parser =
-            MultiParser::new().map_err(|e| format!("Failed to create parser: {:?}", e))?;
-        let parsed = parser
-            .parse(content, language)
-            .ok_or("Failed to parse file")?;
-
-        let call_sites =
-            self.extract_call_sites(file.clone(), &parsed.tree.root_node(), content, language);
+    /// Add the call sites of a parsed file to the call graph.
+    ///
+    /// `build_call_graph` (in the composition root) parses the source first.
+    pub fn build_call_graph_parsed(&mut self, file: PathBuf, parsed: &ParsedFile) {
+        let call_sites = self.extract_call_sites(
+            file,
+            &parsed.tree.root_node(),
+            &parsed.source,
+            parsed.language,
+        );
 
         for site in call_sites {
             self.call_graph.add_call(site);
         }
-
-        Ok(())
     }
 
     /// Extract all call sites from an AST.

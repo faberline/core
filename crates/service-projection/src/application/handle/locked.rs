@@ -1,10 +1,11 @@
+use crate::domain::{ProjectionCursor, ProjectionEventId, SourceGeneration};
 use std::sync::Arc;
 
 use anyhow::Result;
+use chrono::Utc;
 
 use super::{LiveProjection, ProjectionHandle};
 use crate::domain::{checkpoint, Projection, ProjectionLag, ProjectionRecord, RebuildComparison};
-use crate::infrastructure::persist;
 
 impl<Record, P> ProjectionHandle<Record, P>
 where
@@ -14,9 +15,9 @@ where
     pub(super) fn catch_up_locked(
         &self,
         live: &mut LiveProjection<P>,
-        target: u64,
-        generation: u64,
-    ) -> Result<u64> {
+        target: ProjectionCursor,
+        generation: SourceGeneration,
+    ) -> Result<ProjectionCursor> {
         let mut session = self.source.open_read_session(live.checkpoint.cursor)?;
         while live.checkpoint.cursor < target {
             let records = match session.as_mut() {
@@ -39,7 +40,7 @@ where
             {
                 live.implementation.apply_idempotent(record)?;
                 live.checkpoint.cursor = record.projection_cursor();
-                last_event_id = Some(record.projection_event_id().to_string());
+                last_event_id = Some(record.projection_event_id());
             }
             if last_event_id.is_none() {
                 break;
@@ -48,16 +49,21 @@ where
             live.checkpoint.source_generation = generation;
             self.published.notify_waiters();
         }
-        let advanced = live.checkpoint.cursor.saturating_sub(live.persisted_cursor);
+        let advanced = live.checkpoint.cursor.distance_since(live.persisted_cursor);
         if live.checkpoint.cursor > live.persisted_cursor
-            && (live.persisted_cursor == 0 || advanced >= self.config.snapshot_interval_events)
+            && (live.persisted_cursor == ProjectionCursor::default()
+                || advanced >= self.config.snapshot_interval_events)
         {
             self.persist_live(live, generation)?;
         }
         Ok(live.checkpoint.cursor)
     }
 
-    pub(super) fn persist_live(&self, live: &mut LiveProjection<P>, generation: u64) -> Result<()> {
+    pub(super) fn persist_live(
+        &self,
+        live: &mut LiveProjection<P>,
+        generation: SourceGeneration,
+    ) -> Result<()> {
         let state = live.implementation.snapshot()?;
         let checkpoint = checkpoint(
             &live.implementation.descriptor(),
@@ -65,8 +71,9 @@ where
             generation,
             live.checkpoint.event_id.clone(),
             &state,
+            Utc::now(),
         );
-        persist(&self.state_path, &checkpoint, &state)?;
+        self.store.persist(&self.name, &checkpoint, &state)?;
         live.implementation.checkpoint_committed()?;
         live.persisted_cursor = checkpoint.cursor;
         live.checkpoint = checkpoint;
@@ -76,8 +83,8 @@ where
     pub(super) fn rebuild_locked(
         &self,
         live: &mut LiveProjection<P>,
-        source_cursor: u64,
-        source_generation: u64,
+        source_cursor: ProjectionCursor,
+        source_generation: SourceGeneration,
     ) -> Result<RebuildComparison> {
         let live_digest = live.implementation.semantic_digest()?;
         let (rebuilt, last_event_id) = self.build_projection(source_cursor)?;
@@ -90,8 +97,9 @@ where
             source_generation,
             last_event_id,
             &state,
+            Utc::now(),
         );
-        persist(&self.state_path, &checkpoint, &state)?;
+        self.store.persist(&self.name, &checkpoint, &state)?;
         rebuilt.checkpoint_committed()?;
         live.implementation = rebuilt;
         live.checkpoint = checkpoint;
@@ -106,9 +114,12 @@ where
         })
     }
 
-    pub(super) fn build_projection(&self, source_cursor: u64) -> Result<(Arc<P>, Option<String>)> {
+    pub(super) fn build_projection(
+        &self,
+        source_cursor: ProjectionCursor,
+    ) -> Result<(Arc<P>, Option<ProjectionEventId>)> {
         let rebuilt = (self.factory)()?;
-        let mut after = 0_u64;
+        let mut after = ProjectionCursor::default();
         let mut last_event_id = None;
         let mut session = self.source.open_read_session(after)?;
         while after < source_cursor {
@@ -126,7 +137,7 @@ where
             {
                 rebuilt.apply_idempotent(record)?;
                 after = record.projection_cursor();
-                last_event_id = Some(record.projection_event_id().to_string());
+                last_event_id = Some(record.projection_event_id());
                 advanced = true;
             }
             if !advanced
@@ -140,7 +151,7 @@ where
         Ok((rebuilt, last_event_id))
     }
 
-    pub(super) fn current_source_generation(&self) -> u64 {
+    pub(super) fn current_source_generation(&self) -> SourceGeneration {
         self.live
             .lock()
             .expect("projection state lock poisoned")
@@ -148,9 +159,13 @@ where
             .source_generation
     }
 
-    pub(super) fn lag(&self, required_cursor: u64, current_cursor: u64) -> ProjectionLag {
+    pub(super) fn lag(
+        &self,
+        required_cursor: ProjectionCursor,
+        current_cursor: ProjectionCursor,
+    ) -> ProjectionLag {
         ProjectionLag::new(
-            self.descriptor().name,
+            self.descriptor().name().clone(),
             required_cursor,
             current_cursor,
             self.config.retry_after_seconds,

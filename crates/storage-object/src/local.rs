@@ -132,16 +132,13 @@ impl LocalObjectStore {
             let time: chrono::DateTime<chrono::Utc> = time.into();
             time.to_rfc3339()
         });
-        Ok(ObjectMeta {
-            key: key.to_string(),
-            size: metadata.len(),
-            content_type: sidecar
-                .map(|sidecar| sidecar.content_type)
-                .unwrap_or_else(|| "application/octet-stream".into()),
-            version: version.clone(),
-            etag: Some(version.as_str().to_string()),
-            updated,
-        })
+        let content_type = sidecar
+            .map(|sidecar| sidecar.content_type)
+            .unwrap_or_else(|| "application/octet-stream".into());
+        let etag = Some(version.as_str().to_string());
+        Ok(ObjectMeta::new(key, metadata.len(), content_type, version)
+            .with_etag(etag)
+            .with_updated(updated))
     }
 }
 
@@ -169,7 +166,7 @@ impl ObjectStore for LocalObjectStore {
                     }
                 }
                 PutCondition::IfVersion(expected) => match current {
-                    Ok(meta) if meta.version == expected => {}
+                    Ok(meta) if meta.version() == &expected => {}
                     Ok(_) | Err(ObjectStoreError::NotFound { .. }) => {
                         return Err(ObjectStoreError::PreconditionFailed {
                             key: key.to_string(),
@@ -205,7 +202,7 @@ impl ObjectStore for LocalObjectStore {
         self.locked(|| {
             let meta = self.head_inner(key)?;
             let bytes = std::fs::read(self.object_path(key, false)?).map_err(io_error)?;
-            Ok(Object { meta, bytes })
+            Ok(Object::new(meta, bytes))
         })
     }
 
@@ -245,7 +242,7 @@ impl ObjectStore for LocalObjectStore {
                     objects.push(self.head_inner(&relative)?);
                 }
             }
-            objects.sort_by(|left, right| left.key.cmp(&right.key));
+            objects.sort_by(|left, right| left.key().cmp(right.key()));
             Ok(objects)
         })
     }

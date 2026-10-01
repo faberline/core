@@ -4,26 +4,28 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
-use raft_core::{AppendResp, InstallSnapshotReq, InstallSnapshotResp, NodeId, RaftMsg, VoteResp};
+use raft_core::{
+    AppendResp, Index, InstallSnapshotReq, InstallSnapshotResp, NodeId, RaftMsg, Term, VoteResp,
+};
 
-use crate::application::{take_reply, Shared, StorageFailed};
-use crate::infrastructure::{
+use super::wire::{
     AppendEnvelope, CapableSnapEnvelope, CapableSnapshotResp, SnapEnvelope, TimeoutNowEnvelope,
     VoteEnvelope,
 };
+use crate::application::{take_reply, Shared, StorageFailed};
 
 pub(crate) async fn request_vote(
     State(s): State<Arc<Shared>>,
     Json(env): Json<VoteEnvelope>,
 ) -> axum::response::Response {
-    if env.group_id != s.group_id.0 {
+    if env.group_id != s.group_id.as_str() {
         return (StatusCode::BAD_REQUEST, "group id mismatch").into_response();
     }
     let mut n = s.node.lock().await;
     n.handle(env.from, RaftMsg::Vote(env.req));
     if s.persist(&n).is_err() {
         return Json(VoteResp {
-            term: 0,
+            term: Term::new(0),
             granted: false,
         })
         .into_response();
@@ -31,7 +33,7 @@ pub(crate) async fn request_vote(
     Json(match take_reply(&mut n, env.from) {
         Some(RaftMsg::VoteResp(r)) => r,
         _ => VoteResp {
-            term: 0,
+            term: Term::new(0),
             granted: false,
         },
     })
@@ -42,16 +44,16 @@ pub(crate) async fn append_entries(
     State(s): State<Arc<Shared>>,
     Json(env): Json<AppendEnvelope>,
 ) -> axum::response::Response {
-    if env.group_id != s.group_id.0 {
+    if env.group_id != s.group_id.as_str() {
         return (StatusCode::BAD_REQUEST, "group id mismatch").into_response();
     }
     let mut n = s.node.lock().await;
     n.handle(env.from, RaftMsg::Append(env.req));
     if s.persist(&n).is_err() {
         return Json(AppendResp {
-            term: 0,
+            term: Term::new(0),
             success: false,
-            match_index: 0,
+            match_index: Index::new(0),
         })
         .into_response();
     }
@@ -59,9 +61,9 @@ pub(crate) async fn append_entries(
     Json(match take_reply(&mut n, env.from) {
         Some(RaftMsg::AppendResp(r)) => r,
         _ => AppendResp {
-            term: 0,
+            term: Term::new(0),
             success: false,
-            match_index: 0,
+            match_index: Index::new(0),
         },
     })
     .into_response()
@@ -71,7 +73,7 @@ pub(crate) async fn install_snapshot(
     State(s): State<Arc<Shared>>,
     Json(env): Json<SnapEnvelope>,
 ) -> axum::response::Response {
-    if env.group_id != s.group_id.0 {
+    if env.group_id != s.group_id.as_str() {
         return (StatusCode::BAD_REQUEST, "group id mismatch").into_response();
     }
     Json(install_snapshot_response(&s, env.from, env.req).await).into_response()
@@ -81,7 +83,7 @@ pub(crate) async fn install_snapshot_capable(
     State(s): State<Arc<Shared>>,
     Json(env): Json<CapableSnapEnvelope>,
 ) -> axum::response::Response {
-    if env.group_id != s.group_id.0 {
+    if env.group_id != s.group_id.as_str() {
         return (StatusCode::BAD_REQUEST, "group id mismatch").into_response();
     }
     if env.snapshot_nonce == 0
@@ -95,9 +97,9 @@ pub(crate) async fn install_snapshot_capable(
     }
     let response = install_snapshot_response(&s, env.from, env.req).await;
     Json(CapableSnapshotResp {
-        term: response.term,
+        term: response.term.get(),
         accepted: response.accepted,
-        snapshot_index: response.snapshot_index,
+        snapshot_index: response.snapshot_index.get(),
         snapshot_capability: env.snapshot_capability,
         snapshot_nonce: env.snapshot_nonce,
     })
@@ -123,13 +125,13 @@ async fn install_snapshot_response(
             *s.latched_failure.lock().unwrap() = Some(StorageFailed {
                 node_id: s.id,
                 operation: "state-machine-restore-panic",
-                path: s.store.path().to_path_buf(),
+                path: s.store_path.clone(),
                 kind: std::io::ErrorKind::InvalidData,
             });
             InstallSnapshotResp {
-                term: 0,
+                term: Term::new(0),
                 accepted: false,
-                snapshot_index: 0,
+                snapshot_index: Index::new(0),
             }
         }
     }
@@ -139,7 +141,7 @@ pub(crate) async fn timeout_now(
     State(s): State<Arc<Shared>>,
     Json(env): Json<TimeoutNowEnvelope>,
 ) -> axum::response::Response {
-    if env.group_id != s.group_id.0 {
+    if env.group_id != s.group_id.as_str() {
         return (StatusCode::BAD_REQUEST, "group id mismatch").into_response();
     }
     let mut n = s.node.lock().await;

@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::domain::diagnostic::rule_code::RuleCode;
+
 /// Diagnostic severity levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum DiagnosticSeverity {
@@ -74,15 +76,6 @@ impl Range {
         Self { start, end }
     }
 
-    pub fn from_node(node: &tree_sitter::Node<'_>) -> Self {
-        let start = node.start_position();
-        let end = node.end_position();
-        Self {
-            start: Position::new(start.row as u32, start.column as u32),
-            end: Position::new(end.row as u32, end.column as u32),
-        }
-    }
-
     /// Check if a position is within this range
     pub fn contains(&self, line: u32, character: u32) -> bool {
         // Check if position is after start
@@ -116,7 +109,7 @@ pub struct TextEdit {
 pub struct Diagnostic {
     pub range: Range,
     pub severity: DiagnosticSeverity,
-    pub code: String,
+    pub code: RuleCode,
     pub category: DiagnosticCategory,
     pub message: String,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
@@ -127,7 +120,7 @@ impl Diagnostic {
     pub fn new(
         range: Range,
         severity: DiagnosticSeverity,
-        code: impl Into<String>,
+        code: impl Into<RuleCode>,
         category: DiagnosticCategory,
         message: impl Into<String>,
     ) -> Self {
@@ -143,7 +136,7 @@ impl Diagnostic {
 
     pub fn error(
         range: Range,
-        code: impl Into<String>,
+        code: impl Into<RuleCode>,
         category: DiagnosticCategory,
         message: impl Into<String>,
     ) -> Self {
@@ -152,7 +145,7 @@ impl Diagnostic {
 
     pub fn warning(
         range: Range,
-        code: impl Into<String>,
+        code: impl Into<RuleCode>,
         category: DiagnosticCategory,
         message: impl Into<String>,
     ) -> Self {

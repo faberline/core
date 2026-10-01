@@ -106,7 +106,8 @@ impl WatchConfig {
     }
 }
 
-/// File system watcher with debouncing
+/// File system watcher with debouncing, for watch mode's automatic
+/// re-analysis
 pub struct FileWatcher {
     /// Configuration
     config: WatchConfig,

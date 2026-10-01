@@ -181,13 +181,13 @@ async fn the_decision_cache_key_covers_the_whole_identity_not_just_the_username(
     backend.set_access(Ok(AccessReviewOutcome::allow()));
     let auth = authenticator(backend.clone(), clock);
 
-    let mut first = reviewed("system:serviceaccount:tenant-a:reader", &[AUDIENCE]);
-    first.identity.groups = vec!["group-one".into()];
+    let mut first = reviewed_identity("system:serviceaccount:tenant-a:reader");
+    first.groups = vec!["group-one".into()];
     let mut second = first.clone();
-    second.identity.groups = vec!["group-two".into()];
+    second.groups = vec!["group-two".into()];
 
-    let a = ServiceAccountPrincipal::from_review(true, first.identity).unwrap();
-    let b = ServiceAccountPrincipal::from_review(true, second.identity).unwrap();
+    let a = ServiceAccountPrincipal::from_review(true, first).unwrap();
+    let b = ServiceAccountPrincipal::from_review(true, second).unwrap();
     auth.authorize(&a, &attributes()).await.unwrap();
     auth.authorize(&b, &attributes()).await.unwrap();
 
@@ -206,7 +206,7 @@ async fn each_resource_and_verb_is_its_own_cached_decision() {
     let auth = authenticator(backend.clone(), clock);
     let principal = ServiceAccountPrincipal::from_review(
         true,
-        reviewed("system:serviceaccount:tenant-a:reader", &[AUDIENCE]).identity,
+        reviewed_identity("system:serviceaccount:tenant-a:reader"),
     )
     .unwrap();
 

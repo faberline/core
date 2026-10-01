@@ -1,6 +1,6 @@
-//! The shared operator: the watch/apply/lease loop and the service contract it drives.
+//! The shared operator: the watch/apply loop and the reconcile pass it drives.
+//! The public entry points that start it live in the composition root.
 
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -11,13 +11,13 @@ use kube::runtime::events::{Event, EventType, Recorder, Reporter};
 use kube::runtime::watcher;
 use kube::{Client, ResourceExt};
 
-use crate::infrastructure::lease::{self, Election};
-use crate::interfaces::metrics::{self, ControllerMetrics};
-use managed_service::ManagedService;
+use crate::application::condition::status_patch::StatusPatchError;
+use crate::application::operator::leadership::Leadership;
+use crate::application::operator::managed_service::ManagedService;
+use crate::interfaces::metrics::ControllerMetrics;
 use reconcile::reconcile_entry;
 
 mod children;
-pub(crate) mod managed_service;
 mod reconcile;
 #[cfg(test)]
 mod tests;
@@ -42,71 +42,61 @@ pub enum Error {
     },
 }
 
+impl From<StatusPatchError> for Error {
+    fn from(error: StatusPatchError) -> Self {
+        match error {
+            StatusPatchError::Missing(field) => Self::Missing(field),
+            StatusPatchError::Serde(error) => Self::Serde(error),
+        }
+    }
+}
+
 struct Ctx {
     client: Client,
-    election: Arc<Election>,
+    leadership: Leadership,
     metrics: Arc<ControllerMetrics>,
     recorder: Recorder,
 }
 
-/// This replica's leader-election identity (pod name in k8s, else the manager).
-fn identity(manager: &str) -> String {
-    std::env::var("POD_NAME")
-        .or_else(|_| std::env::var("HOSTNAME"))
-        .unwrap_or_else(|_| manager.to_string())
-}
-
-/// The namespace the leader-election Lease lives in (the operator's own).
-fn lease_namespace(manager: &str) -> String {
-    std::env::var("POD_NAMESPACE").unwrap_or_else(|_| format!("{manager}-system"))
-}
-
-/// Run the operator for `S` until the process is terminated. Every replica
-/// watches + reconciles, but only the Lease holder applies (HA-safe at
-/// `replicas > 1`).
-pub async fn run<S: ManagedService>() -> anyhow::Result<()> {
-    let client = Client::try_default().await?;
-    let election = Election::new(identity(S::MANAGER));
-    lease::spawn(
-        client.clone(),
-        lease_namespace(S::MANAGER),
-        S::MANAGER.to_string(),
-        election.clone(),
-    );
-
-    // Control-plane observability (#2620). The scrape listener runs alongside
-    // the controller rather than inside it: leadership is read at scrape time,
-    // so a follower replica publishes an honest `_leader 0` instead of going
-    // dark, and every replica is independently scrapeable.
-    let controller_metrics = Arc::new(ControllerMetrics::new(S::MANAGER));
-    {
-        let election = election.clone();
-        tokio::spawn(metrics::serve(
-            metrics::metrics_addr(),
-            controller_metrics.clone(),
-            move || election.is_leader.load(Ordering::Relaxed),
-        ));
+impl Ctx {
+    /// The context `S` is reconciled with. Events are reported as
+    /// `S::MANAGER`, from this replica's identity.
+    fn new<S: ManagedService>(
+        client: Client,
+        leadership: Leadership,
+        metrics: Arc<ControllerMetrics>,
+    ) -> Self {
+        let recorder = Recorder::new(
+            client.clone(),
+            Reporter {
+                controller: S::MANAGER.to_string(),
+                instance: Some(leadership.identity().to_string()),
+            },
+        );
+        Self {
+            client,
+            leadership,
+            metrics,
+            recorder,
+        }
     }
-    let recorder = Recorder::new(
-        client.clone(),
-        Reporter {
-            controller: S::MANAGER.to_string(),
-            instance: Some(election.identity.clone()),
-        },
-    );
+}
 
+/// Watch every `S` cluster-wide and reconcile each under `leadership` until the
+/// process is terminated. Every replica watches + reconciles, but only the
+/// leader applies (HA-safe at `replicas > 1`).
+pub(crate) async fn watch<S: ManagedService>(
+    client: Client,
+    leadership: Leadership,
+    metrics: Arc<ControllerMetrics>,
+) {
     let objs = Api::<S>::all(client.clone());
-    tracing::info!(identity = %election.identity, manager = S::MANAGER, "operator starting; watching CR cluster-wide");
+    tracing::info!(identity = %leadership.identity(), manager = S::MANAGER, "operator starting; watching CR cluster-wide");
     Controller::new(objs, watcher::Config::default())
         .run(
             reconcile_entry::<S>,
             error_policy::<S>,
-            Arc::new(Ctx {
-                client,
-                election,
-                metrics: controller_metrics,
-                recorder,
-            }),
+            Arc::new(Ctx::new::<S>(client, leadership, metrics)),
         )
         .for_each(|res| async move {
             match res {
@@ -115,50 +105,18 @@ pub async fn run<S: ManagedService>() -> anyhow::Result<()> {
             }
         })
         .await;
-    Ok(())
 }
 
-/// Run exactly one reconcile pass for `obj` against `client`, under `election`.
-///
-/// [`run`] builds its own `Client` from the ambient kubeconfig and never
-/// returns, so the convergence sequence it drives — apply the planned children,
-/// prune the ones the spec dropped, observe readiness, write status — had no
-/// observation point outside this module. That is a hole in the crate's
-/// contract rather than a testing convenience: the sequence is the whole of
-/// what a service in the kit delegates here, and nothing outside the module
-/// could watch it end to end.
-///
-/// This is that one pass, against a `Client` and an [`Election`] the caller
-/// supplies. Leadership is a parameter rather than something this function
-/// decides: the leader gate in `reconcile_entry` is what makes `replicas > 1`
-/// safe, and a public entry point that stored `is_leader = true` into an
-/// election of its own making was a second, unguarded way past it. A caller
-/// that wants a leader's pass says so in one visible line at its own call site.
-///
-/// The metric set is private to the call, so counting here cannot disturb a
-/// running operator's exposition. It runs through the same instrumented entry
-/// point [`run`] does, so a pass observed here is the pass the operator
-/// performs — the leader gate included, which is why a follower's election
-/// yields a requeue and no cluster write at all.
-pub async fn reconcile_once<S: ManagedService>(
+/// Exactly one reconcile pass for `obj` under `leadership`, through the same
+/// instrumented entry point [`watch`] uses, with a metric set private to the
+/// call.
+pub(crate) async fn reconcile_one<S: ManagedService>(
     client: Client,
     obj: Arc<S>,
-    election: Arc<Election>,
+    leadership: Leadership,
 ) -> Result<Action, Error> {
-    let recorder = Recorder::new(
-        client.clone(),
-        Reporter {
-            controller: S::MANAGER.to_string(),
-            instance: Some(election.identity.clone()),
-        },
-    );
-    let ctx = Arc::new(Ctx {
-        client,
-        election,
-        metrics: Arc::new(ControllerMetrics::new(S::MANAGER)),
-        recorder,
-    });
-    reconcile_entry::<S>(obj, ctx).await
+    let metrics = Arc::new(ControllerMetrics::new(S::MANAGER));
+    reconcile_entry::<S>(obj, Arc::new(Ctx::new::<S>(client, leadership, metrics))).await
 }
 
 /// Publish one Event against the CR, best-effort.

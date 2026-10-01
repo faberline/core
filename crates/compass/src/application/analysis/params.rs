@@ -1,4 +1,4 @@
-use crate::application::daemon::protocol::*;
+use crate::domain::daemon::protocol::*;
 
 // Implement TryFrom for param types
 impl TryFrom<serde_json::Value> for CheckParams {

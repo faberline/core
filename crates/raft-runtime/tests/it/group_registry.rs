@@ -3,10 +3,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use tempfile::TempDir;
 
-use raft_core::VoteReq;
+use raft_core::{NodeId, Term, VoteReq};
 use raft_runtime::{
-    group::GroupId, FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftRegistry,
-    RaftStateMachine, RaftStatus, RaftStore, RegistryError,
+    FsyncPolicy, GroupId, HostConfig, Index, Membership, RaftHost, RaftRegistry, RaftStateMachine,
+    RaftStatus, RaftStore, RegistryError, StateMachineError,
 };
 
 use crate::support::cluster;
@@ -38,7 +38,7 @@ impl SequenceSm {
 }
 
 impl RaftStateMachine for SequenceSm {
-    fn apply(&self, index: Index, command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
         let val = if command.len() == 8 {
             u64::from_le_bytes(command.try_into().unwrap())
         } else if command.len() == 1 {
@@ -47,24 +47,26 @@ impl RaftStateMachine for SequenceSm {
             0
         };
         self.commands.lock().unwrap().push(val);
-        self.applied.store(index, Ordering::Release);
+        self.applied.store(index.get(), Ordering::Release);
         Ok(())
     }
 
-    fn snapshot(&self, writer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn snapshot(&self, writer: &mut dyn std::io::Write) -> Result<(), StateMachineError> {
         let cmds = self.commands.lock().unwrap().clone();
-        let bytes = serde_json::to_vec(&cmds)?;
-        writer.write_all(&bytes)?;
+        let bytes = serde_json::to_vec(&cmds).map_err(StateMachineError::other)?;
+        writer.write_all(&bytes).map_err(StateMachineError::other)?;
         Ok(())
     }
 
-    fn restore(&self, reader: &mut dyn std::io::Read) -> anyhow::Result<()> {
+    fn restore(&self, reader: &mut dyn std::io::Read) -> Result<(), StateMachineError> {
         let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes)?;
+        reader
+            .read_to_end(&mut bytes)
+            .map_err(StateMachineError::other)?;
         if bytes.is_empty() {
             return Ok(());
         }
-        let cmds: Vec<u64> = serde_json::from_slice(&bytes)?;
+        let cmds: Vec<u64> = serde_json::from_slice(&bytes).map_err(StateMachineError::other)?;
         let last = cmds.len() as u64;
         *self.commands.lock().unwrap() = cmds;
         self.applied.store(last, Ordering::Release);
@@ -72,7 +74,7 @@ impl RaftStateMachine for SequenceSm {
     }
 
     fn applied_index(&self) -> Index {
-        self.applied.load(Ordering::Acquire)
+        Index::new(self.applied.load(Ordering::Acquire))
     }
 }
 
@@ -94,27 +96,24 @@ async fn row1_multi_group_multiplexing() {
 
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Always,
     )
     .unwrap();
 
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("beta".to_string()),
+        NodeId::new(0),
+        GroupId::new("beta"),
         FsyncPolicy::Always,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
         sm1.clone() as Arc<dyn RaftStateMachine>,
@@ -122,12 +121,9 @@ async fn row1_multi_group_multiplexing() {
     ));
 
     let host2 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("beta".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("beta"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,
@@ -213,27 +209,24 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
 
         let store1 = RaftStore::open_group(
             dir.path().to_str().unwrap(),
-            0,
-            GroupId("alpha".to_string()),
+            NodeId::new(0),
+            GroupId::new("alpha"),
             FsyncPolicy::Always,
         )
         .unwrap();
 
         let store2 = RaftStore::open_group(
             dir.path().to_str().unwrap(),
-            0,
-            GroupId("beta".to_string()),
+            NodeId::new(0),
+            GroupId::new("beta"),
             FsyncPolicy::Always,
         )
         .unwrap();
 
         let host1 = Arc::new(RaftHost::spawn_group(
-            0,
-            GroupId("alpha".to_string()),
-            Membership {
-                voters: vec![0],
-                learners: vec![],
-            },
+            NodeId::new(0),
+            GroupId::new("alpha"),
+            Membership::new(vec![NodeId::new(0)], vec![]),
             HashMap::new(),
             store1,
             sm1.clone() as Arc<dyn RaftStateMachine>,
@@ -241,12 +234,9 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
         ));
 
         let host2 = Arc::new(RaftHost::spawn_group(
-            0,
-            GroupId("beta".to_string()),
-            Membership {
-                voters: vec![0],
-                learners: vec![],
-            },
+            NodeId::new(0),
+            GroupId::new("beta"),
+            Membership::new(vec![NodeId::new(0)], vec![]),
             HashMap::new(),
             store2,
             sm2.clone() as Arc<dyn RaftStateMachine>,
@@ -319,27 +309,24 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
 
     let store1_fresh = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Always,
     )
     .unwrap();
 
     let store2_fresh = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("beta".to_string()),
+        NodeId::new(0),
+        GroupId::new("beta"),
         FsyncPolicy::Always,
     )
     .unwrap();
 
     let host1_fresh = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1_fresh,
         sm1_fresh.clone() as Arc<dyn RaftStateMachine>,
@@ -347,12 +334,9 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
     ));
 
     let host2_fresh = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("beta".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("beta"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2_fresh,
         sm2_fresh.clone() as Arc<dyn RaftStateMachine>,
@@ -375,27 +359,24 @@ async fn row3_unknown_group_refusal_negative_control() {
 
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("beta".to_string()),
+        NodeId::new(0),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
         sm1.clone() as Arc<dyn RaftStateMachine>,
@@ -403,12 +384,9 @@ async fn row3_unknown_group_refusal_negative_control() {
     ));
 
     let host2 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("beta".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("beta"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,
@@ -452,10 +430,10 @@ async fn row3_unknown_group_refusal_negative_control() {
             "group_id": "unregistered_group",
             "from": 99,
             "req": VoteReq {
-                term: 999,
-                candidate: 99,
-                last_log_index: 999,
-                last_log_term: 999,
+                term: Term::new(999),
+                candidate: NodeId::new(99),
+                last_log_index: Index::new(999),
+                last_log_term: Term::new(999),
             }
         }))
         .send()
@@ -495,19 +473,16 @@ async fn row4_duplicate_registration_error() {
     let sm1 = SequenceSm::new();
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
         sm1.clone() as Arc<dyn RaftStateMachine>,
@@ -520,19 +495,16 @@ async fn row4_duplicate_registration_error() {
     let sm_dup = SequenceSm::new();
     let store_dup = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        1,
-        GroupId("alpha".to_string()),
+        NodeId::new(1),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host_dup = Arc::new(RaftHost::spawn_group(
-        1,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![1],
-            learners: vec![],
-        },
+        NodeId::new(1),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(1)], vec![]),
         HashMap::new(),
         store_dup,
         sm_dup.clone() as Arc<dyn RaftStateMachine>,
@@ -542,9 +514,7 @@ async fn row4_duplicate_registration_error() {
     let reg_err = registry.register(host_dup);
     assert_eq!(
         reg_err,
-        Err(RegistryError::AlreadyRegistered(GroupId(
-            "alpha".to_string()
-        )))
+        Err(RegistryError::AlreadyRegistered(GroupId::new("alpha")))
     );
 
     wait_leader(&host1).await;
@@ -591,27 +561,24 @@ async fn row5_registry_status_surface() {
 
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("beta".to_string()),
+        NodeId::new(0),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
         sm1.clone() as Arc<dyn RaftStateMachine>,
@@ -619,12 +586,9 @@ async fn row5_registry_status_surface() {
     ));
 
     let host2 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("beta".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("beta"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,
@@ -681,27 +645,24 @@ async fn row6_failure_isolation() {
 
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("beta".to_string()),
+        NodeId::new(0),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
         sm1.clone() as Arc<dyn RaftStateMachine>,
@@ -709,12 +670,9 @@ async fn row6_failure_isolation() {
     ));
 
     let host2 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("beta".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("beta"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,
@@ -802,27 +760,24 @@ async fn row7_snapshot_compaction_isolation() {
 
     let store1 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let store2 = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("beta".to_string()),
+        NodeId::new(0),
+        GroupId::new("beta"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host1 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store1,
         sm1.clone() as Arc<dyn RaftStateMachine>,
@@ -830,12 +785,9 @@ async fn row7_snapshot_compaction_isolation() {
     ));
 
     let host2 = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("beta".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("beta"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store2,
         sm2.clone() as Arc<dyn RaftStateMachine>,
@@ -918,19 +870,16 @@ async fn row8_foreign_group_single_host_returns_400() {
     let sm = SequenceSm::new();
     let store = RaftStore::open_group(
         dir.path().to_str().unwrap(),
-        0,
-        GroupId("alpha".to_string()),
+        NodeId::new(0),
+        GroupId::new("alpha"),
         FsyncPolicy::Os,
     )
     .unwrap();
 
     let host = Arc::new(RaftHost::spawn_group(
-        0,
-        GroupId("alpha".to_string()),
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        GroupId::new("alpha"),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,
         sm as Arc<dyn RaftStateMachine>,
@@ -960,10 +909,10 @@ async fn row8_foreign_group_single_host_returns_400() {
             "group_id": "beta",
             "from": 1,
             "req": VoteReq {
-                term: 2,
-                candidate: 1,
-                last_log_index: 0,
-                last_log_term: 0,
+                term: Term::new(2),
+                candidate: NodeId::new(1),
+                last_log_index: Index::new(0),
+                last_log_term: Term::new(0),
             }
         }))
         .send()

@@ -1,3 +1,4 @@
+mod bind_config;
 mod compatibility;
 mod drain_prestart;
 mod lifecycle_concurrency;

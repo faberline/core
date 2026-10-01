@@ -31,14 +31,12 @@ impl ObjectStore for RecordingStore {
                 message: "injected outage".to_string(),
             });
         }
-        Ok(ObjectMeta {
-            key: key.to_string(),
-            size: bytes.len() as u64,
-            content_type: content_type.to_string(),
-            version: ObjectVersion::new(format!("v-{}", bytes.len())),
-            etag: None,
-            updated: None,
-        })
+        Ok(ObjectMeta::new(
+            key,
+            bytes.len() as u64,
+            content_type,
+            ObjectVersion::new(format!("v-{}", bytes.len())),
+        ))
     }
 
     fn get(&self, key: &str) -> storage_object::Result<Object> {

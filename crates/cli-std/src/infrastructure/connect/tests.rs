@@ -1,6 +1,10 @@
+use std::collections::HashMap;
+
 use super::*;
-use crate::application::connect::resolve_token;
-use crate::domain::connect::{cr_tokens_secret, select_token, Role, TOKEN_REGISTRY_SECRET_KEY};
+use crate::connect::resolve_token;
+use crate::domain::connect::{
+    bearer_secrets, cr_tokens_secret, select_token, Role, TokenClaims, TOKEN_REGISTRY_SECRET_KEY,
+};
 
 #[test]
 fn role_covers_hierarchy() {
@@ -100,16 +104,16 @@ fn cr_tokens_secret_reads_spec_field() {
 }
 
 #[test]
-fn secret_data_bytes_decodes_base64_field() {
+fn decode_secret_data_decodes_base64_field() {
     use base64::Engine;
     let encoded =
         base64::engine::general_purpose::STANDARD.encode(b"{\"tok\":{\"subject\":\"s\"}}");
     let secret = serde_json::json!({ "data": { TOKEN_REGISTRY_SECRET_KEY: encoded } });
-    let bytes = secret_data_bytes(&secret, TOKEN_REGISTRY_SECRET_KEY).unwrap();
+    let bytes = decode_secret_data(&secret, TOKEN_REGISTRY_SECRET_KEY).unwrap();
     assert_eq!(bytes, b"{\"tok\":{\"subject\":\"s\"}}");
 
     let missing = serde_json::json!({ "data": {} });
-    assert!(secret_data_bytes(&missing, TOKEN_REGISTRY_SECRET_KEY).is_err());
+    assert!(decode_secret_data(&missing, TOKEN_REGISTRY_SECRET_KEY).is_err());
 }
 
 #[test]

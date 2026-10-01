@@ -295,34 +295,34 @@ impl SemanticModel {
         let scope_id_offset = self.next_scope_id;
 
         for (old_id, mut symbol) in other.symbols {
-            let new_id = SymbolId::new(old_id.0 + symbol_id_offset);
-            symbol.scope_id = ScopeId::new(symbol.scope_id.0 + scope_id_offset);
+            let new_id = SymbolId::new(old_id.get() + symbol_id_offset);
+            symbol.scope_id = ScopeId::new(symbol.scope_id.get() + scope_id_offset);
             if let Some(ref mut parent) = symbol.parent_id {
-                *parent = SymbolId::new(parent.0 + symbol_id_offset);
+                *parent = SymbolId::new(parent.get() + symbol_id_offset);
             }
             self.symbols.insert(new_id, symbol);
         }
 
         for mut reference in other.references {
-            reference.symbol_id = SymbolId::new(reference.symbol_id.0 + symbol_id_offset);
+            reference.symbol_id = SymbolId::new(reference.symbol_id.get() + symbol_id_offset);
             self.references.push(reference);
         }
 
         for (old_id, mut scope) in other.scopes {
-            let new_id = ScopeId::new(old_id.0 + scope_id_offset);
+            let new_id = ScopeId::new(old_id.get() + scope_id_offset);
             scope.id = new_id;
             if let Some(ref mut parent) = scope.parent {
-                *parent = ScopeId::new(parent.0 + scope_id_offset);
+                *parent = ScopeId::new(parent.get() + scope_id_offset);
             }
             for symbol_id in &mut scope.symbols {
-                *symbol_id = SymbolId::new(symbol_id.0 + symbol_id_offset);
+                *symbol_id = SymbolId::new(symbol_id.get() + symbol_id_offset);
             }
             self.scopes.insert(new_id, scope);
         }
 
         for mut typed_range in other.typed_ranges {
             if let Some(ref mut id) = typed_range.symbol_id {
-                *id = SymbolId::new(id.0 + symbol_id_offset);
+                *id = SymbolId::new(id.get() + symbol_id_offset);
             }
             self.typed_ranges.push(typed_range);
         }
@@ -330,7 +330,7 @@ impl SemanticModel {
         for (name, ids) in other.name_to_symbols {
             let entry = self.name_to_symbols.entry(name).or_default();
             for id in ids {
-                entry.push(SymbolId::new(id.0 + symbol_id_offset));
+                entry.push(SymbolId::new(id.get() + symbol_id_offset));
             }
         }
 

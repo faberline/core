@@ -5,11 +5,17 @@ use std::time::Duration;
 
 fn state(entries: Vec<(Index, Term, Vec<u8>)>) -> PersistedState {
     PersistedState {
-        term: entries.last().map(|(_, term, _)| *term).unwrap_or(0),
+        term: entries
+            .last()
+            .map(|(_, term, _)| *term)
+            .unwrap_or(Term::new(0)),
         voted_for: None,
-        commit_index: entries.last().map(|(index, _, _)| *index).unwrap_or(0),
-        snapshot_index: 0,
-        snapshot_term: 0,
+        commit_index: entries
+            .last()
+            .map(|(index, _, _)| *index)
+            .unwrap_or(Index::new(0)),
+        snapshot_index: Index::new(0),
+        snapshot_term: Term::new(0),
         snapshot: Vec::new(),
         conf: None,
         log: entries
@@ -25,26 +31,41 @@ fn state(entries: Vec<(Index, Term, Vec<u8>)>) -> PersistedState {
 }
 
 fn store(dir: &tempfile::TempDir) -> RaftStore {
-    RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap()
+    RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Always,
+    )
+    .unwrap()
 }
 
 #[test]
 fn command_pin_maps_published_frame_after_append() {
     let dir = tempfile::tempdir().unwrap();
     let store = store(&dir);
-    store.save(&state(vec![(1, 1, b"first".to_vec())])).unwrap();
-    let lease = store.pin_committed_command(1, 1).unwrap().map().unwrap();
+    store
+        .save(&state(vec![(
+            Index::new(1),
+            Term::new(1),
+            b"first".to_vec(),
+        )]))
+        .unwrap();
+    let lease = store
+        .pin_committed_command(Index::new(1), Term::new(1))
+        .unwrap()
+        .map()
+        .unwrap();
     store
         .save(&state(vec![
-            (1, 1, b"first".to_vec()),
-            (2, 1, b"second".to_vec()),
+            (Index::new(1), Term::new(1), b"first".to_vec()),
+            (Index::new(2), Term::new(1), b"second".to_vec()),
         ]))
         .unwrap();
 
     assert_eq!(lease.command(), b"first");
     assert_eq!(
         store
-            .pin_committed_command(2, 1)
+            .pin_committed_command(Index::new(2), Term::new(1))
             .unwrap()
             .map()
             .unwrap()
@@ -57,7 +78,9 @@ fn command_pin_maps_published_frame_after_append() {
 fn command_pin_survives_rewrite_and_superseded_generation_collection() {
     let dir = tempfile::tempdir().unwrap();
     let store = store(&dir);
-    store.save(&state(vec![(1, 1, b"old".to_vec())])).unwrap();
+    store
+        .save(&state(vec![(Index::new(1), Term::new(1), b"old".to_vec())]))
+        .unwrap();
     let old_generation = store
         .cache
         .lock()
@@ -67,15 +90,25 @@ fn command_pin_survives_rewrite_and_superseded_generation_collection() {
         .unwrap()
         .layout
         .generation;
-    let pin = store.pin_committed_command(1, 1).unwrap();
+    let pin = store
+        .pin_committed_command(Index::new(1), Term::new(1))
+        .unwrap();
 
-    store.save(&state(vec![(2, 2, b"new".to_vec())])).unwrap();
+    store
+        .save(&state(vec![(Index::new(2), Term::new(2), b"new".to_vec())]))
+        .unwrap();
 
     let lease = pin.map().unwrap();
     assert_eq!(lease.command(), b"old");
     assert!(store.log_artifact_path(&old_generation).exists());
     drop(lease);
-    store.save(&state(vec![(3, 3, b"newer".to_vec())])).unwrap();
+    store
+        .save(&state(vec![(
+            Index::new(3),
+            Term::new(3),
+            b"newer".to_vec(),
+        )]))
+        .unwrap();
     assert!(!store.log_artifact_path(&old_generation).exists());
 }
 
@@ -84,13 +117,21 @@ fn reopened_store_rebuilds_published_command_metadata() {
     let dir = tempfile::tempdir().unwrap();
     let first = store(&dir);
     first
-        .save(&state(vec![(1, 7, b"reopen".to_vec())]))
+        .save(&state(vec![(
+            Index::new(1),
+            Term::new(7),
+            b"reopen".to_vec(),
+        )]))
         .unwrap();
     drop(first);
 
     let reopened = store(&dir);
     reopened.load().unwrap();
-    let lease = reopened.pin_committed_command(1, 7).unwrap().map().unwrap();
+    let lease = reopened
+        .pin_committed_command(Index::new(1), Term::new(7))
+        .unwrap()
+        .map()
+        .unwrap();
     assert_eq!(lease.command(), b"reopen");
 }
 
@@ -99,22 +140,32 @@ fn command_pin_refuses_wrong_identity_and_unpublished_state() {
     let dir = tempfile::tempdir().unwrap();
     let store = store(&dir);
     store
-        .save(&state(vec![(1, 3, b"published".to_vec())]))
+        .save(&state(vec![(
+            Index::new(1),
+            Term::new(3),
+            b"published".to_vec(),
+        )]))
         .unwrap();
-    let published = store.pin_committed_command(1, 3).unwrap();
+    let published = store
+        .pin_committed_command(Index::new(1), Term::new(3))
+        .unwrap();
     store.inject_next_save_failure_with_kind(io::ErrorKind::Other);
     assert!(store
-        .save(&state(vec![(2, 4, b"unpublished".to_vec())]))
+        .save(&state(vec![(
+            Index::new(2),
+            Term::new(4),
+            b"unpublished".to_vec()
+        )]))
         .is_err());
 
     assert_eq!(published.map().unwrap().command(), b"published");
 
-    let wrong_term = match store.pin_committed_command(1, 4) {
+    let wrong_term = match store.pin_committed_command(Index::new(1), Term::new(4)) {
         Ok(_) => panic!("wrong term must not pin a published command"),
         Err(error) => error,
     };
     assert_eq!(wrong_term.kind(), io::ErrorKind::InvalidInput);
-    let unpublished = match store.pin_committed_command(2, 4) {
+    let unpublished = match store.pin_committed_command(Index::new(2), Term::new(4)) {
         Ok(_) => panic!("unpublished command must not pin"),
         Err(error) => error,
     };
@@ -125,11 +176,11 @@ fn command_pin_refuses_wrong_identity_and_unpublished_state() {
 fn command_pin_refuses_published_but_uncommitted_suffix() {
     let dir = tempfile::tempdir().unwrap();
     let store = store(&dir);
-    let mut durable = state(vec![(1, 3, b"uncommitted".to_vec())]);
-    durable.commit_index = 0;
+    let mut durable = state(vec![(Index::new(1), Term::new(3), b"uncommitted".to_vec())]);
+    durable.commit_index = Index::new(0);
     store.save(&durable).unwrap();
 
-    let error = match store.pin_committed_command(1, 3) {
+    let error = match store.pin_committed_command(Index::new(1), Term::new(3)) {
         Ok(_) => panic!("uncommitted suffix must not pin"),
         Err(error) => error,
     };
@@ -140,7 +191,13 @@ fn command_pin_refuses_published_but_uncommitted_suffix() {
 fn load_cannot_truncate_concurrently_appended_published_suffix() {
     let dir = tempfile::tempdir().unwrap();
     let store = Arc::new(store(&dir));
-    store.save(&state(vec![(1, 1, b"first".to_vec())])).unwrap();
+    store
+        .save(&state(vec![(
+            Index::new(1),
+            Term::new(1),
+            b"first".to_vec(),
+        )]))
+        .unwrap();
     let (entered_tx, entered_rx) = mpsc::channel();
     let (release_tx, release_rx) = mpsc::channel();
     store.pause_next_load_after_state_read(entered_tx, release_rx);
@@ -160,8 +217,8 @@ fn load_cannot_truncate_concurrently_appended_published_suffix() {
         let store = Arc::clone(&store);
         thread::spawn(move || {
             let result = store.save(&state(vec![
-                (1, 1, b"first".to_vec()),
-                (2, 1, b"second".to_vec()),
+                (Index::new(1), Term::new(1), b"first".to_vec()),
+                (Index::new(2), Term::new(1), b"second".to_vec()),
             ]));
             let _ = saved_tx.send(result);
         })
@@ -178,11 +235,16 @@ fn load_cannot_truncate_concurrently_appended_published_suffix() {
     assert_eq!(loaded.unwrap().unwrap().unwrap().log[0].command, b"first");
     saved.expect("save did not finish after release").unwrap();
 
-    let reopened = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Always).unwrap();
+    let reopened = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Always,
+    )
+    .unwrap();
     assert_eq!(reopened.load().unwrap().unwrap().log[1].command, b"second");
     assert_eq!(
         reopened
-            .pin_committed_command(2, 1)
+            .pin_committed_command(Index::new(2), Term::new(1))
             .unwrap()
             .map()
             .unwrap()
@@ -195,14 +257,22 @@ fn load_cannot_truncate_concurrently_appended_published_suffix() {
 fn duplicate_append_identity_refuses_before_hard_state_publication() {
     let dir = tempfile::tempdir().unwrap();
     let store = store(&dir);
-    store.save(&state(vec![(1, 1, b"first".to_vec())])).unwrap();
+    store
+        .save(&state(vec![(
+            Index::new(1),
+            Term::new(1),
+            b"first".to_vec(),
+        )]))
+        .unwrap();
     let hard_before = std::fs::read(store.path()).unwrap();
-    let pin = store.pin_committed_command(1, 1).unwrap();
+    let pin = store
+        .pin_committed_command(Index::new(1), Term::new(1))
+        .unwrap();
 
     let error = store
         .save(&state(vec![
-            (1, 1, b"first".to_vec()),
-            (1, 1, b"repeated".to_vec()),
+            (Index::new(1), Term::new(1), b"first".to_vec()),
+            (Index::new(1), Term::new(1), b"repeated".to_vec()),
         ]))
         .unwrap_err();
     assert_eq!(error.kind(), io::ErrorKind::InvalidData);
@@ -214,8 +284,16 @@ fn duplicate_append_identity_refuses_before_hard_state_publication() {
 fn command_pin_map_refuses_missing_published_artifact() {
     let dir = tempfile::tempdir().unwrap();
     let store = store(&dir);
-    store.save(&state(vec![(1, 1, b"frame".to_vec())])).unwrap();
-    let pin = store.pin_committed_command(1, 1).unwrap();
+    store
+        .save(&state(vec![(
+            Index::new(1),
+            Term::new(1),
+            b"frame".to_vec(),
+        )]))
+        .unwrap();
+    let pin = store
+        .pin_committed_command(Index::new(1), Term::new(1))
+        .unwrap();
     let generation = store
         .cache
         .lock()
@@ -238,8 +316,16 @@ fn command_pin_map_refuses_missing_published_artifact() {
 fn command_pin_map_refuses_crc_corruption() {
     let dir = tempfile::tempdir().unwrap();
     let store = store(&dir);
-    store.save(&state(vec![(1, 1, b"frame".to_vec())])).unwrap();
-    let pin = store.pin_committed_command(1, 1).unwrap();
+    store
+        .save(&state(vec![(
+            Index::new(1),
+            Term::new(1),
+            b"frame".to_vec(),
+        )]))
+        .unwrap();
+    let pin = store
+        .pin_committed_command(Index::new(1), Term::new(1))
+        .unwrap();
     let generation = store
         .cache
         .lock()
@@ -266,8 +352,16 @@ fn command_pin_map_refuses_crc_corruption() {
 fn command_pin_map_refuses_truncated_published_artifact() {
     let dir = tempfile::tempdir().unwrap();
     let store = store(&dir);
-    store.save(&state(vec![(1, 1, b"frame".to_vec())])).unwrap();
-    let pin = store.pin_committed_command(1, 1).unwrap();
+    store
+        .save(&state(vec![(
+            Index::new(1),
+            Term::new(1),
+            b"frame".to_vec(),
+        )]))
+        .unwrap();
+    let pin = store
+        .pin_committed_command(Index::new(1), Term::new(1))
+        .unwrap();
     let generation = store
         .cache
         .lock()

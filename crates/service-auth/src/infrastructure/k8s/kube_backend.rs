@@ -20,10 +20,10 @@ use k8s_openapi::api::authorization::v1::{
 use kube::api::{Api, PostParams};
 use kube::Client;
 
-use crate::application::k8s::{
-    AccessReviewOutcome, ResourceAttributes, ReviewBackend, ReviewError, TokenReviewOutcome,
+use crate::domain::k8s::{
+    AccessReviewOutcome, ResourceAttributes, ReviewBackend, ReviewError, ReviewedIdentity,
+    TokenReviewOutcome,
 };
-use crate::domain::k8s::ReviewedIdentity;
 
 /// A [`ReviewBackend`] backed by a live `kube` client.
 pub struct KubeReviewBackend {
@@ -129,17 +129,17 @@ impl ReviewBackend for KubeReviewBackend {
         };
 
         let user = status.user.unwrap_or_default();
-        Ok(TokenReviewOutcome {
-            authenticated: status.authenticated.unwrap_or(false),
-            identity: ReviewedIdentity {
+        Ok(TokenReviewOutcome::new(
+            status.authenticated.unwrap_or(false),
+            ReviewedIdentity {
                 username: user.username.unwrap_or_default(),
                 uid: user.uid.unwrap_or_default(),
                 groups: user.groups.unwrap_or_default(),
                 extra: user.extra.unwrap_or_default(),
             },
-            audiences: status.audiences.unwrap_or_default(),
-            error: status.error,
-        })
+            status.audiences.unwrap_or_default(),
+            status.error,
+        ))
     }
 
     async fn review_access(

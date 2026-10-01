@@ -1,7 +1,7 @@
 use super::RaftNode;
 use crate::domain::conf_state::ConfState;
 use crate::domain::entry::EntryKind;
-use crate::domain::ids::NodeId;
+use crate::domain::ids::{Index, NodeId};
 use crate::domain::role::Role;
 
 impl RaftNode {
@@ -13,31 +13,31 @@ impl RaftNode {
         }
         let mut members: Vec<NodeId> = conf
             .membership
-            .voters
+            .voters()
             .iter()
-            .chain(conf.membership.learners.iter())
+            .chain(conf.membership.learners().iter())
             .chain(conf.outgoing.iter().flatten())
             .copied()
             .collect();
         members.sort_unstable();
         members.dedup();
         self.peers = members.into_iter().filter(|m| *m != self.id).collect();
-        self.is_voter = conf.membership.voters.contains(&self.id)
+        self.is_voter = conf.membership.voters().contains(&self.id)
             || conf
                 .outgoing
                 .as_ref()
                 .map_or(false, |o| o.contains(&self.id));
         self.conf_state = conf;
-        for l in &self.conf_state.membership.learners {
+        for l in self.conf_state.membership.learners() {
             self.learner_read_targets
                 .entry(*l)
                 .or_insert(self.commit_index);
         }
         if self.role == Role::Leader {
-            let next = self.last_index() + 1;
+            let next = self.last_index().next();
             for p in &self.peers {
                 self.next_index.entry(*p).or_insert(next);
-                self.match_index.entry(*p).or_insert(0);
+                self.match_index.entry(*p).or_insert(Index::new(0));
             }
         }
         true

@@ -1,16 +1,16 @@
 use super::*;
 use crate::domain::llm::v2::{json_schema, Input, Risk, Runbook, Step, Task};
 
-const PROVIDER: crate::llm::Topic = crate::llm::Topic {
-    id: "openapi-codegen",
-    summary: "Shared generated-client rules.",
-    body: "# Shared generator\n\nThe library owns these bytes.",
-};
-const SECOND_PROVIDER: crate::llm::Topic = crate::llm::Topic {
-    id: "transport-policy",
-    summary: "Shared transport rules.",
-    body: "# Shared transport\n\nThe transport library owns these bytes.",
-};
+const PROVIDER: crate::llm::Topic = crate::llm::Topic::new(
+    "openapi-codegen",
+    "Shared generated-client rules.",
+    "# Shared generator\n\nThe library owns these bytes.",
+);
+const SECOND_PROVIDER: crate::llm::Topic = crate::llm::Topic::new(
+    "transport-policy",
+    "Shared transport rules.",
+    "# Shared transport\n\nThe transport library owns these bytes.",
+);
 
 fn sample() -> ProtocolDocument {
     ProtocolDocument::new(
@@ -130,7 +130,7 @@ fn provider_is_ordered_and_does_not_change_the_outline() {
     assert!(markdown.contains("## Shared providers"));
     assert!(markdown.contains("The library owns these bytes."));
     assert!(
-        markdown.find(PROVIDER.body).unwrap() < markdown.find(SECOND_PROVIDER.body).unwrap(),
+        markdown.find(PROVIDER.body()).unwrap() < markdown.find(SECOND_PROVIDER.body()).unwrap(),
         "provider Markdown must follow registration order"
     );
 }
@@ -139,16 +139,8 @@ fn provider_is_ordered_and_does_not_change_the_outline() {
 fn provider_registration_rejects_unknown_empty_and_duplicate_inputs() {
     assert!(sample().with_topic_provider("missing", &PROVIDER).is_err());
 
-    const EMPTY_ID: crate::llm::Topic = crate::llm::Topic {
-        id: " ",
-        summary: "invalid",
-        body: "body",
-    };
-    const EMPTY_BODY: crate::llm::Topic = crate::llm::Topic {
-        id: "empty-body",
-        summary: "invalid",
-        body: " \n",
-    };
+    const EMPTY_ID: crate::llm::Topic = crate::llm::Topic::new(" ", "invalid", "body");
+    const EMPTY_BODY: crate::llm::Topic = crate::llm::Topic::new("empty-body", "invalid", " \n");
     assert!(sample().with_topic_provider("search", &EMPTY_ID).is_err());
     assert!(sample().with_topic_provider("search", &EMPTY_BODY).is_err());
     assert!(sample()

@@ -70,7 +70,7 @@ fn test_find_enclosing_symbol_innermost() {
     );
 
     // Position at line 10 should find the inner method
-    let result = find_enclosing_symbol(&table, 10, 8);
+    let result = find_enclosing_symbol(&SymbolTableView::of(&table), 10, 8);
     assert_eq!(
         result,
         Some("my_method".to_string()),
@@ -83,7 +83,7 @@ fn test_find_enclosing_symbol_none() {
     let table = make_symbol_table_with_function("func", SymbolKind::Function, 10, 20, None);
 
     // Position before any symbol
-    let result = find_enclosing_symbol(&table, 5, 0);
+    let result = find_enclosing_symbol(&SymbolTableView::of(&table), 5, 0);
     assert_eq!(
         result, None,
         "should return None when no symbol encloses the position"

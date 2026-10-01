@@ -5,9 +5,7 @@ use std::path::{Path, PathBuf};
 use tree_sitter::Parser;
 
 use crate::domain::modules::import::ModuleInfo;
-use crate::domain::stubs::builtins::create_builtins_stub;
-use crate::domain::stubs::collections::{create_collections_abc_stub, create_collections_stub};
-use crate::domain::stubs::typing::create_typing_stub;
+use crate::domain::stubs::bundled::bundled_stubs;
 use crate::infrastructure::stubs::loader::StubLoader;
 
 impl StubLoader {
@@ -37,39 +35,7 @@ impl StubLoader {
             return;
         }
 
-        // Load core builtin types
-        self.stubs
-            .insert("builtins".to_string(), create_builtins_stub());
-        self.stubs
-            .insert("typing".to_string(), create_typing_stub());
-        self.stubs
-            .insert("collections".to_string(), create_collections_stub());
-        self.stubs
-            .insert("collections.abc".to_string(), create_collections_abc_stub());
-
-        // Load bundled typeshed stubs
-        use crate::domain::typeshed::system::{
-            create_io_stub, create_os_path_stub, create_os_stub, create_sys_stub,
-        };
-        use crate::domain::typeshed::text::{create_json_stub, create_re_stub};
-        use crate::domain::typeshed::utility::{
-            create_datetime_stub, create_functools_stub, create_itertools_stub, create_pathlib_stub,
-        };
-        self.stubs.insert("os".to_string(), create_os_stub());
-        self.stubs
-            .insert("os.path".to_string(), create_os_path_stub());
-        self.stubs.insert("sys".to_string(), create_sys_stub());
-        self.stubs.insert("io".to_string(), create_io_stub());
-        self.stubs.insert("re".to_string(), create_re_stub());
-        self.stubs.insert("json".to_string(), create_json_stub());
-        self.stubs
-            .insert("pathlib".to_string(), create_pathlib_stub());
-        self.stubs
-            .insert("functools".to_string(), create_functools_stub());
-        self.stubs
-            .insert("itertools".to_string(), create_itertools_stub());
-        self.stubs
-            .insert("datetime".to_string(), create_datetime_stub());
+        self.stubs.extend(bundled_stubs());
 
         self.builtins_loaded = true;
     }

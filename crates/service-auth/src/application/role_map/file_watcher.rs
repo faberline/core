@@ -44,25 +44,14 @@ pub fn spawn_registry_file_watcher_with_interval(
 }
 
 /// Spawn a watcher over every file a service's registry is projected from,
-/// using the production cadence.
+/// polling every `poll_interval` (production services pass
+/// [`DEFAULT_REGISTRY_FILE_WATCH_INTERVAL`]).
 ///
 /// The multi-path form exists because the two namespaces can arrive from
 /// different Kubernetes objects — an `identities` ConfigMap and a `tokens`
 /// Secret (#2764). Reloading only the file that changed would drop the other
 /// half of the registry, so a change to *any* watched file re-reads and
 /// re-merges *all* of them, and the merged result is adopted as one snapshot.
-pub fn spawn_registry_files_watcher(
-    verifier: Arc<ReloadableRoleMapVerifier>,
-    paths: &[PathBuf],
-) -> tokio::task::JoinHandle<()> {
-    spawn_registry_files_watcher_with_interval(
-        verifier,
-        paths,
-        DEFAULT_REGISTRY_FILE_WATCH_INTERVAL,
-    )
-}
-
-/// [`spawn_registry_files_watcher`] with an explicit polling cadence.
 pub fn spawn_registry_files_watcher_with_interval(
     verifier: Arc<ReloadableRoleMapVerifier>,
     paths: &[PathBuf],

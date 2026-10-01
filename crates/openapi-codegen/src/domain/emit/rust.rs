@@ -19,10 +19,11 @@ use crate::domain::ir::build_type_map;
 use crate::domain::ir::openapi::Spec;
 use crate::domain::ir::operations;
 use crate::domain::{FileBearerAuth, GenOptions, GeneratedFile, GeneratedOutput, RustTarget};
-use anyhow::{Context, Result};
+
+use super::SpecParseError;
 
 /// Pure Rust generation: spec JSON text → in-memory files. No filesystem access.
-pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput> {
+pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, None, None)
 }
 
@@ -30,7 +31,7 @@ pub fn generate_with_file_bearer_auth(
     spec_json: &str,
     opts: &GenOptions,
     auth: &FileBearerAuth,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, None, Some(auth))
 }
 
@@ -39,7 +40,7 @@ pub fn generate_for_target(
     spec_json: &str,
     opts: &GenOptions,
     target: RustTarget,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, Some(target), None)
 }
 
@@ -48,7 +49,7 @@ pub fn generate_for_target_with_file_bearer_auth(
     opts: &GenOptions,
     target: RustTarget,
     auth: &FileBearerAuth,
-) -> Result<GeneratedOutput> {
+) -> Result<GeneratedOutput, SpecParseError> {
     generate_impl(spec_json, opts, Some(target), Some(auth))
 }
 
@@ -57,19 +58,19 @@ fn generate_impl(
     opts: &GenOptions,
     target: Option<RustTarget>,
     auth: Option<&FileBearerAuth>,
-) -> Result<GeneratedOutput> {
-    let spec: Spec = serde_json::from_str(spec_json).context("failed to parse OpenAPI spec")?;
+) -> Result<GeneratedOutput, SpecParseError> {
+    let spec: Spec = serde_json::from_str(spec_json).map_err(SpecParseError::new)?;
     let tm = build_type_map(&spec);
     let ops = operations::build(&spec);
 
     let mut files = Vec::new();
-    if opts.emit_types {
+    if opts.emit_types() {
         files.push(GeneratedFile {
             rel_path: "models.rs".to_string(),
             contents: models_emit::emit(&spec, &tm, target.unwrap_or(RustTarget::Rust2021)),
         });
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         files.push(GeneratedFile {
             rel_path: "client.rs".to_string(),
             contents: client_emit::emit(&ops, &tm, auth),
@@ -87,10 +88,10 @@ fn generate_impl(
 
 fn emit_mod(opts: &GenOptions) -> String {
     let mut out = String::from(models_emit::HEADER);
-    if opts.emit_types {
+    if opts.emit_types() {
         out.push_str("pub mod models;\n");
     }
-    if opts.emit_client {
+    if opts.emit_client() {
         out.push_str("pub mod client;\n");
     }
     out
@@ -99,7 +100,7 @@ fn emit_mod(opts: &GenOptions) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{HttpClient, Lang};
+    use crate::Lang;
     use std::path::PathBuf;
 
     const SPEC: &str = r##"{
@@ -145,17 +146,7 @@ mod tests {
     }"##;
 
     fn opts() -> GenOptions {
-        GenOptions {
-            lang: Lang::Rust,
-            target: None,
-            spec_path: PathBuf::new(),
-            out_dir: PathBuf::new(),
-            client_name: "Client".to_string(),
-            http_client: HttpClient::Fetch,
-            emit_types: true,
-            emit_client: true,
-            emit_hooks: false,
-        }
+        GenOptions::new(Lang::Rust, PathBuf::new(), PathBuf::new(), "Client")
     }
 
     fn file<'a>(out: &'a GeneratedOutput, name: &str) -> &'a str {

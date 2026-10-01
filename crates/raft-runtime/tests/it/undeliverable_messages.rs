@@ -16,6 +16,7 @@
 //! 3. Successful delivery, a retryable transport loss to a still-registered peer,
 //!    and repeated status reads do not increment either discard counter.
 
+use raft_runtime::NodeId;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -35,26 +36,20 @@ async fn cluster_with_long_rpc_timeout() -> (Vec<Node>, Duration) {
     for id in 0..3 {
         let (listener, url) = bind().await;
         listeners.push(listener);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
-    let voters: Vec<u64> = (0..3).collect();
-    let cfg = HostConfig {
-        rpc_timeout: Duration::from_secs(30),
-        ..HostConfig::default()
-    };
+    let voters: Vec<NodeId> = (0..3).map(NodeId::new).collect();
+    let cfg = HostConfig::default().with_rpc_timeout(Duration::from_secs(30));
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
-        let id = idx as u64;
+        let id = NodeId::new(idx as u64);
         let peers = peers_excluding(id, &all);
         let sm = TestSm::new();
         let dir = TempDir::new().unwrap();
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             peers,
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
@@ -79,7 +74,7 @@ async fn cluster_with_long_rpc_timeout() -> (Vec<Node>, Duration) {
             _dir: dir,
         });
     }
-    (nodes, cfg.tick)
+    (nodes, cfg.tick())
 }
 
 fn h2c_client() -> reqwest::Client {
@@ -124,17 +119,14 @@ where
     }
 }
 
-async fn spawn_node_with_unaddressed_peers(id: u64, voters: Vec<u64>) -> Node {
+async fn spawn_node_with_unaddressed_peers(id: NodeId, voters: Vec<NodeId>) -> Node {
     let (listener, url) = bind().await;
     let sm = TestSm::new();
     let dir = TempDir::new().unwrap();
     let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
     let host = Arc::new(RaftHost::spawn(
         id,
-        Membership {
-            voters,
-            learners: vec![],
-        },
+        Membership::new(voters, vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
@@ -166,7 +158,11 @@ async fn spawn_node_with_unaddressed_peers(id: u64, voters: Vec<u64>) -> Node {
 #[tokio::test]
 async fn unaddressed_peer_messages_increment_never_addressed_counter() {
     let client = h2c_client();
-    let node = spawn_node_with_unaddressed_peers(0, vec![0, 1, 2]).await;
+    let node = spawn_node_with_unaddressed_peers(
+        NodeId::new(0),
+        vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)],
+    )
+    .await;
 
     let s = poll_status_until(
         &client,
@@ -236,7 +232,10 @@ async fn retryable_transport_loss_to_registered_peer_does_not_increment_discard_
     let client = h2c_client();
     let victim = ((leader + 1) % 3) as u64;
     let (loss_listener, loss_url) = bind().await;
-    nodes[leader].host.upsert_peer(victim, loss_url).await;
+    nodes[leader]
+        .host
+        .upsert_peer(NodeId::new(victim), loss_url)
+        .await;
 
     let loss_observed = tokio::spawn(async move {
         let (mut stream, _) = tokio::time::timeout(Duration::from_secs(5), loss_listener.accept())
@@ -303,7 +302,10 @@ async fn withdrawn_peer_address_during_in_flight_send_increments_withdrawn_count
     // Repoint victim peer to a local listener that lets us hold its first
     // outbound request open. This is the first outbound request, not the first
     // proposal, because it may be a heartbeat.
-    nodes[leader].host.upsert_peer(victim, stall_url).await;
+    nodes[leader]
+        .host
+        .upsert_peer(NodeId::new(victim), stall_url)
+        .await;
 
     // Start the first proposal, then accept and hold the victim lane's first
     // outbound TCP connection. The exact HTTP/2 preface proves this is h2c.
@@ -332,7 +334,7 @@ async fn withdrawn_peer_address_during_in_flight_send_increments_withdrawn_count
     poll_status_until(
         &client,
         &nodes[healthy_voter].url,
-        |s| s.commit_index >= first_result,
+        |s| s.commit_index >= first_result.get(),
         Duration::from_secs(5),
         "healthy voter commits the first proposal",
     )
@@ -351,7 +353,7 @@ async fn withdrawn_peer_address_during_in_flight_send_increments_withdrawn_count
     let baseline = status(&client, &nodes[leader].url)
         .await
         .undeliverable_withdrawn_address;
-    nodes[leader].host.forget_peer(victim).await;
+    nodes[leader].host.forget_peer(NodeId::new(victim)).await;
     drop(held_stream);
 
     // Poll the leader's real /raftz until the withdrawn counter rises above the

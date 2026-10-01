@@ -100,25 +100,24 @@ impl GcsObjectStore {
             .get("generation")
             .and_then(Value::as_str)
             .ok_or_else(|| corrupt("GCS object metadata lacks generation"))?;
-        Ok(ObjectMeta {
-            key,
-            size,
-            content_type: value
-                .get("contentType")
-                .and_then(Value::as_str)
-                .unwrap_or("application/octet-stream")
-                .to_string(),
-            version: ObjectVersion::new(generation),
-            etag: value
-                .get("etag")
-                .or_else(|| value.get("md5Hash"))
-                .and_then(Value::as_str)
-                .map(str::to_string),
-            updated: value
-                .get("updated")
-                .and_then(Value::as_str)
-                .map(str::to_string),
-        })
+        let content_type = value
+            .get("contentType")
+            .and_then(Value::as_str)
+            .unwrap_or("application/octet-stream");
+        let etag = value
+            .get("etag")
+            .or_else(|| value.get("md5Hash"))
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        let updated = value
+            .get("updated")
+            .and_then(Value::as_str)
+            .map(str::to_string);
+        Ok(
+            ObjectMeta::new(key, size, content_type, ObjectVersion::new(generation))
+                .with_etag(etag)
+                .with_updated(updated),
+        )
     }
 }
 
@@ -177,7 +176,7 @@ impl ObjectStore for GcsObjectStore {
             .bytes()
             .map_err(unavailable)?
             .to_vec();
-        Ok(Object { meta, bytes })
+        Ok(Object::new(meta, bytes))
     }
 
     fn head(&self, key: &str) -> Result<ObjectMeta> {
@@ -239,7 +238,7 @@ impl ObjectStore for GcsObjectStore {
                 break;
             }
         }
-        objects.sort_by(|left, right| left.key.cmp(&right.key));
+        objects.sort_by(|left, right| left.key().cmp(right.key()));
         Ok(objects)
     }
 

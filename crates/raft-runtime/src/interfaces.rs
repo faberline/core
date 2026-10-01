@@ -1,4 +1,4 @@
-//! Interface layer: the peer HTTP handlers and multi-group registry, the
+//! Interface layer: the peer HTTP handlers and routers, the
 //! deterministic conformance host, the cluster-state view and the LLM topic.
 
 mod conformance;
@@ -11,5 +11,4 @@ pub use conformance::{
     NodeView, PendingEnvelope, StateMachineOperation, StepError, TRACE_SCHEMA,
 };
 pub use llm::{topic, TOPIC};
-pub use peer_http::{GroupRegistry, RaftRegistry, RegistryError};
 pub use view::{ClusterStateView, PeerAddr, RaftRole};

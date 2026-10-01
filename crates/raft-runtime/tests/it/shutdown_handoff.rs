@@ -1,5 +1,6 @@
 //! Handing leadership to an eligible caught-up voter before shutdown stops the host (#3664).
 
+use raft_core::NodeId;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -106,11 +107,12 @@ async fn a_three_voter_leader_hands_off_leadership_to_an_eligible_voter() {
         other => panic!("expected LeadershipHandoff::Transferred, got {other:?}"),
     };
     assert_ne!(
-        target, leader as u64,
+        target,
+        NodeId::new(leader as u64),
         "the transferred target must not be the leader itself"
     );
     assert!(
-        target < 3,
+        target < NodeId::new(3),
         "the transferred target must be one of the cluster voters"
     );
 
@@ -119,7 +121,7 @@ async fn a_three_voter_leader_hands_off_leadership_to_an_eligible_voter() {
     // delivered by TimeoutNow. The wait is a generous liveness bound.
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
-        if nodes[target as usize].host.is_leader().await {
+        if nodes[target.get() as usize].host.is_leader().await {
             break;
         }
         assert!(
@@ -129,7 +131,7 @@ async fn a_three_voter_leader_hands_off_leadership_to_an_eligible_voter() {
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
     assert_eq!(
-        nodes[target as usize].host.leader().await,
+        nodes[target.get() as usize].host.leader().await,
         Some(target),
         "target node must report itself as leader"
     );
@@ -145,35 +147,31 @@ async fn a_three_voter_leader_hands_off_leadership_to_an_eligible_voter() {
 async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_budget() {
     // We configure an explicit HostConfig so the spontaneous election floor
     // (in tick units) and the handoff budget stretch together under load.
-    let cfg = HostConfig {
-        tick: Duration::from_millis(60),
-        pump: Duration::from_millis(5),
-        rpc_timeout: Duration::from_millis(200),
-        propose_timeout: Duration::from_secs(10),
-        snapshot: SnapshotPolicy::Disabled,
-    };
+    let cfg = HostConfig::default()
+        .with_tick(Duration::from_millis(60))
+        .with_pump(Duration::from_millis(5))
+        .with_rpc_timeout(Duration::from_millis(200))
+        .with_propose_timeout(Duration::from_secs(10))
+        .with_snapshot(SnapshotPolicy::Disabled);
 
     let mut listeners = Vec::new();
     let mut all = Vec::new();
     for id in 0..3u64 {
         let (l, url) = bind().await;
         listeners.push(l);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
-    let voters: Vec<u64> = (0..3).collect();
+    let voters: Vec<NodeId> = (0..3).map(NodeId::new).collect();
     let mut nodes = Vec::new();
     for (idx, listener) in listeners.into_iter().enumerate() {
-        let id = idx as u64;
+        let id = NodeId::new(idx as u64);
         let peers = peers_excluding(id, &all);
         let sm = TestSm::new();
         let dir = TempDir::new().unwrap();
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             peers,
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
@@ -200,7 +198,7 @@ async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_bu
         });
     }
 
-    let leader = await_leader_with_tick(&nodes, cfg.tick)
+    let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
         .expect("a three-voter cluster elects a leader");
     settle_cluster(&nodes, leader).await;
@@ -234,7 +232,7 @@ async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_bu
         .expect("raft-core heartbeat interval must remain below its election timeout floor");
     let handoff_budget_ticks = HANDOFF_DELIVERY_BUDGET_TICKS;
     assert!(handoff_budget_ticks < election_floor_ticks);
-    let handoff_budget = cfg.tick * handoff_budget_ticks as u32;
+    let handoff_budget = cfg.tick() * handoff_budget_ticks as u32;
 
     let mut arrived = None;
     let mut new_leader = None;
@@ -252,7 +250,7 @@ async fn shutdown_alone_moves_leadership_to_another_live_node_within_delivery_bu
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
     let _elapsed = arrived.expect("leadership must move to a live peer within handoff budget");
-    let new_leader_id = new_leader.expect("a live peer became leader") as u64;
+    let new_leader_id = NodeId::new(new_leader.expect("a live peer became leader") as u64);
     assert_eq!(
         nodes[new_leader.unwrap()].host.leader().await,
         Some(new_leader_id),

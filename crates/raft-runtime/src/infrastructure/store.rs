@@ -22,7 +22,7 @@ use raft_core::{
 use sha2::{Digest, Sha256};
 pub use storage_durable::FsyncPolicy;
 
-use crate::application::{GroupId, LEGACY_GROUP_ID};
+use crate::domain::{GroupId, LEGACY_GROUP_ID};
 
 mod artifacts;
 mod command_frame;
@@ -34,6 +34,7 @@ mod log_codec;
 mod log_plan;
 mod migration;
 mod open;
+mod ports;
 mod save;
 mod state_codec;
 

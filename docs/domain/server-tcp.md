@@ -15,14 +15,15 @@ handlers.
   budget, a legacy `DrainController`, socket options, a drain timeout (5 s by
   default) and a `ConnectionMetrics` sink, set through `with_*` builders.
 - **Socket options** — `TcpSocketOptions`: listen backlog (1024 by default),
-  address reuse and `TCP_NODELAY`.
+  address reuse and `TCP_NODELAY`, changed with `with_*` builders.
 - **Connection context** — `ConnectionContext`: what a handler learns about its
   connection: local and peer address, a `DrainSignal` and a
   `LifecycleSubscription`, so a protocol can drain its own streams.
 - **Connection result** — `TcpConnectionResult`: how one connection ended
   (`TcpConnectionTerminal`: `Completed`, `Failed`, `TimedOut`) and its stream
   counts (admitted, active at drain, completed, refused, timed out,
-  ambiguous), filled in by a protocol that multiplexes streams.
+  ambiguous), built with `new(terminal)` and `with_*` counters by a protocol
+  that multiplexes streams.
 - **Server report** — `TcpServerReport`: the totals for one `serve_with_report`
   run: connections accepted, rejected, completed, failed, timed out and
   unfinished, the summed stream counts, accept errors, and `deadline_missing`.
@@ -30,8 +31,13 @@ handlers.
 ## Ports
 
 - `TcpHandler` — serve one accepted `TcpStream` with its `ConnectionContext`;
-  its future resolves to `anyhow::Result<()>`. A blanket impl covers closures.
-  pgpool implements it for its session, transaction and pool handlers.
+  its future resolves to `Result<(), TcpHandlerError>`. A blanket impl covers
+  closures. pgpool implements it for its session, transaction and pool
+  handlers.
+- `TcpHandlerError` — a handler's failure. Its one variant, `Other`, wraps the
+  handler's own error through `TcpHandlerError::other` (an `anyhow::Error`, a
+  `String` or any std error) and displays that error's text, so the loop's
+  `%error` log line reads as before.
 
 ## Invariants
 
@@ -57,8 +63,9 @@ Its entry points are `bind`, `serve`, `serve_arc` and `serve_with_report`.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** `anyhow` in the `TcpHandler` port (ADR D4). Public fields
-  built with struct literals: `TcpServerConfig` in pgpool, and
-  `TcpConnectionResult` in server-http. `TcpServerReport` is duplicated as
-  server-http's `HttpServerReport` (ADR D7).
+- **Checker exceptions:** None.
+- **Public fields kept:** `ConnectionContext` and `TcpServerReport`. The
+  library builds both, and caller code only reads them.
+- **Debts:** none tracked. P2 replaced `anyhow` in `TcpHandler` with
+  `TcpHandlerError` (D4), and made the `TcpServerConfig`,
+  `TcpSocketOptions` and `TcpConnectionResult` fields private (D2).

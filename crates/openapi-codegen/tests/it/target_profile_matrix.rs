@@ -6,8 +6,8 @@ use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use openapi_codegen::{
-    generate, GenOptions, GeneratedOutput, GenerationManifest, HttpClient, Lang, PythonTarget,
-    RustTarget, TargetProfile, TargetRequirements, TypeScriptTarget, MANIFEST_FILE,
+    generate, GenOptions, GeneratedOutput, GenerationManifest, Lang, PythonTarget, RustTarget,
+    TargetProfile, TargetRequirements, TypeScriptTarget, MANIFEST_FILE,
 };
 
 const PROFILE_SPEC: &str = r##"{
@@ -28,16 +28,11 @@ const PROFILE_SPEC: &str = r##"{
 }"##;
 
 fn opts(lang: Lang, target: Option<TargetProfile>) -> GenOptions {
-    GenOptions {
-        lang,
-        target,
-        spec_path: PathBuf::new(),
-        out_dir: PathBuf::new(),
-        client_name: "createClient".to_string(),
-        http_client: HttpClient::Fetch,
-        emit_types: true,
-        emit_client: true,
-        emit_hooks: false,
+    let opts = GenOptions::new(lang, PathBuf::new(), PathBuf::new(), "createClient")
+        .with_emit_hooks(false);
+    match target {
+        Some(target) => opts.with_target(target),
+        None => opts,
     }
 }
 

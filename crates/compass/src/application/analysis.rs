@@ -6,5 +6,6 @@ pub(crate) mod index_admin;
 pub(crate) mod navigation;
 pub(crate) mod params;
 pub(crate) mod pdg;
+pub(crate) mod request_dispatch;
 pub(crate) mod request_handler;
 pub(crate) mod timestamp;

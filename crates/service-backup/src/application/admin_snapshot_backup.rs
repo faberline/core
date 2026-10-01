@@ -1,23 +1,24 @@
+//! The admin-snapshot backup: fetch one snapshot, then write it through a
+//! sink.
+
 use std::time::SystemTime;
 
 use anyhow::Result;
 
-use crate::infrastructure::fetch_admin_snapshot;
-use crate::{
-    run_backup_once, sink_from_destination, BackupDestination, BackupRunResult, RetentionPolicy,
-};
+use super::{run_backup_once, BackupRunResult};
+use crate::domain::{BackupSink, RetentionPolicy, SnapshotSource};
 
-/// Fetch an admin snapshot and ship the exact bytes to `dest`.
+/// Fetch one snapshot from `source` and ship the exact bytes to the sink that
+/// `open_sink` opens.
 ///
-/// `file://` always works. `s3://` requires the crate's `s3` feature; `gs://`
-/// remains schema-compatible and fails loudly until a GCS sink exists.
-pub async fn run_admin_snapshot_backup(
-    base_url: &str,
-    token: Option<&str>,
-    dest: &BackupDestination,
+/// The sink is opened only after the fetch succeeds, so a failed fetch leaves
+/// nothing behind (a local destination's directory is not created).
+pub(crate) async fn run_snapshot_backup(
+    source: &dyn SnapshotSource,
+    open_sink: impl FnOnce() -> Result<Box<dyn BackupSink>>,
     retention: &RetentionPolicy,
 ) -> Result<BackupRunResult> {
-    let payload = fetch_admin_snapshot(base_url, token).await?;
-    let sink = sink_from_destination(dest)?;
+    let payload = source.fetch_snapshot().await?;
+    let sink = open_sink()?;
     run_backup_once(sink.as_ref(), SystemTime::now(), &payload, retention)
 }

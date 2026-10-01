@@ -3,18 +3,30 @@
 //! The library owns filesystem safety. A service supplies its manifest and
 //! compatibility policy through [`DataRootPolicy`].
 
+mod error;
+mod paths;
+
 use std::{
     fs::{self, File, OpenOptions},
     path::{Component, Path, PathBuf},
 };
 
-use anyhow::{bail, Context, Result};
 use fs2::FileExt;
 use serde::{de::DeserializeOwned, Serialize};
 
+use self::error::IoContext;
+use self::paths::{
+    check_not_symlink, private_directory_mode, private_file_mode, require_directory,
+    require_regular_file,
+};
 use crate::{atomic_write, FsyncPolicy};
 
+pub use self::error::DataRootError;
+pub use self::paths::{reject_symlink, set_private_directory_mode, set_private_file_mode};
+
 /// Service-owned manifest and compatibility hooks for a shared data root.
+///
+/// An implementation wraps its own failures with [`DataRootError::other`].
 pub trait DataRootPolicy {
     type Manifest: Clone + Serialize + DeserializeOwned;
 
@@ -30,16 +42,15 @@ pub trait DataRootPolicy {
         &[]
     }
 
-    fn create_manifest(&self, root: &Path) -> Result<Self::Manifest>;
+    fn create_manifest(&self, root: &Path) -> Result<Self::Manifest, DataRootError>;
 
-    fn validate_manifest(&self, manifest: &Self::Manifest) -> Result<()>;
+    fn validate_manifest(&self, manifest: &Self::Manifest) -> Result<(), DataRootError>;
 
-    fn legacy_error(&self, marker: &Path) -> anyhow::Error {
-        anyhow::anyhow!(
-            "legacy {} data at {} is not compatible",
-            self.product_name(),
-            marker.display()
-        )
+    fn legacy_error(&self, marker: &Path) -> DataRootError {
+        DataRootError::LegacyData {
+            product: self.product_name(),
+            marker: marker.to_path_buf(),
+        }
     }
 }
 
@@ -53,10 +64,10 @@ pub struct DataRoot<P: DataRootPolicy> {
 }
 
 impl<P: DataRootPolicy> DataRoot<P> {
-    pub fn open(root: impl AsRef<Path>, policy: P) -> Result<Self> {
+    pub fn open(root: impl AsRef<Path>, policy: P) -> Result<Self, DataRootError> {
         let root = root.as_ref();
-        reject_symlink(root)?;
-        fs::create_dir_all(root).with_context(|| {
+        check_not_symlink(root)?;
+        fs::create_dir_all(root).io_context(|| {
             format!(
                 "create {} data directory {}",
                 policy.product_name(),
@@ -64,24 +75,24 @@ impl<P: DataRootPolicy> DataRoot<P> {
             )
         })?;
         require_directory(root)?;
-        set_private_directory_mode(root)?;
+        private_directory_mode(root)?;
 
         let manifest_path = root.join(policy.manifest_file());
-        reject_symlink(&manifest_path)?;
+        check_not_symlink(&manifest_path)?;
         if !manifest_path.exists() {
             refuse_legacy_root(root, &policy)?;
         } else {
             require_regular_file(&manifest_path)?;
         }
 
-        let root_lock = OpenOptions::new().read(true).open(root).with_context(|| {
+        let root_lock = OpenOptions::new().read(true).open(root).io_context(|| {
             format!(
                 "open {} data root {} for locking",
                 policy.product_name(),
                 root.display()
             )
         })?;
-        root_lock.try_lock_exclusive().with_context(|| {
+        root_lock.try_lock_exclusive().io_context(|| {
             format!(
                 "lock {} data root {}; another {} process may be using it",
                 policy.product_name(),
@@ -91,13 +102,15 @@ impl<P: DataRootPolicy> DataRoot<P> {
         })?;
 
         let manifest = if manifest_path.exists() {
-            let manifest = serde_json::from_slice(
-                &fs::read(&manifest_path)
-                    .with_context(|| format!("read layout {}", manifest_path.display()))?,
-            )
-            .with_context(|| format!("decode layout {}", manifest_path.display()))?;
+            let bytes = fs::read(&manifest_path)
+                .io_context(|| format!("read layout {}", manifest_path.display()))?;
+            let manifest =
+                serde_json::from_slice(&bytes).map_err(|source| DataRootError::ManifestDecode {
+                    path: manifest_path.clone(),
+                    source,
+                })?;
             policy.validate_manifest(&manifest)?;
-            set_private_file_mode(&manifest_path)?;
+            private_file_mode(&manifest_path)?;
             manifest
         } else {
             let manifest = policy.create_manifest(root)?;
@@ -131,7 +144,7 @@ impl<P: DataRootPolicy> DataRoot<P> {
         &self.manifest_path
     }
 
-    pub fn replace_manifest(&mut self, manifest: P::Manifest) -> Result<()> {
+    pub fn replace_manifest(&mut self, manifest: P::Manifest) -> Result<(), DataRootError> {
         self.policy.validate_manifest(&manifest)?;
         write_manifest(&self.manifest_path, &manifest)?;
         self.manifest = manifest;
@@ -139,13 +152,14 @@ impl<P: DataRootPolicy> DataRoot<P> {
     }
 }
 
-fn write_manifest<T: Serialize>(path: &Path, manifest: &T) -> Result<()> {
-    let bytes = serde_json::to_vec_pretty(manifest).context("encode data-root layout")?;
-    atomic_write(path, &bytes, FsyncPolicy::Always)?;
-    set_private_file_mode(path)
+fn write_manifest<T: Serialize>(path: &Path, manifest: &T) -> Result<(), DataRootError> {
+    let bytes = serde_json::to_vec_pretty(manifest)
+        .map_err(|source| DataRootError::ManifestEncode { source })?;
+    atomic_write(path, &bytes, FsyncPolicy::Always).map_err(DataRootError::from_atomic_write)?;
+    private_file_mode(path)
 }
 
-fn refuse_legacy_root<P: DataRootPolicy>(root: &Path, policy: &P) -> Result<()> {
+fn refuse_legacy_root<P: DataRootPolicy>(root: &Path, policy: &P) -> Result<(), DataRootError> {
     if let Some(marker) = policy
         .legacy_markers()
         .iter()
@@ -157,87 +171,35 @@ fn refuse_legacy_root<P: DataRootPolicy>(root: &Path, policy: &P) -> Result<()> 
     Ok(())
 }
 
-fn ensure_private_relative_directory(root: &Path, relative: &str) -> Result<()> {
+fn ensure_private_relative_directory(root: &Path, relative: &str) -> Result<(), DataRootError> {
     let relative_path = Path::new(relative);
     if relative_path.is_absolute()
-        || relative_path.components().any(|component| {
-            !matches!(component, Component::Normal(_) | Component::CurDir)
-        })
+        || relative_path
+            .components()
+            .any(|component| !matches!(component, Component::Normal(_) | Component::CurDir))
     {
-        bail!("data-root directory must be a safe relative path: {relative}");
+        return Err(DataRootError::UnsafeDirectory {
+            relative: relative.to_owned(),
+        });
     }
 
     let mut current = root.to_path_buf();
     for component in relative_path.components() {
         if let Component::Normal(component) = component {
             current.push(component);
-            reject_symlink(&current)?;
+            check_not_symlink(&current)?;
             match fs::symlink_metadata(&current) {
                 Ok(_) => require_directory(&current)?,
                 Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                    fs::create_dir(&current).with_context(|| {
-                        format!("create storage directory {}", current.display())
-                    })?;
+                    fs::create_dir(&current)
+                        .io_context(|| format!("create storage directory {}", current.display()))?;
                 }
                 Err(error) => {
-                    return Err(error).with_context(|| format!("inspect {}", current.display()))
+                    return Err(error).io_context(|| format!("inspect {}", current.display()))
                 }
             }
-            set_private_directory_mode(&current)?;
+            private_directory_mode(&current)?;
         }
     }
-    Ok(())
-}
-
-pub fn reject_symlink(path: &Path) -> Result<()> {
-    match fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.file_type().is_symlink() => {
-            bail!("data path must not be a symlink: {}", path.display())
-        }
-        Ok(_) => Ok(()),
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(error) => Err(error).with_context(|| format!("inspect {}", path.display())),
-    }
-}
-
-fn require_directory(path: &Path) -> Result<()> {
-    let metadata = fs::symlink_metadata(path)
-        .with_context(|| format!("inspect data directory {}", path.display()))?;
-    if !metadata.is_dir() || metadata.file_type().is_symlink() {
-        bail!("data path must be a real directory: {}", path.display());
-    }
-    Ok(())
-}
-
-fn require_regular_file(path: &Path) -> Result<()> {
-    let metadata = fs::symlink_metadata(path)
-        .with_context(|| format!("inspect data file {}", path.display()))?;
-    if !metadata.is_file() || metadata.file_type().is_symlink() {
-        bail!("data path must be a regular file: {}", path.display());
-    }
-    Ok(())
-}
-
-#[cfg(unix)]
-pub fn set_private_directory_mode(path: &Path) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
-        .with_context(|| format!("set private directory mode on {}", path.display()))
-}
-
-#[cfg(not(unix))]
-pub fn set_private_directory_mode(_path: &Path) -> Result<()> {
-    Ok(())
-}
-
-#[cfg(unix)]
-pub fn set_private_file_mode(path: &Path) -> Result<()> {
-    use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(path, fs::Permissions::from_mode(0o600))
-        .with_context(|| format!("set private file mode on {}", path.display()))
-}
-
-#[cfg(not(unix))]
-pub fn set_private_file_mode(_path: &Path) -> Result<()> {
     Ok(())
 }

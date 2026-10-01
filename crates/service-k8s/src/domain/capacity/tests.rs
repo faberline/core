@@ -23,7 +23,10 @@ fn cpu_scale_out_is_a_whole_shard_layer() {
     .unwrap();
     assert_eq!(plan.desired_replicas_per_shard, 3);
     assert_eq!(plan.desired_total_pods, 9);
-    assert!(plan.requires_membership_change());
+    assert_ne!(
+        plan.current_replicas_per_shard,
+        plan.desired_replicas_per_shard
+    );
 }
 
 #[test]
@@ -54,7 +57,10 @@ fn disk_split_threshold_is_strictly_greater_than_one_gib() {
         }],
     )
     .unwrap();
-    assert!(!at_threshold.requires_split());
+    assert_eq!(
+        at_threshold.desired_shard_count,
+        at_threshold.current_shard_count
+    );
 
     let crossed = plan_shard_split(
         1,
@@ -65,7 +71,7 @@ fn disk_split_threshold_is_strictly_greater_than_one_gib() {
         }],
     )
     .unwrap();
-    assert!(crossed.requires_split());
+    assert!(crossed.desired_shard_count > crossed.current_shard_count);
     assert_eq!(crossed.desired_shard_count, 2);
 }
 
@@ -102,7 +108,7 @@ fn disk_split_adds_one_shard_and_honors_the_ceiling() {
         }],
     )
     .unwrap();
-    assert!(!at_limit.requires_split());
+    assert_eq!(at_limit.desired_shard_count, at_limit.current_shard_count);
     assert!(at_limit.max_shards_reached);
 }
 

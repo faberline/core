@@ -9,12 +9,14 @@ fn every_sec_sync_plan_keeps_newer_append_dirty() {
     log.last_sync = Instant::now() - Duration::from_secs(2);
     let plan = log.begin_sync().unwrap().expect("sync plan");
     log.append(2, b"new").unwrap();
-    log.finish_sync(plan).unwrap();
+    plan.sync_off_lock().unwrap();
+    log.complete_sync(plan).unwrap();
     assert!(log.dirty, "a stale plan must not clear a newer append");
 
     log.last_sync = Instant::now() - Duration::from_secs(2);
     let next = log.begin_sync().unwrap().expect("replacement sync plan");
-    log.finish_sync(next).unwrap();
+    next.sync_off_lock().unwrap();
+    log.complete_sync(next).unwrap();
     assert!(
         !log.dirty,
         "the replacement plan clears the current revision"
@@ -34,7 +36,7 @@ fn append_replay_truncate_and_reopen() {
     log.sync().unwrap();
 
     let frames = FramedLogReader::read_frames(&path, 0).unwrap();
-    let seqs: Vec<u64> = frames.iter().map(|frame| frame.seq).collect();
+    let seqs: Vec<u64> = frames.iter().map(LogFrame::seq).collect();
     assert_eq!(seqs, vec![2, 3, 4]);
 }
 
@@ -79,8 +81,5 @@ fn bounded_reader_pages_without_returning_skipped_frames() {
     log.sync().unwrap();
 
     let page = FramedLogReader::read_frames_bounded(&path, 2, 2).unwrap();
-    assert_eq!(
-        page.iter().map(|frame| frame.seq).collect::<Vec<_>>(),
-        [3, 4]
-    );
+    assert_eq!(page.iter().map(LogFrame::seq).collect::<Vec<_>>(), [3, 4]);
 }

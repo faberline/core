@@ -2,9 +2,7 @@ use super::*;
 
 #[test]
 fn materialized_output_writes_a_versioned_contract_manifest() {
-    let mut opts = full_opts();
-    opts.lang = Lang::Py;
-    opts.emit_hooks = false;
+    let opts = opts_for(Lang::Py);
     let output = generate_for_target(
         TARGET_PROFILE_SPEC,
         &opts,

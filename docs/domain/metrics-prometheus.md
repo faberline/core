@@ -17,10 +17,12 @@ and tape do.
   and `get`.
 - **Gauge** — `Gauge`: a point-in-time value on one atomic, with `set` and
   `get`.
-- **Latency** — `Latency`: a `sum` and a `count` counter; `observe` records one
-  value in whatever unit the metric name promises.
+- **Latency** — `Latency`: a `sum` and a `count` counter, read through the
+  `sum()` and `count()` getters; `observe` records one value in whatever unit
+  the metric name promises.
 - **Bucket** — `Bucket`: one histogram bound stated twice, as the `le` label
-  text and as the integer `max` that observations are compared against.
+  text and as the integer `max` that observations are compared against. Its
+  const `new` and getters work in a const bucket list.
 - **Histogram** — `Histogram`: per-bucket counts plus `_sum` and `_count` over a
   fixed list of buckets, observed in an integer base unit and published in the
   metric's unit through a divisor at render time.
@@ -28,6 +30,9 @@ and tape do.
   text and value.
 - **Labeled family** — `SampleGroup`: one name, kind and HELP text over a list
   of `LabeledSample` rows, each a set of `Label` pairs and a value.
+- `Sample`, `Label`, `Bucket` and `SampleGroup` are built with a const `new`
+  and read through const getters named after their parts. `LabeledSample`
+  has a plain `new(labels, value)` and getters.
 
 ## Ports
 
@@ -61,6 +66,6 @@ layer. Everything is re-exported at the crate root, and no module is public.
 
 ## Exceptions and debts
 
-- **Checker exceptions (P1):** None.
-- **Tracked for P2:** `Latency` exposes `sum` and `count` as public fields, and
-  relay and tape read them directly.
+- **Checker exceptions:** None.
+- **Debts:** none tracked. P2 made the `Sample`, `Label`, `Bucket`,
+  `SampleGroup`, `LabeledSample` and `Latency` fields private (D2).

@@ -1,25 +1,17 @@
-// SPEC-MANAGED: crates/surface/tech-design/semantic/source/libs-surface-tests-snapshot-rs.md#rust-source-unit
-// CODEGEN-BEGIN
 use surface::{Element, Props, SurfaceRect};
 
 #[test]
 fn snapshot_serializes_stable_structural_tree() {
     let element = Element::intrinsic(
         "label",
-        Props {
-            id: Some("project-name-label".to_string()),
-            html_for: Some("project-name".to_string()),
-            ..Default::default()
-        },
+        Props::default()
+            .with_id("project-name-label")
+            .with_html_for("project-name"),
         vec![
             Element::text("Project"),
             Element::intrinsic(
                 "input",
-                Props {
-                    id: Some("project-name".to_string()),
-                    value: Some("aw".to_string()),
-                    ..Default::default()
-                },
+                Props::default().with_id("project-name").with_value("aw"),
                 vec![],
             ),
         ],
@@ -46,4 +38,3 @@ fn snapshot_serializes_stable_structural_tree() {
     assert_eq!(json["nodes"][2]["name"], "aw");
     assert_eq!(json["nodes"][2]["bounds"]["w"], 120.0);
 }
-// CODEGEN-END

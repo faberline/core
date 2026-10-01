@@ -177,13 +177,6 @@ impl WorkloadIdentityTokenSource {
         }
     }
 
-    /// Point the exchange at another STS endpoint. Tests only — production
-    /// reads the default above.
-    pub fn with_sts_endpoint(mut self, endpoint: impl Into<String>) -> Self {
-        self.sts_endpoint = endpoint.into();
-        self
-    }
-
     /// The form body of the exchange, as a list of pairs.
     ///
     /// Split out so the shape is assertable without a network: the audience and

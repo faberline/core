@@ -37,6 +37,6 @@ async fn gcs_put_maps_if_absent_to_generation_precondition() {
     })
     .await
     .unwrap();
-    assert_eq!(meta.key, "segment-1");
-    assert_eq!(meta.version.as_str(), "42");
+    assert_eq!(meta.key(), "segment-1");
+    assert_eq!(meta.version().as_str(), "42");
 }

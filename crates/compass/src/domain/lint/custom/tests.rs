@@ -91,8 +91,39 @@ pattern = "[unclosed"
 message = "bad rule"
 "#,
     );
-    // Invalid regex must be silently skipped — engine stays functional.
+    // Invalid regex must be skipped — engine stays functional.
     assert_eq!(engine.rule_count(), 0);
+    let rejected = engine.rejected_rules();
+    assert_eq!(rejected.len(), 1);
+    assert_eq!(rejected[0].id(), "BAD");
+    assert_eq!(rejected[0].code(), RuleCode::from("CUSTOM_BAD"));
+    assert_eq!(rejected[0].pattern(), "[unclosed");
+    assert_eq!(
+        rejected[0].reason(),
+        "non-empty character class has no closing bracket"
+    );
+}
+
+#[test]
+fn test_valid_rules_are_not_rejected() {
+    let engine = load_engine(
+        r#"
+[[rule]]
+id      = "GOOD"
+kind    = "regex"
+pattern = "TODO"
+message = "todo"
+
+[[rule]]
+id      = "BAD"
+kind    = "regex"
+pattern = "(open"
+message = "bad rule"
+"#,
+    );
+    assert_eq!(engine.rule_count(), 1);
+    let ids: Vec<&str> = engine.rejected_rules().iter().map(|r| r.id()).collect();
+    assert_eq!(ids, ["BAD"]);
 }
 
 #[test]
@@ -173,5 +204,5 @@ message = "a"
 "#,
     );
     let codes = engine.rule_codes();
-    assert!(codes.contains(&"CUSTOM_ALPHA".to_string()));
+    assert!(codes.contains(&RuleCode::from("CUSTOM_ALPHA")));
 }

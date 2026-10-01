@@ -8,8 +8,7 @@
 //! - Locals: `locals { name = ... }`
 //! - Modules: `module "name" { ... }`
 
-use crate::domain::diagnostic::model::Range;
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 use super::{SymbolKind, SymbolTableBuilder};
 
@@ -65,7 +64,7 @@ impl SymbolTableBuilder {
                     self.table.add_symbol(
                         full_name,
                         SymbolKind::Resource,
-                        Range::from_node(node),
+                        node.to_range(),
                         None,
                         Some(format!(
                             "resource \"{}\" \"{}\"",
@@ -84,7 +83,7 @@ impl SymbolTableBuilder {
                     self.table.add_symbol(
                         full_name,
                         SymbolKind::Resource,
-                        Range::from_node(node),
+                        node.to_range(),
                         None,
                         Some(format!("data \"{}\" \"{}\"", data_type, data_name)),
                         self.current_scope,
@@ -97,7 +96,7 @@ impl SymbolTableBuilder {
                     self.table.add_symbol(
                         format!("var.{}", var_name),
                         SymbolKind::Variable,
-                        Range::from_node(node),
+                        node.to_range(),
                         None,
                         Some(format!("variable \"{}\"", var_name)),
                         self.current_scope,
@@ -110,7 +109,7 @@ impl SymbolTableBuilder {
                     self.table.add_symbol(
                         format!("output.{}", out_name),
                         SymbolKind::Variable,
-                        Range::from_node(node),
+                        node.to_range(),
                         None,
                         Some(format!("output \"{}\"", out_name)),
                         self.current_scope,
@@ -123,7 +122,7 @@ impl SymbolTableBuilder {
                     self.table.add_symbol(
                         format!("module.{}", mod_name),
                         SymbolKind::Module,
-                        Range::from_node(node),
+                        node.to_range(),
                         None,
                         Some(format!("module \"{}\"", mod_name)),
                         self.current_scope,
@@ -165,7 +164,7 @@ impl SymbolTableBuilder {
                                 self.table.add_symbol(
                                     format!("local.{}", name),
                                     SymbolKind::Variable,
-                                    Range::from_node(&name_node),
+                                    name_node.to_range(),
                                     None,
                                     Some("local value".to_string()),
                                     self.current_scope,

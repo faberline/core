@@ -5,20 +5,21 @@
 //! [`super::EphemeralIssuer`]. Neither is privileged — the state machine has never
 //! heard of either, which is R8.
 //!
-//! Second, the private key. It is generated here, in memory, and it leaves this
-//! module exactly once: inside [`IssuedMaterial`], on its way to a namespaced
-//! Secret. It is never written to a file, never logged, never returned in an
-//! error, and — the part that is easy to get wrong — the CA never sees it. A
+//! Second, the private key. It is generated in memory behind the
+//! [`KeyAndCsrGenerator`] port, and it leaves [`IssuanceRequest::build`]
+//! exactly once: as a [`PrivateKey`], on its way to a namespaced Secret. It is
+//! never written to a file, never logged, never returned in an error, and — the part that is easy to get wrong — the CA never sees it. A
 //! CSR carries a *public* key and a proof of possession; that asymmetry is the
 //! entire reason certificate issuance can be delegated to a service at all, and
 //! R2's "never fetch, export, or store a CA private key" is its mirror image on
 //! the other side.
 
 use std::fmt;
+use std::future::Future;
+use std::pin::Pin;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use futures::future::BoxFuture;
 
 use super::profile::{CertificateProfile, ExtendedUsage, InstanceScope, Purpose};
 
@@ -93,16 +94,17 @@ pub struct IssuanceRequest {
 }
 
 impl IssuanceRequest {
-    /// Build a request from a validated profile, generating a fresh keypair in
-    /// memory.
+    /// Build a request from a validated profile, with a fresh keypair and CSR
+    /// from `keys`.
     ///
     /// Returns the key separately, so handing the request to an issuer cannot
     /// also hand it the key.
     pub fn build(
         scope: &InstanceScope,
         profile: &CertificateProfile,
+        keys: &dyn KeyAndCsrGenerator,
     ) -> Result<(Self, PrivateKey), IssuerError> {
-        let (private_key_pem, csr_pem) = generate_key_and_csr(profile)?;
+        let (private_key_pem, csr_pem) = keys.generate(profile)?;
         Ok((
             Self {
                 scope: scope.clone(),
@@ -174,7 +176,7 @@ impl std::error::Error for IssuerError {}
 
 /// Anything that can turn a CSR into a leaf.
 ///
-/// `BoxFuture` rather than `async fn` because the reconciler holds issuers
+/// A boxed future rather than `async fn` because the reconciler holds issuers
 /// behind a trait object: a service configures one at startup, and which one it
 /// is must not leak into the type of everything downstream.
 pub trait Issuer: Send + Sync {
@@ -186,7 +188,7 @@ pub trait Issuer: Send + Sync {
     fn issue<'a>(
         &'a self,
         request: IssuanceRequest,
-    ) -> BoxFuture<'a, Result<IssuedMaterial, IssuerError>>;
+    ) -> Pin<Box<dyn Future<Output = Result<IssuedMaterial, IssuerError>> + Send + 'a>>;
 
     /// The anchor a verifier needs in order to accept leaves from this issuer.
     ///
@@ -195,140 +197,23 @@ pub trait Issuer: Send + Sync {
     /// *before* the first leaf it signed appears, and at that moment there is no
     /// leaf to read a chain out of. Public material, by definition — it is what
     /// verifiers are meant to already hold.
-    fn trust_anchor_pem<'a>(&'a self) -> BoxFuture<'a, Result<String, IssuerError>>;
+    fn trust_anchor_pem<'a>(
+        &'a self,
+    ) -> Pin<Box<dyn Future<Output = Result<String, IssuerError>> + Send + 'a>>;
 }
 
-/// Generate an in-memory P-256 keypair and a CSR carrying the profile's names.
+/// Makes a fresh in-memory keypair and a CSR carrying a profile's names.
 ///
-/// P-256 rather than RSA: leaves here live for hours and are minted by a
-/// controller that may be renewing several at once, so key generation cost is a
-/// real operational property, not a benchmark curiosity.
-fn generate_key_and_csr(profile: &CertificateProfile) -> Result<(String, String), IssuerError> {
-    use rcgen::{CertificateParams, DnType, KeyPair, KeyUsagePurpose, SanType};
-
-    let mut params = CertificateParams::default();
-    params
-        .distinguished_name
-        .push(DnType::CommonName, profile.common_name());
-    for name in &profile.identity().dns_names {
-        let san = name
-            .as_str()
-            .try_into()
-            .map(SanType::DnsName)
-            .map_err(|err| IssuerError::KeyGeneration(format!("DNS SAN {name}: {err}")))?;
-        params.subject_alt_names.push(san);
-    }
-    if let Some(uri) = &profile.identity().spiffe_uri {
-        let san = uri
-            .as_str()
-            .try_into()
-            .map(SanType::URI)
-            .map_err(|err| IssuerError::KeyGeneration(format!("URI SAN {uri}: {err}")))?;
-        params.subject_alt_names.push(san);
-    }
-    // The two basic usages a TLS leaf needs, and only those. `KeyCertSign` and
-    // `CrlSign` are what would turn this into a CA in everything but name, and
-    // the issuing pool refuses them anyway (#3109) -- stated on both sides
-    // because a requester that asks for them should fail locally, not at the
-    // CA, where the failure is a rate-limited API error at 3am.
-    params.key_usages = vec![
-        KeyUsagePurpose::DigitalSignature,
-        KeyUsagePurpose::KeyEncipherment,
-    ];
-
-    let key_pair = KeyPair::generate()
-        .map_err(|err| IssuerError::KeyGeneration(format!("generate keypair: {err}")))?;
-    let csr = params
-        .serialize_request(&key_pair)
-        .map_err(|err| IssuerError::KeyGeneration(format!("serialize CSR: {err}")))?;
-    let csr_pem = csr
-        .pem()
-        .map_err(|err| IssuerError::KeyGeneration(format!("encode CSR: {err}")))?;
-    Ok((key_pair.serialize_pem(), csr_pem))
+/// A port because the key and the CSR need a crypto library that the domain
+/// does not carry; `RcgenCsrGenerator` in infrastructure implements it.
+/// [`IssuanceRequest::build`] is the only caller, so the key it returns is
+/// wrapped in a [`PrivateKey`] before anything else can see it.
+pub trait KeyAndCsrGenerator: Send + Sync {
+    /// A new keypair for every call, never a cached one: renewal must not reuse
+    /// the key it is replacing. Returns `(private_key_pem, csr_pem)`; the CSR
+    /// carries the public key and a proof of possession, never the key itself.
+    fn generate(&self, profile: &CertificateProfile) -> Result<(String, String), IssuerError>;
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::certificate::profile::CertificateIdentity;
-
-    fn scope() -> InstanceScope {
-        InstanceScope::new("lumen", "lumen", "lumen-prod.svc.id.goog")
-    }
-
-    fn peer_profile() -> CertificateProfile {
-        CertificateProfile::new(
-            &scope(),
-            Purpose::Peer,
-            "lumen-0.lumen-headless.lumen.svc.cluster.local",
-            CertificateIdentity {
-                dns_names: vec!["lumen-0.lumen-headless.lumen.svc.cluster.local".into()],
-                spiffe_uri: Some("spiffe://lumen-prod.svc.id.goog/ns/lumen/sa/lumen".into()),
-            },
-            Duration::from_secs(86_400),
-            Duration::from_secs(21_600),
-            Duration::from_secs(1_800),
-        )
-        .unwrap()
-    }
-
-    #[test]
-    fn a_csr_carries_the_requested_names() {
-        let (request, _key) = IssuanceRequest::build(&scope(), &peer_profile()).unwrap();
-        let parsed =
-            rcgen::CertificateSigningRequestParams::from_pem(&request.csr_pem).unwrap();
-        let names: Vec<String> = parsed
-            .params
-            .subject_alt_names
-            .iter()
-            .map(|san| format!("{san:?}"))
-            .collect();
-        let joined = names.join(" ");
-        assert!(
-            joined.contains("lumen-0.lumen-headless.lumen.svc.cluster.local"),
-            "got {joined}"
-        );
-        assert!(
-            joined.contains("spiffe://lumen-prod.svc.id.goog/ns/lumen/sa/lumen"),
-            "got {joined}"
-        );
-    }
-
-    #[test]
-    fn a_csr_never_asks_to_be_a_ca() {
-        let (request, _key) = IssuanceRequest::build(&scope(), &peer_profile()).unwrap();
-        let parsed =
-            rcgen::CertificateSigningRequestParams::from_pem(&request.csr_pem).unwrap();
-        assert_eq!(parsed.params.is_ca, rcgen::IsCa::NoCa);
-        assert!(!parsed
-            .params
-            .key_usages
-            .contains(&rcgen::KeyUsagePurpose::KeyCertSign));
-        assert!(!parsed
-            .params
-            .key_usages
-            .contains(&rcgen::KeyUsagePurpose::CrlSign));
-    }
-
-    #[test]
-    fn the_private_key_is_not_in_the_csr() {
-        let (request, _key) = IssuanceRequest::build(&scope(), &peer_profile()).unwrap();
-        // The property that makes delegated issuance safe at all: what goes to
-        // the CA proves possession of the key without containing it.
-        assert!(!request.csr_pem.contains("PRIVATE KEY"));
-        assert!(request.csr_pem.contains("BEGIN CERTIFICATE REQUEST"));
-    }
-
-    #[test]
-    fn every_request_gets_a_fresh_key() {
-        let a = IssuanceRequest::build(&scope(), &peer_profile())
-            .unwrap()
-            .1
-            .into_pem();
-        let b = IssuanceRequest::build(&scope(), &peer_profile())
-            .unwrap()
-            .1
-            .into_pem();
-        assert_ne!(a, b, "renewal must not reuse the key it is replacing");
-    }
-}
+mod tests;

@@ -1,6 +1,6 @@
 use super::*;
 use crate::config::TcpSocketOptions;
-use anyhow::Result;
+use crate::TcpHandlerError;
 use server_lifecycle::BindConfig;
 use server_lifecycle::{ConnectionBudget, ConnectionMetrics};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -11,12 +11,11 @@ use tokio::sync::oneshot;
 #[tokio::test]
 async fn bind_uses_configured_socket_options() {
     // @spec apps/agentic-workflow/tech-design/logic/shared-server-substrate-performance-layers.md#unit-test
-    let cfg =
-        TcpServerConfig::new(BindConfig::localhost(0)).with_socket_options(TcpSocketOptions {
-            backlog: 128,
-            reuse_addr: true,
-            nodelay: true,
-        });
+    let cfg = TcpServerConfig::new(BindConfig::localhost(0))
+        .with_socket_options(TcpSocketOptions::default().with_backlog(128));
+    assert_eq!(cfg.socket().backlog(), 128);
+    assert!(cfg.socket().reuse_addr());
+    assert!(cfg.socket().nodelay());
     let listener = bind(&cfg).await.expect("bind");
     assert!(listener.local_addr().unwrap().port() > 0);
 }
@@ -34,8 +33,14 @@ async fn serve_accepts_closure_handler_without_async_trait_boxing() {
         cfg,
         |mut stream: TcpStream, _cx: ConnectionContext| async move {
             let mut buf = [0_u8; 4];
-            stream.read_exact(&mut buf).await?;
-            stream.write_all(&buf).await?;
+            stream
+                .read_exact(&mut buf)
+                .await
+                .map_err(TcpHandlerError::other)?;
+            stream
+                .write_all(&buf)
+                .await
+                .map_err(TcpHandlerError::other)?;
             Ok(())
         },
         async move {
@@ -67,7 +72,7 @@ async fn connection_budget_releases_after_handler_finishes() {
         cfg,
         |stream: TcpStream, _cx: ConnectionContext| async move {
             drop(stream);
-            Result::<()>::Ok(())
+            Ok::<(), TcpHandlerError>(())
         },
         async move {
             let _ = shutdown_rx.await;
@@ -135,7 +140,7 @@ async fn metrics_cover_admission_rejection_and_completion_once() {
                     let _ = rx.await;
                 }
                 drop(stream);
-                Result::<()>::Ok(())
+                Ok::<(), TcpHandlerError>(())
             }
         },
         async move {

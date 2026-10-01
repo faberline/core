@@ -49,15 +49,6 @@ impl ConditionStatus {
             Self::Unknown => "Unknown",
         }
     }
-
-    /// `True`/`False` from a plain predicate — the common case.
-    pub fn from_bool(value: bool) -> Self {
-        if value {
-            Self::True
-        } else {
-            Self::False
-        }
-    }
 }
 
 /// A condition as a service computes it: everything except the clock.
@@ -125,13 +116,6 @@ pub fn project(
             }
         })
         .collect()
-}
-
-/// Now, in the RFC3339 form Kubernetes expects in `lastTransitionTime`.
-/// Second precision: metav1 timestamps carry no sub-second component, and
-/// emitting one makes the API server rewrite the value on every write.
-pub fn now_rfc3339() -> String {
-    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
 #[cfg(test)]

@@ -1,15 +1,9 @@
 use super::*;
 
 fn plan(storage: StatefulStorageAttachment) -> StatefulInstancePlan<'static> {
-    let cx = Box::leak(Box::new(RenderCtx {
-        app: "lumen",
-        manager: "test",
-        api_version: "v1",
-        kind: "Lumen",
-        name: "lumen",
-        ns: "lumen",
-        owner: None,
-    }));
+    let cx = Box::leak(Box::new(RenderCtx::new(
+        "lumen", "test", "v1", "Lumen", "lumen", "lumen",
+    )));
     let pod = ServicePodTemplate {
         cx,
         component: "serving",

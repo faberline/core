@@ -1,10 +1,10 @@
 //! LLM topic provider for the shared h2c client/server transport contract.
 
 /// Agent-facing topic describing h2c outbound client pools and server boundary.
-pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic {
-    id: "h2c",
-    summary: "Shared HTTP/2 cleartext client helpers, logarithmic connection-pool sizing, and optional per-connection server protocol.",
-    body: r#"# transport-h2c shared topic
+pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
+    "h2c",
+    "Shared HTTP/2 cleartext client helpers, logarithmic connection-pool sizing, and optional per-connection server protocol.",
+    r#"# transport-h2c shared topic
 
 ## Client-side pool sizing
 Use the h2c pool on outbound callers: generated clients, adapters, raft peers,
@@ -54,7 +54,7 @@ with `server-tcp` admission, lifecycle, and supervision. Server code should not
 create a connection pool for inbound traffic; it should accept enough h2
 concurrent streams and let each outbound caller manage its own pool.
 "#,
-};
+);
 
 /// Return the shared h2c topic for CLI composition.
 pub fn topic() -> &'static cli_std::llm::Topic {
@@ -66,12 +66,12 @@ mod tests {
     #[test]
     fn llm_topic_is_nonempty() {
         let topic = super::topic();
-        assert_eq!(topic.id, "h2c");
-        assert!(topic.body.contains("ceil(ln(concurrency))"));
-        assert!(topic.body.contains("max_in_flight_per_origin"));
-        assert!(topic.body.contains("pool_timeout"));
-        assert!(topic.body.contains("H2cPool::for_concurrency"));
-        assert!(topic.body.contains("serve_connection"));
-        assert!(topic.body.contains("never binds or owns a listener"));
+        assert_eq!(topic.id(), "h2c");
+        assert!(topic.body().contains("ceil(ln(concurrency))"));
+        assert!(topic.body().contains("max_in_flight_per_origin"));
+        assert!(topic.body().contains("pool_timeout"));
+        assert!(topic.body().contains("H2cPool::for_concurrency"));
+        assert!(topic.body().contains("serve_connection"));
+        assert!(topic.body().contains("never binds or owns a listener"));
     }
 }

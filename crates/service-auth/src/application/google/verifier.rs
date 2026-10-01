@@ -11,14 +11,14 @@ use jsonwebtoken::{
 use serde::Deserialize;
 
 use super::credential::{classify, Credential};
-use super::introspection::{lenient_bool, AccessTokenIntrospection};
 use super::jwks_cache::JwksCache;
 use super::jwks_source::JwksSource;
 use crate::application::http::{bearer_token, AsyncVerifier, AuthError};
 use crate::application::role_map::ReloadableRoleMapVerifier;
 use crate::domain::authorization::{AuditedRoleMapPrincipal, RoleMapPrincipal};
 use crate::domain::google::{
-    Clock, GoogleAuthConfig, GoogleAuthError, InvalidReason, GOOGLE_ISSUERS,
+    lenient_bool, AccessTokenIntrospection, Clock, GoogleAuthConfig, GoogleAuthError,
+    InvalidReason, GOOGLE_ISSUERS,
 };
 
 // ---------------------------------------------------------------------------

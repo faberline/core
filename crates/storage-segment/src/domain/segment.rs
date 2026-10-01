@@ -10,11 +10,3 @@ pub trait RecordCodec<Record>: Send + Sync {
 pub trait Partitioner<Record>: Send + Sync {
     fn partition(&self, record: &Record) -> Result<String>;
 }
-
-/// Durable local segment boundary. A product supplies its descriptor type.
-pub trait SegmentStore<Record>: Send + Sync {
-    type Descriptor: Clone + Send + Sync;
-
-    fn write_immutable(&self, partition: &str, records: &[Record]) -> Result<Self::Descriptor>;
-    fn read(&self, descriptor: &Self::Descriptor) -> Result<Vec<Record>>;
-}

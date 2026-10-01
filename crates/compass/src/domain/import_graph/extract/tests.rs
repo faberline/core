@@ -41,3 +41,14 @@ fn test_extract_go_imports() {
     assert_eq!(imps[1].path, "os");
     assert_eq!(imps[2].path, "github.com/user/pkg");
 }
+
+#[test]
+fn test_extract_imports_whitespace_is_ascii() {
+    // A no-break or ideographic space does not separate an import keyword.
+    let py = extract_python_imports("import\u{a0}os\nfrom\u{3000}x import y\nimport sys\n");
+    assert_eq!(py.len(), 1);
+    assert_eq!(py[0].path, "sys");
+    let go = extract_go_imports("import (\n\tf\u{e9}\u{e9} \"fmt\"\n\tbar \"os\"\n)\n");
+    assert_eq!(go.len(), 1);
+    assert_eq!(go[0].path, "os");
+}

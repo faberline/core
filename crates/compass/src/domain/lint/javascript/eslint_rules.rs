@@ -1,5 +1,6 @@
 use super::JavaScriptChecker;
-use crate::diagnostic::{Diagnostic, DiagnosticCategory, Range};
+use crate::diagnostic::{Diagnostic, DiagnosticCategory};
+use crate::domain::syntax::parsed_file::NodeRange;
 use crate::syntax::ParsedFile;
 
 impl JavaScriptChecker {
@@ -17,7 +18,7 @@ impl JavaScriptChecker {
                                     || first_arg.kind() == "template_string"
                                 {
                                     diagnostics.push(Diagnostic::error(
-                                        Range::from_node(node),
+                                        node.to_range(),
                                         "JS006",
                                         DiagnosticCategory::Security,
                                         format!(
@@ -44,7 +45,7 @@ impl JavaScriptChecker {
                 if let Some(prop) = node.child_by_field_name("property") {
                     if file.node_text(&prop) == "__proto__" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "JS007",
                             DiagnosticCategory::Style,
                             "Use Object.getPrototypeOf() instead of '__proto__'",
@@ -63,7 +64,7 @@ impl JavaScriptChecker {
         file.walk(|node, _depth| {
             if node.kind() == "with_statement" {
                 diagnostics.push(Diagnostic::error(
-                    Range::from_node(node),
+                    node.to_range(),
                     "JS008",
                     DiagnosticCategory::Logic,
                     "'with' statement is forbidden — it makes code unpredictable",
@@ -84,7 +85,7 @@ impl JavaScriptChecker {
                         let name = file.node_text(&func);
                         if name == "alert" || name == "confirm" || name == "prompt" {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(node),
+                                node.to_range(),
                                 "JS009",
                                 DiagnosticCategory::Style,
                                 format!(
@@ -112,7 +113,7 @@ impl JavaScriptChecker {
                             let prop_text = file.node_text(&prop);
                             if prop_text == "caller" || prop_text == "callee" {
                                 diagnostics.push(Diagnostic::error(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     "JS010",
                                     DiagnosticCategory::Logic,
                                     format!(
@@ -141,7 +142,7 @@ impl JavaScriptChecker {
                     for b in &builtins {
                         if text.starts_with(&format!("{}.prototype.", b)) {
                             diagnostics.push(Diagnostic::warning(
-                                Range::from_node(node),
+                                node.to_range(),
                                 "JS011",
                                 DiagnosticCategory::Logic,
                                 format!("Do not extend native '{}' prototype", b),
@@ -165,7 +166,7 @@ impl JavaScriptChecker {
                     let name = file.node_text(&ctor);
                     if name == "String" || name == "Number" || name == "Boolean" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "JS012",
                             DiagnosticCategory::Style,
                             format!(
@@ -198,7 +199,7 @@ impl JavaScriptChecker {
                         || k == "template_string"
                     {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "JS013",
                             DiagnosticCategory::Logic,
                             "Throw an Error object instead of a literal",
@@ -220,7 +221,7 @@ impl JavaScriptChecker {
                 for child in node.children(&mut cursor) {
                     if child.kind() == "assignment_expression" {
                         diagnostics.push(Diagnostic::warning(
-                            Range::from_node(node),
+                            node.to_range(),
                             "JS014",
                             DiagnosticCategory::Logic,
                             "Unexpected assignment in return statement",
@@ -247,7 +248,7 @@ impl JavaScriptChecker {
                         ) {
                             if file.node_text(&left) == file.node_text(&right) {
                                 diagnostics.push(Diagnostic::warning(
-                                    Range::from_node(node),
+                                    node.to_range(),
                                     "JS015",
                                     DiagnosticCategory::Logic,
                                     "Comparing a value to itself is always redundant",

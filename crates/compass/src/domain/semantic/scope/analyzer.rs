@@ -1,8 +1,7 @@
 mod visit;
 
 use super::{Scope, ScopeKind, Symbol, SymbolKind};
-use crate::domain::diagnostic::model::Range;
-use crate::domain::syntax::parsed_file::ParsedFile;
+use crate::domain::syntax::parsed_file::{NodeRange, ParsedFile};
 
 /// Scope analyzer for Python
 pub struct ScopeAnalyzer {
@@ -56,16 +55,13 @@ impl ScopeAnalyzer {
                 "identifier" => {
                     let name = file.node_text(&child).to_string();
                     self.current()
-                        .define(name, SymbolKind::Parameter, Range::from_node(&child));
+                        .define(name, SymbolKind::Parameter, child.to_range());
                 }
                 "typed_parameter" | "typed_default_parameter" | "default_parameter" => {
                     if let Some(name_node) = child.child_by_field_name("name") {
                         let name = file.node_text(&name_node).to_string();
-                        self.current().define(
-                            name,
-                            SymbolKind::Parameter,
-                            Range::from_node(&name_node),
-                        );
+                        self.current()
+                            .define(name, SymbolKind::Parameter, name_node.to_range());
                     }
                 }
                 "list_splat_pattern" | "dictionary_splat_pattern" => {
@@ -73,11 +69,8 @@ impl ScopeAnalyzer {
                     for inner in child.children(&mut inner_cursor) {
                         if inner.kind() == "identifier" {
                             let name = file.node_text(&inner).to_string();
-                            self.current().define(
-                                name,
-                                SymbolKind::Parameter,
-                                Range::from_node(&inner),
-                            );
+                            self.current()
+                                .define(name, SymbolKind::Parameter, inner.to_range());
                         }
                     }
                 }
@@ -91,7 +84,7 @@ impl ScopeAnalyzer {
             "identifier" => {
                 let name = file.node_text(node).to_string();
                 self.current()
-                    .define(name, SymbolKind::Variable, Range::from_node(node));
+                    .define(name, SymbolKind::Variable, node.to_range());
             }
             "tuple_pattern" | "list_pattern" | "pattern_list" | "tuple" | "list" => {
                 let mut cursor = node.walk();

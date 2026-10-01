@@ -18,6 +18,7 @@
 //!   budget for an apply-blocked proposal or status request. The bounded test
 //!   waits below are test cleanup limits, not a product performance promise.
 
+use raft_runtime::NodeId;
 use std::collections::{HashMap, HashSet};
 use std::io::ErrorKind;
 use std::sync::{Arc, Condvar, Mutex};
@@ -25,9 +26,9 @@ use std::time::{Duration, Instant};
 use tempfile::TempDir;
 
 use raft_runtime::{
-    FsyncPolicy, HostConfig, HostShutdownReport, LeadershipHandoff, Membership, PhaseStatus,
+    FsyncPolicy, HostConfig, HostShutdownReport, Index, LeadershipHandoff, Membership, PhaseStatus,
     ProposalOutcome, RaftHost, RaftStateMachine, RaftStatus, RaftStore, ShutdownCaller,
-    ShutdownPhase,
+    ShutdownPhase, StateMachineError,
 };
 use server_lifecycle::ShutdownDeadline;
 
@@ -200,10 +201,10 @@ impl BlockingApplySm {
 }
 
 impl RaftStateMachine for BlockingApplySm {
-    fn apply(&self, index: u64, _command: &[u8]) -> anyhow::Result<()> {
+    fn apply(&self, index: Index, _command: &[u8]) -> Result<(), StateMachineError> {
         let fail = {
             let mut gate = self.gate.lock().expect("blocking gate mutex poisoned");
-            gate.callback_indices.push(index);
+            gate.callback_indices.push(index.get());
             if gate.armed {
                 gate.armed = false;
                 gate.entered = true;
@@ -223,23 +224,25 @@ impl RaftStateMachine for BlockingApplySm {
             }
         };
         if fail {
-            anyhow::bail!("injected state-machine apply failure at index {index}");
+            return Err(StateMachineError::other(format!(
+                "injected state-machine apply failure at index {index}"
+            )));
         }
         self.applied
-            .store(index, std::sync::atomic::Ordering::Release);
+            .store(index.get(), std::sync::atomic::Ordering::Release);
         Ok(())
     }
 
-    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> Result<(), StateMachineError> {
         Ok(())
     }
 
-    fn restore(&self, _reader: &mut dyn std::io::Read) -> anyhow::Result<()> {
+    fn restore(&self, _reader: &mut dyn std::io::Read) -> Result<(), StateMachineError> {
         Ok(())
     }
 
-    fn applied_index(&self) -> u64 {
-        self.applied.load(std::sync::atomic::Ordering::Acquire)
+    fn applied_index(&self) -> Index {
+        Index::new(self.applied.load(std::sync::atomic::Ordering::Acquire))
     }
 }
 
@@ -266,27 +269,21 @@ async fn blocking_cluster(node_count: u64) -> Vec<BlockingNode> {
     for id in 0..node_count {
         let (listener, url) = bind().await;
         listeners.push(listener);
-        all.push((id, url));
+        all.push((NodeId::new(id), url));
     }
 
-    let config = HostConfig {
-        tick: Duration::from_millis(10),
-        ..HostConfig::default()
-    };
-    let voters: Vec<u64> = (0..node_count).collect();
+    let config = HostConfig::default().with_tick(Duration::from_millis(10));
+    let voters: Vec<NodeId> = (0..node_count).map(NodeId::new).collect();
     let mut nodes = Vec::new();
     for (index, listener) in listeners.into_iter().enumerate() {
-        let id = index as u64;
+        let id = NodeId::new(index as u64);
         let sm = BlockingApplySm::new();
         let dir = TempDir::new().expect("temporary raft store directory");
         let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os)
             .expect("temporary raft store opens");
         let host = Arc::new(RaftHost::spawn(
             id,
-            Membership {
-                voters: voters.clone(),
-                learners: vec![],
-            },
+            Membership::new(voters.clone(), vec![]),
             cluster::peers_excluding(id, &all),
             store,
             sm.clone() as Arc<dyn RaftStateMachine>,
@@ -334,7 +331,7 @@ async fn hold_leader_apply(
     nodes: &[BlockingNode],
     leader: usize,
     command: Vec<u8>,
-) -> tokio::task::JoinHandle<anyhow::Result<u64>> {
+) -> tokio::task::JoinHandle<anyhow::Result<Index>> {
     nodes[leader].sm.arm();
     let host = Arc::clone(&nodes[leader].host);
     let proposal = tokio::spawn(async move { host.propose(command).await });
@@ -399,7 +396,8 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
         "the follower-routed proposal must allocate and commit its own index"
     );
     assert_eq!(
-        applied_while_blocked, 0,
+        applied_while_blocked,
+        Index::new(0),
         "the first blocked callback is not falsely applied"
     );
     assert_eq!(
@@ -407,8 +405,8 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
         vec![1],
         "a single worker must not begin the second callback before the first releases"
     );
-    assert_eq!(first_index, 1);
-    assert_eq!(second_index, 2);
+    assert_eq!(first_index, Index::new(1));
+    assert_eq!(second_index, Index::new(2));
 }
 
 /// A callback Err is an explicit failed apply, not a normal domain outcome.
@@ -474,26 +472,20 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
     let mut callbacks_after_restart = Vec::new();
     if stopped_cleanly {
         let restarted = RaftHost::spawn(
-            0,
-            Membership {
-                voters: vec![0],
-                learners: vec![],
-            },
+            NodeId::new(0),
+            Membership::new(vec![NodeId::new(0)], vec![]),
             HashMap::new(),
             RaftStore::open(
                 restart_dir.to_str().expect("temporary directory is UTF-8"),
-                0,
+                NodeId::new(0),
                 FsyncPolicy::Os,
             )
             .expect("restart reopens the durable store"),
             sm.clone() as Arc<dyn RaftStateMachine>,
-            HostConfig {
-                tick: Duration::from_millis(10),
-                ..HostConfig::default()
-            },
+            HostConfig::default().with_tick(Duration::from_millis(10)),
         );
         restart_applied = tokio::time::timeout(JOIN_LIMIT, async {
-            while sm.applied_index() < 2 {
+            while sm.applied_index() < Index::new(2) {
                 tokio::task::yield_now().await;
             }
         })
@@ -515,7 +507,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
         two_status.last_index >= 2 && two_status.commit_index >= 2,
         "the second command commits before the first callback returns Err"
     );
-    assert_eq!(applied_while_blocked, 0);
+    assert_eq!(applied_while_blocked, Index::new(0));
     assert_eq!(callbacks_while_blocked, vec![1]);
     assert!(
         failure_observed,
@@ -526,7 +518,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
         "the durable source still contains both committed commands"
     );
     assert!(
-        after_error.applied_index < 1 && applied_before_restart < 1,
+        after_error.applied_index < 1 && applied_before_restart < Index::new(1),
         "an Err must not falsely publish the failed head as applied"
     );
     assert_eq!(
@@ -555,7 +547,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
         vec![1, 1, 2],
         "restart must retry the failed head before it applies the later command"
     );
-    assert_eq!(sm.applied_index(), 2);
+    assert_eq!(sm.applied_index(), Index::new(2));
 }
 
 /// A three-voter cluster's leader shut down under a generous deadline records
@@ -953,20 +945,19 @@ async fn tiny_rpc_timeout_legacy_shutdown_returns_err_naming_quiesce() {
     let (listener, url) = bind().await;
     let sm = TestSm::new();
     let dir = TempDir::new().unwrap();
-    let store = RaftStore::open(dir.path().to_str().unwrap(), 0, FsyncPolicy::Os).unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
     let host = Arc::new(RaftHost::spawn(
-        0,
-        Membership {
-            voters: vec![0],
-            learners: vec![],
-        },
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
         HashMap::new(),
         store,
         sm.clone() as Arc<dyn RaftStateMachine>,
-        HostConfig {
-            rpc_timeout: Duration::from_nanos(1),
-            ..Default::default()
-        },
+        HostConfig::default().with_rpc_timeout(Duration::from_nanos(1)),
     ));
     let router = host.router();
     let serve = tokio::spawn(async move {

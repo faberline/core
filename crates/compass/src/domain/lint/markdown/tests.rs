@@ -1,6 +1,5 @@
-use super::symbol::{MarkdownSymbol, MarkdownSymbolExtractor};
 use super::*;
-use crate::checker::LintConfig;
+use crate::domain::check::lint_config::LintConfig;
 
 fn make_file(source: &str) -> ParsedFile {
     ParsedFile::line_based(source.to_string(), Language::Markdown)
@@ -153,98 +152,4 @@ fn test_md011_disabled_without_workspace() {
         !codes(&diags).contains(&"MD011"),
         "MD011 should not fire without workspace root"
     );
-}
-
-// -----------------------------------------------------------------------
-// MarkdownSymbolExtractor
-// -----------------------------------------------------------------------
-
-#[test]
-fn test_symbol_extractor_headings() {
-    let source = "# Title\n## Section\n### Sub\n";
-    let symbols = MarkdownSymbolExtractor::extract(source);
-    let headings: Vec<_> = symbols
-        .iter()
-        .filter_map(|s| {
-            if let MarkdownSymbol::Heading { level, text, .. } = s {
-                Some((*level, text.as_str()))
-            } else {
-                None
-            }
-        })
-        .collect();
-    assert_eq!(headings, vec![(1, "Title"), (2, "Section"), (3, "Sub")]);
-}
-
-#[test]
-fn test_symbol_extractor_links() {
-    let source = "See [Rust](https://rust-lang.org) for more.\n";
-    let symbols = MarkdownSymbolExtractor::extract(source);
-    let links: Vec<_> = symbols
-        .iter()
-        .filter_map(|s| {
-            if let MarkdownSymbol::Link { text, url, .. } = s {
-                Some((text.as_str(), url.as_str()))
-            } else {
-                None
-            }
-        })
-        .collect();
-    assert_eq!(links, vec![("Rust", "https://rust-lang.org")]);
-}
-
-#[test]
-fn test_symbol_extractor_code_fence() {
-    let source = "```rust\nfn main() {}\n```\n";
-    let symbols = MarkdownSymbolExtractor::extract(source);
-    let fences: Vec<_> = symbols
-        .iter()
-        .filter_map(|s| {
-            if let MarkdownSymbol::CodeFence { language, .. } = s {
-                Some(language.as_deref())
-            } else {
-                None
-            }
-        })
-        .collect();
-    assert_eq!(fences, vec![Some("rust")]);
-}
-
-#[test]
-fn test_symbol_extractor_mdx_component() {
-    let source = "Here is a <MyComponent /> component.\n";
-    let symbols = MarkdownSymbolExtractor::extract(source);
-    let components: Vec<_> = symbols
-        .iter()
-        .filter_map(|s| {
-            if let MarkdownSymbol::MdxComponent { name, .. } = s {
-                Some(name.as_str())
-            } else {
-                None
-            }
-        })
-        .collect();
-    assert!(
-        components.contains(&"MyComponent"),
-        "expected MyComponent, got {:?}",
-        components
-    );
-}
-
-#[test]
-fn test_symbol_extractor_frontmatter() {
-    let source = "---\ntitle: Hello\nauthor: Bob\n---\n# Body\n";
-    let symbols = MarkdownSymbolExtractor::extract(source);
-    let fields: Vec<_> = symbols
-        .iter()
-        .filter_map(|s| {
-            if let MarkdownSymbol::FrontMatterField { key, value, .. } = s {
-                Some((key.as_str(), value.as_str()))
-            } else {
-                None
-            }
-        })
-        .collect();
-    assert!(fields.contains(&("title", "Hello")));
-    assert!(fields.contains(&("author", "Bob")));
 }

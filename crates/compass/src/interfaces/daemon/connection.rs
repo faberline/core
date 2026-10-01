@@ -5,7 +5,6 @@ use tokio::net::UnixStream;
 use tokio::sync::broadcast;
 
 use crate::application::analysis::request_handler::RequestHandler;
-use crate::application::daemon::protocol::{Request, Response, RpcError};
 
 /// Handle a single client connection
 pub(super) async fn handle_connection(
@@ -28,9 +27,7 @@ pub(super) async fn handle_connection(
                         break;
                     }
                     Ok(_) => {
-                        let response = process_request(&line, &handler).await;
-                        let response_json = serde_json::to_string(&response)
-                            .map_err(|e| format!("Failed to serialize response: {}", e))?;
+                        let response_json = handler.handle_json_line(&line).await?;
 
                         writer.write_all(response_json.as_bytes()).await
                             .map_err(|e| format!("Failed to write response: {}", e))?;
@@ -56,21 +53,4 @@ pub(super) async fn handle_connection(
     }
 
     Ok(())
-}
-
-/// Process a single request
-async fn process_request(line: &str, handler: &RequestHandler) -> Response {
-    // Parse request
-    let request: Request = match serde_json::from_str(line.trim()) {
-        Ok(r) => r,
-        Err(e) => {
-            return Response::error(
-                crate::application::daemon::protocol::RequestId::Number(0),
-                RpcError::parse_error(format!("Invalid JSON: {}", e)),
-            );
-        }
-    };
-
-    // Handle request
-    handler.handle(request).await
 }
