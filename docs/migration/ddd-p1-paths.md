@@ -1,5 +1,8 @@
 # DDD P1 source paths
 
+P2 changes are in [ddd-p2.md](ddd-p2.md); later source paths are in
+[ddd-p2-paths.md](ddd-p2-paths.md).
+
 Where each Rust source file under `crates/*/src/` at main (`ec842d6`) is after
 P1. See [ddd-p1.md](ddd-p1.md) for what P1 changed.
 

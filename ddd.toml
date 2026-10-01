@@ -7,8 +7,8 @@
 schema = 1
 
 [migration]
-# P1 moved every crate into this layout; its last commit set enforce = true,
-# so any error-level finding fails the check.
+# P1 established the layout and enforcement. P2 removed the planned exceptions.
+# Only long-term exceptions remain; any error-level finding fails the check.
 enforce = true
 
 [policy]
@@ -120,8 +120,8 @@ mod_module_files = "deny"
 [shared_kernel]
 path = "crates/surface/src"
 
-# Public path modules that hold only `pub use` lines: src/api/<name>.rs is a
-# public module whose names the crate root does not re-export.
+# src/api preserves public module paths. src/app is the composition root
+# that builds adapters and passes them to application code through ports.
 [assembly]
 modules = [
   "crates/cli-std/src/api",

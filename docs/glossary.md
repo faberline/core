@@ -32,7 +32,7 @@ qualified name from the second table; the code keeps its current name.
 | **downstream** | A repo that depends on core by git tag (lumen, sift, jet, pgpool, …). |
 | **h2c** | HTTP/2 over cleartext TCP with prior knowledge. The transport between faberline services and between Raft peers. |
 | **peer** | Another replica of the same service, reached over mTLS on the replication port. |
-| **bearer token** | The `Authorization: Bearer <token>` credential every service accepts; see the [service auth contract](../CONTRIBUTING.md#service-auth-one-bearer-token-contract). |
+| **bearer token** | The `Authorization: Bearer <token>` credential every service accepts; see the [service auth contract](../CONTRIBUTING.md#service-auth--one-bearer-token-contract). |
 | **drain** | Stop admitting new work, let in-flight work finish within a deadline, then stop. |
 | **llm topic** | A named block of help text a CLI prints under `<tool> llm <topic>`, written for an agent to read. |
 | **tag** | A lightweight git tag `vX.Y.Z` on core; downstream repos pin core by tag. See [operations](operations/README.md). |
@@ -110,3 +110,17 @@ Other words that recur with context-specific meanings — `Rejection`, `Target`,
 `Scope`, `RetentionPolicy`, `Action`, `Outcome`, `Policy` — are defined on the
 domain page of the context that uses them. Qualify them with the context in
 any text that spans crates.
+
+## P2 identity types
+
+| Context | Types | Meaning |
+|---------|-------|---------|
+| claim-token | `InputKey`, `ResultKey`, `ExpiryUnixSeconds` | Read access, write access and token expiry. |
+| index-text | `DocumentId`, `DocumentVersion` | A document key and its ordered write or delete version. |
+| service-collector | `SourceOffset` | A byte position; counters remain numbers. |
+| service-projection | `ProjectionName`, `ProjectionEventId`, `ProjectionCursor`, `SourceGeneration` | A projection, its source event, its source position and its retained source set. |
+| raft-core | `NodeId`, `Term`, `Index` | A consensus member, election term and log position. |
+| raft-runtime | `GroupId`, `AssignmentEpoch` | A consensus group and a fencing epoch. |
+
+These types keep the same primitive JSON forms. Numbers have `new` and `get`;
+strings have `new` and `as_str`. The migration guide lists changed signatures.
