@@ -20,15 +20,20 @@ pub fn verify(secret: &[u8], token: &str, now: u64) -> Option<Scope> {
         return None;
     }
     let scope: Scope = serde_json::from_slice(&B64.decode(payload).ok()?).ok()?;
-    (scope.exp() >= now).then_some(scope)
+    (scope.exp().get() >= now).then_some(scope)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{ExpiryUnixSeconds, InputKey, ResultKey};
 
     fn scope() -> Scope {
-        Scope::new("run:a:in", "run:a:result", 1000)
+        Scope::new(
+            InputKey::new("run:a:in"),
+            ResultKey::new("run:a:result"),
+            ExpiryUnixSeconds::new(1000),
+        )
     }
 
     #[test]

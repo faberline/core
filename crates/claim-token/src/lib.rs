@@ -8,4 +8,4 @@
 
 mod domain;
 
-pub use domain::{sign, verify, Scope};
+pub use domain::{sign, verify, ExpiryUnixSeconds, InputKey, ResultKey, Scope};

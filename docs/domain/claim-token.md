@@ -16,6 +16,9 @@ drift. No core crate depends on it; downstream, keep and loom use it.
   (`PUT /v1/results/{w}`), and `exp` is the expiry in Unix seconds. The
   fields are private: `Scope::new(r, w, exp)` builds it and `r()`, `w()` and
   `exp()` read it. The JSON shape, and so the token bytes, are unchanged.
+- **Key and expiry types** — `InputKey` and `ResultKey` are separate string
+  types. Build each with `new`, then read with `as_str`. `ExpiryUnixSeconds`
+  wraps the expiry number (`new`, `get`). `Scope::new` requires these types.
 - **Claim token** — the text `b64url(json(scope)) "." hex(hmac)`: the scope as
   unpadded URL-safe base64 of its JSON, then the hex HMAC-SHA256 of that
   payload.
@@ -42,7 +45,8 @@ None. The caller passes the current time, so the crate reads no clock.
 ## Published language
 
 The whole public API; domain-only contexts have no application layer. That
-API is `Scope`, `sign` and `verify` at the crate root; there is no old module
+API includes `Scope`, `InputKey`, `ResultKey`, `ExpiryUnixSeconds`, `sign`
+and `verify` at the crate root; there is no old module
 path to keep. The behaviour contract is in
 [`docs/contracts/behavior/scoped-claim-tokens-contract.md`](../../crates/claim-token/docs/contracts/behavior/scoped-claim-tokens-contract.md)
 (ADR D10).
@@ -52,5 +56,5 @@ path to keep. The behaviour contract is in
 - **Checker exceptions:** B2 (`base64`): the token format is base64url, and
   `base64` is not on the domain allowlist. The encoding is part of the
   token's wire form, so this stays with a long-term reason.
-- **Debts:** bare ids: the input and result keys are `String`s and the expiry
-  a `u64`. P2 made the `Scope` fields private (D2).
+- **Debts:** none tracked. P2 made the `Scope` fields private (D2) and
+  gave the read key, write key and expiry separate types (W5).
