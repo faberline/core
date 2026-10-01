@@ -1,3 +1,4 @@
+use service_projection::{ProjectionCursor, ProjectionEventId, ProjectionName, SourceGeneration};
 use std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc, Mutex,
@@ -16,12 +17,12 @@ struct Record {
 }
 
 impl ProjectionRecord for Record {
-    fn projection_cursor(&self) -> u64 {
-        self.cursor
+    fn projection_cursor(&self) -> ProjectionCursor {
+        ProjectionCursor::new(self.cursor)
     }
 
-    fn projection_event_id(&self) -> &str {
-        &self.id
+    fn projection_event_id(&self) -> ProjectionEventId {
+        ProjectionEventId::new(self.id.clone())
     }
 }
 
@@ -32,28 +33,34 @@ struct Source {
 }
 
 impl ProjectionSource<Record> for Source {
-    fn current_cursor(&self) -> u64 {
+    fn current_cursor(&self) -> ProjectionCursor {
         self.records
             .lock()
             .unwrap()
             .last()
-            .map_or(0, |record| record.cursor)
+            .map_or(ProjectionCursor::default(), |record| {
+                ProjectionCursor::new(record.cursor)
+            })
     }
 
-    fn read_after(&self, after: u64, limit: usize) -> Result<Vec<Record>, ProjectionError> {
+    fn read_after(
+        &self,
+        after: ProjectionCursor,
+        limit: usize,
+    ) -> Result<Vec<Record>, ProjectionError> {
         Ok(self
             .records
             .lock()
             .unwrap()
             .iter()
-            .filter(|record| record.cursor > after)
+            .filter(|record| record.cursor > after.get())
             .take(limit)
             .cloned()
             .collect())
     }
 
-    fn generation(&self) -> u64 {
-        self.generation.load(Ordering::Acquire)
+    fn generation(&self) -> SourceGeneration {
+        SourceGeneration::new(self.generation.load(Ordering::Acquire))
     }
 }
 
@@ -77,24 +84,32 @@ impl ProjectionReadSession<Record> for SessionReader {
 }
 
 impl ProjectionSource<Record> for SessionSource {
-    fn current_cursor(&self) -> u64 {
-        self.records.last().map_or(0, |record| record.cursor)
+    fn current_cursor(&self) -> ProjectionCursor {
+        self.records
+            .last()
+            .map_or(ProjectionCursor::default(), |record| {
+                ProjectionCursor::new(record.cursor)
+            })
     }
 
-    fn read_after(&self, _after: u64, _limit: usize) -> Result<Vec<Record>, ProjectionError> {
+    fn read_after(
+        &self,
+        _after: ProjectionCursor,
+        _limit: usize,
+    ) -> Result<Vec<Record>, ProjectionError> {
         panic!("stateful projection source must not fall back to stateless paging")
     }
 
     fn open_read_session(
         &self,
-        after: u64,
+        after: ProjectionCursor,
     ) -> Result<Option<Box<dyn ProjectionReadSession<Record>>>, ProjectionError> {
         self.opened.fetch_add(1, Ordering::AcqRel);
         Ok(Some(Box::new(SessionReader {
             records: self
                 .records
                 .iter()
-                .filter(|record| record.cursor > after)
+                .filter(|record| record.cursor > after.get())
                 .cloned()
                 .collect(),
             offset: 0,
@@ -123,7 +138,7 @@ fn one_stateful_read_session_serves_all_projection_pages() {
         .register(|| Ok(Arc::new(SumProjection::default())))
         .unwrap();
 
-    assert_eq!(handle.catch_up().unwrap(), 25);
+    assert_eq!(handle.catch_up().unwrap().get(), 25);
     assert_eq!(handle.projection().value(), 25);
     assert_eq!(opened.load(Ordering::Acquire), 1);
 }
@@ -160,7 +175,7 @@ fn source_generation_change_replaces_stale_projection_and_survives_restart() {
 
     source.records.lock().unwrap().remove(0);
     source.generation.store(1, Ordering::Release);
-    assert_eq!(handle.catch_up().unwrap(), 2);
+    assert_eq!(handle.catch_up().unwrap().get(), 2);
     assert_eq!(handle.projection().value(), 7);
     handle.flush().unwrap();
     drop(handle);
@@ -172,7 +187,7 @@ fn source_generation_change_replaces_stale_projection_and_survives_restart() {
     let restored = reopened
         .register(|| Ok(Arc::new(SumProjection::default())))
         .unwrap();
-    assert_eq!(restored.current_cursor(), 2);
+    assert_eq!(restored.current_cursor().get(), 2);
     assert_eq!(restored.projection().value(), 7);
 }
 
@@ -208,7 +223,7 @@ fn corrupt_rebuildable_snapshot_is_quarantined_and_rebuilt_from_source() {
     let rebuilt = reopened
         .register(|| Ok(Arc::new(SumProjection::default())))
         .unwrap();
-    assert_eq!(rebuilt.current_cursor(), 1);
+    assert_eq!(rebuilt.current_cursor().get(), 1);
     assert_eq!(rebuilt.projection().value(), 7);
     assert!(state_dir.join("state.json").is_file());
     assert_eq!(
@@ -235,7 +250,7 @@ impl SumProjection {
 
 impl Projection<Record> for SumProjection {
     fn descriptor(&self) -> ProjectionDescriptor {
-        ProjectionDescriptor::try_new("sum", 1, "source-owned").unwrap()
+        ProjectionDescriptor::try_new(ProjectionName::new("sum"), 1, "source-owned").unwrap()
     }
 
     fn apply_idempotent(&self, record: &Record) -> Result<(), ProjectionError> {
@@ -280,7 +295,7 @@ async fn typed_handle_restores_catches_up_flushes_and_rebuilds_without_any() {
     let handle = registry
         .register(|| Ok(Arc::new(SumProjection::default())))
         .unwrap();
-    assert_eq!(handle.catch_up().unwrap(), 2);
+    assert_eq!(handle.catch_up().unwrap().get(), 2);
     assert_eq!(handle.projection().value(), 5);
     handle.flush().unwrap();
     assert!(handle.rebuild_and_compare().unwrap().equal);
@@ -293,10 +308,13 @@ async fn typed_handle_restores_catches_up_flushes_and_rebuilds_without_any() {
     let restored = reopened
         .register(|| Ok(Arc::new(SumProjection::default())))
         .unwrap();
-    assert_eq!(restored.current_cursor(), 2);
+    assert_eq!(restored.current_cursor().get(), 2);
     assert_eq!(restored.projection().value(), 5);
     restored
-        .wait_for_min_cursor(2, std::time::Duration::from_millis(1))
+        .wait_for_min_cursor(
+            ProjectionCursor::new(2),
+            std::time::Duration::from_millis(1),
+        )
         .await
         .unwrap();
 }

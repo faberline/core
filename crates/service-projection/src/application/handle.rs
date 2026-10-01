@@ -1,3 +1,4 @@
+use crate::domain::ProjectionCursor;
 use std::{
     sync::{Arc, Mutex},
     time::{Duration, Instant},
@@ -19,7 +20,7 @@ mod locked;
 struct LiveProjection<P> {
     implementation: Arc<P>,
     checkpoint: ProjectionCheckpoint,
-    persisted_cursor: u64,
+    persisted_cursor: ProjectionCursor,
 }
 
 type ProjectionFactory<P> = Arc<dyn Fn() -> Result<Arc<P>> + Send + Sync>;
@@ -53,13 +54,13 @@ where
         let descriptor = implementation.descriptor();
         validate_descriptor(&descriptor)?;
         let (checkpoint, restored, rebuild_invalid_snapshot) = match store
-            .read(descriptor.name())?
+            .read(descriptor.name().as_str())?
         {
             Some(bytes) => {
                 match restore_saved(store.as_ref(), &descriptor, implementation.as_ref(), &bytes) {
                     Ok(checkpoint) => (checkpoint, true, false),
                     Err(_) => {
-                        store.quarantine(descriptor.name(), &bytes)?;
+                        store.quarantine(descriptor.name().as_str(), &bytes)?;
                         implementation = factory()?;
                         (
                             ProjectionCheckpoint::empty(&descriptor, Utc::now()),
@@ -111,7 +112,7 @@ where
         self.projection().descriptor()
     }
 
-    pub fn current_cursor(&self) -> u64 {
+    pub fn current_cursor(&self) -> ProjectionCursor {
         self.live
             .lock()
             .expect("projection state lock poisoned")
@@ -123,7 +124,7 @@ where
         Ok(self.projection().semantic_digest()?)
     }
 
-    pub fn catch_up(&self) -> Result<u64> {
+    pub fn catch_up(&self) -> Result<ProjectionCursor> {
         let target = self.source.current_cursor();
         let generation = self.source.generation();
         let mut live = self.live.lock().expect("projection state lock poisoned");
@@ -137,9 +138,9 @@ where
 
     pub async fn wait_for_min_cursor(
         &self,
-        required_cursor: u64,
+        required_cursor: ProjectionCursor,
         timeout: Duration,
-    ) -> std::result::Result<u64, ProjectionLag> {
+    ) -> std::result::Result<ProjectionCursor, ProjectionLag> {
         let started = Instant::now();
         loop {
             let published = self.published.notified();

@@ -4,6 +4,7 @@
 
 mod checkpoint;
 mod digest;
+mod ids;
 mod lag;
 mod projection;
 mod projection_error;
@@ -14,6 +15,7 @@ mod source;
 pub(crate) use checkpoint::checkpoint;
 pub use checkpoint::ProjectionCheckpoint;
 pub(crate) use digest::sha256;
+pub use ids::{ProjectionCursor, ProjectionEventId, ProjectionName, SourceGeneration};
 pub use lag::ProjectionLag;
 pub(crate) use projection::validate_descriptor;
 pub use projection::{Projection, ProjectionDescriptor};

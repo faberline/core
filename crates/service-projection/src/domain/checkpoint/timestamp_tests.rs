@@ -1,10 +1,11 @@
+use crate::{ProjectionCursor, ProjectionEventId, ProjectionName, SourceGeneration};
 use chrono::{DateTime, TimeZone, Utc};
 
 use super::{checkpoint, ProjectionCheckpoint};
 use crate::domain::ProjectionDescriptor;
 
 fn descriptor() -> ProjectionDescriptor {
-    ProjectionDescriptor::try_new("logs", 2, "7d").unwrap()
+    ProjectionDescriptor::try_new(ProjectionName::new("logs"), 2, "7d").unwrap()
 }
 
 fn at(millis: u32) -> DateTime<Utc> {
@@ -24,9 +25,9 @@ fn empty_stamps_the_given_time_with_milliseconds() {
 fn checkpoint_stamps_the_given_time_with_milliseconds() {
     let built = checkpoint(
         &descriptor(),
-        42,
-        3,
-        Some("evt-42".to_string()),
+        ProjectionCursor::new(42),
+        SourceGeneration::new(3),
+        Some(ProjectionEventId::new("evt-42")),
         br#"{"count":1}"#,
         at(678),
     );

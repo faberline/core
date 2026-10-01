@@ -28,7 +28,7 @@ fn validate_envelope(
             envelope.format_version
         );
     }
-    if envelope.checkpoint.projection != descriptor.name()
+    if &envelope.checkpoint.projection != descriptor.name()
         || envelope.checkpoint.schema_version != descriptor.schema_version()
     {
         bail!("projection checkpoint descriptor does not match registered projection");

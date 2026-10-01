@@ -1,5 +1,6 @@
 use super::{persist, ProjectionStateEnvelope, PROJECTION_STATE_FORMAT_VERSION};
 use crate::domain::ProjectionCheckpoint;
+use crate::{ProjectionCursor, ProjectionEventId, ProjectionName, SourceGeneration};
 
 /// The state file bytes: pretty JSON with two-space indentation and no
 /// trailing newline.
@@ -22,11 +23,11 @@ const STATE: &[u8] = br#"{"count":1}"#;
 
 fn checkpoint() -> ProjectionCheckpoint {
     ProjectionCheckpoint {
-        projection: "logs".to_string(),
+        projection: ProjectionName::new("logs"),
         schema_version: 2,
-        cursor: 42,
-        source_generation: 3,
-        event_id: Some("evt-42".to_string()),
+        cursor: ProjectionCursor::new(42),
+        source_generation: SourceGeneration::new(3),
+        event_id: Some(ProjectionEventId::new("evt-42")),
         state_sha256: "6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661"
             .to_string(),
         updated_at: "2026-01-02T03:04:05.678Z".to_string(),

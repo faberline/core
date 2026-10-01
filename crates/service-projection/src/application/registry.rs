@@ -1,3 +1,4 @@
+use crate::domain::ProjectionCursor;
 use std::{collections::BTreeMap, sync::Arc};
 
 use anyhow::{bail, Context, Result};
@@ -9,8 +10,8 @@ use crate::domain::{
 };
 
 trait ProjectionControl: Send + Sync {
-    fn current_cursor(&self) -> u64;
-    fn catch_up(&self) -> Result<u64>;
+    fn current_cursor(&self) -> ProjectionCursor;
+    fn catch_up(&self) -> Result<ProjectionCursor>;
     fn semantic_digest(&self) -> Result<String>;
     fn rebuild_and_compare(&self) -> Result<RebuildComparison>;
     fn flush(&self) -> Result<()>;
@@ -21,11 +22,11 @@ where
     Record: ProjectionRecord,
     P: Projection<Record>,
 {
-    fn current_cursor(&self) -> u64 {
+    fn current_cursor(&self) -> ProjectionCursor {
         ProjectionHandle::current_cursor(self)
     }
 
-    fn catch_up(&self) -> Result<u64> {
+    fn catch_up(&self) -> Result<ProjectionCursor> {
         ProjectionHandle::catch_up(self)
     }
 
@@ -102,11 +103,11 @@ where
         self.controls.contains_key(name)
     }
 
-    pub fn current_cursor(&self, name: &str) -> Result<u64> {
+    pub fn current_cursor(&self, name: &str) -> Result<ProjectionCursor> {
         Ok(self.control(name)?.current_cursor())
     }
 
-    pub fn catch_up(&self, name: &str) -> Result<u64> {
+    pub fn catch_up(&self, name: &str) -> Result<ProjectionCursor> {
         self.control(name)?.catch_up()
     }
 

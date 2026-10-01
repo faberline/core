@@ -12,6 +12,12 @@ log, metric and trace projections with it.
 
 ## Model
 
+- **Identity types** — `ProjectionName` and `ProjectionEventId` wrap strings
+  (`new`, `as_str`). `ProjectionCursor` and `SourceGeneration` wrap separate
+  numbers (`new`, `get`). The record and source ports, descriptors, checkpoints,
+  lag reports and runtime cursor methods use these types. JSON, saved state
+  and the three published OpenAPI schemas keep their exact bytes.
+
 - **Projection descriptor** — `ProjectionDescriptor`: a name, a schema
   version and a retention label that the runtime does not interpret. The
   fields are private: `ProjectionDescriptor::try_new(name, schema_version,
@@ -112,10 +118,10 @@ own sources for `service_projection::ProjectionRegistry`.
   `ProjectionRuntimeConfig` has public fields and a `new` that raises each
   value to at least 1.
 - **Debts:**
-  - Bare ids: cursors and generations are `u64`, names and event ids
-    `String`.
   - `anyhow` in the `ProjectionRegistry` and `ProjectionHandle` methods
     (these are not ports, so ADR D4 does not cover them).
 
   P2 made the projection ports return `ProjectionError` (D4), and made
   the `ProjectionDescriptor` fields private behind `try_new` (D2).
+
+P2 typed projection names, event ids, cursors and source generations (W5).

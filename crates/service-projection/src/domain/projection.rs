@@ -4,13 +4,15 @@ use utoipa::ToSchema;
 use super::digest::sha256;
 use super::projection_error::ProjectionError;
 use super::source::ProjectionRecord;
+use super::ProjectionName;
 
 /// A projection's name, schema version and retention label. `try_new` checks
 /// the name; `Deserialize` fills the fields directly, and the runtime checks
 /// the name again when it opens the projection.
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize, ToSchema)]
 pub struct ProjectionDescriptor {
-    name: String,
+    #[schema(value_type = String)]
+    name: ProjectionName,
     schema_version: u32,
     retention: String,
 }
@@ -19,12 +21,12 @@ impl ProjectionDescriptor {
     /// A descriptor, or `ProjectionError::InvalidName` when the name is
     /// blank or contains `/` or NUL.
     pub fn try_new(
-        name: impl Into<String>,
+        name: ProjectionName,
         schema_version: u32,
         retention: impl Into<String>,
     ) -> Result<Self, ProjectionError> {
         let descriptor = Self {
-            name: name.into(),
+            name,
             schema_version,
             retention: retention.into(),
         };
@@ -32,7 +34,7 @@ impl ProjectionDescriptor {
         Ok(descriptor)
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &ProjectionName {
         &self.name
     }
 
@@ -72,9 +74,9 @@ where
 pub(crate) fn validate_descriptor(
     descriptor: &ProjectionDescriptor,
 ) -> Result<(), ProjectionError> {
-    if descriptor.name.trim().is_empty()
-        || descriptor.name.contains('/')
-        || descriptor.name.contains('\0')
+    if descriptor.name.as_str().trim().is_empty()
+        || descriptor.name.as_str().contains('/')
+        || descriptor.name.as_str().contains('\0')
     {
         return Err(ProjectionError::InvalidName);
     }

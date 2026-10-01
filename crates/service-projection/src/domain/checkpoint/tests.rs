@@ -1,4 +1,5 @@
 use super::ProjectionCheckpoint;
+use crate::{ProjectionCursor, ProjectionEventId, ProjectionName, SourceGeneration};
 
 const CHECKPOINT_JSON: &str = r#"{"projection":"logs","schema_version":2,"cursor":42,"source_generation":3,"event_id":"evt-42","state_sha256":"6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661","updated_at":"2026-01-02T03:04:05.678Z"}"#;
 
@@ -10,11 +11,11 @@ const PRE_GENERATION_CHECKPOINT_JSON: &str = r#"{"projection":"logs","schema_ver
 
 fn checkpoint() -> ProjectionCheckpoint {
     ProjectionCheckpoint {
-        projection: "logs".to_string(),
+        projection: ProjectionName::new("logs"),
         schema_version: 2,
-        cursor: 42,
-        source_generation: 3,
-        event_id: Some("evt-42".to_string()),
+        cursor: ProjectionCursor::new(42),
+        source_generation: SourceGeneration::new(3),
+        event_id: Some(ProjectionEventId::new("evt-42")),
         state_sha256: "6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661"
             .to_string(),
         updated_at: "2026-01-02T03:04:05.678Z".to_string(),
@@ -23,10 +24,10 @@ fn checkpoint() -> ProjectionCheckpoint {
 
 fn empty_checkpoint() -> ProjectionCheckpoint {
     ProjectionCheckpoint {
-        projection: "logs".to_string(),
+        projection: ProjectionName::new("logs"),
         schema_version: 2,
-        cursor: 0,
-        source_generation: 0,
+        cursor: ProjectionCursor::new(0),
+        source_generation: SourceGeneration::new(0),
         event_id: None,
         state_sha256: String::new(),
         updated_at: "2026-01-02T03:04:05.000Z".to_string(),

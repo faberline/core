@@ -1,3 +1,4 @@
+use crate::{ProjectionCursor, ProjectionEventId, ProjectionName, SourceGeneration};
 use chrono::{TimeZone, Utc};
 
 use super::FileProjectionStateStore;
@@ -6,7 +7,7 @@ use crate::domain::{checkpoint, ProjectionDescriptor, ProjectionStateStore};
 const STATE: &[u8] = br#"{"count":1}"#;
 
 fn descriptor(schema_version: u32) -> ProjectionDescriptor {
-    ProjectionDescriptor::try_new("logs", schema_version, "7d").unwrap()
+    ProjectionDescriptor::try_new(ProjectionName::new("logs"), schema_version, "7d").unwrap()
 }
 
 #[test]
@@ -20,9 +21,9 @@ fn persisted_state_reads_back_and_restores() {
     let now = Utc.with_ymd_and_hms(2026, 1, 2, 3, 4, 5).unwrap();
     let saved = checkpoint(
         &descriptor(2),
-        42,
-        3,
-        Some("evt-42".to_string()),
+        ProjectionCursor::new(42),
+        SourceGeneration::new(3),
+        Some(ProjectionEventId::new("evt-42")),
         STATE,
         now,
     );
