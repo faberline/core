@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/spec-parser-and-state-machine-validation-contract.md#spec-parser-and-state-machine-validation-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/spec-parser-and-state-machine-validation-contract.md#spec-parser-and-state-machine-validation-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec spec-parser-and-state-machine-validation-contract

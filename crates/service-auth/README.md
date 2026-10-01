@@ -79,12 +79,12 @@ Event, or log.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p service-auth --no-deps` |
-| HTTP middleware and verifier traits | `crates/service-auth/src/middleware.rs`, `async_verifier.rs`, and `verifier.rs` |
-| Kubernetes delegated auth | `crates/service-auth/src/k8s/delegated.rs`, `review.rs`, and `kube_backend.rs` |
-| Projected token behavior | `crates/service-auth/src/k8s/projected.rs` |
+| HTTP middleware and verifier traits | `crates/service-auth/src/application/http/middleware.rs`, `async_verifier.rs`, and `verifier.rs` |
+| Kubernetes delegated auth | `crates/service-auth/src/application/k8s/authenticator.rs`, `review.rs`, and `crates/service-auth/src/infrastructure/k8s/kube_backend.rs` |
+| Projected token behavior | `crates/service-auth/src/domain/k8s/projected_token.rs` and `crates/service-auth/src/infrastructure/k8s/projected_token_file.rs` |
 | Planned portable opaque-token contract | [ROADMAP.md](ROADMAP.md#portable-projected-token-contract) |
-| TokenRequest and developer proxy | `crates/service-auth/src/k8s/token_request.rs` and `loopback_proxy.rs` |
-| Redaction and reload behavior | `crates/service-auth/src/reload.rs` |
+| TokenRequest and developer proxy | `crates/service-auth/src/application/k8s/token_request.rs` and `crates/service-auth/src/interfaces/loopback_proxy.rs` |
+| Redaction and reload behavior | `crates/service-auth/src/application/role_map/reloadable.rs` and `crates/service-auth/src/domain/authorization/audit.rs` |
 | Executable behavior | `cargo test -p service-auth` |
 
 ## Capabilities

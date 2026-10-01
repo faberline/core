@@ -48,3 +48,6 @@ k8s-openapi = { version = "0.24", features = ["v1_32"], optional = true }
 tokio = { workspace = true, features = ["macros"] }
 tower = { workspace = true, features = ["util"] }
 http-body-util = "0.1"
+
+[lints]
+workspace = true

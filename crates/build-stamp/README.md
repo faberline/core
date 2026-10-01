@@ -28,5 +28,6 @@ metadata without failing source-tarball, non-git, or missing-target builds.
 - Gate — behavior: `cargo test -p build-stamp` - unit coverage for SHA
   decoding, timestamp formatting, target fallback, and rerun hints
 - Gate: `cargo test -p build-stamp`
-- Source: `crates/build-stamp/src/lib.rs`
-- Evidence: `cargo test -p build-stamp`; crates/build-stamp/src/lib.rs
+- Source: `crates/build-stamp/src/stamp.rs`,
+  `crates/build-stamp/src/source_revision.rs`
+- Evidence: `cargo test -p build-stamp`; crates/build-stamp/src/stamp.rs

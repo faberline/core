@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/symbol-outline-and-propagated-type-query-contract.md#symbol-outline-and-propagated-type-query-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/symbol-outline-and-propagated-type-query-contract.md#symbol-outline-and-propagated-type-query-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec symbol-outline-and-propagated-type-query-contract

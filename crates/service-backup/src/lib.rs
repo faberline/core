@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! `service-backup` — shared backup contract for axiom services.
 //!
 //! The data plane owns snapshot consistency: each service state machine produces
@@ -15,28 +14,27 @@
 //! through [`fetch_backup_object`]. The optional `http-client` feature adds the
 //! standard authenticated admin-snapshot transport used by service backup CLIs.
 
-mod destination;
-mod gcs;
-#[cfg(feature = "http-client")]
-mod http;
-pub mod llm;
-mod policy;
-mod runner;
-#[cfg(feature = "s3")]
-mod s3;
-mod sink;
-mod source;
+mod application;
+mod compat;
+mod domain;
+mod infrastructure;
+mod interfaces;
 
-pub use destination::{BackupDestination, SchemeInfo, SUPPORTED_SCHEMES};
-pub use gcs::GcsSink;
 #[cfg(feature = "http-client")]
-pub use http::{
-    fetch_admin_snapshot, run_admin_snapshot_backup, AdminSnapshotOperation,
-    AdminSnapshotDiagnostic, AdminSnapshotRequest, AdminSnapshotRequestError,
-    AdminSnapshotTransport, AdminSnapshotTransportConfig, AdminSnapshotTransportError,
+pub use application::run_admin_snapshot_backup;
+pub use application::{run_backup_once, BackupObject, BackupRunResult};
+pub use compat::llm;
+pub use domain::{
+    BackupDestination, BackupPolicy, RetentionPolicy, ScheduledBackupPolicy, SchemeInfo,
+    SUPPORTED_SCHEMES,
 };
-pub use policy::{BackupPolicy, RetentionPolicy, ScheduledBackupPolicy};
-pub use runner::{run_backup_once, BackupObject, BackupRunResult};
-pub use sink::{sink_from_destination, BackupSink, LocalFsSink, UnsupportedCloudSink};
-pub use source::fetch_backup_object;
-// CODEGEN-END
+#[cfg(feature = "http-client")]
+pub use infrastructure::{
+    fetch_admin_snapshot, AdminSnapshotDiagnostic, AdminSnapshotOperation, AdminSnapshotRequest,
+    AdminSnapshotRequestError, AdminSnapshotTransport, AdminSnapshotTransportConfig,
+    AdminSnapshotTransportError,
+};
+pub use infrastructure::{
+    fetch_backup_object, sink_from_destination, BackupSink, GcsSink, LocalFsSink,
+    UnsupportedCloudSink,
+};

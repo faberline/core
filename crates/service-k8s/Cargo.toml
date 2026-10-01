@@ -59,3 +59,6 @@ tower = { workspace = true }
 futures = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
+
+[lints]
+workspace = true

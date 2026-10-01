@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! LLM topic provider for the shared h2c client/server transport contract.
 
 /// Agent-facing topic describing h2c outbound client pools and server boundary.
@@ -76,4 +75,3 @@ mod tests {
         assert!(topic.body.contains("never binds or owns a listener"));
     }
 }
-// CODEGEN-END

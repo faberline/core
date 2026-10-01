@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/python-and-rust-generator-registry-contract.md#python-and-rust-generator-registry-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/python-and-rust-generator-registry-contract.md#python-and-rust-generator-registry-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec python-and-rust-generator-registry-contract

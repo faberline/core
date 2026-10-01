@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/watch-bridge-and-incremental-dirty-file-contract.md#watch-bridge-and-incremental-dirty-file-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/watch-bridge-and-incremental-dirty-file-contract.md#watch-bridge-and-incremental-dirty-file-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec watch-bridge-and-incremental-dirty-file-contract

@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:physical-filesystem-usage" tracker="#2947" reason="Portable, safe physical filesystem usage sampling for capacity-aware scheduling."
 //! Physical filesystem usage for capacity-aware scheduling, via `statvfs`.
 //!
 //! The three numbers do not add up, on purpose. `used_bytes` is
@@ -44,4 +43,3 @@ pub fn filesystem_usage(path: impl AsRef<Path>) -> Result<FilesystemUsage> {
         available_bytes,
     })
 }
-// HANDWRITE-END

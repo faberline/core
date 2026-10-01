@@ -4,7 +4,7 @@
 public**. It exists so the `gcp` module's unit tests can mint a correctly shaped
 Google ID token and verify it offline against `throwaway-jwks.json`, which is the
 matching public half in JWKS form. Both are `include_str!`'d at compile time by
-`src/gcp.rs`.
+`src/application/google/verifier/tests.rs`.
 
 It authorizes nothing. It was generated for this test file, has never signed
 anything outside it, and is not registered as a signing key for any Google

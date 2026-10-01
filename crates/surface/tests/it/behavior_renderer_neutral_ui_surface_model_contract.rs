@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/surface/external-contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract
+// SPEC-MANAGED: crates/surface/docs/contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec renderer-neutral-ui-surface-model-contract

@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/argus-daemon-protocol-and-request-handling-contract.md#argus-daemon-protocol-and-request-handling-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/argus-daemon-protocol-and-request-handling-contract.md#argus-daemon-protocol-and-request-handling-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec argus-daemon-protocol-and-request-handling-contract

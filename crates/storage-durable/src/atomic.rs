@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Replace a file's contents so that a crash leaves either the old bytes or
 //! the new ones, never a prefix of the new ones.
 //!
@@ -392,4 +391,3 @@ mod tests {
         assert!(error.to_string().contains("commit uncertain"));
     }
 }
-// CODEGEN-END

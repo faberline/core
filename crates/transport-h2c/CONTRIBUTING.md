@@ -14,10 +14,12 @@ Read these sources in order for the part you change:
    gates.
 2. [STATUS.md](STATUS.md) for current support and limits.
 3. [ROADMAP.md](ROADMAP.md) for explicit non-goals.
-4. `crates/transport-h2c/src/lib.rs` for the public client and pool surface.
-5. `manager.rs`, `conn.rs`, and `error.rs` for managed connection behavior.
-6. `server.rs`, `Cargo.toml`, and `tests/it/` for the optional server, its
-   `server` feature, and the test inventory.
+4. `crates/transport-h2c/src/lib.rs` for the public surface, and `client.rs`,
+   `pool.rs`, and `sizing.rs` for the simple client and fixed pool.
+5. `manager.rs`, `manager/`, `conn.rs`, and `error.rs` for managed connection
+   behavior.
+6. `server.rs`, `server/`, `Cargo.toml`, and `tests/it/` for the optional
+   server, its `server` feature, and the test inventory.
 
 ## Local Workflow
 

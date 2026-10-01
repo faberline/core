@@ -37,3 +37,6 @@ bytes = "1"
 [[example]]
 name = "conn_sweep"
 path = "examples/conn_sweep.rs"
+
+[lints]
+workspace = true

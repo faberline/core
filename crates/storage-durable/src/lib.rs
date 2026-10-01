@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Shared durable local storage primitives for axiom services.
 //!
 //! Services still own their domain record and snapshot codecs. This crate owns
@@ -25,15 +24,14 @@ pub use data_root::{
     reject_symlink, set_private_directory_mode, set_private_file_mode, DataRoot, DataRootPolicy,
 };
 pub use framed_log::{
-    FramedLogCursor, FramedLogReader, FramedLogTrimObserver, FramedLogTrimPlan, FramedLogWriter, LogFrame, MappedLogFrame,
-    MAX_FRAME_PAYLOAD_BYTES,
+    FramedLogCursor, FramedLogReader, FramedLogTrimObserver, FramedLogTrimPlan, FramedLogWriter,
+    LogFrame, MappedLogFrame, MAX_FRAME_PAYLOAD_BYTES,
 };
 pub use fsync::FsyncPolicy;
 pub use generation::{
     CommitError, CommitFailureClass, CommitStep, CurrentGenerationStaging, CurrentReadError,
-    CurrentReadErrorKind, CurrentTarget, FailureInjector, FailurePoint, GenerationName, GenerationNameError,
-    GenerationNameErrorKind, GenerationStore, NoFailures, StagedGeneration, CURRENT_FILE_NAME,
-    CURRENT_TEMP_FILE_NAME, EMPTY_CURRENT_BYTES,
+    CurrentReadErrorKind, CurrentTarget, FailureInjector, FailurePoint, GenerationName,
+    GenerationNameError, GenerationNameErrorKind, GenerationStore, NoFailures, StagedGeneration,
+    CURRENT_FILE_NAME, CURRENT_TEMP_FILE_NAME, EMPTY_CURRENT_BYTES,
 };
 pub use snapshot_store::{SnapshotFile, SnapshotFileStore};
-// CODEGEN-END

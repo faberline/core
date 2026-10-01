@@ -1,0 +1,92 @@
+# service-k8s
+
+service-k8s is the Kubernetes operator kit. A service supplies its custom
+resource type, rendered children, readiness targets and status meaning; the kit
+watches the resource, holds a leader lease, applies children with server-side
+apply, prunes unwanted ones and projects status conditions. It also renders
+workloads and RBAC roles, validates termination budgets, plans stateful
+capacity and PVC growth, and runs a certificate lifecycle. It never defines a
+service's schema, access policy, topology or health meaning. Eight downstream
+apps build their operators on it: defer, keep, loom, lumen, pgpool, relay, sift
+and tape.
+
+**Form:** layered · **Depends on:** cli-std, metrics-prometheus (both only with the `controller` feature) · **Crate:** [`crates/service-k8s`](../../crates/service-k8s)
+
+## Model
+
+- **Managed service** — a custom resource type implementing `ManagedService`.
+  Per reconcile it supplies a `ReconcilePlan` (children plus an opaque
+  context), `ReadinessTarget`s, a status patch, `ConditionFact`s,
+  `PruneTarget`s and `ClusterScopedChild`ren.
+- **Condition** — a status condition in the metav1 shape; `project` builds
+  `Condition`s from `ConditionFact`s and a time the caller passes in.
+- **leader lease** — the Lease named by the service's `MANAGER`, which is also
+  its field manager. `Election` records whether this replica holds it.
+- **Termination budget** — a `LifecyclePolicy` validated into a
+  `TerminationBudget` that fits inside the pod's grace period.
+- **Capacity plan** — `plan_replica_layer` scales whole replica layers (one
+  replica per shard); `plan_shard_split` plans one new shard from durable bytes;
+  a `ResizeAction` says whether a PVC grows.
+- **Workload plan** — typed `*Plan` values that render to manifests, RBAC roles
+  included.
+- **Certificate profile** — what a service asks a certificate for, checked
+  against an `InstanceScope`; `next_action` picks the next `Action` from the
+  observed state and the current time.
+
+## Ports
+
+- `ManagedService` — implemented by each downstream operator's CRD root type.
+- `Issuer` — signs a CSR; `EphemeralIssuer`, `CasIssuer`.
+- `SecretStore` — a certificate's Secret; `KubernetesSecretStore`, `MemoryStore`.
+- `AccessTokenSource` — the CA Service token; GKE metadata, workload identity.
+
+## Invariants
+
+- Only the leader lease holder reconciles; an election error means not leader.
+- A namespaced prune needs a controller owner reference with the resource's
+  UID; a cluster-scoped one needs the expected labels and field manager, and
+  deletes with a UID precondition.
+- `project` keeps `lastTransitionTime` while a condition's status is unchanged.
+- A `TerminationBudget` covers runtime deadline, SIGKILL reserve and preStop
+  cost within a positive grace period; probe timing fields are all at least 1.
+- Replica-layer totals are a multiple of the shard count; a shard split adds at
+  most one shard, only above a strict threshold.
+- A PVC is never shrunk, and grows only if its StorageClass allows expansion.
+- A profile is checked against the `InstanceScope` before any Secret read or
+  key generation; an `Issuer` never sees the private key.
+
+## Published language
+
+The `ManagedService` contract, render plans, capacity and resize planners,
+lifecycle validation and certificate lifecycle. In P1 the old paths `service`,
+`crd`, `resize`, `lease`, `stateful`, `render` (and submodules), `controller`,
+`certificate` (including `certificate::profile`), `lifecycle`, `metrics`, `llm`
+and the root re-exports stay as facades with their feature gates. lumen
+glob-imports `service_k8s::lease::*`, so that facade must export exactly
+`Election` and `spawn`; lumen's release CI runs `stateful_instance_render` and
+`stateful_adapter_equivalence` by name.
+
+## Exceptions and debts
+
+- **Checker exceptions (P1):**
+  - B2 (`schemars`): `ReplicaLayerPolicy`, `ShardSplitPolicy`, `Condition`,
+    `ProbeTiming` and `LifecyclePolicy` derive `JsonSchema` because CRD specs
+    and statuses embed them. P2 gives the CRD wire shapes their own schema
+    types in interfaces.
+  - B2 (`chrono::Utc::now`): `now_rfc3339` reads the wall clock. P2 takes the
+    time from a `Clock` port or moves the call to the operator.
+  - B2 (`futures`, `rcgen`): the certificate `Issuer` and `SecretStore` ports
+    return `BoxFuture`, and `IssuanceRequest::build` generates the key and CSR
+    with `rcgen`. P2 uses std's boxed future and moves key generation behind an
+    infrastructure port.
+  - B3 `application->infrastructure`: the certificate `Reconciler` reads and
+    builds the Secret layout directly. P2 puts the layout behind a port.
+  - B3 `interfaces->domain` and `interfaces->infrastructure`: the operator's
+    reconcile builds and projects conditions itself, and `run` creates the
+    leader `Election` and starts the Lease renewal loop. P2 moves the reconcile
+    sequence into an application use case behind ports.
+- **Tracked for P2:** public fields on `Election`, `InstanceScope`,
+  `ReadyFacts`, `ReadinessTarget`, `PruneTarget`, `ClusterScopedChild`,
+  `ReconcilePlan`, `RenderCtx`, the render `*Plan` types, `Condition`,
+  `ClusterSpec`, `ResourceSpec`; bare id `IssuerId(pub String)`; `anyhow` in
+  `reconcile_plan`, `run` and `parse_storage_bytes`.

@@ -66,4 +66,6 @@ cargo test -p <crate>
 ```
 
 Conventions every crate follows live in [CONTRIBUTING.md](CONTRIBUTING.md); each
-crate's own `CONTRIBUTING.md` covers what that crate promises.
+crate's own `CONTRIBUTING.md` covers what that crate promises. How the
+workspace is cut into contexts and layers, the glossary, the per-context domain
+pages, and the release process are in [docs/](docs/README.md).

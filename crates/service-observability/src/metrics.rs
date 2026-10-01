@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:5a75efe3" tracker="pending-tracker" reason="Own MetricsProvider and Prometheus-backed lifecycle connection counters."
 //! Protocol-neutral metric-provider seam and lifecycle event bridge.
 
 use metrics_prometheus::{render, Counter, Sample};
@@ -226,4 +225,3 @@ mod tests {
         assert!(rendered.contains("service_lifecycle_transition_age_seconds 0\n"));
     }
 }
-// HANDWRITE-END

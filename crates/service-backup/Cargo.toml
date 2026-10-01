@@ -39,3 +39,6 @@ tempfile = "3"
 [[test]]
 name = "projected_admin_transport"
 required-features = ["http-client"]
+
+[lints]
+workspace = true

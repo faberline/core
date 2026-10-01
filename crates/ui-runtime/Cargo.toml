@@ -16,3 +16,6 @@ debug = ["serde_json"]
 surface = { path = "../surface" }
 serde_json = { version = "1", optional = true }
 # CODEGEN-END
+
+[lints]
+workspace = true

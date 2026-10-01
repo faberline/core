@@ -1,4 +1,3 @@
-// HANDWRITE-BEGIN gap="missing-generator:logic:shared-process-resource-sampling" tracker="#1777" reason="Portable, safe process RSS and CPU sampling is shared by service performance and soak evidence."
 //! Process RSS and CPU time for the same two platforms, without unsafe FFI.
 //!
 //! It shells out to `ps` instead of reading `/proc` or calling `libproc`, which
@@ -100,4 +99,3 @@ mod tests {
         );
     }
 }
-// HANDWRITE-END

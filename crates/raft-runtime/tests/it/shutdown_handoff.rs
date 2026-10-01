@@ -431,8 +431,9 @@ fn shutdown_handoff_requires_core_timing_exports_and_rejects_local_copies() {
     }
 
     let runtime_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let core_source = std::fs::read_to_string(runtime_dir.join("../raft-core/src/lib.rs"))
-        .expect("raft-core source must remain readable by the runtime timing contract");
+    let core_source =
+        std::fs::read_to_string(runtime_dir.join("../raft-core/src/domain/timing.rs"))
+            .expect("raft-core source must remain readable by the runtime timing contract");
     let core_file = syn::parse_file(&core_source).expect("raft-core source must parse as Rust");
     let handoff_source = std::fs::read_to_string(runtime_dir.join("tests/it/shutdown_handoff.rs"))
         .expect("the shutdown handoff contract source must remain readable");

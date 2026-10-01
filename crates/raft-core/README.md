@@ -26,5 +26,5 @@ storage, and state-machine concerns outside the consensus library.
 - Gate — behavior: `cargo test -p raft-core` - consensus and snapshot behavior
   coverage
 - Gate: `cargo test -p raft-core`
-- Source: `crates/raft-core/src/lib.rs`
-- Evidence: `cargo test -p raft-core`; crates/raft-core/src/lib.rs
+- Source: `crates/raft-core/src/domain/`
+- Evidence: `cargo test -p raft-core`; crates/raft-core/src/domain/

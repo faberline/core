@@ -1,4 +1,4 @@
-// SPEC-MANAGED: crates/compass/external-contracts/behavior/structured-refactoring-contract.md#structured-refactoring-contract
+// SPEC-MANAGED: crates/compass/docs/contracts/behavior/structured-refactoring-contract.md#structured-refactoring-contract
 // CODEGEN-BEGIN
 // AW-EC-BEGIN
 // @ec structured-refactoring-contract

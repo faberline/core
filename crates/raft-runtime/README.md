@@ -48,9 +48,9 @@ compatible.
   identity, trust, expiry, and reload coverage
 - Gate: `cargo test -p raft-runtime`
 - Gate: `cargo test -p raft-runtime --test it -- peer_mtls::`
-- Source: `crates/raft-runtime/src/peer_transport.rs`
+- Source: `crates/raft-runtime/src/infrastructure/peer_transport.rs`
 - Evidence: `cargo test -p raft-runtime --test it -- peer_mtls::`;
-  crates/raft-runtime/src/peer_transport.rs
+  crates/raft-runtime/src/infrastructure/peer_transport.rs
 
 ### Committed Executor Fencing
 
@@ -67,9 +67,9 @@ own assignment keys, domain commands, capacity policy, and external effects.
   rejection
 - Gate: `cargo test -p raft-runtime`
 - Gate: `cargo test -p raft-runtime --test it -- fenced_assignment::`
-- Source: `crates/raft-runtime/src/fenced_assignment.rs`
+- Source: `crates/raft-runtime/src/application/fenced_assignment.rs`
 - Evidence: `cargo test -p raft-runtime --test it -- fenced_assignment::`;
-  crates/raft-runtime/src/fenced_assignment.rs
+  crates/raft-runtime/src/application/fenced_assignment.rs
 
 ### Durable Commit Recovery
 
@@ -90,6 +90,6 @@ writes so idle ticks do not create avoidable fsync pressure.
 - Gate: `cargo test -p raft-core -p raft-runtime`
 - Gate: `cargo test -p raft-runtime --test it -- snapshot_at_index::`
 - Gate: `cargo test -p raft-runtime --test it -- snapshot_install_safety::`
-- Source: `crates/raft-runtime/src/store.rs`,
-  `crates/raft-runtime/src/applied_index_store.rs`
+- Source: `crates/raft-runtime/src/infrastructure/store.rs`,
+  `crates/raft-runtime/src/infrastructure/applied_index_store.rs`
 - Evidence: raft-core/runtime restart, seed, and store tests

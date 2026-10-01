@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! `service-http` — shared HTTP-service scaffolding for the ecosystem's
 //! k8s-native services.
 //!
@@ -88,62 +87,54 @@
 //! wrapper — it carries no `ToSchema`) has no such constraint and is meant
 //! to be adopted directly.
 
-pub mod admission;
-pub mod body_limit;
-pub mod config;
-pub mod content_decode;
-pub mod error;
-pub mod logging;
-pub mod metrics;
-pub mod probes;
-pub mod readiness;
-pub mod reverse_proxy;
-pub mod server_timing;
-pub mod signal;
-pub mod transport;
-pub mod weighted_admission;
+mod application;
+mod compat;
+mod infrastructure;
+mod interfaces;
 
-pub use admission::{
-    admission_middleware, AdmissionConfig, AdmissionConfigError, AdmissionController,
-    AdmissionDecision, AdmissionEvent, AdmissionInput, AdmissionMiddleware, AdmissionObserver,
-    AdmissionOutcome, AdmissionPolicy, AdmissionPolicyError, NoopAdmissionObserver,
+pub use application::{
+    AdmissionConfig, AdmissionConfigError, AdmissionController, AdmissionDecision, AdmissionEvent,
+    AdmissionInput, AdmissionObserver, AdmissionOutcome, AdmissionPolicy, AdmissionPolicyError,
+    NoopAdmissionObserver,
 };
-pub use body_limit::{body_limit_layer, BodyLimitLayer, BodyLimitService};
-pub use config::{HttpConfig, LogFormat, ServiceIdentity};
-pub use content_decode::{
-    decode_request_body, ContentDecodeError, ContentDecodeErrorKind, ContentDecodeLimitError,
-    ContentDecodeLimits,
-};
-pub use error::{
-    retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorEnvelope,
-    ProjectionMetadata,
-};
-#[cfg(feature = "otlp")]
-pub use logging::extract_trace_context;
-pub use logging::{
-    init_tracing, init_tracing_with_identity, tracing_mode, OtelFallback, TracingMode,
-};
-pub use metrics::MetricsProvider;
-pub use probes::{
-    lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
-    standard_probe_routes_canonical_json,
-};
-pub use readiness::ReadinessHook;
-pub use reverse_proxy::{
-    reverse_proxy_router, ReverseProxyPolicy, ReverseProxySelectionError,
-};
-/// Re-exported so a service can build a [`serve_tls`] configuration source
-/// without depending on `server-http` directly (#3113 R1).
-pub use server_http::{config_source, HttpServerOptions, ServerConfigSource};
-pub use server_timing::{server_timing_middleware, ServerTimingDisclosure, ServerTimingExt};
-pub use service_observability::LifecycleMetrics;
-pub use signal::{
-    run_signal_bridge, shutdown_on_signal, shutdown_with_drain, wait_shutdown_signal,
-    LifecycleShutdownTrigger,
-};
-pub use transport::{serve, serve_tls, serve_with_lifecycle, trace_layer, PropagatingMakeSpan};
-pub use weighted_admission::{
+pub use application::{
     ConcurrencyLease, WeightedAdmission, WeightedAdmissionConfig, WeightedAdmissionConfigError,
     WeightedAdmissionError,
 };
-// CODEGEN-END
+pub use compat::{
+    admission, body_limit, config, content_decode, error, logging, metrics, probes, readiness,
+    reverse_proxy, server_timing, signal, transport, weighted_admission,
+};
+#[cfg(feature = "otlp")]
+pub use infrastructure::extract_trace_context;
+pub use infrastructure::{
+    init_tracing, init_tracing_with_identity, tracing_mode, OtelFallback, TracingMode,
+};
+pub use infrastructure::{HttpConfig, LogFormat, ServiceIdentity};
+pub use interfaces::{admission_middleware, AdmissionMiddleware};
+pub use interfaces::{body_limit_layer, BodyLimitLayer, BodyLimitService};
+pub use interfaces::{
+    decode_request_body, ContentDecodeError, ContentDecodeErrorKind, ContentDecodeLimitError,
+    ContentDecodeLimits,
+};
+pub use interfaces::{
+    lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
+    standard_probe_routes_canonical_json,
+};
+pub use interfaces::{
+    retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorEnvelope,
+    ProjectionMetadata,
+};
+pub use interfaces::{reverse_proxy_router, ReverseProxyPolicy, ReverseProxySelectionError};
+pub use interfaces::{
+    run_signal_bridge, shutdown_on_signal, shutdown_with_drain, wait_shutdown_signal,
+    LifecycleShutdownTrigger,
+};
+pub use interfaces::{serve, serve_tls, serve_with_lifecycle, trace_layer, PropagatingMakeSpan};
+pub use interfaces::{server_timing_middleware, ServerTimingDisclosure, ServerTimingExt};
+/// Re-exported so a service can build a [`serve_tls`] configuration source
+/// without depending on `server-http` directly (#3113 R1).
+pub use server_http::{config_source, HttpServerOptions, ServerConfigSource};
+pub use server_lifecycle::Readiness as ReadinessHook;
+pub use service_observability::LifecycleMetrics;
+pub use service_observability::MetricsProvider;

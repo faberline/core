@@ -7,3 +7,6 @@ description = "Shared lock-free Prometheus counter, gauge, and latency primitive
 [lib]
 name = "metrics_prometheus"
 path = "src/lib.rs"
+
+[lints]
+workspace = true

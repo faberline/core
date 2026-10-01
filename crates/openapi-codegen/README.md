@@ -123,11 +123,11 @@ cross-language execution gate that fails when a selected toolchain is missing.
 | Need | Source of truth |
 |---|---|
 | Public Rust API | `cargo doc -p openapi-codegen --no-deps` |
-| OpenAPI parser and operation model | `crates/openapi-codegen/src/ir/` |
-| TypeScript emitter | `crates/openapi-codegen/src/emit/ts/` |
-| Python emitter | `crates/openapi-codegen/src/emit/py/` |
-| Rust emitter | `crates/openapi-codegen/src/emit/rust/` |
-| Target profiles and output manifest | `crates/openapi-codegen/src/target.rs` and `lib.rs` |
+| OpenAPI parser and operation model | `crates/openapi-codegen/src/domain/ir/` |
+| TypeScript emitter | `crates/openapi-codegen/src/domain/emit/ts/` |
+| Python emitter | `crates/openapi-codegen/src/domain/emit/py/` |
+| Rust emitter | `crates/openapi-codegen/src/domain/emit/rust/` |
+| Target profiles and output manifest | `crates/openapi-codegen/src/domain/target.rs` and `domain/generation/output.rs` |
 | Executable behavior | `cargo test -p openapi-codegen` |
 
 ## Capabilities

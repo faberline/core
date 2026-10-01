@@ -139,8 +139,14 @@ async fn one_sink_failure_is_fanned_out_without_losing_the_original_error() {
             bytes: 10,
         })
     );
-    assert!(first.unwrap_err().to_string().contains("raft proposal failed"));
-    assert!(second.unwrap_err().to_string().contains("raft proposal failed"));
+    assert!(first
+        .unwrap_err()
+        .to_string()
+        .contains("raft proposal failed"));
+    assert!(second
+        .unwrap_err()
+        .to_string()
+        .contains("raft proposal failed"));
 
     drop(queue);
     worker.join().await.unwrap();

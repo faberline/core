@@ -14,13 +14,12 @@ Read these sources in order for the part you change:
    gates.
 2. [STATUS.md](STATUS.md) for current support and limits.
 3. [ROADMAP.md](ROADMAP.md) for future outcomes and non-goals.
-4. `crates/openapi-codegen/src/ir/` for operations, media types, and the
-   language-neutral schema contract.
-5. The owning emitter under `crates/openapi-codegen/src/emit/` and its tests for
-   language-specific request, response, error, and type behavior.
-6. `crates/openapi-codegen/src/target.rs` and `lib.rs` for target, dependency,
-   and artifact
-   compatibility.
+4. `crates/openapi-codegen/src/domain/ir/` for operations, media types, and
+   the language-neutral schema contract.
+5. The owning emitter under `crates/openapi-codegen/src/domain/emit/` and its
+   tests for language-specific request, response, error, and type behavior.
+6. `crates/openapi-codegen/src/domain/target.rs` and `domain/generation/` for
+   target, dependency, and artifact compatibility.
 
 ## Local Workflow
 

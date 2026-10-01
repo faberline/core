@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Error type for the frame-level [`H2cManager`](crate::H2cManager).
 
 use http::Method;
@@ -60,4 +59,3 @@ impl H2cError {
 
 /// Result alias for the frame-level manager.
 pub type Result<T> = std::result::Result<T, H2cError>;
-// CODEGEN-END

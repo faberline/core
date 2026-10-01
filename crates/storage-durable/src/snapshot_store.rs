@@ -1,4 +1,3 @@
-// CODEGEN-BEGIN
 //! Snapshot files whose ordering lives in their names.
 //!
 //! A snapshot is `{prefix}-{seq}.{extension}`, and `seq` parsed out of the file
@@ -135,4 +134,3 @@ mod tests {
         assert_eq!(store.snapshots().unwrap()[0].seq, 3);
     }
 }
-// CODEGEN-END
