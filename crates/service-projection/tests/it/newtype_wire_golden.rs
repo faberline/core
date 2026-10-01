@@ -12,7 +12,7 @@ fn projection_openapi_schemas_keep_the_p2_baseline_bytes() {
     ];
     assert_eq!(
         serde_json::to_string(&schemas).unwrap(),
-        include_str!("fixtures/newtype_schemas.json").trim_end()
+        include_str!("../fixtures/newtype_schemas.json").trim_end()
     );
 }
 
