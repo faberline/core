@@ -472,4 +472,3 @@ paths = [
   "crates/compass/src/interfaces/output/reporter.rs",
 ]
 reason = "compass E2, long-term: these files read only the agent and LSP wire value objects. lsp/argus_server.rs converts Diagnostic, DiagnosticSeverity, Range and Position to and from lsp_types; output/agent.rs renders FileResult, DiagnosticSeverity and Range; output/reporter.rs renders FileResult, Diagnostic and DiagnosticSeverity. Symbol tables and the import graph reach the reporters as application report views, and the LSP server reads everything else through the application editor session."
-
