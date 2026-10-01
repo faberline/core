@@ -12,6 +12,11 @@ downstream, sift runs its collectors on it.
 
 ## Model
 
+- **Source offset** — `SourceOffset` wraps a byte position (`new`, `get`).
+  `SourceProgress::new`, `start_offset` and `final_offset` use it. Byte counts,
+  lost-source counts and delivery counts remain numbers. A source's own
+  cursor type remains its associated `Cursor` type.
+
 - **Collector cursor** — the source's own `Cursor` type: where a record sits
   in the source. Every record and every rejection carries one.
 - **Read outcome** — `ReadOutcome`: a `Record`, a `Rejection`, `Pending` or
@@ -99,10 +104,11 @@ paths `service_collector::run_collector`, `service_collector::RecordDecoder`,
   with `RetryPolicy::new`, and the runtime checks it again before the
   first read.
 - **Debts:**
-  - Bare ids: offsets and counters are `u64`.
   - `anyhow` in `run_collector`, `run_collector_with_delivery_mode`,
     `load_json_checkpoint`, `save_json_checkpoint` and `append_jsonl`
     (these are not ports, so ADR D4 does not cover them).
 
   P2 made the `RuntimeConfig`, `SourceProgress` and `DeliveryReceipt`
   fields private (D2).
+
+P2 typed source byte positions as `SourceOffset` (W5). Counts stay numbers.

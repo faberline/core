@@ -8,14 +8,19 @@ pub struct CommitStats {
 /// Where a source started and has reached, and what it reports lost.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct SourceProgress {
-    start_offset: u64,
-    final_offset: u64,
+    start_offset: SourceOffset,
+    final_offset: SourceOffset,
     lost_bytes: u64,
     lost_sources: u64,
 }
 
 impl SourceProgress {
-    pub fn new(start_offset: u64, final_offset: u64, lost_bytes: u64, lost_sources: u64) -> Self {
+    pub fn new(
+        start_offset: SourceOffset,
+        final_offset: SourceOffset,
+        lost_bytes: u64,
+        lost_sources: u64,
+    ) -> Self {
         Self {
             start_offset,
             final_offset,
@@ -24,11 +29,11 @@ impl SourceProgress {
         }
     }
 
-    pub fn start_offset(&self) -> u64 {
+    pub fn start_offset(&self) -> SourceOffset {
         self.start_offset
     }
 
-    pub fn final_offset(&self) -> u64 {
+    pub fn final_offset(&self) -> SourceOffset {
         self.final_offset
     }
 
@@ -60,3 +65,4 @@ pub enum ReadOutcome<R, Q> {
     Pending,
     Exhausted,
 }
+use super::SourceOffset;

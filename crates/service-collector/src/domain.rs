@@ -4,7 +4,9 @@
 mod delivery;
 mod quarantine;
 mod source;
+mod source_offset;
 
 pub use delivery::{DeliveryFailure, DeliveryReceipt};
 pub use quarantine::QuarantineSink;
 pub use source::{CollectorRecord, CollectorRejection, CommitStats, ReadOutcome, SourceProgress};
+pub use source_offset::SourceOffset;
