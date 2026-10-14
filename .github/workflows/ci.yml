@@ -1,0 +1,50 @@
+name: core ci
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit, tag, or branch to test.
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: core-ci-${{ github.ref }}-${{ inputs.ref }}
+  cancel-in-progress: true
+
+jobs:
+  crate-gates:
+    name: ${{ matrix.crate }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - crate: service-k8s
+            args: -p service-k8s
+          - crate: storage-durable
+            args: -p storage-durable
+          - crate: service-backup
+            args: -p service-backup --features http-client
+          - crate: raft-core
+            args: -p raft-core
+          - crate: raft-runtime
+            args: -p raft-runtime
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Run crate tests
+        env:
+          CARGO_INCREMENTAL: "0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          cargo test --locked ${{ matrix.args }}
