@@ -6,10 +6,15 @@
 pub(crate) mod kube_backend;
 #[cfg(feature = "k8s")]
 pub(crate) mod kube_token_minter;
+mod opaque_projected_token;
 mod projected_token_file;
 mod system_clock;
 mod verifying_client;
 
+pub use opaque_projected_token::{
+    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenFile,
+    OpaqueProjectedTokenReader, OpaqueProjectedTokenSource, ProjectedTokenReader,
+};
 pub use projected_token_file::{ProjectedTokenError, ProjectedTokenFile};
 pub use system_clock::SystemClock;
 pub use verifying_client::verifying_client;
