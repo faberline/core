@@ -5,7 +5,7 @@ use std::fmt;
 /// `Debug` is the one that matters: `?err`, `{:?}` on a struct that holds a
 /// token, and `#[derive(Debug)]` on anything upstream all reach it without
 /// anyone deciding to log a credential.
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ProjectedToken(pub(crate) String);
 
 impl ProjectedToken {
