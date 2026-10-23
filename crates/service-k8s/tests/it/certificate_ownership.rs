@@ -85,14 +85,14 @@ fn the_generic_lifecycle_lives_in_the_shared_library() {
 
     // Every piece R1 names as generic, by the module that owns it.
     for expected in [
-        "state",       // renewal, expiry, rotation ordering
-        "issuer",      // the CSR/keypair boundary
-        "cas",         // the CA Service requester
-        "ephemeral",   // the replaceable in-process signer (R8)
-        "projection",  // Secret layout and owner references
-        "reconcile",   // retries and the write path
-        "status",      // conditions and redaction
-        "profile",     // bounds and validation
+        "state",      // renewal, expiry, rotation ordering
+        "issuer",     // the CSR/keypair boundary
+        "cas",        // the CA Service requester
+        "ephemeral",  // the replaceable in-process signer (R8)
+        "projection", // Secret layout and owner references
+        "reconcile",  // retries and the write path
+        "status",     // conditions and redaction
+        "profile",    // bounds and validation
     ] {
         assert!(
             present.iter().any(|name| name == expected),
