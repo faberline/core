@@ -38,15 +38,12 @@ async fn concurrent() {
         "indices must be contiguous 1..={num_proposals}"
     );
 
-    let deadline = std::time::Instant::now() + Duration::from_secs(10);
-    for n in &nodes {
-        while n.sm.applied_index() < Index::new(num_proposals) {
-            if std::time::Instant::now() >= deadline {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    }
+    wait_for_applied_index(
+        &nodes,
+        Index::new(num_proposals),
+        DEFAULT_APPLIED_INDEX_BUDGET,
+    )
+    .await;
 
     let mut sm_vals = Vec::new();
     let mut watch_vals = Vec::new();
@@ -90,15 +87,12 @@ async fn sequential() {
         "indices must be contiguous 1..={num_proposals}"
     );
 
-    let deadline = std::time::Instant::now() + Duration::from_secs(10);
-    for n in &nodes {
-        while n.sm.applied_index() < Index::new(num_proposals) {
-            if std::time::Instant::now() >= deadline {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    }
+    wait_for_applied_index(
+        &nodes,
+        Index::new(num_proposals),
+        DEFAULT_APPLIED_INDEX_BUDGET,
+    )
+    .await;
 
     let mut sm_vals = Vec::new();
     let mut watch_vals = Vec::new();
