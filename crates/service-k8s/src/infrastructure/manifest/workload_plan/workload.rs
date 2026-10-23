@@ -263,6 +263,11 @@ pub struct CronJobPlan {
     successful_jobs_history_limit: i32,
     failed_jobs_history_limit: i32,
     pod: PodPlan,
+    suspend: Option<bool>,
+    starting_deadline_seconds: Option<i64>,
+    active_deadline_seconds: Option<i64>,
+    backoff_limit: Option<i32>,
+    ttl_seconds_after_finished: Option<i32>,
 }
 
 impl CronJobPlan {
@@ -275,6 +280,11 @@ impl CronJobPlan {
             successful_jobs_history_limit: 3,
             failed_jobs_history_limit: 1,
             pod,
+            suspend: None,
+            starting_deadline_seconds: None,
+            active_deadline_seconds: None,
+            backoff_limit: None,
+            ttl_seconds_after_finished: None,
         }
     }
 
@@ -285,6 +295,31 @@ impl CronJobPlan {
 
     pub fn with_failed_jobs_history_limit(mut self, limit: i32) -> Self {
         self.failed_jobs_history_limit = limit;
+        self
+    }
+
+    pub fn with_suspend(mut self, suspend: bool) -> Self {
+        self.suspend = Some(suspend);
+        self
+    }
+
+    pub fn with_starting_deadline_seconds(mut self, seconds: i64) -> Self {
+        self.starting_deadline_seconds = Some(seconds);
+        self
+    }
+
+    pub fn with_active_deadline_seconds(mut self, seconds: i64) -> Self {
+        self.active_deadline_seconds = Some(seconds);
+        self
+    }
+
+    pub fn with_backoff_limit(mut self, limit: i32) -> Self {
+        self.backoff_limit = Some(limit);
+        self
+    }
+
+    pub fn with_ttl_seconds_after_finished(mut self, seconds: i32) -> Self {
+        self.ttl_seconds_after_finished = Some(seconds);
         self
     }
 
@@ -308,20 +343,91 @@ impl CronJobPlan {
         &self.pod
     }
 
-    pub(super) fn render(mut self, cx: &RenderCtx<'_>) -> Value {
+    pub fn suspend(&self) -> Option<bool> {
+        self.suspend
+    }
+
+    pub fn starting_deadline_seconds(&self) -> Option<i64> {
+        self.starting_deadline_seconds
+    }
+
+    pub fn active_deadline_seconds(&self) -> Option<i64> {
+        self.active_deadline_seconds
+    }
+
+    pub fn backoff_limit(&self) -> Option<i32> {
+        self.backoff_limit
+    }
+
+    pub fn ttl_seconds_after_finished(&self) -> Option<i32> {
+        self.ttl_seconds_after_finished
+    }
+
+    pub(super) fn render(mut self, cx: &RenderCtx<'_>) -> Result<Value, WorkloadPlanError> {
+        if let Some(s) = self.starting_deadline_seconds {
+            if s < 0 {
+                return Err(WorkloadPlanError::NegativeValue(
+                    self.name,
+                    "startingDeadlineSeconds",
+                ));
+            }
+        }
+        if let Some(s) = self.active_deadline_seconds {
+            if s < 0 {
+                return Err(WorkloadPlanError::NegativeValue(
+                    self.name,
+                    "activeDeadlineSeconds",
+                ));
+            }
+        }
+        if let Some(l) = self.backoff_limit {
+            if l < 0 {
+                return Err(WorkloadPlanError::NegativeValue(self.name, "backoffLimit"));
+            }
+        }
+        if let Some(s) = self.ttl_seconds_after_finished {
+            if s < 0 {
+                return Err(WorkloadPlanError::NegativeValue(
+                    self.name,
+                    "ttlSecondsAfterFinished",
+                ));
+            }
+        }
+
         self.pod.runtime.restart_policy = Some("OnFailure".into());
         let component = self.pod.component.clone();
-        json!({
+        let mut job_template_spec = json!({
+            "template": self.pod.render(cx),
+        });
+        if let Some(active_deadline) = self.active_deadline_seconds {
+            job_template_spec["activeDeadlineSeconds"] = json!(active_deadline);
+        }
+        if let Some(backoff) = self.backoff_limit {
+            job_template_spec["backoffLimit"] = json!(backoff);
+        }
+        if let Some(ttl) = self.ttl_seconds_after_finished {
+            job_template_spec["ttlSecondsAfterFinished"] = json!(ttl);
+        }
+
+        let mut spec = json!({
+            "schedule": self.schedule,
+            "concurrencyPolicy": "Forbid",
+            "successfulJobsHistoryLimit": self.successful_jobs_history_limit,
+            "failedJobsHistoryLimit": self.failed_jobs_history_limit,
+            "jobTemplate": {"spec": job_template_spec},
+        });
+        if let Some(suspend) = self.suspend {
+            spec["suspend"] = json!(suspend);
+        }
+        if let Some(starting_deadline) = self.starting_deadline_seconds {
+            spec["startingDeadlineSeconds"] = json!(starting_deadline);
+        }
+
+        Ok(json!({
             "apiVersion": "batch/v1",
             "kind": "CronJob",
             "metadata": cx.meta(&self.name, &component),
-            "spec": {
-                "schedule": self.schedule,
-                "concurrencyPolicy": "Forbid",
-                "successfulJobsHistoryLimit": self.successful_jobs_history_limit,
-                "failedJobsHistoryLimit": self.failed_jobs_history_limit,
-                "jobTemplate": {"spec": {"template": self.pod.render(cx)}},
-            },
-        })
+            "spec": spec,
+        }))
     }
 }
