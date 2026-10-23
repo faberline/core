@@ -265,3 +265,94 @@ impl ClusterRoleBindingPlan {
         })
     }
 }
+
+#[cfg(feature = "controller")]
+use crate::domain::access::AccessGrant;
+
+/// Render `grants` as a sequence of Role and RoleBinding Kubernetes manifests.
+///
+/// Returns, for each grant in (namespace, name) order, one Role and one RoleBinding
+/// built with the existing `rbac::role` / `rbac::role_binding` builders. The
+/// RoleBinding binds that Role (never a ClusterRole), uses ServiceAccount subjects
+/// only, and carries no owner reference. Equal input gives equal output regardless
+/// of input order.
+#[cfg(feature = "controller")]
+pub fn render_access_grants(grants: &[AccessGrant]) -> Vec<Value> {
+    let mut sorted = grants.iter().collect::<Vec<_>>();
+    sorted.sort_by(|a, b| {
+        (a.namespace.as_str(), a.name.as_str()).cmp(&(b.namespace.as_str(), b.name.as_str()))
+    });
+
+    let mut result = Vec::with_capacity(sorted.len() * 2);
+
+    for grant in sorted {
+        let api_groups_vec: Vec<Vec<&str>> = grant
+            .rules
+            .iter()
+            .map(|r| r.api_groups.iter().map(String::as_str).collect())
+            .collect();
+        let resources_vec: Vec<Vec<&str>> = grant
+            .rules
+            .iter()
+            .map(|r| r.resources.iter().map(String::as_str).collect())
+            .collect();
+        let resource_names_vec: Vec<Vec<&str>> = grant
+            .rules
+            .iter()
+            .map(|r| r.resource_names.iter().map(String::as_str).collect())
+            .collect();
+        let verbs_vec: Vec<Vec<&str>> = grant
+            .rules
+            .iter()
+            .map(|r| r.verbs.iter().map(String::as_str).collect())
+            .collect();
+
+        let rules: Vec<rbac::NamedRule<'_>> = (0..grant.rules.len())
+            .map(|i| rbac::NamedRule {
+                api_groups: &api_groups_vec[i],
+                resources: &resources_vec[i],
+                resource_names: &resource_names_vec[i],
+                verbs: &verbs_vec[i],
+            })
+            .collect();
+
+        let role_val = rbac::role(rbac::Role {
+            name: &grant.name,
+            namespace: &grant.namespace,
+            labels: json!({}),
+            rules: &rules,
+        });
+
+        let sa_subjects: Vec<rbac::ServiceAccountSubject<'_>> = grant
+            .subjects
+            .iter()
+            .map(|s| rbac::ServiceAccountSubject {
+                namespace: &s.namespace,
+                name: &s.name,
+            })
+            .collect();
+
+        let role_subjects: Vec<rbac::RoleSubject<'_>> = sa_subjects
+            .iter()
+            .map(|sa| {
+                rbac::RoleSubject::ServiceAccount(rbac::ServiceAccountSubject {
+                    namespace: sa.namespace,
+                    name: sa.name,
+                })
+            })
+            .collect();
+
+        let binding_val = rbac::role_binding(rbac::RoleBinding {
+            name: &grant.name,
+            namespace: &grant.namespace,
+            labels: json!({}),
+            role: &grant.name,
+            subjects: &role_subjects,
+        });
+
+        result.push(role_val);
+        result.push(binding_val);
+    }
+
+    result
+}

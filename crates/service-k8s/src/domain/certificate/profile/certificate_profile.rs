@@ -56,10 +56,7 @@ impl CertificateProfile {
             return Err(ProfileError::NoNames);
         }
         for name in &identity.dns_names {
-            if !CLUSTER_SUFFIXES
-                .iter()
-                .any(|suffix| name.ends_with(suffix))
-            {
+            if !CLUSTER_SUFFIXES.iter().any(|suffix| name.ends_with(suffix)) {
                 return Err(ProfileError::PublicDnsName { name: name.clone() });
             }
             // `.<namespace>.svc` is the segment Kubernetes itself uses to

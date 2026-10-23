@@ -18,6 +18,8 @@
 //! read the root as legacy, and do not "finish" the split without moving the
 //! callers in the same change.
 
+#[cfg(feature = "controller")]
+pub use crate::infrastructure::manifest::render_access_grants;
 pub use crate::infrastructure::manifest::{
     client_service, client_service_with_ports, cron_job, dedicated_node_affinity,
     guaranteed_resources, headless_service, headless_service_with_ports, horizontal_pod_autoscaler,

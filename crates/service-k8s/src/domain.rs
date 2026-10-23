@@ -1,5 +1,7 @@
 //! Domain layer.
 
+#[cfg(feature = "controller")]
+pub(crate) mod access;
 pub(crate) mod capacity;
 #[cfg(feature = "certificate")]
 pub(crate) mod certificate;
