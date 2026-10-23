@@ -5,3 +5,4 @@ pub(crate) mod certificate;
 pub(crate) mod condition;
 #[cfg(feature = "controller")]
 pub(crate) mod operator;
+pub mod trust_bundle;
