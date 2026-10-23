@@ -26,6 +26,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::{http::StatusCode, routing::post, Json, Router};
+use raft_core::{AppendReq, EntryKind, RaftEntry, Term};
 use raft_runtime::{
     FsyncPolicy, HostConfig, Index, Membership, ProposalOutcome, RaftHost, RaftStateMachine,
     RaftStore,
@@ -430,6 +431,117 @@ async fn follower_forwarding_malformed_admission_body_remains_ambiguous() {
     match outcome {
         ProposalOutcome::Ambiguous { index: None, .. } => {}
         other => panic!("expected malformed forwarded refusal to remain Ambiguous, got: {other:?}"),
+    }
+}
+
+/// Truncating a proposal's uncommitted entry through a leader change must not report Completed.
+///
+/// In a multi-voter cluster, a proposal on node 0 is appended at (index, term 1) but
+/// remains uncommitted without peer quorum. When node 1 takes over as leader in term 2
+/// and replicates a conflicting entry that commits at that same index, node 0 truncates
+/// its uncommitted entry and applies the replacing entry. The proposer must receive
+/// Ambiguous naming replacing term 2, not Completed.
+#[tokio::test]
+async fn uncommitted_proposal_superseded_by_leader_change_returns_ambiguous() {
+    use raft_core::VoteResp;
+
+    let sm = TestSm::new();
+    let dir = TempDir::new().unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
+    let cfg = HostConfig::default().with_propose_timeout(Duration::from_secs(2));
+    let host = Arc::new(RaftHost::spawn(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
+        HashMap::new(),
+        store,
+        sm.clone() as Arc<dyn RaftStateMachine>,
+        cfg,
+    ));
+
+    // Wait until node 0 campaigns, then grant voter 1's vote so node 0 becomes leader.
+    let start = std::time::Instant::now();
+    loop {
+        let st = host.status().await;
+        host.step_vote_response(
+            NodeId::new(1),
+            VoteResp {
+                term: Term::new(st.term),
+                granted: true,
+            },
+        )
+        .await;
+        if host.is_leader().await {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        if start.elapsed() > Duration::from_secs(2) {
+            panic!("node 0 did not become leader within deadline");
+        }
+    }
+
+    // Propose on leader node 0. Because voter 1 has not acknowledged it,
+    // the proposal is appended at index 1 (term 1) but cannot commit.
+    let host_clone = Arc::clone(&host);
+    let propose_task = tokio::spawn(async move {
+        host_clone
+            .propose_outcome(b"superseded-command".to_vec())
+            .await
+    });
+
+    // Give the proposal a moment to be appended and enter the apply-wait loop.
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Leader change: node 1 takes over in term 2 and replicates a conflicting entry
+    // that commits at index 1, truncating node 0's uncommitted proposal.
+    let supersede_req = AppendReq {
+        term: Term::new(2),
+        leader: NodeId::new(1),
+        prev_log_index: Index::new(0),
+        prev_log_term: Term::new(0),
+        entries: vec![RaftEntry {
+            term: Term::new(2),
+            index: Index::new(1),
+            command: vec![42],
+            kind: EntryKind::Command,
+        }],
+        leader_commit: Index::new(1),
+    };
+
+    let resp = host.step_append_entries(NodeId::new(1), supersede_req).await;
+    assert!(resp.success, "append entries must succeed");
+
+    // The proposer must receive Ambiguous (not Completed) stating the entry was superseded
+    // and naming the replacing term (2), without waiting for the propose timeout.
+    let outcome = tokio::time::timeout(Duration::from_secs(1), propose_task)
+        .await
+        .expect("proposer must receive outcome promptly without waiting for propose_timeout")
+        .expect("propose task did not panic");
+
+    match outcome {
+        ProposalOutcome::Ambiguous { index, reason } => {
+            assert_eq!(
+                index,
+                Some(Index::new(1)),
+                "ambiguous outcome must identify the proposal index"
+            );
+            assert!(
+                reason.contains("superseded"),
+                "reason must indicate entry was superseded, got: {reason}"
+            );
+            assert!(
+                reason.contains("2"),
+                "reason must name replacing term (2), got: {reason}"
+            );
+        }
+        ProposalOutcome::Completed { index } => {
+            panic!("proposer must NOT receive Completed for superseded entry at index {index}");
+        }
+        other => panic!("expected Ambiguous outcome for superseded proposal, got: {other:?}"),
     }
 }
 
