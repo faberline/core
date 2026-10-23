@@ -8,3 +8,4 @@ pub(crate) mod lease;
 pub(crate) mod manifest;
 #[cfg(feature = "controller")]
 pub(crate) mod resize;
+pub mod trust_bundle;
