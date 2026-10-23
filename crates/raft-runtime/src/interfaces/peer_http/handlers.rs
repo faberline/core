@@ -40,6 +40,33 @@ pub(crate) async fn request_vote(
     .into_response()
 }
 
+impl Shared {
+    pub(crate) async fn step_append_entries(
+        self: &Arc<Self>,
+        from: NodeId,
+        req: raft_core::AppendReq,
+    ) -> AppendResp {
+        let mut n = self.node.lock().await;
+        n.handle(from, RaftMsg::Append(req));
+        if self.persist(&n).is_err() {
+            return AppendResp {
+                term: Term::new(0),
+                success: false,
+                match_index: Index::new(0),
+            };
+        }
+        self.apply_ready(&mut n);
+        match take_reply(&mut n, from) {
+            Some(RaftMsg::AppendResp(r)) => r,
+            _ => AppendResp {
+                term: Term::new(0),
+                success: false,
+                match_index: Index::new(0),
+            },
+        }
+    }
+}
+
 pub(crate) async fn append_entries(
     State(s): State<Arc<Shared>>,
     Json(env): Json<AppendEnvelope>,
@@ -47,26 +74,7 @@ pub(crate) async fn append_entries(
     if env.group_id != s.group_id.as_str() {
         return (StatusCode::BAD_REQUEST, "group id mismatch").into_response();
     }
-    let mut n = s.node.lock().await;
-    n.handle(env.from, RaftMsg::Append(env.req));
-    if s.persist(&n).is_err() {
-        return Json(AppendResp {
-            term: Term::new(0),
-            success: false,
-            match_index: Index::new(0),
-        })
-        .into_response();
-    }
-    s.apply_ready(&mut n);
-    Json(match take_reply(&mut n, env.from) {
-        Some(RaftMsg::AppendResp(r)) => r,
-        _ => AppendResp {
-            term: Term::new(0),
-            success: false,
-            match_index: Index::new(0),
-        },
-    })
-    .into_response()
+    Json(s.step_append_entries(env.from, env.req).await).into_response()
 }
 
 pub(crate) async fn install_snapshot(

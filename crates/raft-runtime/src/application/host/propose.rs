@@ -26,7 +26,7 @@ impl Shared {
                 return Some(rejected_admission(error));
             }
         };
-        let index = {
+        let (index, term) = {
             let mut n = self.node.lock().await;
             if self.lifecycle_generation.load(Ordering::Acquire) > 0 {
                 self.proposal_rejected_before_append
@@ -43,9 +43,7 @@ impl Shared {
                     ),
                 });
             }
-            let Some(idx) = n.propose(command) else {
-                return None;
-            };
+            let idx = n.propose(command)?;
             let term = n.current_term();
             if let Some(permit) = permit {
                 let previous = self
@@ -62,7 +60,7 @@ impl Shared {
                 });
             }
             self.apply_ready(&mut n); // sole voter queues its committed apply here
-            idx
+            (idx, term)
         };
         self.flush().await;
 
@@ -73,7 +71,22 @@ impl Shared {
             });
         }
         if self.completed_applied_index() >= index {
-            return Some(ProposalOutcome::Completed { index });
+            let n = self.node.lock().await;
+            if n.term_at_index(index) == Some(term) {
+                return Some(ProposalOutcome::Completed { index });
+            } else if let Some(replacing_term) = n.term_at_index(index) {
+                return Some(ProposalOutcome::Ambiguous {
+                    index: Some(index),
+                    reason: format!(
+                        "raft: proposal at index {index} (term {term}) superseded by entry of term {replacing_term}"
+                    ),
+                });
+            } else {
+                return Some(ProposalOutcome::Ambiguous {
+                    index: Some(index),
+                    reason: format!("raft: proposal at index {index} (term {term}) superseded"),
+                });
+            }
         }
         let mut rx = self.applied_tx.subscribe();
         let deadline = Instant::now() + self.cfg.propose_timeout();
@@ -87,8 +100,30 @@ impl Shared {
                         failure,
                     });
                 }
+                if let Some(replacing_term) = n.term_at_index(index) {
+                    if replacing_term != term {
+                        return Some(ProposalOutcome::Ambiguous {
+                            index: Some(index),
+                            reason: format!(
+                                "raft: proposal at index {index} (term {term}) superseded by entry of term {replacing_term}"
+                            ),
+                        });
+                    }
+                }
                 if self.completed_applied_index() >= index {
-                    return Some(ProposalOutcome::Completed { index });
+                    if n.term_at_index(index) == Some(term) {
+                        return Some(ProposalOutcome::Completed { index });
+                    }
+                    let reason = match n.term_at_index(index) {
+                        Some(replacing_term) => format!(
+                            "raft: proposal at index {index} (term {term}) superseded by entry of term {replacing_term}"
+                        ),
+                        None => format!("raft: proposal at index {index} (term {term}) superseded"),
+                    };
+                    return Some(ProposalOutcome::Ambiguous {
+                        index: Some(index),
+                        reason,
+                    });
                 }
             }
             tokio::select! {
