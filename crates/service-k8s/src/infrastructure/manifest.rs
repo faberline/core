@@ -37,6 +37,7 @@ pub const ENV_VOTER_COUNT: &str = "VOTER_COUNT";
 
 pub mod common;
 pub mod deployment;
+pub mod placement;
 pub mod projected_token;
 pub mod rbac;
 mod render_ctx;
@@ -44,6 +45,9 @@ pub mod stateful_instance;
 pub mod workload_plan;
 mod workloads;
 
+pub use placement::{
+    FailureDomainPlacement, HostSeparation, PlacementError, PlacementPlan, Toleration, ZoneSpread,
+};
 pub use render_ctx::RenderCtx;
 pub use workload_plan::*;
 pub use workloads::{
