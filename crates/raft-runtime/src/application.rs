@@ -20,7 +20,7 @@ pub use fenced_assignment::{
     ActiveAssignment, AssignmentEpoch, AssignmentError, FenceToken, FencedAssignment,
 };
 pub use host::{
-    AdmissionRefused, ChunkSink, HostShutdownReport, LeadershipHandoff, MembershipPhase,
+    AdmissionRefused, ChunkSink, HostShutdownReport, LeadershipHandoff, MembershipPhase, PeerMatch,
     PhaseRecord, PhaseStatus, ProposalBackpressure, ProposalOutcome, RaftHost, RaftStatus,
     ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed, SNAPSHOT_CHUNK_SIZE,
 };

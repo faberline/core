@@ -4,7 +4,7 @@ use std::sync::Arc;
 use axum::extract::State;
 use axum::Json;
 
-use crate::application::{MembershipPhase, RaftStatus, Shared};
+use crate::application::{MembershipPhase, PeerMatch, RaftStatus, Shared};
 
 pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
     let n = s.node.lock().await;
@@ -33,6 +33,15 @@ pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
     } else {
         format!("{:?}", n.role())
     };
+    let peer_match_index = n
+        .peer_match_index()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(id, index)| PeerMatch {
+            id,
+            match_index: index.get(),
+        })
+        .collect();
     RaftStatus {
         group_id: s.group_id.as_str().to_owned(),
         id: s.id,
@@ -60,6 +69,7 @@ pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
         snapshot_capability: s.sm.snapshot_capability().map(str::to_string),
         resident_log_bytes: n.resident_log_bytes() as u64,
         max_resident_log_bytes: s.max_resident_log_bytes as u64,
+        peer_match_index,
     }
 }
 

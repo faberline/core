@@ -202,6 +202,7 @@ fn raft_status_json_is_pinned() {
         snapshot_capability: Some("cap-v1".to_owned()),
         resident_log_bytes: 64,
         max_resident_log_bytes: 1024,
+        peer_match_index: vec![],
     };
     pin_json(
         &status,
@@ -213,7 +214,7 @@ fn raft_status_json_is_pinned() {
             r#""undeliverable_withdrawn_address":6,"proposal_rejected_before_routing":7,"#,
             r#""proposal_rejected_before_append":8,"proposal_admission_closed":false,"#,
             r#""lifecycle_generation":2,"snapshot_capability":"cap-v1","resident_log_bytes":64,"#,
-            r#""max_resident_log_bytes":1024}"#,
+            r#""max_resident_log_bytes":1024,"peer_match_index":[]}"#,
         ),
     );
 }
