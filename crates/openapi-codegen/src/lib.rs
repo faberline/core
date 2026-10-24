@@ -29,6 +29,8 @@
 //! [`generate`] is the pure core (spec text → in-memory files, no I/O); [`run`]
 //! is the filesystem-writing CLI entry.
 
+#![allow(clippy::single_char_add_str)]
+
 mod api;
 mod app;
 mod application;
@@ -46,7 +48,8 @@ pub use domain::ir::{build_type_map, TypeMap};
 pub use domain::SpecParseError;
 pub use domain::{
     FileBearerAuth, FileBearerAuthError, FileBearerScheme, GenOptions, GeneratedFile,
-    GeneratedOutput, GenerationManifest, HttpClient, Lang, MANIFEST_FILE,
+    GeneratedOutput, GenerationManifest, HttpClient, Lang, ServiceCompatibilityError,
+    MANIFEST_FILE,
 };
 pub use domain::{
     PythonTarget, RustTarget, TargetPolicy, TargetPolicyError, TargetProfile, TargetRequirements,

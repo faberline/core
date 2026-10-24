@@ -52,6 +52,7 @@ pub enum HttpClient {
 pub struct GenOptions {
     lang: Lang,
     target: Option<TargetProfile>,
+    service_compatibility: Option<String>,
     spec_path: PathBuf,
     out_dir: PathBuf,
     client_name: String,
@@ -74,6 +75,7 @@ impl GenOptions {
         Self {
             lang,
             target: None,
+            service_compatibility: None,
             spec_path: spec_path.into(),
             out_dir: out_dir.into(),
             client_name: client_name.into(),
@@ -90,6 +92,28 @@ impl GenOptions {
     pub fn with_target(mut self, target: TargetProfile) -> Self {
         self.target = Some(target);
         self
+    }
+
+    /// Set a caller-supplied service compatibility label. An empty or
+    /// whitespace-only label is rejected with a typed error before generation.
+    /// The label is copied into the manifest verbatim and not parsed.
+    pub fn with_service_compatibility(mut self, label: impl Into<String>) -> Self {
+        self.service_compatibility = Some(label.into());
+        self
+    }
+
+    /// Try to set a caller-supplied service compatibility label, failing
+    /// immediately if the label is empty or whitespace-only.
+    pub fn try_with_service_compatibility(
+        mut self,
+        label: impl Into<String>,
+    ) -> Result<Self, super::ServiceCompatibilityError> {
+        let label = label.into();
+        if label.trim().is_empty() {
+            return Err(super::ServiceCompatibilityError::EmptyOrWhitespace);
+        }
+        self.service_compatibility = Some(label);
+        Ok(self)
     }
 
     /// Set the HTTP runtime backend of the generated TypeScript client.
@@ -124,6 +148,22 @@ impl GenOptions {
     /// Versioned language/toolchain contract, if any.
     pub fn target(&self) -> Option<TargetProfile> {
         self.target
+    }
+
+    /// The caller-supplied service compatibility label, if any.
+    pub fn service_compatibility(&self) -> Option<&str> {
+        self.service_compatibility.as_deref()
+    }
+
+    /// Validate generation options. Fails with a typed error if the service
+    /// compatibility label is empty or whitespace-only.
+    pub fn validate(&self) -> Result<(), super::ServiceCompatibilityError> {
+        if let Some(label) = self.service_compatibility() {
+            if label.trim().is_empty() {
+                return Err(super::ServiceCompatibilityError::EmptyOrWhitespace);
+            }
+        }
+        Ok(())
     }
 
     /// Path of the OpenAPI document that `run` reads.
