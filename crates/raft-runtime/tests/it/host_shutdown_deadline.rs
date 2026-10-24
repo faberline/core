@@ -938,6 +938,43 @@ fn report_into_result_returns_distinct_err_naming_phase_for_all_incomplete_phase
     );
 }
 
+/// Converting a HostShutdownReport with both storage_failure and incomplete_phase
+/// into a Result renders the storage failure rather than the incomplete phase error.
+#[test]
+fn report_into_result_prefers_storage_failure_over_incomplete_phase() {
+    let failure = raft_runtime::StorageFailed {
+        node_id: NodeId::new(1),
+        operation: "write_entry",
+        path: std::path::PathBuf::from("/var/data/raft/wal"),
+        kind: std::io::ErrorKind::Other,
+    };
+    let expected_storage_msg = failure.to_string();
+
+    let report = HostShutdownReport {
+        caller: ShutdownCaller::Executed,
+        phases: vec![],
+        handoff: LeadershipHandoff::NotLeader,
+        incomplete_phase: Some(ShutdownPhase::Quiesce),
+        peer_listener_close_safe: false,
+        storage_failure: Some(failure),
+    };
+
+    let res = report.into_result();
+    assert!(
+        res.is_err(),
+        "into_result must return Err when storage_failure and incomplete_phase are both set"
+    );
+    let err_msg = res.unwrap_err().to_string();
+    assert_eq!(
+        err_msg, expected_storage_msg,
+        "error message must render the storage failure"
+    );
+    assert!(
+        !err_msg.contains("shutdown stopped early in phase"),
+        "error message must not render the phase message when storage_failure is set, got: '{err_msg}'"
+    );
+}
+
 /// A host configured with a tiny rpc_timeout reaches the Quiesce-expiry branch on
 /// legacy shutdown() and returns an Err naming Quiesce.
 #[tokio::test]
