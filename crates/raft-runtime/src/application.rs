@@ -36,7 +36,7 @@ pub use state_machine::{
 pub use topology::{peer_ordinal, ClusterDims, ClusterTopology};
 
 pub(crate) use host::{
-    apply_ready, cold_start, decode_backpressure, persist_node, take_reply, HostStorage, HostStore,
-    PeerLaneQueue, PeerWiring, Shared,
+    apply_ready, cold_start, decode_backpressure, host_status, persist_node, take_reply,
+    HostStorage, HostStore, PeerLaneQueue, PeerWiring, Shared,
 };
 pub(crate) use topology::check_peer_scheme;
