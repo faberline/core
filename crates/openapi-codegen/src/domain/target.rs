@@ -134,7 +134,7 @@ impl TargetProfile {
                 module_resolution: Some("Bundler"),
                 strict: Some(true),
                 transport: Some("fetch-or-axios"),
-                runtime_dependencies: &[],
+                runtime_dependencies: &["@tanstack/react-query", "axios"],
             },
             Self::Rust(target) => TargetRequirements {
                 target: self.id(),
