@@ -83,4 +83,38 @@ impl RaftNode {
             self.log.get(pos).map(|e| e.term).unwrap_or(Term::new(0))
         }
     }
+
+    /// Per-peer replication progress (`match_index`) for each voter (incoming and
+    /// outgoing) and learner other than this node, sorted by [`NodeId`].
+    ///
+    /// Returns `None` when this node is not the leader.
+    pub fn peer_match_index(&self) -> Option<Vec<(NodeId, Index)>> {
+        if self.role != Role::Leader {
+            return None;
+        }
+        let mut peers: Vec<NodeId> = self
+            .conf_state
+            .membership
+            .voters()
+            .iter()
+            .chain(self.conf_state.outgoing.as_deref().unwrap_or(&[]))
+            .chain(self.conf_state.membership.learners())
+            .copied()
+            .filter(|&id| id != self.id)
+            .collect();
+        peers.sort_unstable();
+        peers.dedup();
+        let entries = peers
+            .into_iter()
+            .map(|peer| {
+                let index = self
+                    .match_index
+                    .get(&peer)
+                    .copied()
+                    .unwrap_or(Index::new(0));
+                (peer, index)
+            })
+            .collect();
+        Some(entries)
+    }
 }

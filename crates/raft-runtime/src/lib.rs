@@ -39,7 +39,7 @@ pub use application::{
     AdmissionPermit, Command, PreparedSnapshot, RaftStateMachine, SnapshotPreparation,
 };
 pub use application::{
-    AdmissionRefused, ChunkSink, HostShutdownReport, LeadershipHandoff, MembershipPhase,
+    AdmissionRefused, ChunkSink, HostShutdownReport, LeadershipHandoff, MembershipPhase, PeerMatch,
     PhaseRecord, PhaseStatus, ProposalBackpressure, ProposalOutcome, RaftHost, RaftStatus,
     ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed, SNAPSHOT_CHUNK_SIZE,
 };
