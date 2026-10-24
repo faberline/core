@@ -5,7 +5,9 @@
 //! `crate::emit::<lang>` maps an [`OperationIR`] to its own naming (camelCase /
 //! snake_case) and type syntax (TS / pydantic / serde).
 
-use crate::domain::ir::openapi::{Operation, Parameter, RefOr, Response, Schema, Spec};
+use std::collections::BTreeMap;
+
+use crate::domain::ir::openapi::{MediaType, Operation, Parameter, RefOr, Response, Schema, Spec};
 
 /// A parameter (path / query / header). `schema == None` means an untyped
 /// parameter, which emitters default to a string.
@@ -16,11 +18,36 @@ pub struct ParamIR {
     pub required: bool,
 }
 
-/// The JSON request body, if any.
+/// Media kind of an operation's request body or response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MediaKind {
+    Json,
+    Ndjson,
+}
+
+impl MediaKind {
+    pub fn is_json(&self) -> bool {
+        matches!(self, Self::Json)
+    }
+
+    pub fn is_ndjson(&self) -> bool {
+        matches!(self, Self::Ndjson)
+    }
+}
+
+/// The request body, if any.
 #[derive(Debug, Clone)]
 pub struct BodyIR {
+    pub media_kind: MediaKind,
     pub schema: RefOr<Schema>,
     pub required: bool,
+}
+
+/// The success-response schema and media kind, or `None` for a no-content response.
+#[derive(Debug, Clone)]
+pub struct ResponseIR {
+    pub media_kind: MediaKind,
+    pub schema: RefOr<Schema>,
 }
 
 /// One HTTP operation, fully structural (no language-specific names or types).
@@ -44,8 +71,8 @@ pub struct OperationIR {
     pub query_params: Vec<ParamIR>,
     pub header_params: Vec<ParamIR>,
     pub body: Option<BodyIR>,
-    /// The success-response JSON schema, or `None` for a no-content response.
-    pub response: Option<RefOr<Schema>>,
+    /// The success-response, or `None` for a no-content response.
+    pub response: Option<ResponseIR>,
     /// POST-twin fallback target for `QUERY` operations (epic #1296 policy:
     /// every QUERY endpoint has a POST twin). `Some` only when `method ==
     /// "query"`: the operation's `x-post-twin: <path>` vendor extension if
@@ -127,22 +154,18 @@ fn build_one(
     }
 
     let body = op.request_body.as_ref().and_then(|rb| match rb {
-        RefOr::Item(rb) => rb
-            .content
-            .get("application/json")
-            .and_then(|mt| mt.schema.as_ref())
-            .map(|schema| BodyIR {
-                schema: schema.clone(),
-                required: rb.required,
-            }),
+        RefOr::Item(rb) => pick_media(&rb.content).map(|(media_kind, schema)| BodyIR {
+            media_kind,
+            schema,
+            required: rb.required,
+        }),
         RefOr::Ref(_) => None,
     });
 
     let response = pick_response(op).and_then(|r| match r {
-        RefOr::Item(resp) => resp
-            .content
-            .get("application/json")
-            .and_then(|mt| mt.schema.clone()),
+        RefOr::Item(resp) => {
+            pick_media(&resp.content).map(|(media_kind, schema)| ResponseIR { media_kind, schema })
+        }
         RefOr::Ref(_) => None,
     });
 
@@ -174,6 +197,27 @@ fn inline_params(params: &[RefOr<Parameter>]) -> impl Iterator<Item = &Parameter
         RefOr::Item(p) => Some(p.as_ref()),
         RefOr::Ref(_) => None, // component-parameter refs are out of subset
     })
+}
+
+const NDJSON_MIMES: &[&str] = &[
+    "application/x-ndjson",
+    "application/jsonl",
+    "application/ndjson",
+];
+
+fn pick_media(content: &BTreeMap<String, MediaType>) -> Option<(MediaKind, RefOr<Schema>)> {
+    if let Some(mt) = content.get("application/json") {
+        return mt.schema.as_ref().map(|s| (MediaKind::Json, s.clone()));
+    }
+    for mime in NDJSON_MIMES {
+        if let Some(mt) = content.get(*mime) {
+            let schema = mt.item_schema.as_ref().or(mt.schema.as_ref());
+            if let Some(schema) = schema {
+                return Some((MediaKind::Ndjson, schema.clone()));
+            }
+        }
+    }
+    None
 }
 
 /// Pick the success response: prefer 200/201/202/203, then any `2xx`, then the
@@ -260,5 +304,116 @@ mod tests {
         assert_eq!(purge.http_method, "PURGE");
         assert_eq!(purge.operation_id.as_deref(), Some("purgePets"));
         assert_eq!(purge.post_twin_path, None);
+    }
+
+    #[test]
+    fn ndjson_request_body() {
+        let s = spec(
+            r##"{"paths":{"/logs":{
+              "post":{"operationId":"uploadLogs",
+                "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
+                "responses":{"200":{"description":"ok"}}}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        let body = op.body.as_ref().expect("expected request body");
+        assert_eq!(body.media_kind, MediaKind::Ndjson);
+        assert!(body.required);
+        match &body.schema {
+            RefOr::Item(schema) => assert_eq!(schema.ty.0, vec!["object"]),
+            RefOr::Ref(_) => panic!("expected inline schema"),
+        }
+    }
+
+    #[test]
+    fn ndjson_success_response() {
+        let s = spec(
+            r##"{"paths":{"/events":{
+              "get":{"operationId":"streamEvents",
+                "responses":{"200":{"content":{"application/x-ndjson":{"schema":{"type":"string"}}}}}}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        let resp = op.response.as_ref().expect("expected response");
+        assert_eq!(resp.media_kind, MediaKind::Ndjson);
+        match &resp.schema {
+            RefOr::Item(schema) => assert_eq!(schema.ty.0, vec!["string"]),
+            RefOr::Ref(_) => panic!("expected inline schema"),
+        }
+    }
+
+    #[test]
+    fn mixed_json_and_ndjson_picks_json() {
+        let s = spec(
+            r##"{"paths":{"/items":{
+              "post":{"operationId":"createItems",
+                "requestBody":{"required":false,"content":{
+                  "application/json":{"schema":{"type":"object"}},
+                  "application/x-ndjson":{"schema":{"type":"string"}}
+                }},
+                "responses":{"200":{"content":{
+                  "application/x-ndjson":{"schema":{"type":"string"}},
+                  "application/json":{"schema":{"type":"array"}}
+                }}}}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        let body = op.body.as_ref().expect("expected request body");
+        assert_eq!(body.media_kind, MediaKind::Json);
+        match &body.schema {
+            RefOr::Item(schema) => assert_eq!(schema.ty.0, vec!["object"]),
+            RefOr::Ref(_) => panic!("expected inline schema"),
+        }
+
+        let resp = op.response.as_ref().expect("expected response");
+        assert_eq!(resp.media_kind, MediaKind::Json);
+        match &resp.schema {
+            RefOr::Item(schema) => assert_eq!(schema.ty.0, vec!["array"]),
+            RefOr::Ref(_) => panic!("expected inline schema"),
+        }
+    }
+
+    #[test]
+    fn ndjson_with_itemschema() {
+        let s = spec(
+            r##"{"paths":{"/records":{
+              "post":{"operationId":"uploadRecords",
+                "requestBody":{"required":true,"content":{"application/x-ndjson":{
+                  "schema":{"type":"array"},
+                  "itemSchema":{"type":"integer"}
+                }}},
+                "responses":{"200":{"content":{"application/jsonl":{
+                  "itemSchema":{"type":"boolean"}
+                }}}}}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        let body = op.body.as_ref().expect("expected request body");
+        assert_eq!(body.media_kind, MediaKind::Ndjson);
+        match &body.schema {
+            RefOr::Item(schema) => assert_eq!(schema.ty.0, vec!["integer"]),
+            RefOr::Ref(_) => panic!("expected inline schema"),
+        }
+
+        let resp = op.response.as_ref().expect("expected response");
+        assert_eq!(resp.media_kind, MediaKind::Ndjson);
+        match &resp.schema {
+            RefOr::Item(schema) => assert_eq!(schema.ty.0, vec!["boolean"]),
+            RefOr::Ref(_) => panic!("expected inline schema"),
+        }
+    }
+
+    #[test]
+    fn unknown_media_type_such_as_text_csv_is_ignored() {
+        let s = spec(
+            r##"{"paths":{"/export":{
+              "post":{"operationId":"exportData",
+                "requestBody":{"required":true,"content":{"text/csv":{"schema":{"type":"string"}}}},
+                "responses":{"200":{"content":{"text/csv":{"schema":{"type":"string"}}}}}}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        assert!(op.body.is_none());
+        assert!(op.response.is_none());
     }
 }

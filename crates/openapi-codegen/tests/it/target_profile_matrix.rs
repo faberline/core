@@ -1,7 +1,7 @@
 // <HANDWRITE gap="missing-generator:external-target-profile-matrix" tracker="#1569" reason="external compiler and runtime oracles require process orchestration">
 
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -95,7 +95,7 @@ fn expected_manifest(requirements: TargetRequirements) -> GenerationManifest {
     }
 }
 
-fn assert_materialized_manifest(output: &GeneratedOutput, out_dir: &PathBuf) -> GenerationManifest {
+fn assert_materialized_manifest(output: &GeneratedOutput, out_dir: &Path) -> GenerationManifest {
     output
         .write_to_dir(out_dir)
         .expect("materialize targeted generated output");
