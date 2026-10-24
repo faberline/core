@@ -2,7 +2,7 @@ use super::literal::esc;
 use crate::domain::emit::rust::rsmap;
 use crate::domain::ir::names::{to_snake, NameRegistry};
 use crate::domain::ir::openapi::RefOr;
-use crate::domain::ir::operations::{OperationIR, ParamIR};
+use crate::domain::ir::operations::{MediaKind, OperationIR, ParamIR};
 use crate::domain::ir::typemap::TypeMap;
 
 fn fn_name(ir: &OperationIR) -> String {
@@ -48,7 +48,11 @@ pub(super) fn emit_method(
             if *req { t.clone() } else { rsmap::optional(t) }
         ));
     }
-    let body_ty = ir.body.as_ref().map(|b| rsmap::type_expr(&b.schema, tm));
+    let body_ty = ir
+        .body
+        .as_ref()
+        .filter(|b| b.media_kind == MediaKind::Json)
+        .map(|b| rsmap::type_expr(&b.schema, tm));
     if let Some(t) = &body_ty {
         let req = ir.body.as_ref().map(|b| b.required).unwrap_or(false);
         sig.push(format!(
@@ -173,13 +177,15 @@ pub(super) fn emit_method(
 /// `(return type, return statement)` for the operation's response.
 fn response(ir: &OperationIR, tm: &TypeMap) -> (String, String) {
     match &ir.response {
-        None => ("()".to_string(), "let _ = resp; Ok(())".to_string()),
-        Some(RefOr::Ref(r)) => {
-            let ty = tm
-                .resolve_ref(&r.reference)
-                .unwrap_or_else(|| "serde_json::Value".to_string());
-            (ty, "Ok(resp.json()?)".to_string())
-        }
-        Some(node @ RefOr::Item(_)) => (rsmap::type_expr(node, tm), "Ok(resp.json()?)".to_string()),
+        Some(resp) if resp.media_kind == MediaKind::Json => match &resp.schema {
+            RefOr::Ref(r) => {
+                let ty = tm
+                    .resolve_ref(&r.reference)
+                    .unwrap_or_else(|| "serde_json::Value".to_string());
+                (ty, "Ok(resp.json()?)".to_string())
+            }
+            node @ RefOr::Item(_) => (rsmap::type_expr(node, tm), "Ok(resp.json()?)".to_string()),
+        },
+        _ => ("()".to_string(), "let _ = resp; Ok(())".to_string()),
     }
 }
