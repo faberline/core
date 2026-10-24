@@ -102,11 +102,11 @@ async fn follower_status() {
 
 #[tokio::test]
 async fn learner_status() {
-    let nodes = cluster(3).await;
+    let nodes = cluster(4).await;
     let leader_idx = await_leader(&nodes)
         .await
-        .expect("a three-voter cluster elects a leader");
-    let target_idx = (leader_idx + 1) % 3;
+        .expect("a four-voter cluster elects a leader");
+    let target_idx = (leader_idx + 1) % 4;
     let target_id = NodeId::new(target_idx as u64);
 
     nodes[leader_idx]
