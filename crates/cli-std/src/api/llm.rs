@@ -11,10 +11,13 @@
 //! flags, ...) belong in a `TopicSection::Generated` section so `<tool> llm`
 //! always reports what's true right now. `Topic` + `render` are unchanged —
 //! every existing CLI keeps compiling and behaving exactly as before.
+//!
+//! Use [`assert_snapshot_matches`] to verify that committed documentation
+//! snapshots (such as `llms.txt`) stay identical to live generation.
 
 pub use crate::application::llm::{
-    assert_topics_render, render, render_sectioned, Format, RenderableTopic, RenderedSection,
-    SectionedTopic, Topic, TopicSection,
+    assert_snapshot_matches, assert_topics_render, render, render_sectioned, Format,
+    RenderableTopic, RenderedSection, SectionedTopic, Topic, TopicSection,
 };
 
 /// Typed, task-navigation protocol for tools that need stronger machine
