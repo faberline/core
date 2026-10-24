@@ -1,7 +1,7 @@
 //! Emit serde structs / aliases for the spec's component schemas.
 
 use crate::domain::emit::rust::rsmap;
-use crate::domain::ir::names::{to_pascal, to_snake};
+use crate::domain::ir::names::{to_pascal, to_snake, NameRegistry};
 use crate::domain::ir::openapi::{RefOr, Schema, Spec};
 use crate::domain::ir::typemap::TypeMap;
 use crate::domain::RustTarget;
@@ -52,11 +52,42 @@ pub fn emit(spec: &Spec, tm: &TypeMap, target: RustTarget) -> String {
 fn emit_schema(name: &str, node: &RefOr<Schema>, tm: &TypeMap, target: RustTarget) -> String {
     match node {
         RefOr::Ref(_) => format!("pub type {name} = {};\n", rsmap::type_expr(node, tm)),
+        RefOr::Item(schema) if is_string_enum(schema) => emit_enum(name, schema),
         RefOr::Item(schema) if schema.properties.is_empty() => {
             format!("pub type {name} = {};\n", rsmap::type_expr(node, tm))
         }
         RefOr::Item(schema) => emit_struct(name, schema, tm, target),
     }
+}
+
+/// True when a component schema is a string enum eligible for a Rust enum definition.
+pub fn is_string_enum(schema: &Schema) -> bool {
+    schema.type_names().as_slice() == ["string"]
+        && !schema.enum_values.is_empty()
+        && schema.enum_values.iter().all(|v| v.is_string())
+        && schema.properties.is_empty()
+        && schema.one_of.is_empty()
+        && schema.any_of.is_empty()
+        && schema.all_of.is_empty()
+}
+
+fn emit_enum(name: &str, schema: &Schema) -> String {
+    let mut s = String::from("#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\n");
+    s.push_str(&format!("pub enum {name} {{\n"));
+    let mut reg = NameRegistry::new();
+    for val in &schema.enum_values {
+        if let Some(raw) = val.as_str() {
+            let mut pascal = to_pascal(raw);
+            if pascal == "Self" {
+                pascal = "Self_".to_string();
+            }
+            let variant = reg.unique(&pascal);
+            s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(raw)));
+            s.push_str(&format!("    {variant},\n"));
+        }
+    }
+    s.push_str("}\n");
+    s
 }
 
 fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) -> String {
@@ -81,4 +112,207 @@ fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) ->
 
 fn esc(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::ir::build_type_map;
+    use serde::{Deserialize, Serialize};
+
+    fn parse_spec(json: &str) -> Spec {
+        serde_json::from_str(json).unwrap()
+    }
+
+    #[test]
+    fn declared_order() {
+        let spec = parse_spec(
+            r##"{
+            "openapi": "3.0.0",
+            "info": { "title": "Test", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Status": {
+                        "type": "string",
+                        "enum": ["active", "pending", "inactive"]
+                    }
+                }
+            }
+        }"##,
+        );
+        let tm = build_type_map(&spec);
+        let out = emit(&spec, &tm, RustTarget::Rust2021);
+        assert!(out.contains(
+            "#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\npub enum Status {"
+        ));
+        let pos_active = out.find("Active,").unwrap();
+        let pos_pending = out.find("Pending,").unwrap();
+        let pos_inactive = out.find("Inactive,").unwrap();
+        assert!(pos_active < pos_pending);
+        assert!(pos_pending < pos_inactive);
+    }
+
+    #[test]
+    fn rename_non_identifier_values() {
+        let spec = parse_spec(
+            r##"{
+            "openapi": "3.0.0",
+            "info": { "title": "Test", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Special": {
+                        "type": "string",
+                        "enum": ["", "123", "kebab-case", "with space"]
+                    }
+                }
+            }
+        }"##,
+        );
+        let tm = build_type_map(&spec);
+        let out = emit(&spec, &tm, RustTarget::Rust2021);
+        assert!(out.contains("    #[serde(rename = \"\")]\n    Anonymous,"));
+        assert!(out.contains("    #[serde(rename = \"123\")]\n    _123,"));
+        assert!(out.contains("    #[serde(rename = \"kebab-case\")]\n    KebabCase,"));
+        assert!(out.contains("    #[serde(rename = \"with space\")]\n    WithSpace,"));
+    }
+
+    #[test]
+    fn collision_disambiguation() {
+        let spec = parse_spec(
+            r##"{
+            "openapi": "3.0.0",
+            "info": { "title": "Test", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Collision": {
+                        "type": "string",
+                        "enum": ["foo_bar", "foo-bar", "FooBar"]
+                    }
+                }
+            }
+        }"##,
+        );
+        let tm = build_type_map(&spec);
+        let out = emit(&spec, &tm, RustTarget::Rust2021);
+        assert!(out.contains("    #[serde(rename = \"foo_bar\")]\n    FooBar,"));
+        assert!(out.contains("    #[serde(rename = \"foo-bar\")]\n    FooBar_2,"));
+        assert!(out.contains("    #[serde(rename = \"FooBar\")]\n    FooBar_3,"));
+    }
+
+    #[test]
+    fn nullable_enum_emits_same_enum() {
+        let spec = parse_spec(
+            r##"{
+            "openapi": "3.0.0",
+            "info": { "title": "Test", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "NullableStatus": {
+                        "type": "string",
+                        "enum": ["active", "inactive"],
+                        "nullable": true
+                    }
+                }
+            }
+        }"##,
+        );
+        let tm = build_type_map(&spec);
+        let out = emit(&spec, &tm, RustTarget::Rust2021);
+        assert!(out.contains("#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\npub enum NullableStatus {"));
+        assert!(out.contains("    #[serde(rename = \"active\")]\n    Active,"));
+        assert!(out.contains("    #[serde(rename = \"inactive\")]\n    Inactive,"));
+    }
+
+    #[test]
+    fn struct_property_refs_enum() {
+        let spec = parse_spec(
+            r##"{
+            "openapi": "3.0.0",
+            "info": { "title": "Test", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Status": {
+                        "type": "string",
+                        "enum": ["active", "inactive"]
+                    },
+                    "User": {
+                        "type": "object",
+                        "properties": {
+                            "status": { "$ref": "#/components/schemas/Status" },
+                            "opt_status": { "$ref": "#/components/schemas/Status" },
+                            "statuses": {
+                                "type": "array",
+                                "items": { "$ref": "#/components/schemas/Status" }
+                            }
+                        },
+                        "required": ["status"]
+                    }
+                }
+            }
+        }"##,
+        );
+        let tm = build_type_map(&spec);
+        let out = emit(&spec, &tm, RustTarget::Rust2021);
+        assert!(out.contains("pub enum Status {"));
+        assert!(out.contains("pub struct User {"));
+        assert!(out.contains("    pub status: Status,"));
+        assert!(out.contains("    pub opt_status: Option<Status>,"));
+        assert!(out.contains("    pub statuses: Option<Vec<Status>>,"));
+    }
+
+    #[test]
+    fn non_string_enum_left_as_string() {
+        let spec = parse_spec(
+            r##"{
+            "openapi": "3.0.0",
+            "info": { "title": "Test", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "IntEnum": {
+                        "type": "integer",
+                        "enum": [1, 2]
+                    },
+                    "UntypedEnum": {
+                        "enum": ["a", "b"]
+                    },
+                    "MixedEnum": {
+                        "type": "string",
+                        "enum": ["a", 1]
+                    }
+                }
+            }
+        }"##,
+        );
+        let tm = build_type_map(&spec);
+        let out = emit(&spec, &tm, RustTarget::Rust2021);
+        assert!(out.contains("pub type IntEnum = String;"));
+        assert!(out.contains("pub type UntypedEnum = String;"));
+        assert!(out.contains("pub type MixedEnum = String;"));
+    }
+
+    #[test]
+    fn serde_round_trip_rejects_undeclared_value() {
+        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        pub enum Status {
+            #[serde(rename = "active")]
+            Active,
+            #[serde(rename = "inactive")]
+            Inactive,
+        }
+
+        let serialized = serde_json::to_string(&Status::Active).unwrap();
+        assert_eq!(serialized, "\"active\"");
+
+        let deserialized: Status = serde_json::from_str("\"active\"").unwrap();
+        assert_eq!(deserialized, Status::Active);
+
+        let err = serde_json::from_str::<Status>("\"unknown\"");
+        assert!(err.is_err());
+    }
 }
