@@ -193,7 +193,7 @@ fn stale_leader_steps_down_on_higher_term() {
 fn peer_match_index_reports_leader_peers_and_advances() {
     let mut c = Cluster::new(4);
     let leader = c.run_until_leader();
-    let follower_id = (0..3).map(NodeId::new).find(|id| *id != leader).unwrap();
+    let follower_id = (0..4).map(NodeId::new).find(|id| *id != leader).unwrap();
 
     // Accessor is None on a follower.
     assert!(c.nodes[&follower_id].peer_match_index().is_none());

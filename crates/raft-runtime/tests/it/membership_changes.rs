@@ -298,6 +298,12 @@ async fn raftz_peer_match_index_reported_on_leader_and_empty_on_follower() {
         .collect();
     assert!(!peer_ids.contains(&leader_id));
     assert!(peer_ids.contains(&target_id));
+    let mut expected_sorted_ids = peer_ids.clone();
+    expected_sorted_ids.sort();
+    assert_eq!(
+        peer_ids, expected_sorted_ids,
+        "peer_match_index must be sorted by NodeId"
+    );
 
     // Read /raftz on follower: reports an empty list.
     let follower_status = status(&client, &nodes[follower].url).await;
