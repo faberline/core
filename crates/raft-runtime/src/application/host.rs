@@ -78,6 +78,9 @@ pub(crate) struct Shared {
     /// their index. They are keyed by index, never command content, so a caller
     /// cancellation cannot release a live appended command.
     pub(crate) pending_admission: StdMutex<BTreeMap<(Index, u64), AdmissionPermit>>,
+    /// Exact committed terms retained only for live leader-side proposal waiters.
+    /// Historical terms below the snapshot boundary are no longer in the log.
+    pub(crate) proposal_committed_terms: StdMutex<BTreeMap<(Index, u64), Option<raft_core::Term>>>,
     /// The peer address book and the calls that are not raft messages.
     pub(crate) peer_client: Arc<dyn PeerClient<NodeId>>,
     /// Raft message delivery to peers; the same adapter as `peer_client`.

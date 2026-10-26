@@ -582,3 +582,128 @@ async fn sequential_successful_proposals_increase_indices() {
         }
     }
 }
+
+/// Keep the proposal future unpolled while a newer leader commits two entries
+/// and the ordered applier compacts them. No scheduler timing determines whether
+/// the waiter observes the resident log or the compacted prefix.
+async fn proposal_outcome_after_compaction(replaced: bool) -> ProposalOutcome {
+    use raft_core::VoteResp;
+    use raft_runtime::SnapshotPolicy;
+    use std::future::{poll_fn, Future};
+    use std::task::Poll;
+
+    let sm = TestSm::new();
+    let dir = TempDir::new().unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
+    let host = RaftHost::spawn(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
+        HashMap::new(),
+        store,
+        sm.clone() as Arc<dyn RaftStateMachine>,
+        HostConfig::default()
+            .with_propose_timeout(Duration::from_secs(10))
+            .with_snapshot(SnapshotPolicy::EveryEntries(2)),
+    );
+    tokio::time::timeout(Duration::from_secs(3), async {
+        loop {
+            let status = host.status().await;
+            host.step_vote_response(
+                NodeId::new(1),
+                VoteResp {
+                    term: Term::new(status.term),
+                    granted: true,
+                },
+            )
+            .await;
+            if host.is_leader().await {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("host elects a leader");
+    let original_term = host.status().await.term;
+    let command = b"proposal-before-compaction".to_vec();
+    let mut proposal = Box::pin(host.propose_outcome(command.clone()));
+    poll_fn(|cx| {
+        assert!(proposal.as_mut().poll(cx).is_pending());
+        Poll::Ready(())
+    })
+    .await;
+    assert_eq!(host.status().await.last_index, 1, "proposal was appended");
+
+    let applied_term = original_term + u64::from(replaced);
+    let boundary_term = applied_term + 1;
+    let response = host
+        .step_append_entries(
+            NodeId::new(1),
+            AppendReq {
+                term: Term::new(boundary_term),
+                leader: NodeId::new(1),
+                prev_log_index: Index::new(0),
+                prev_log_term: Term::new(0),
+                entries: vec![
+                    RaftEntry {
+                        index: Index::new(1),
+                        term: Term::new(applied_term),
+                        command: if replaced {
+                            b"replacement".to_vec()
+                        } else {
+                            command.clone()
+                        },
+                        kind: EntryKind::Command,
+                    },
+                    RaftEntry {
+                        index: Index::new(2),
+                        term: Term::new(boundary_term),
+                        command: b"later-term-command".to_vec(),
+                        kind: EntryKind::Command,
+                    },
+                ],
+                leader_commit: Index::new(2),
+            },
+        )
+        .await;
+    assert!(response.success);
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while host.snapshot_index().await < Index::new(2) {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("applier compacts both entries before proposal resumes");
+    assert_eq!(sm.applied_index(), Index::new(2));
+    let persisted = host.store().load().unwrap().unwrap();
+    assert_eq!(persisted.snapshot_term, Term::new(boundary_term));
+    assert!(persisted.log.is_empty());
+    tokio::time::timeout(Duration::from_secs(1), proposal)
+        .await
+        .expect("proposal resolves promptly after compaction")
+}
+
+#[tokio::test]
+async fn applied_proposal_remains_completed_after_later_term_compaction() {
+    let outcome = proposal_outcome_after_compaction(false).await;
+    assert!(
+        matches!(outcome, ProposalOutcome::Completed { index } if index == Index::new(1)),
+        "expected original proposal to remain completed, got {outcome:?}"
+    );
+}
+
+#[tokio::test]
+async fn compacted_superseded_proposal_names_actual_replacing_term() {
+    match proposal_outcome_after_compaction(true).await {
+        ProposalOutcome::Ambiguous { index, reason } => {
+            assert_eq!(index, Some(Index::new(1)));
+            assert!(reason.contains("superseded by entry of term 2"), "{reason}");
+        }
+        other => panic!("expected superseded outcome, got {other:?}"),
+    }
+}

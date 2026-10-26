@@ -373,3 +373,30 @@ fn conflicting_term_at_same_index_drops_only_replaced_uncommitted_permit() {
     assert!(pending.lock().unwrap().is_empty());
     assert_eq!(sm.applied_index(), index);
 }
+
+#[tokio::test]
+async fn cancelled_proposal_releases_its_identity_registration() {
+    use std::future::{poll_fn, Future};
+    use std::task::Poll;
+
+    let host = elected_single_host(AdmissionSm::accepting()).await;
+    // Keep this waiter pending independently of the blocking pool's scheduling.
+    host.shared.apply_stopped.store(true, Ordering::Release);
+    let mut proposal = Box::pin(host.propose_outcome(b"cancelled-waiter".to_vec()));
+    poll_fn(|cx| {
+        assert!(proposal.as_mut().poll(cx).is_pending());
+        Poll::Ready(())
+    })
+    .await;
+    assert_eq!(
+        host.shared.proposal_committed_terms.lock().unwrap().len(),
+        1
+    );
+    drop(proposal);
+    assert!(host
+        .shared
+        .proposal_committed_terms
+        .lock()
+        .unwrap()
+        .is_empty());
+}
