@@ -1,6 +1,23 @@
 # Local verification of the unit/static preparation
 
-## Current repair, 2026-10-28
+## Latest evidence snapshot, 2026-10-28
+
+The current helper suite has 53 passing controls. The existing controller suite
+has 10 passing controls. The complete online CI run at
+`e001a8e4eba89df6d617ee04fc56f2480308631a` passed all 77 jobs:
+[run 40695374365](https://github.com/faberline/core/actions/runs/40695374365).
+That result belongs to the named source revision. A later head needs its own
+complete CI and final Claude review.
+
+The records below describe successive preparation and repair checkpoints.
+Their earlier counts (43, 45 or 47 helper controls) and pending steps are
+historical, not claims about the latest suite. Initial inventory preparation
+did not build or test products locally. The human later authorized local
+compiler checks and Raft product diagnostics to repair actual cloud failures.
+Those checks do not replace complete current-head Linux cloud CI. The public
+parser migration at the end remains an explicit breaking proposal.
+
+## Historical bootstrap repair, 2026-10-28
 
 The controller repaired ordinary read-only PR execution after online run
 40643971191 refused the missing base helper. The candidate now supplies the

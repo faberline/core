@@ -25,8 +25,10 @@ persisted checkout credentials. The base supplies the comparison inventory.
 It need not already contain the new helper. That requirement blocked all new
 ordinary tests in run 40643971191 and has been removed from PR execution.
 
-Zero, ignored, measured, filtered, incomplete or duplicate test evidence still
-fails. Each enabled unit target runs even if an earlier target fails. Clippy
+Zero, unresolved ignored, measured, filtered, incomplete or duplicate test
+evidence still fails. Debug targets with ignored tests must also pass their
+complete release roster with `--include-ignored`; every ignored name must pass
+there. Each enabled unit target runs even if an earlier target fails. Clippy
 runs after failed unit tests unless the workflow is cancelled. Formatting
 changes in Rust sources were generated only by `cargo fmt --all`.
 
@@ -39,8 +41,16 @@ issue-specific functional/E2E and measured-performance mappings, independent
 review and authorized delivery. The old independent review is historical; it
 does not apply to the revised workflow or planner.
 
-Local verification passed 45 helper controls and 10 existing controller
-controls. Fresh offline metadata yields the same 70 rows. Workspace formatting
-now passes. No product build or product test ran locally. Online results must
-be checked on the final PR head. Existing push/tag/manual behavior, policy,
+The current isolated verification suite passes 53 helper controls and 10
+existing controller controls. Fresh offline metadata yields the same 70 rows.
+The initial inventory preparation ran no local product builds or tests. The
+human later authorized local compiler checks and Raft product diagnostics to
+repair actual cloud failures. See the dated checkpoints in
+[local verification](local-verification.md); earlier counts are historical.
+
+All 77 online jobs, including workspace formatting, passed at
+`e001a8e4eba89df6d617ee04fc56f2480308631a` in
+[run 40695374365](https://github.com/faberline/core/actions/runs/40695374365).
+That proof belongs to the named head. Every later head still needs its own
+complete CI and final Claude review. Existing push/tag/manual behavior, policy,
 controller, permissions and infrastructure remain unchanged.
