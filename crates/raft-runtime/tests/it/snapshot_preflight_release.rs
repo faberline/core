@@ -76,8 +76,7 @@ impl SnapshotCore {
         if index > Index::new(0) {
             let last = records
                 .iter()
-                .filter(|(record_index, _)| *record_index <= index)
-                .next_back()
+                .rfind(|(record_index, _)| *record_index <= index)
                 .map(|(record_index, _)| *record_index);
             anyhow::ensure!(
                 last == Some(index),
