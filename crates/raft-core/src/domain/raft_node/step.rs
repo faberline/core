@@ -1,6 +1,6 @@
 use super::RaftNode;
 use crate::domain::ids::NodeId;
-use crate::domain::message::{Outgoing, RaftMsg};
+use crate::domain::message::{Outgoing, RaftMsg, TimeoutNowReq};
 use crate::domain::role::Role;
 use crate::domain::timing::HEARTBEAT_INTERVAL_TICKS;
 
@@ -29,6 +29,17 @@ impl RaftNode {
             if self.heartbeat_elapsed >= HEARTBEAT_INTERVAL_TICKS {
                 self.heartbeat_elapsed = 0;
                 self.broadcast_append();
+                // A control RPC can be lost just like an Append RPC. Retry only
+                // within the existing transfer window; never extend its expiry.
+                if let Some(target) = self.transfer_in_flight {
+                    self.send(
+                        target,
+                        RaftMsg::TimeoutNow(TimeoutNowReq {
+                            term: self.current_term,
+                            leader: self.id,
+                        }),
+                    );
+                }
             }
         } else if self.is_voter && self.election_elapsed >= self.election_timeout {
             self.start_election();

@@ -227,3 +227,12 @@ Unit evidence requires a complete nonempty roster with no failed, ignored or
 filtered tests. If a debug target reports ignored tests, run the whole same
 target in release mode with --include-ignored, and verify every ignored name
 passed there. Both executions must succeed. All existing bounds remain intact.
+
+The exact-head cloud raft-runtime job also exposed a named-peer handoff timeout.
+A deterministic regression drops only the first TimeoutNow message, ticks only
+the existing leader and requires the named follower to lead by the next
+heartbeat. It failed before the repair and passes after it. Heartbeats now
+repeat the control message only within the existing transfer window; expiry is
+unchanged. Existing zero-tick, refusal, stale-term and abandonment rows remain.
+The original running-host test retains its 5-second arrival bound. A missing
+retry is proven; the old cloud log did not expose the dropped RPC itself.
