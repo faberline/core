@@ -190,3 +190,16 @@ output fingerprints and all semantic oracles remain intact.
 Controller static validation passed formatting, Python syntax, whitespace and
 57 isolated helper/controller controls. Current-head online product results
 remain required. The original prepared worktree remains unchanged.
+
+The HTTP/2 guard passed online in `openapi-codegen` job `122700703124` at
+head `5f4a33a`; its 128 requests and 5-second limit are unchanged. This is a
+bounded guard pass, not complete functional/performance qualification.
+
+The next CI pass found one missing `ChunkHandler` re-export in the application
+layer; the export chain is completed. Nonstandard parser convenience methods
+now have explicit `parse_name` / `parse_toml` names. Standard `FromStr` remains
+available and is exercised by retained tests with added trait-path assertions.
+Parsed values, case handling and rejection assertions are unchanged. Remaining
+field shorthand and fixture type aliases are equivalent lint cleanup.
+The shared runner now includes ignored units instead of accepting skipped work.
+Its evidence parser continues to reject ignored, filtered or incomplete results.

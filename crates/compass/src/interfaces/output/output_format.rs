@@ -15,7 +15,7 @@ pub enum OutputFormat {
 }
 
 impl OutputFormat {
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_name(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "json" => Some(OutputFormat::Json),
             "markdown" | "md" => Some(OutputFormat::Markdown),
@@ -33,6 +33,6 @@ impl std::str::FromStr for OutputFormat {
     type Err = &'static str;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        OutputFormat::from_str(value).ok_or("unknown output format")
+        OutputFormat::parse_name(value).ok_or("unknown output format")
     }
 }

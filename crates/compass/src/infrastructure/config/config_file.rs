@@ -5,11 +5,11 @@ impl ArgusConfig {
     /// Load configuration from a file
     pub fn from_file(path: &Path) -> Result<Self, ConfigError> {
         let content = std::fs::read_to_string(path).map_err(ConfigError::Io)?;
-        Self::from_str(&content)
+        Self::parse_toml(&content)
     }
 
     /// Parse configuration from a string
-    pub fn from_str(content: &str) -> Result<Self, ConfigError> {
+    pub fn parse_toml(content: &str) -> Result<Self, ConfigError> {
         toml::from_str(content).map_err(ConfigError::Parse)
     }
 
@@ -52,7 +52,7 @@ impl std::str::FromStr for ArgusConfig {
     type Err = ConfigError;
 
     fn from_str(content: &str) -> Result<Self, Self::Err> {
-        ArgusConfig::from_str(content)
+        ArgusConfig::parse_toml(content)
     }
 }
 

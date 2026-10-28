@@ -20,9 +20,10 @@ pub use fenced_assignment::{
     ActiveAssignment, AssignmentEpoch, AssignmentError, FenceToken, FencedAssignment,
 };
 pub use host::{
-    AdmissionRefused, ChunkSink, HostShutdownReport, LeadershipHandoff, MembershipPhase,
-    PhaseRecord, PhaseStatus, ProposalBackpressure, ProposalOutcome, RaftHost, RaftStatus,
-    ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed, SNAPSHOT_CHUNK_SIZE,
+    AdmissionRefused, ChunkHandler, ChunkSink, HostShutdownReport, LeadershipHandoff,
+    MembershipPhase, PhaseRecord, PhaseStatus, ProposalBackpressure, ProposalOutcome, RaftHost,
+    RaftStatus, ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed,
+    SNAPSHOT_CHUNK_SIZE,
 };
 pub use outcome_window::{OutcomeWindow, DEFAULT_CAPACITY as OUTCOME_WINDOW_DEFAULT_CAPACITY};
 pub use port_error::{MembershipError, StateMachineError};

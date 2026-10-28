@@ -137,7 +137,7 @@ impl TechStack {
     }
 
     /// Parse from string
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse_name(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "shield" | "cclab.shield" => Some(TechStack::Shield),
             "titan" | "cclab.titan" => Some(TechStack::Titan),
@@ -163,7 +163,7 @@ impl std::str::FromStr for TechStack {
     type Err = &'static str;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        TechStack::from_str(value).ok_or("unknown technology stack")
+        TechStack::parse_name(value).ok_or("unknown technology stack")
     }
 }
 

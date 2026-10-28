@@ -10,10 +10,12 @@ fn test_tech_stack_language() {
 
 #[test]
 fn test_tech_stack_from_str() {
-    assert_eq!(TechStack::from_str("shield"), Some(TechStack::Shield));
-    assert_eq!(TechStack::from_str("cclab.titan"), Some(TechStack::Titan));
-    assert_eq!(TechStack::from_str("serde"), Some(TechStack::Serde));
-    assert_eq!(TechStack::from_str("invalid"), None);
+    assert_eq!(TechStack::parse_name("shield"), Some(TechStack::Shield));
+    assert_eq!(TechStack::parse_name("cclab.titan"), Some(TechStack::Titan));
+    assert_eq!(TechStack::parse_name("serde"), Some(TechStack::Serde));
+    assert_eq!(TechStack::parse_name("invalid"), None);
+    assert_eq!("shield".parse::<TechStack>().unwrap(), TechStack::Shield);
+    assert!("invalid".parse::<TechStack>().is_err());
 }
 
 #[test]

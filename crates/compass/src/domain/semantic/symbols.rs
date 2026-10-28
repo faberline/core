@@ -63,7 +63,7 @@ impl SymbolTable {
             id,
             name: name.clone(),
             kind,
-            location: location,
+            location,
             type_info,
             doc,
             scope_id,

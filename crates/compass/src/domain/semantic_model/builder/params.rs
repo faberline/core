@@ -18,7 +18,7 @@ impl<'a> SemanticModelBuilder<'a> {
                     let symbol_id = self.model.add_symbol(SymbolData {
                         name,
                         kind: SemanticSymbolKind::Parameter,
-                        def_range: def_range,
+                        def_range,
                         file_path: self.file_path.clone(),
                         type_info: TypeInfo::Unknown,
                         documentation: None,
@@ -42,7 +42,7 @@ impl<'a> SemanticModelBuilder<'a> {
                         let symbol_id = self.model.add_symbol(SymbolData {
                             name,
                             kind: SemanticSymbolKind::Parameter,
-                            def_range: def_range,
+                            def_range,
                             file_path: self.file_path.clone(),
                             type_info: type_info.clone(),
                             documentation: None,

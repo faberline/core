@@ -40,9 +40,11 @@ impl CollectorRejection for Rejected {
     }
 }
 
+type CommitLog = Arc<Mutex<Vec<(Vec<u64>, CommitStats)>>>;
+
 struct Source {
     outcomes: VecDeque<ReadOutcome<Raw, Rejected>>,
-    commits: Arc<Mutex<Vec<(Vec<u64>, CommitStats)>>>,
+    commits: CommitLog,
 }
 
 impl CollectorSource for Source {

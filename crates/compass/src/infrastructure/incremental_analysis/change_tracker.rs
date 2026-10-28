@@ -65,7 +65,7 @@ impl ChangeTracker {
         self.pending.push(FileChange {
             file: file.clone(),
             kind,
-            new_hash: new_hash,
+            new_hash,
             timestamp: Instant::now(),
         });
 
