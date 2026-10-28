@@ -217,3 +217,32 @@ pub async fn await_leader_with_tick(nodes: &[Node], tick: Duration) -> Option<us
         tokio::time::sleep(timing.poll_interval.min(remaining)).await;
     }
 }
+
+/// Default budget per node when waiting for state machines to reach an applied index.
+pub const DEFAULT_APPLIED_INDEX_BUDGET: Duration = Duration::from_secs(60);
+
+/// Wait for every node in `nodes` to reach `target` applied index.
+///
+/// Each node gets its own budget of `per_node_budget` (at least 60 s).
+/// When the budget is exhausted, the helper panics with a timeout message
+/// naming the failing node and the applied index each node reached. It never
+/// falls through to value assertions.
+pub async fn wait_for_applied_index(nodes: &[Node], target: Index, per_node_budget: Duration) {
+    for (i, n) in nodes.iter().enumerate() {
+        let deadline = tokio::time::Instant::now() + per_node_budget;
+        while n.sm.applied_index() < target {
+            if tokio::time::Instant::now() >= deadline {
+                let reached: Vec<String> = nodes
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, node)| format!("node {idx}: {}", node.sm.applied_index()))
+                    .collect();
+                panic!(
+                    "timed out waiting for node {i} to reach applied index {target} within {per_node_budget:?}; applied index each node reached: [{}]",
+                    reached.join(", ")
+                );
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
+}
