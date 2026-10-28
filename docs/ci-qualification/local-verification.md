@@ -105,3 +105,9 @@ Driver/workflow hashes still match the historical independent review. The
 trusted policy/controller bytes remain equal to the base. YAML parsing and
 diff whitespace checks passed. These are controller rechecks, not a new
 independent review, online product evidence or bootstrap approval.
+
+The subsequent controller change separates workspace format from inventory, so
+format failure cannot skip all 70 unit rows. Original five-crate jobs remain
+unchanged. The driver hash remains the reviewed value; the workflow hash changed
+and requires fresh independent review. Historical workflow review is not reused
+for this modification.

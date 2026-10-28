@@ -33,14 +33,14 @@ failure must not be bypassed by falling back to PR-owned helper code.
 If a separately reviewed bootstrap and immutable identity contract are later
 approved, the current inventory schedules:
 
-- One planning/fixture/inventory/format job.
+- One planning/fixture/inventory job and one independent format job.
 - 70 package/profile jobs, each running one current library unit command and
   one all-target clippy command: 140 Cargo commands plus workspace format.
 - At most four matrix jobs concurrently; each new job has a 30-minute timeout.
 - The original five crate jobs remain separate and unchanged.
 
-Thus a fully enabled current PR has 71 additional jobs (76 including the five
-existing jobs). Configured new-job timeout budgets sum to 2,130 runner-minutes
+Thus a fully enabled current PR has 72 additional jobs (77 including the five
+existing jobs). Configured new-job timeout budgets sum to 2,140 runner-minutes
 at the current row count; that is a timeout-budget calculation, not measured
 runtime, billed minutes or a monetary estimate. Queue time, setup, actual
 runner billing and failure timing are unmeasured. Additional binary targets
@@ -64,6 +64,8 @@ The human authorized committing and publishing the coverage work on 2026-10-28.
 The draft publication does not approve bootstrap, merge or product acceptance.
 This controller revalidated 43 gate controls and 10 existing controller controls;
 all 53 passed. Fresh offline metadata still derives 70 rows across 30 library
-targets. Driver and workflow SHA-256 values match the previous independent
-review. No product suite ran locally; the initial online bootstrap refusal is
+targets. The driver SHA-256 matches the previous independent review. The controller
+subsequently separated formatting into its own PR job so a format failure
+cannot suppress the product unit matrix; this workflow change needs fresh
+independent review. No product suite ran locally; the initial online bootstrap refusal is
 expected and must remain visible.

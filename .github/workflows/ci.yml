@@ -53,7 +53,7 @@ jobs:
   # These are proposal checks. Trusted qualification still requires an approved
   # immutable workflow/driver identity in the unchanged failure-only policy.
   unit-plan:
-    name: candidate workspace unit inventory and format
+    name: candidate workspace unit inventory
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -106,8 +106,18 @@ jobs:
           python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else "Python 3.11+ required")'
           python3 trusted/scripts/pr-gates/plan.py inventory --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE"
           echo "matrix=$(python3 trusted/scripts/pr-gates/plan.py matrix --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE")" >> "$GITHUB_OUTPUT"
-      - name: Check workspace format
-        working-directory: candidate
+
+  workspace-format:
+    name: candidate workspace format
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Check complete workspace formatting
         run: cargo fmt --all -- --check
 
   workspace-unit-static:
