@@ -62,7 +62,7 @@ impl GoChecker {
                 let local_name = if let Some(name_node) = node.child_by_field_name("name") {
                     file.node_text(&name_node).to_string()
                 } else {
-                    path.split('/').last().unwrap_or(&path).to_string()
+                    path.split('/').next_back().unwrap_or(&path).to_string()
                 };
 
                 imports.push((local_name, path, node.range()));

@@ -48,5 +48,13 @@ impl std::fmt::Display for ConfigError {
 
 impl std::error::Error for ConfigError {}
 
+impl std::str::FromStr for ArgusConfig {
+    type Err = ConfigError;
+
+    fn from_str(content: &str) -> Result<Self, Self::Err> {
+        ArgusConfig::from_str(content)
+    }
+}
+
 #[cfg(test)]
 mod tests;

@@ -45,11 +45,11 @@ impl MermaidParser {
         // state "Description" as StateName
         let without_state = line.strip_prefix("state ").unwrap_or(line).trim();
 
-        let (description, name) = if without_state.starts_with('"') {
+        let (description, name) = if let Some(unquoted) = without_state.strip_prefix('"') {
             // Has description
-            if let Some(end_quote) = without_state[1..].find('"') {
-                let desc = &without_state[1..end_quote + 1];
-                let rest = without_state[end_quote + 2..].trim();
+            if let Some(end_quote) = unquoted.find('"') {
+                let desc = &unquoted[..end_quote];
+                let rest = unquoted[end_quote + 1..].trim();
                 let name = rest.strip_prefix("as ").unwrap_or(rest).trim();
                 (Some(desc.to_string()), name.to_string())
             } else {

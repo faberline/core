@@ -42,7 +42,7 @@ impl MermaidParser {
             else if let Some(ref mut model) = current_class {
                 if let Some(member) = self.parse_class_member(line)? {
                     match member {
-                        ClassMember::Field(field) => model.fields.push(field),
+                        ClassMember::Field(field) => model.fields.push(*field),
                         ClassMember::Method(method) => model.methods.push(method),
                     }
                 }
@@ -81,15 +81,15 @@ impl MermaidParser {
         }
 
         // Determine visibility
-        let (visibility, rest) = if line.starts_with('+') {
-            (Visibility::Public, &line[1..])
-        } else if line.starts_with('-') {
-            (Visibility::Private, &line[1..])
-        } else if line.starts_with('#') {
-            (Visibility::Protected, &line[1..])
-        } else if line.starts_with('~') {
+        let (visibility, rest) = if let Some(rest) = line.strip_prefix('+') {
+            (Visibility::Public, rest)
+        } else if let Some(rest) = line.strip_prefix('-') {
+            (Visibility::Private, rest)
+        } else if let Some(rest) = line.strip_prefix('#') {
+            (Visibility::Protected, rest)
+        } else if let Some(rest) = line.strip_prefix('~') {
             // Package/internal visibility - map to Protected
-            (Visibility::Protected, &line[1..])
+            (Visibility::Protected, rest)
         } else {
             (Visibility::Public, line)
         };
@@ -103,7 +103,7 @@ impl MermaidParser {
         } else {
             // It's a field: type name or name: type
             let field = self.parse_field(rest, visibility)?;
-            Ok(Some(ClassMember::Field(field)))
+            Ok(Some(ClassMember::Field(Box::new(field))))
         }
     }
 
@@ -139,7 +139,7 @@ impl MermaidParser {
                         }
                     } else {
                         ParamDef {
-                            name: parts.get(0).unwrap_or(&"arg").to_string(),
+                            name: parts.first().unwrap_or(&"arg").to_string(),
                             ty: Type::Any,
                             default: None,
                         }
@@ -180,7 +180,7 @@ impl MermaidParser {
             if parts.len() >= 2 {
                 (parts[1].to_string(), self.parse_type(parts[0]))
             } else {
-                (parts.get(0).unwrap_or(&"field").to_string(), Type::Any)
+                (parts.first().unwrap_or(&"field").to_string(), Type::Any)
             }
         };
 
@@ -226,11 +226,9 @@ impl MermaidParser {
                             type_args: vec![],
                         },
                     }
-                } else if s.ends_with("[]") {
-                    let inner = &s[..s.len() - 2];
+                } else if let Some(inner) = s.strip_suffix("[]") {
                     Type::List(Box::new(self.parse_type(inner)))
-                } else if s.ends_with('?') {
-                    let inner = &s[..s.len() - 1];
+                } else if let Some(inner) = s.strip_suffix('?') {
                     Type::Optional(Box::new(self.parse_type(inner)))
                 } else {
                     Type::Instance {
@@ -304,6 +302,6 @@ impl MermaidParser {
 
 /// Enum for class members
 enum ClassMember {
-    Field(FieldDef),
+    Field(Box<FieldDef>),
     Method(MethodDef),
 }

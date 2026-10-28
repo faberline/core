@@ -811,6 +811,8 @@ class H2CConnection:
                 raise H2CConnectionClosed("connection is closed")
             try:
                 raw_sock = socket.create_connection((self._host, self._port), timeout=self._timeout)
+                # Small HTTP/2 frames must not wait for the peer's delayed ACK.
+                raw_sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
                 raw_sock.settimeout(self._timeout)
                 if self._scheme == "https":
                     context = self._ssl_context or ssl.create_default_context()

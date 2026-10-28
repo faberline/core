@@ -14,7 +14,7 @@ pub struct DataModelSpec {
 }
 
 /// Model definition (class/struct/interface)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ModelDef {
     /// Model name (PascalCase)
     pub name: String,
@@ -34,22 +34,6 @@ pub struct ModelDef {
     pub table_name: Option<String>,
     /// Collection name (for MongoDB)
     pub collection_name: Option<String>,
-}
-
-impl Default for ModelDef {
-    fn default() -> Self {
-        Self {
-            name: String::new(),
-            description: None,
-            fields: Vec::new(),
-            methods: Vec::new(),
-            extends: Vec::new(),
-            type_params: Vec::new(),
-            is_abstract: false,
-            table_name: None,
-            collection_name: None,
-        }
-    }
 }
 
 /// Field definition with type, constraints, and metadata

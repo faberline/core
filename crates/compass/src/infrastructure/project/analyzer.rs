@@ -85,10 +85,10 @@ impl ProjectAnalyzer {
 
             if path.is_dir() {
                 self.discover_in_dir(&path, files);
-            } else if path.extension().map(|e| e == "py").unwrap_or(false) {
-                if !self.config.should_exclude(&path) {
-                    files.push(path);
-                }
+            } else if path.extension().map(|e| e == "py").unwrap_or(false)
+                && !self.config.should_exclude(&path)
+            {
+                files.push(path);
             }
         }
     }

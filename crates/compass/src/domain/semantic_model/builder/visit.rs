@@ -66,7 +66,7 @@ impl<'a> SemanticModelBuilder<'a> {
         let symbol_id = self.model.add_symbol(SymbolData {
             name,
             kind: SemanticSymbolKind::Function,
-            def_range: def_range.clone(),
+            def_range: def_range,
             file_path: self.file_path.clone(),
             type_info: type_info.clone(),
             documentation,
@@ -114,7 +114,7 @@ impl<'a> SemanticModelBuilder<'a> {
         let class_id = self.model.add_symbol(SymbolData {
             name,
             kind: SemanticSymbolKind::Class,
-            def_range: def_range.clone(),
+            def_range: def_range,
             file_path: self.file_path.clone(),
             type_info: type_info.clone(),
             documentation,
@@ -183,7 +183,7 @@ impl<'a> SemanticModelBuilder<'a> {
         let method_id = self.model.add_symbol(SymbolData {
             name,
             kind: SemanticSymbolKind::Method,
-            def_range: def_range.clone(),
+            def_range: def_range,
             file_path: self.file_path.clone(),
             type_info: type_info.clone(),
             documentation,
@@ -224,7 +224,7 @@ impl<'a> SemanticModelBuilder<'a> {
                 let symbol_id = self.model.add_symbol(SymbolData {
                     name,
                     kind: SemanticSymbolKind::Attribute,
-                    def_range: def_range.clone(),
+                    def_range: def_range,
                     file_path: self.file_path.clone(),
                     type_info: type_info.clone(),
                     documentation: None,
@@ -254,7 +254,7 @@ impl<'a> SemanticModelBuilder<'a> {
                 let symbol_id = self.model.add_symbol(SymbolData {
                     name,
                     kind: SemanticSymbolKind::Variable,
-                    def_range: def_range.clone(),
+                    def_range: def_range,
                     file_path: self.file_path.clone(),
                     type_info: type_info.clone(),
                     documentation: None,

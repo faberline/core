@@ -182,7 +182,7 @@ impl PhotonGenerator {
         }
 
         // Build URL
-        let path = endpoint.path.replace("{", "{").replace("}", "}");
+        let path = &endpoint.path;
         lines.push(format!(
             "{}{}url = f\"{{self._client.base_url}}{}\"",
             ctx.indent, ctx.indent, path

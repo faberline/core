@@ -43,9 +43,7 @@ impl Shared {
                     ),
                 });
             }
-            let Some(idx) = n.propose(command) else {
-                return None;
-            };
+            let idx = n.propose(command)?;
             let term = n.current_term();
             if let Some(permit) = permit {
                 let previous = self

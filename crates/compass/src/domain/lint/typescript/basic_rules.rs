@@ -110,7 +110,7 @@ impl TypeScriptChecker {
                         if child.kind() == "variable_declarator" {
                             if let Some(name_node) = child.child_by_field_name("name") {
                                 let name = file.node_text(&name_node).to_string();
-                                let_vars.insert(name, (name_node.to_range(), decl_range.clone()));
+                                let_vars.insert(name, (name_node.to_range(), decl_range));
                             }
                         }
                     }

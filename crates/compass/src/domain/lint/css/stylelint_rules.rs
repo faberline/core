@@ -136,8 +136,7 @@ impl CssChecker {
         file.walk(|node, _depth| {
             if node.kind() == "color_value" {
                 let text = file.node_text(node).trim().to_string();
-                if text.starts_with('#') {
-                    let hex_part = &text[1..];
+                if let Some(hex_part) = text.strip_prefix('#') {
                     let len = hex_part.len();
                     if len != 3 && len != 4 && len != 6 && len != 8 {
                         diagnostics.push(Diagnostic::error(

@@ -253,15 +253,15 @@ impl FrameworkDetector {
                 // If it's a directory (not hidden), recurse into it
                 if path.is_dir() {
                     if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                        if !dir_name.starts_with('.') {
-                            if self.find_files_recursive_impl(
+                        if !dir_name.starts_with('.')
+                            && self.find_files_recursive_impl(
                                 &path,
                                 filename,
                                 max_depth,
                                 current_depth + 1,
-                            ) {
-                                return true;
-                            }
+                            )
+                        {
+                            return true;
                         }
                     }
                 }

@@ -130,13 +130,12 @@ impl TerraformChecker {
         let mut found_required_version = false;
 
         file.walk(|node, _depth| {
-            if node.kind() == "block" {
-                if self.get_block_type(node, file).as_deref() == Some("terraform") {
-                    if self.block_has_attribute(node, file, "required_version") {
-                        found_required_version = true;
-                        return false;
-                    }
-                }
+            if node.kind() == "block"
+                && self.get_block_type(node, file).as_deref() == Some("terraform")
+                && self.block_has_attribute(node, file, "required_version")
+            {
+                found_required_version = true;
+                return false;
             }
             true
         });
@@ -166,11 +165,11 @@ impl TerraformChecker {
         let mut declared_vars: Vec<(String, Range)> = Vec::new();
 
         file.walk(|node, _depth| {
-            if node.kind() == "block" {
-                if self.get_block_type(node, file).as_deref() == Some("variable") {
-                    if let Some(name) = self.get_block_label(node, file) {
-                        declared_vars.push((name, node.to_range()));
-                    }
+            if node.kind() == "block"
+                && self.get_block_type(node, file).as_deref() == Some("variable")
+            {
+                if let Some(name) = self.get_block_label(node, file) {
+                    declared_vars.push((name, node.to_range()));
                 }
             }
             true
@@ -192,7 +191,7 @@ impl TerraformChecker {
         for (name, range) in &declared_vars {
             if !referenced.contains(name) {
                 diagnostics.push(Diagnostic::new(
-                    range.clone(),
+                    *range,
                     DiagnosticSeverity::Hint,
                     "TF008",
                     DiagnosticCategory::Names,
@@ -301,11 +300,11 @@ impl TerraformChecker {
     pub(super) fn source_has_block_type(&self, file: &ParsedFile, block_type: &str) -> bool {
         let mut found = false;
         file.walk(|node, _depth| {
-            if node.kind() == "block" {
-                if self.get_block_type(node, file).as_deref() == Some(block_type) {
-                    found = true;
-                    return false;
-                }
+            if node.kind() == "block"
+                && self.get_block_type(node, file).as_deref() == Some(block_type)
+            {
+                found = true;
+                return false;
             }
             true
         });

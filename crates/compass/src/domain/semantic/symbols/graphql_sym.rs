@@ -161,17 +161,14 @@ impl SymbolTableBuilder {
             }
 
             // Field definition inside type/input/interface
-            let in_type = context_stack.last().map_or(false, |c| c == "type");
+            let in_type = context_stack.last().is_some_and(|c| c == "type");
             if in_type && brace_depth >= 1 && trimmed.contains(':') {
                 let field_name = trimmed
                     .split(|c: char| c == ':' || c == '(' || c.is_whitespace())
                     .next()
                     .unwrap_or("");
                 if !field_name.is_empty()
-                    && field_name
-                        .chars()
-                        .next()
-                        .map_or(false, |c| c.is_alphabetic())
+                    && field_name.chars().next().is_some_and(|c| c.is_alphabetic())
                     && !field_name.starts_with("type")
                     && !field_name.starts_with("input")
                 {

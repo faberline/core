@@ -28,3 +28,11 @@ impl OutputFormat {
         }
     }
 }
+
+impl std::str::FromStr for OutputFormat {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        OutputFormat::from_str(value).ok_or("unknown output format")
+    }
+}

@@ -159,6 +159,14 @@ impl TechStack {
     }
 }
 
+impl std::str::FromStr for TechStack {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        TechStack::from_str(value).ok_or("unknown technology stack")
+    }
+}
+
 impl fmt::Display for TechStack {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name())

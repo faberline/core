@@ -21,8 +21,8 @@ impl RequestHandler {
                 .max()
                 .map(|secs| {
                     // Format as ISO 8601 date-time string (UTC, seconds precision)
-                    let datetime = format_unix_timestamp(secs);
-                    datetime
+
+                    format_unix_timestamp(secs)
                 });
 
         let status = IndexStatus {

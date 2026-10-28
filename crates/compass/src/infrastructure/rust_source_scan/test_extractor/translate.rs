@@ -32,7 +32,7 @@ impl TestExtractor {
             source = test
                 .source_file
                 .split('/')
-                .last()
+                .next_back()
                 .unwrap_or(&test.source_file),
             line = test.line_number,
             body = py_body,

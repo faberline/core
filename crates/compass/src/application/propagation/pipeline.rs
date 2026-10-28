@@ -297,14 +297,17 @@ impl PropagationPipeline {
 
     /// Resolve stub: if `{stem}.pyi` exists in the inferencer's file analysis,
     /// return the stub path; otherwise return the original source.
-    fn resolve_stub_or_source(source: &PathBuf, inferencer: &DeepTypeInferencer) -> PathBuf {
-        if source.extension().map_or(false, |e| e == "py") {
+    fn resolve_stub_or_source(
+        source: &std::path::Path,
+        inferencer: &DeepTypeInferencer,
+    ) -> PathBuf {
+        if source.extension().is_some_and(|e| e == "py") {
             let stub = source.with_extension("pyi");
             if inferencer.file_analysis(&stub).is_some() {
                 return stub;
             }
         }
-        source.clone()
+        source.to_path_buf()
     }
 
     /// Maximum recursion depth for transitive importer collection.

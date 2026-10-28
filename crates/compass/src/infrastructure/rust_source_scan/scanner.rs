@@ -125,13 +125,11 @@ impl RustScanner {
 
         let mut cursor = root.walk();
         for child in root.children(&mut cursor) {
-            if child.kind() == "mod_item" {
-                if self.has_pub_visibility(child, content) {
-                    if let Some(name) = self.get_child_text(child, "identifier", content) {
-                        // Only include mods without body (external files)
-                        if child.child_by_field_name("body").is_none() {
-                            mods.push(name);
-                        }
+            if child.kind() == "mod_item" && self.has_pub_visibility(child, content) {
+                if let Some(name) = self.get_child_text(child, "identifier", content) {
+                    // Only include mods without body (external files)
+                    if child.child_by_field_name("body").is_none() {
+                        mods.push(name);
                     }
                 }
             }

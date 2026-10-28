@@ -113,13 +113,13 @@ def contains_at_end():
     let exact_match = result
         .matches
         .iter()
-        .find(|m| m.symbol.as_ref().map(|s| s.as_str()) == Some("exact_match"))
+        .find(|m| m.symbol.as_deref() == Some("exact_match"))
         .unwrap();
 
     let contains_in_middle = result
         .matches
         .iter()
-        .find(|m| m.symbol.as_ref().map(|s| s.as_str()) == Some("contains_in_middle"))
+        .find(|m| m.symbol.as_deref() == Some("contains_in_middle"))
         .unwrap();
 
     assert!(exact_match.score > contains_in_middle.score);

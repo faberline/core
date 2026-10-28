@@ -12,7 +12,7 @@ impl MermaidChecker {
     /// Extract a node ID from a token like `A`, `A[text]`, `A(text)`, `A{text}`, `A((text))`.
     fn extract_node_id(token: &str) -> Option<&str> {
         // Strip bracket/paren/brace content
-        if let Some(pos) = token.find(|c| matches!(c, '[' | '(' | '{' | '>')) {
+        if let Some(pos) = token.find(['[', '(', '{', '>']) {
             let id = &token[..pos];
             if !id.is_empty()
                 && id

@@ -174,7 +174,7 @@ impl RustChecker {
             if kind == "function_item" || kind == "struct_item" || kind == "enum_item" {
                 let text = file.node_text(node);
                 if text.starts_with("pub ") || text.starts_with("pub(") {
-                    let has_doc = node.prev_sibling().map_or(false, |s| {
+                    let has_doc = node.prev_sibling().is_some_and(|s| {
                         let st = file.node_text(&s).trim().to_string();
                         st.starts_with("///") || st.starts_with("#[doc")
                     });

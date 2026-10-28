@@ -63,7 +63,7 @@ impl SymbolTable {
             id,
             name: name.clone(),
             kind,
-            location: location.clone(),
+            location: location,
             type_info,
             doc,
             scope_id,
@@ -114,13 +114,10 @@ impl SymbolTable {
         }
 
         // Then check symbol definitions
-        for symbol in &self.symbols {
-            if symbol.location.contains(line, character) {
-                return Some(symbol);
-            }
-        }
-
-        None
+        self.symbols
+            .iter()
+            .find(|&symbol| symbol.location.contains(line, character))
+            .map(|v| v as _)
     }
 
     /// Find definition of symbol at position
@@ -156,7 +153,7 @@ impl SymbolTable {
         self.references
             .iter()
             .filter(|r| r.symbol_id == id && (include_definition || !r.is_definition))
-            .map(|r| r.location.clone())
+            .map(|r| r.location)
             .collect()
     }
 

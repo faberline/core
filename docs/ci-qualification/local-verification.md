@@ -164,3 +164,29 @@ additional feature row. Both completeness and the 256-row refusal have isolated
 controls. All 47 helper controls pass. The 70-row roster is unchanged. A pinned
 Rust dependency cache reduces repeat compilation; workspace source crates are
 excluded from the cache. No tests or lint checks are omitted by the cache.
+
+## Strict Clippy and HTTP/2 repair
+
+The controller applied precise machine-applicable diagnostic spans only after
+verifying each file against the diagnosed `c95c6c6` source. Manual equivalents
+preserve parser outputs, use named callback/log types and keep old public
+parsing methods while adding the standard parsing traits. No lint allowance,
+ignored test, weaker assertion or threshold was added. The local object-store
+lock explicitly uses `truncate(false)`, preserving its prior behavior.
+
+`async-trait` was updated from 0.1.89 to 0.1.92. The older macro generated
+redundant `must_use` attributes under the current compiler. The upstream patch
+removes those attributes; Future itself still requires use. No source trait
+or Clippy warning was disabled.
+
+With server Nagle buffering disabled, the original 128-request HTTP/2 guard
+measured 5.218624 seconds online and still failed its unchanged 5-second limit.
+The generated synchronous client also sends small frames, so its TCP socket
+now uses TCP_NODELAY before TLS setup. The full guard source is byte-identical
+to the base. The fixed runtime fingerprint is updated only for this intentional
+asset change, from 15121160305850173931 to 7231267206764527339. Other generated
+output fingerprints and all semantic oracles remain intact.
+
+Controller static validation passed formatting, Python syntax, whitespace and
+57 isolated helper/controller controls. Current-head online product results
+remain required. The original prepared worktree remains unchanged.

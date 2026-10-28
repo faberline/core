@@ -285,7 +285,7 @@ async fn access_log_probe_paths_all_demoted() {
                     .and_then(|t| t.as_str())
                     == Some("http.access")
             })
-            .expect(&format!("should have access log for probe path {}", path));
+            .unwrap_or_else(|| panic!("should have access log for probe path {}", path));
 
         assert_eq!(
             access_log.get("severity").and_then(|s| s.as_str()),

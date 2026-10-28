@@ -1,15 +1,18 @@
+/// A fallible callback that receives one bounded snapshot chunk.
+pub type ChunkHandler = Box<dyn FnMut(&[u8]) -> std::io::Result<()> + Send>;
+
 /// The maximum size of a snapshot chunk streamed during snapshot generation.
 pub const SNAPSHOT_CHUNK_SIZE: usize = 64 * 1024;
 
 /// A bounded chunk sink that consumes streaming writes in chunks of up to `SNAPSHOT_CHUNK_SIZE`.
-pub struct ChunkSink<F = Box<dyn FnMut(&[u8]) -> std::io::Result<()> + Send>> {
+pub struct ChunkSink<F = ChunkHandler> {
     chunk_size: usize,
     buffer: Vec<u8>,
     handler: Option<F>,
     collected: Option<Vec<u8>>,
 }
 
-impl ChunkSink<Box<dyn FnMut(&[u8]) -> std::io::Result<()> + Send>> {
+impl ChunkSink<ChunkHandler> {
     /// Create a collecting sink that accumulates all chunks into an internal buffer.
     pub fn new(chunk_size: usize) -> Self {
         Self::collecting(chunk_size)
@@ -27,10 +30,7 @@ impl ChunkSink<Box<dyn FnMut(&[u8]) -> std::io::Result<()> + Send>> {
 
     /// Create a streaming chunk sink that emits chunks of up to `chunk_size` to `handler`
     /// without unbounded memory retention.
-    pub fn streaming<H>(
-        chunk_size: usize,
-        mut handler: H,
-    ) -> ChunkSink<Box<dyn FnMut(&[u8]) -> std::io::Result<()> + Send>>
+    pub fn streaming<H>(chunk_size: usize, mut handler: H) -> ChunkSink<ChunkHandler>
     where
         H: FnMut(&[u8]) + Send + 'static,
     {

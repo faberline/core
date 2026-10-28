@@ -95,7 +95,7 @@ impl SemanticSearchEngine {
         match direction {
             TypeHierarchyDirection::Supertypes => {
                 // Find parent types by checking all class/interface symbols
-                for (_name, locations) in &self.symbol_index {
+                for locations in self.symbol_index.values() {
                     for location in locations {
                         if matches!(location.kind, MatchKind::ClassDef) {
                             let inst_ty = Type::Instance {
@@ -129,7 +129,7 @@ impl SemanticSearchEngine {
             }
             TypeHierarchyDirection::Subtypes => {
                 // Find child types that implement this protocol
-                for (_name, locations) in &self.symbol_index {
+                for locations in self.symbol_index.values() {
                     for location in locations {
                         if matches!(location.kind, MatchKind::ClassDef) {
                             let class_ty = Type::Instance {

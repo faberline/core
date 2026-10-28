@@ -145,8 +145,7 @@ impl PackageManagerDetector {
         }
 
         // Extract name and version: "package[extra]>=1.0"
-        let (name_with_extras, version) = if let Some(op_idx) =
-            line.find(|c| c == '=' || c == '>' || c == '<' || c == '~' || c == '^')
+        let (name_with_extras, version) = if let Some(op_idx) = line.find(['=', '>', '<', '~', '^'])
         {
             let name_part = line[..op_idx].trim();
             let version_part = line[op_idx..].trim();
