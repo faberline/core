@@ -1,0 +1,16 @@
+{
+  "repo": "faberline/core",
+  "pr": 74,
+  "head": "78d9692084afa8b8becfb7d4ca8bc14e3a8e587b",
+  "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "findings": [
+    {
+      "title": "Clippy repair silently removes compass public `from_str` APIs, and the doc wrongly says they were kept",
+      "severity": "medium",
+      "path": "crates/compass/src/domain/codegen/traits.rs",
+      "line": 140,
+      "detail": "To satisfy `should_implement_trait`, the public inherent methods `TechStack::from_str(&str) -> Option<Self>`, `OutputFormat::from_str(&str) -> Option<Self>` (output_format.rs) and `ArgusConfig::from_str(&str) -> Result` (config_file.rs) were renamed to `parse_name`/`parse_toml`, and `std::str::FromStr` impls were added. Any caller outside the crate that calls `TechStack::from_str(x)` or `OutputFormat::from_str(x)` and compares with `Some(..)` now gets a `Result<_, &'static str>` and no longer compiles. Calls to `ArgusConfig::from_str` now need `FromStr` in scope unless the caller's edition prelude provides it. This is a public contract change hidden inside a lint repair. docs/ci-qualification/local-verification.md (around line 172) says the repairs 'keep old public parsing methods while adding the standard parsing traits', which the diff contradicts; a later paragraph in the same file says they were renamed.",
+      "required_fix": "Either keep the original public inherent method signatures and resolve the lint without weakening it, or explicitly record the renames as an intentional breaking change. In either case, correct the contradictory statement in docs/ci-qualification/local-verification.md so the documented repair matches the code."
+    }
+  ]
+}

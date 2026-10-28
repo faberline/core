@@ -62,7 +62,7 @@ PLAN = obj({'requirements': {'type': 'array', 'minItems': 1, 'items': obj({
 
 def invoke(packet, schema, phase):
     raw = json.dumps(packet, ensure_ascii=False, separators=(',', ':'))
-    assert len(raw.encode()) <= 2 * 1024 * 1024, 'packet_bound_exceeded'
+    assert len(raw.encode()) <= 4 * 1024 * 1024, 'packet_bound_exceeded'
     oauth = os.environ['CLAUDE_CODE_OAUTH_TOKEN']
     supply = json.loads((ROOT / 'supply.json').read_text())
     cli = '/usr/local/bin/claude'
@@ -96,8 +96,14 @@ comments, code changes, merge, release, or lifecycle changes are available.
     if result.returncode:
         # Do not publish provider error strings or environment material.
         save('execution-error.json', {'phase': phase[:60], 'exit': result.returncode,
+            'input_bytes': len(raw.encode()),
             'stdout_sha256': hashlib.sha256(result.stdout.encode()).hexdigest(),
             'stderr_sha256': hashlib.sha256(result.stderr.encode()).hexdigest()})
+        assert TOKEN not in result.stdout and TOKEN not in result.stderr
+        if len(result.stdout.encode()) < 65536:
+            (OUT / 'execution-error-stdout.txt').write_text(result.stdout)
+        if len(result.stderr.encode()) < 65536:
+            (OUT / 'execution-error-stderr.txt').write_text(result.stderr)
         raise RuntimeError('claude_execution_failed')
     outer = json.loads(result.stdout)
     assert outer.get('type') == 'result' and outer.get('subtype') == 'success' and outer.get('is_error') is False, 'claude_incomplete'
@@ -113,36 +119,69 @@ issue = {k: issue[k] for k in ('number', 'title', 'body')}
 assert git('rev-parse', 'HEAD').strip() == HEAD
 paths = git('diff', '--name-only', '--no-renames', BASE, HEAD).splitlines()
 diff = git('diff', '--no-ext-diff', '--no-renames', '--unified=5', BASE, HEAD)
-human = '''The human explicitly requested complete common test coverage rules,
-repair of Lumen #185 and Core #74, strict Clippy fixes, HTTP/2 performance fixes,
-and remaining cloud test failures; commit and push fixes and verify all CI.
-The human now requests the latest commit's final Claude Code Review, fixes to
-any valid findings, another review, and all CI passing. Never weaken thresholds.
-Earlier explicit authorization covers N4-compatible test storage. The human
-approved 16 GB boot disks after 10 GB was rejected. No merge, issue closure,
-release, qualification-policy activation, or weakening tests is authorized.
+human = '''The human explicitly requested complete common manifest-derived test
+coverage rules and repair of this PR's strict Clippy and remaining cloud test
+failures. Commit and push valid fixes and verify all current-head CI.
+The agreed ordinary unit matrix covers default, no-default, each named manifest
+feature, and all-features. This is not feature power-set testing. Specific feature
+combinations required by original product issues remain separate qualification
+obligations and may not be waived by this infrastructure PR.
+The human now requests this PR's latest commit's final Claude Code Review,
+fixes to valid findings, another review, and all CI passing. Never weaken
+thresholds. The human authorized the online and local diagnostic tests used to
+repair the actual cloud failures, beyond the original planning-only authority.
+No merge, issue closure, release, qualification-policy activation, or weakening
+tests is authorized. Other repositories' work is not a requirement for this diff.
+'''
+if REPO.endswith('/lumen'):
+    human += '''Lumen-specific authorization includes N4-compatible GKE test
+storage, necessary strict Clippy repairs and repair of the newly exposed AND
+ranking failure while retaining the original 50 ms and 20x bounds. No HTTP/2
+change or boot-disk configuration belongs in this PR; those are separate Core
+and AW work. The original product PR #119 must retain its head.
+'''
+else:
+    human += '''Core-specific authorization includes strict Clippy repairs,
+HTTP/2 performance repair under the unchanged 128-request/5-second bound, and
+repair of the cloud Raft handoff failure under the unchanged transfer deadlines.
+Lumen storage, ranking and milestone work are not requirements for Core.
 '''
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, complete_diff=diff, current_head_ci=checks,
+    available_head_paths=git('ls-tree', '-r', '--name-only', HEAD).splitlines(),
     qualification='Existing failure-only and functional/E2E/performance qualification holds remain.')
+previous=ROOT/'prior-findings.json'
+if previous.exists():
+    prior=json.loads(previous.read_text())
+    assert prior['repo']==REPO and prior['pr']==PR and re.fullmatch('[0-9a-f]{40}',prior['head'])
+    assert subprocess.run(['git','-C',str(ROOT/'source'),'merge-base','--is-ancestor',prior['head'],HEAD]).returncode==0
+    packet['previous_review_findings']=prior
 save('identity.json', dict(repo=REPO, pr=PR, head=HEAD, base=BASE, files=paths,
     diff_sha256=hashlib.sha256(diff.encode()).hexdigest(), checks=checks,
     control_commit=os.environ['GITHUB_SHA']))
 print('exact_identity_and_all_CI_verified', len(paths), len(checks), flush=True)
+if REPO.endswith('/lumen'):
+    packet['milestone_identity_readback'] = [{k:m[k] for k in ('number','title','html_url','description','state')}
+        for m in pages('milestones?state=all')]
+contract = issue['title'] + '\n' + issue['body'] + '\n' + human
+PLAN['properties']['requirements']['items']['properties']['contract_quote'] = {
+    'type': 'string', 'enum': [line for line in contract.splitlines() if line.strip()]}
 plan = invoke(packet, PLAN, '''PLANNING phase. Extract all original issue acceptance and Never requirements,
 plus the explicit human scope extensions. Request only necessary same-repo source
 files in supporting_paths. Do not make a final verdict or report bugs yet.
-Each contract_quote must be literal text from the issue title/body or the human
-scope extension. Missing initial source is a request, not a reason to block.
+Use available_head_paths for exact source names. At most 64 distinct supporting
+files can be collected. Request necessary source, not speculative file names.
+Each contract_quote must select one exact whole line from the schema enum.
+Use the full issue and human scope to derive requirements, not just that line.
+Missing initial source is a request, not a reason to block.
 ''')
-contract = issue['title'] + '\n' + issue['body'] + '\n' + human
+save('plan.json', plan)
 assert plan['requirements'] and len({r['id'] for r in plan['requirements']}) == len(plan['requirements'])
 assert all(r['contract_quote'] in contract for r in plan['requirements']), 'invented_contract_quote'
-save('plan.json', plan)
 supporting = []
 requested = sorted({p for r in plan['requirements'] for p in r['supporting_paths']})
-assert len(requested) <= 40, 'source_request_bound'
+assert len(requested) <= 64, 'source_request_bound'
 for path in requested:
     assert path and not path.startswith('/') and all(p not in ('.', '..', '') for p in path.split('/')) and '\\' not in path
     for ref in (BASE, HEAD):
@@ -154,8 +193,13 @@ for path in requested:
         assert mode in ('100644', '100755'), 'unsupported_source_type'
         content = git('show', ref + ':' + path)
         assert len(content.encode()) <= 350000, 'source_file_bound'
-        supporting.append(dict(path=path, commit=ref, content=content,
-            sha256=hashlib.sha256(content.encode()).hexdigest()))
+        digest=hashlib.sha256(content.encode()).hexdigest()
+        identical=next((s for s in supporting if s.get('sha256')==digest and 'content' in s),None)
+        if identical:
+            supporting.append(dict(path=path,commit=ref,sha256=digest,
+                same_content_as={'path':identical['path'],'commit':identical['commit']}))
+        else:
+            supporting.append(dict(path=path, commit=ref, content=content,sha256=digest))
 packet.update(requirement_plan=plan, supporting_sources=supporting)
 save('source-manifest.json', [{k:v for k,v in s.items() if k != 'content'} for s in supporting])
 result_schema = obj({'repo': {'const': REPO, 'type': 'string'}, 'pr': {'const': PR, 'type': 'integer'},

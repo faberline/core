@@ -26,7 +26,7 @@ jobs:
       - name: Checkout exact candidate source for reading only
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: 78d9692084afa8b8becfb7d4ca8bc14e3a8e587b
+          ref: e001a8e4eba89df6d617ee04fc56f2480308631a
           path: scripts/final-review/source
           fetch-depth: 0
           persist-credentials: false
@@ -37,13 +37,13 @@ jobs:
           REVIEW_REPO: faberline/core
           REVIEW_PR: "74"
           REVIEW_ISSUE: "73"
-          REVIEW_HEAD: 78d9692084afa8b8becfb7d4ca8bc14e3a8e587b
+          REVIEW_HEAD: e001a8e4eba89df6d617ee04fc56f2480308631a
           REVIEW_BASE: 41c352eaae687a1914087d279f36adbe9e9b4af5
         run: python3 -I scripts/final-review/runner.py
       - name: Preserve review evidence even on failure
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: final-claude-core-78d9692084af
+          name: final-claude-core-e001a8e4eba8
           path: scripts/final-review/evidence/
           if-no-files-found: warn
