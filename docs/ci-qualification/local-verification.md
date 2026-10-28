@@ -153,3 +153,14 @@ Clippy now retains Cargo JSON diagnostics in addition to exact command/identity
 records. This supplies precise suggested source spans for repair without
 waiving findings or compiling product code locally. Other diagnosed lint debt,
 including Compass, remains a failing obligation until a current-head run passes.
+
+The next source batch also adds real unit coverage for MCP browser allowlist
+validation and bounded OTLP decompression / official response encoding. A static
+source scan found no inline unit tests in either library. Their existing
+integration contracts remain unchanged. The new Rust tests are pending online.
+
+The planner schedules every package's default row first, then retains every
+additional feature row. Both completeness and the 256-row refusal have isolated
+controls. All 47 helper controls pass. The 70-row roster is unchanged. A pinned
+Rust dependency cache reduces repeat compilation; workspace source crates are
+excluded from the cache. No tests or lint checks are omitted by the cache.
