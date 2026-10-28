@@ -1,71 +1,46 @@
-# Publication candidate and CI execution scope
+# PR execution scope
 
-Refs [#73](https://github.com/faberline/core/issues/73).
+Refs [#73](https://github.com/faberline/core/issues/73) and
+[draft PR #74](https://github.com/faberline/core/pull/74).
 
-## Reviewable local candidate
+The human authorized publication, online testing and remaining CI repairs.
+The branch is `codex/73-pr-unit-static-preparation`, based on
+`41c352eaae687a1914087d279f36adbe9e9b4af5`.
+The isolated worktree is `/tmp/core-73-pr-gates.li3y5I/core`.
+The original prepared WIP remains unchanged at
+`/Users/chrischeng/faberlines/core-73-unit-static`.
 
-- Branch: `codex/73-pr-unit-static-preparation`.
-- Worktree: `/tmp/core-73-pr-gates.li3y5I/core`.
-- Base: `41c352eaae687a1914087d279f36adbe9e9b4af5`.
-- State: prepared for the human-authorized draft PR publication on 2026-10-28.
-  No manual workflow dispatch, paid review or merge. The original prepared
-  worktree remains unchanged at `/Users/chrischeng/faberlines/core-73-unit-static`.
-- Independent verdict: [READY for proposal publication](independent-review.md),
-  with bootstrap/qualification/merge BLOCKED.
-- Evidence: [local verification](local-verification.md),
-  [workspace and 22-PR inventory](README.md).
+## What runs
 
-The full diff includes the workflow, planner, both fixture files, and all
-qualification inventory/review documents. It excludes product code, Cargo
-manifests, #51's tree, the required-gate policy and controller changes.
+The original five crate jobs remain unchanged. New PR-only jobs derive a fresh
+workspace inventory, check formatting independently and run the complete
+package/feature unit and all-target Clippy matrix. The current inventory has
+30 library targets and 70 package/profile rows. At most four rows run at once.
+Each matrix job has a 30-minute timeout. No row is dropped to get a green run.
+The planner refuses over 256 rows rather than truncating the matrix.
 
-Suggested proposal title: `ci: propose complete workspace unit/static gates with fail-closed bootstrap`.
-Use `Refs #73`; current local evidence does not justify closing the issue.
+The base and candidate are checked out at the event's exact SHAs. Candidate
+helper code runs unprivileged, with `contents: read`, no added secrets and no
+persisted checkout credentials. The base supplies the comparison inventory.
+It need not already contain the new helper. That requirement blocked all new
+ordinary tests in run 40643971191 and has been removed from PR execution.
 
-## Consequences of an authorized proposal publication
+Zero, ignored, measured, filtered, incomplete or duplicate test evidence still
+fails. Each enabled unit target runs even if an earlier target fails. Clippy
+runs after failed unit tests unless the workflow is cancelled. Formatting
+changes in Rust sources were generated only by `cargo fmt --all`.
 
-The existing `pull_request` trigger normally runs the original five crate jobs.
-This candidate adds one PR-only planning job. Since its base has no trusted
-driver, that job is expected to fail with the explicit bootstrap message,
-and the dependent 70-row product matrix will not launch. This deliberate
-failure must not be bypassed by falling back to PR-owned helper code.
+## What the results mean
 
-If a separately reviewed bootstrap and immutable identity contract are later
-approved, the current inventory schedules:
+These are candidate checks. They do not install trusted qualification, clear
+failure-only blockers or close an issue. Formal adoption still needs approved
+immutable workflow/driver/evaluator identities, current-head required evidence,
+issue-specific functional/E2E and measured-performance mappings, independent
+review and authorized delivery. The old independent review is historical; it
+does not apply to the revised workflow or planner.
 
-- One planning/fixture/inventory job and one independent format job.
-- 70 package/profile jobs, each running one current library unit command and
-  one all-target clippy command: 140 Cargo commands plus workspace format.
-- At most four matrix jobs concurrently; each new job has a 30-minute timeout.
-- The original five crate jobs remain separate and unchanged.
-
-Thus a fully enabled current PR has 72 additional jobs (77 including the five
-existing jobs). Configured new-job timeout budgets sum to 2,140 runner-minutes
-at the current row count; that is a timeout-budget calculation, not measured
-runtime, billed minutes or a monetary estimate. Queue time, setup, actual
-runner billing and failure timing are unmeasured. Additional binary targets
-can add unit invocations and feature changes can alter row counts. The planner
-refuses over 256 matrix rows rather than dropping them.
-
-No runners, paid capacity, GKE resources, secrets, credentials, permissions,
-schedules or privileged event triggers are added. New checks are PR-only;
-push/tag/manual behavior of the original five jobs is unchanged.
-
-## Outstanding approvals and evidence
-
-Proposal publication is separate from bootstrap activation. Formal adoption
-requires externally approved immutable workflow/driver/evaluator identity,
-not a PR job name or a self-reported green result. Existing failure-only holds
-remain. Complete online required testing, zero-test applicability where needed,
-issue-specific assertions, functional/e2e/performance mapping and measured
-results, final Claude review and authorized delivery are still required.
-
-The human authorized committing and publishing the coverage work on 2026-10-28.
-The draft publication does not approve bootstrap, merge or product acceptance.
-This controller revalidated 43 gate controls and 10 existing controller controls;
-all 53 passed. Fresh offline metadata still derives 70 rows across 30 library
-targets. The driver SHA-256 matches the previous independent review. The controller
-subsequently separated formatting into its own PR job so a format failure
-cannot suppress the product unit matrix; this workflow change needs fresh
-independent review. No product suite ran locally; the initial online bootstrap refusal is
-expected and must remain visible.
+Local verification passed 45 helper controls and 10 existing controller
+controls. Fresh offline metadata yields the same 70 rows. Workspace formatting
+now passes. No product build or product test ran locally. Online results must
+be checked on the final PR head. Existing push/tag/manual behavior, policy,
+controller, permissions and infrastructure remain unchanged.

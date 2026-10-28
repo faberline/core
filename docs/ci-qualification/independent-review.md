@@ -1,4 +1,9 @@
-# Independent code and issue-fit review
+# Historical independent code and issue-fit review
+
+> Historical review only. The workflow and planner changed on 2026-10-28.
+> This verdict does not cover the current PR head. Fresh independent review
+> is required. The former bootstrap restriction now applies only to future
+> trusted qualification, not ordinary read-only PR tests.
 
 Refs [#73](https://github.com/faberline/core/issues/73). Read-only review and
 re-review were performed by the native Codex subtask

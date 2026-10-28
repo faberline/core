@@ -1,5 +1,23 @@
 # Local verification of the unit/static preparation
 
+## Current repair, 2026-10-28
+
+The controller repaired ordinary read-only PR execution after online run
+40643971191 refused the missing base helper. The candidate now supplies the
+helper; the base supplies only its product inventory. Exact event identities,
+inventory reduction checks and strict nonzero unit evidence remain required.
+All enabled targets run before their failures are reported. Clippy runs after
+unit failures unless cancelled. This changes neither trusted qualification
+policy nor lifecycle state.
+
+Controller validation: 45 helper controls and 10 controller controls passed.
+`cargo fmt --all` made formatting-only Rust edits, and
+`cargo fmt --all -- --check` passed. No product build or test ran locally.
+The revised planner and workflow need fresh independent review and current-head
+online evidence. All reports below describe historical source revisions.
+
+## Historical preparation record
+
 Refs [#73](https://github.com/faberline/core/issues/73). Verified at
 2026-10-27 09:52 UTC in branch `codex/73-unit-static`, based on
 `41c352eaae687a1914087d279f36adbe9e9b4af5`.

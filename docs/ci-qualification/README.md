@@ -2,35 +2,37 @@
 
 Refs [#73](https://github.com/faberline/core/issues/73). This is a bounded
 unit/static implementation and evidence inventory. It does not clear the
-existing qualification holds, complete any feature issue, or authorize online
-execution, delivery, merge, release or lifecycle changes.
+existing qualification holds, complete any feature issue, or authorize
+delivery, merge, release or lifecycle changes. The human authorized online
+PR tests and repairs on 2026-10-28.
 
-## Trust and bootstrap boundary
+## Ordinary PR tests and trusted qualification
 
-The new checks are **candidate checks, not trusted qualification**. An ordinary
-PR can edit its workflow, so a green job name alone is not admissible proof.
-A future trusted evaluator must independently bind the approved immutable
-workflow and driver revisions, complete expected matrix and current HEAD/base.
-This change does not install that evaluator or amend its failure-only policy.
-See the [independent review](independent-review.md),
-[publication/CI scope](publication-candidate.md), and
-[local verification](local-verification.md) for the candidate verdict and limits.
+These are ordinary PR checks. They execute the candidate's helper and tests
+with `contents: read`, no added secrets and no persisted checkout credentials.
+This is the same execution boundary as the existing five crate jobs. It lets
+the new matrix run even when the base has no helper yet.
 
-The proposed PR jobs check out the event's base and head in separate directories
-with `persist-credentials: false`. Only the base copy supplies the driver and
-its nonempty fixture suite; the candidate helper is never a fallback. Driver
-or workflow changes refuse self-qualification. Runtime identity checks compare
-both checkouts with the event's expected HEAD/base. Baseline inventory removals
-or feature/target reductions require a separate reviewed decision and fail here.
-The base driver remains unprivileged: `contents: read`, no added secrets,
-privileged event trigger, credential, infrastructure or lifecycle writer.
+The workflow checks out the event's exact base and head in separate directories.
+The candidate planner verifies both Git identities and compares fresh Cargo
+inventories. Package, feature or enabled target reductions still fail. Every
+enabled library/binary unit target must report a complete nonempty named roster.
+Target failures accumulate so one empty target does not hide later targets.
+Clippy also runs after a unit failure, unless the workflow was cancelled.
 
-At this candidate's base `41c352e...`, `scripts/pr-gates/` does not yet exist.
-Therefore the initial candidate is **BLOCKED for automatic bootstrap**: its new
-planning job will fail before product execution instead of running PR-owned
-gate code. Independently reviewed bootstrap of an immutable workflow/driver
-identity, and separately authorized online execution, remain explicit delivery
-steps. Publishing a proposal for review does not approve that bootstrap.
+Candidate checks are **not trusted qualification**. An editable workflow or
+helper can lie. A future trusted evaluator must independently bind approved
+immutable workflow/driver revisions, the complete expected matrix and the
+current head/base. The existing failure-only policy and its blockers remain
+unchanged. This PR does not install that evaluator or approve product delivery.
+
+The first online run refused bootstrap because the base lacked the helper.
+That restriction prevented all 70 ordinary test rows from running. The current
+workflow removes that bootstrap restriction only from ordinary read-only PR
+execution. It does not reuse the old independent review for this change.
+See [publication/CI scope](publication-candidate.md),
+[local verification](local-verification.md), and the
+[historical independent review](independent-review.md).
 
 ## Inventory and provenance
 
@@ -77,7 +79,7 @@ edges and exact row names are recorded in the workspace inventory; the runtime
 plan is regenerated rather than accepting this historical count as proof.
 Each row runs unit tests and all-target clippy, totaling 140 proposed Cargo
 commands plus workspace formatting. The matrix limits parallel execution to
-four rows. These commands have not been dispatched by this change. A future
+four rows. Actual results must be read from the current-head online run. A future
 package with multiple lib/bin targets runs one unit invocation per enabled
 target, so its command count will increase. New checks apply only to PRs;
 existing push/tag/manual trigger behavior and five crate jobs stay unchanged.
