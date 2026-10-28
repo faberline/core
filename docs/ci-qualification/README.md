@@ -210,3 +210,20 @@ expansion. Public issue/PR metadata shows no #73 owner or linked PR at snapshot
 time; the local lease check was empty. External owner activity remains unknown.
 This work writes only the assigned isolated unit/static preparation tree and
 does not take over PR #51 or another author's worktree.
+
+## Current CI repair
+
+Keep the HTTP/2 guard at 128 sequential requests within 5 seconds. The fixture
+and Python runtime disable Nagle buffering, so small frames do not wait on
+delayed acknowledgments. The guard passed in run 40653886198. The generated
+runtime fingerprint changes with the intentional socket option.
+
+The remaining raft, backup and certificate diagnostics use equivalent lint
+repairs. Surface stores its private property data in a box; its public builders
+and Element variants retain their signatures. Existing semantic snapshots test
+the rendered result. Each package now has its own dependency cache key.
+
+Unit evidence requires a complete nonempty roster with no failed, ignored or
+filtered tests. If a debug target reports ignored tests, run the whole same
+target in release mode with --include-ignored, and verify every ignored name
+passed there. Both executions must succeed. All existing bounds remain intact.

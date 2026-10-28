@@ -72,7 +72,7 @@ fn foreign_profile(namespace: &str, instance: &str) -> CertificateProfile {
     CertificateProfile::new(
         &foreign,
         Purpose::Peer,
-        &format!("{instance}-0.{instance}-headless.{namespace}.svc.cluster.local"),
+        format!("{instance}-0.{instance}-headless.{namespace}.svc.cluster.local"),
         CertificateIdentity {
             dns_names: vec![format!(
                 "{instance}-0.{instance}-headless.{namespace}.svc.cluster.local"

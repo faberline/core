@@ -77,7 +77,7 @@ impl SnapshotCore {
             let last = records
                 .iter()
                 .filter(|(record_index, _)| *record_index <= index)
-                .last()
+                .next_back()
                 .map(|(record_index, _)| *record_index);
             anyhow::ensure!(
                 last == Some(index),

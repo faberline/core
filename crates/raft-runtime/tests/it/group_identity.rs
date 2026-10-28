@@ -68,7 +68,7 @@ async fn row1_request_vote_refusal() {
     });
 
     let resp_beta = client
-        .post(&format!("{}/raft/request-vote", url))
+        .post(format!("{}/raft/request-vote", url))
         .json(&req_beta)
         .send()
         .await
@@ -87,7 +87,7 @@ async fn row1_request_vote_refusal() {
         }
     });
     let resp_alpha = client
-        .post(&format!("{}/raft/request-vote", url))
+        .post(format!("{}/raft/request-vote", url))
         .json(&req_alpha)
         .send()
         .await
@@ -138,7 +138,7 @@ async fn row2_append_entries_refusal() {
     let client = h2c_client();
 
     let z1: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -165,7 +165,7 @@ async fn row2_append_entries_refusal() {
         }
     });
     let resp_foreign = client
-        .post(&format!("{}/raft/append-entries", url))
+        .post(format!("{}/raft/append-entries", url))
         .json(&req_foreign)
         .send()
         .await
@@ -173,7 +173,7 @@ async fn row2_append_entries_refusal() {
     assert_ne!(resp_foreign.status(), reqwest::StatusCode::OK);
 
     let z2: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -220,7 +220,7 @@ async fn row2_append_entries_refusal() {
         }
     });
     let resp_correct = client
-        .post(&format!("{}/raft/append-entries", url))
+        .post(format!("{}/raft/append-entries", url))
         .json(&req_correct)
         .send()
         .await
@@ -230,7 +230,7 @@ async fn row2_append_entries_refusal() {
     tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
     let z3: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -304,7 +304,7 @@ async fn row3_absent_group_id_refused() {
     });
 
     let z1: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -313,7 +313,7 @@ async fn row3_absent_group_id_refused() {
         .unwrap();
 
     let resp_absent = client
-        .post(&format!("{}/raft/append-entries", url))
+        .post(format!("{}/raft/append-entries", url))
         .json(&req_absent)
         .send()
         .await
@@ -321,7 +321,7 @@ async fn row3_absent_group_id_refused() {
     assert_ne!(resp_absent.status(), reqwest::StatusCode::OK);
 
     let z2: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -352,7 +352,7 @@ async fn row3_absent_group_id_refused() {
         }
     });
     let resp_explicit = client
-        .post(&format!("{}/raft/append-entries", url))
+        .post(format!("{}/raft/append-entries", url))
         .json(&req_explicit)
         .send()
         .await
@@ -420,7 +420,7 @@ async fn row5_timeout_now_refusal() {
         }
     });
     let resp_beta = client
-        .post(&format!("{}/raft/timeout-now", url))
+        .post(format!("{}/raft/timeout-now", url))
         .json(&req_beta)
         .send()
         .await
@@ -441,7 +441,7 @@ async fn row5_timeout_now_refusal() {
         }
     });
     let resp_alpha = client
-        .post(&format!("{}/raft/timeout-now", url))
+        .post(format!("{}/raft/timeout-now", url))
         .json(&req_alpha)
         .send()
         .await
@@ -540,7 +540,7 @@ async fn row6_install_snapshot_refusal() {
     let client = h2c_client();
 
     let z1: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -560,7 +560,7 @@ async fn row6_install_snapshot_refusal() {
         }
     });
     let resp_beta = client
-        .post(&format!("{}/raft/install-snapshot", url))
+        .post(format!("{}/raft/install-snapshot", url))
         .json(&req_beta)
         .send()
         .await
@@ -573,7 +573,7 @@ async fn row6_install_snapshot_refusal() {
     );
 
     let z2: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -614,7 +614,7 @@ async fn row6_install_snapshot_refusal() {
         }
     });
     let resp_alpha = client
-        .post(&format!("{}/raft/install-snapshot", url))
+        .post(format!("{}/raft/install-snapshot", url))
         .json(&req_alpha)
         .send()
         .await
@@ -667,7 +667,7 @@ async fn row7_publish_refusal() {
     let client = h2c_client();
 
     let z1: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -680,7 +680,7 @@ async fn row7_publish_refusal() {
         "command": vec![1u8, 2, 3],
     });
     let resp_beta = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&req_beta)
         .send()
         .await
@@ -693,7 +693,7 @@ async fn row7_publish_refusal() {
     );
 
     let z2: serde_json::Value = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -727,7 +727,7 @@ async fn row7_publish_refusal() {
         "command": vec![1u8, 2, 3],
     });
     let resp_alpha = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&req_alpha)
         .send()
         .await
