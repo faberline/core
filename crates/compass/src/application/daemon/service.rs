@@ -75,7 +75,7 @@ impl DaemonService {
         }
 
         // Sort by root length descending for longest prefix match
-        scope_roots.sort_by(|a, b| b.0.as_os_str().len().cmp(&a.0.as_os_str().len()));
+        scope_roots.sort_by_key(|entry| std::cmp::Reverse(entry.0.as_os_str().len()));
 
         Self {
             config,

@@ -223,6 +223,46 @@ fn settled_group() -> (Bus, NodeId, NodeId) {
     (bus, leader, target)
 }
 
+/// A single lost control message must not strand an otherwise healthy handoff.
+/// Tick only the old leader, so the followers cannot elect on their own.
+#[test]
+fn a_lost_first_handoff_is_retried_at_the_next_heartbeat() {
+    let (mut bus, leader, target) = settled_group();
+    let term = bus.nodes[&leader].current_term();
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .transfer_leadership(target)
+        .unwrap();
+
+    let first = bus.nodes.get_mut(&leader).unwrap().take_outgoing();
+    assert_eq!(first.len(), 1, "drop exactly the initial handoff message");
+    assert_eq!(first[0].to, target);
+    assert!(matches!(&first[0].msg, RaftMsg::TimeoutNow(request)
+        if request.term == term && request.leader == leader));
+    drop(first);
+    bus.pump();
+    assert_eq!(bus.leader(), Some(leader));
+
+    let ticks_before = bus.ticks;
+    for _ in 0..raft_core::HEARTBEAT_INTERVAL_TICKS {
+        bus.nodes.get_mut(&leader).unwrap().tick();
+        bus.ticks += 1;
+        bus.pump();
+    }
+    assert_eq!(
+        bus.ticks - ticks_before,
+        raft_core::HEARTBEAT_INTERVAL_TICKS
+    );
+    assert_eq!(
+        bus.leader(),
+        Some(target),
+        "retry must reach the named voter"
+    );
+    assert_eq!(bus.nodes[&target].current_term().get(), term.get() + 1);
+    assert!(!bus.nodes[&leader].is_leader());
+}
+
 /// The whole item. Leadership moves to the node that was named, and it moves
 /// without a single tick, so no election timeout of any length can be what
 /// moved it.

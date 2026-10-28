@@ -189,26 +189,21 @@ impl<'a> TypeInferencer<'a> {
     /// Parse class-level attribute (class variable or annotated attribute)
     fn parse_class_attribute(&mut self, node: &Node, class_info: &mut ClassInfo) {
         if let Some(expr) = node.child(0) {
-            match expr.kind() {
-                "assignment" => {
-                    // name = value or name: type = value
-                    if let Some(left) = expr.child_by_field_name("left") {
-                        if left.kind() == "identifier" {
-                            let attr_name = self.node_text(&left).to_string();
-                            let attr_type =
-                                if let Some(type_node) = expr.child_by_field_name("type") {
-                                    parse_type_annotation(self.source, &type_node)
-                                } else if let Some(value) = expr.child_by_field_name("right") {
-                                    self.infer_expr(&value)
-                                } else {
-                                    Type::Unknown
-                                };
-                            class_info.class_vars.insert(attr_name, attr_type);
-                        }
+            if expr.kind() == "assignment" {
+                // name = value or name: type = value
+                if let Some(left) = expr.child_by_field_name("left") {
+                    if left.kind() == "identifier" {
+                        let attr_name = self.node_text(&left).to_string();
+                        let attr_type = if let Some(type_node) = expr.child_by_field_name("type") {
+                            parse_type_annotation(self.source, &type_node)
+                        } else if let Some(value) = expr.child_by_field_name("right") {
+                            self.infer_expr(&value)
+                        } else {
+                            Type::Unknown
+                        };
+                        class_info.class_vars.insert(attr_name, attr_type);
                     }
                 }
-                // Annotated attribute without assignment: name: type
-                _ => {}
             }
         }
     }

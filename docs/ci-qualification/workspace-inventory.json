@@ -1,0 +1,1536 @@
+{
+  "schema_version": 1,
+  "baseline_sha": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "queried_at": "2026-10-27T09:36:04Z",
+  "source": "cargo metadata --locked --no-deps --offline --format-version 1; Cargo.toml bytes; test target source bytes",
+  "scope": "baseline only; current PR HEAD bytes require fresh inventory before qualification",
+  "crate_count": 30,
+  "feature_crate_count": 10,
+  "bin_count": 0,
+  "bench_target_count": 0,
+  "packages": [
+    {
+      "name": "build-stamp",
+      "manifest": "crates/build-stamp/Cargo.toml",
+      "manifest_sha256": "656227b41f402e53de4a16f66faec769a27fabcfb1d6bb6b0a89b447df1559cf",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "build_stamp",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/build-stamp/src/lib.rs",
+          "sha256": "32d97460e6f5b2fc0e80f4f47970b62ce7c1e0ab9d76288a91f2a1d0e1f3e415"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "claim-token",
+      "manifest": "crates/claim-token/Cargo.toml",
+      "manifest_sha256": "d5da81e4de101aa2914aba8527c2a71819d9e0f8bb68012dfc71c2eb18e6a96a",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "claim_token",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/claim-token/src/lib.rs",
+          "sha256": "bf93c7c82fd7fb10c6158b9d7c776f2051f3ea9f55b48157dca1f645a39005a5"
+        },
+        {
+          "name": "behavior_scoped_claim_tokens_contract",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/claim-token/tests/behavior_scoped_claim_tokens_contract.rs",
+          "sha256": "4e0682ca81eb0ed39925030682c362d8408584bf1e9b7dcc5b453fb277572bc8"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "cli-std",
+      "manifest": "crates/cli-std/Cargo.toml",
+      "manifest_sha256": "020dd5bed57e4fd9c5841d83439c1e3c9d5815c2cd6da5d21f96514518e389b3",
+      "features": {
+        "default": [],
+        "online": [
+          "dep:reqwest"
+        ],
+        "k8s": [
+          "dep:base64"
+        ],
+        "registry": [
+          "dep:clap",
+          "dep:linkme"
+        ]
+      },
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "cli_std",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/cli-std/src/lib.rs",
+          "sha256": "f3955963e2f9b7b9a6a7b3c36e6b14588668c5b71f6f5b9bd88cb6899bf806d3"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "default": [],
+        "k8s": [
+          "dep:base64"
+        ],
+        "online": [
+          "dep:reqwest"
+        ],
+        "registry": [
+          "dep:clap",
+          "dep:linkme"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:k8s",
+        "feature:online",
+        "feature:registry",
+        "all-features"
+      ]
+    },
+    {
+      "name": "compass",
+      "manifest": "crates/compass/Cargo.toml",
+      "manifest_sha256": "5c9a65fcf53644d8eae739d882cdef00616df31a127cedcf170f127b813d8680",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "compass",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/compass/src/lib.rs",
+          "sha256": "df1cee9770ed4a3d76f7e7ed20b2087a1c6556509b2c9ffc86baba77f6fbcd3b"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/compass/tests/it/main.rs",
+          "sha256": "cad016269ee27908561184f4805a8cd547b1e747bea622b02e86f23ae55eeaa9"
+        }
+      ],
+      "integration_modules": [
+        "crates/compass/tests/it/behavior_agent_diagnostic_output_contract.rs",
+        "crates/compass/tests/it/behavior_argus_daemon_protocol_and_request_handling_contract.rs",
+        "crates/compass/tests/it/behavior_multi_language_parser_and_checker_dispatch_contract.rs",
+        "crates/compass/tests/it/behavior_python_and_rust_generator_registry_contract.rs",
+        "crates/compass/tests/it/behavior_semantic_search_and_graph_query_contract.rs",
+        "crates/compass/tests/it/behavior_spec_parser_and_state_machine_validation_contract.rs",
+        "crates/compass/tests/it/behavior_structured_refactoring_contract.rs",
+        "crates/compass/tests/it/behavior_symbol_outline_and_propagated_type_query_contract.rs",
+        "crates/compass/tests/it/behavior_watch_bridge_and_incremental_dirty_file_contract.rs",
+        "crates/compass/tests/it/golden_daemon_protocol.rs",
+        "crates/compass/tests/it/golden_diagnostic.rs",
+        "crates/compass/tests/it/golden_semantic_model_cache.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "index-text",
+      "manifest": "crates/index-text/Cargo.toml",
+      "manifest_sha256": "84868e9cd68fc6389eb78914701acff6cdaa0704168203b6d08fcec1becff136",
+      "features": {
+        "default": [],
+        "jieba": [
+          "dep:jieba-rs"
+        ]
+      },
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "index_text",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/index-text/src/lib.rs",
+          "sha256": "d802f0604931bc2dff168d26d0f057f9ad6d0a8be16d202375c91d8ca2973ffb"
+        },
+        {
+          "name": "text_index_contract",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/index-text/tests/text_index_contract.rs",
+          "sha256": "99a6aeb81e092476f61dd93ebe8f1e2df7d6fe9a8de06fb8387f4b72bd9d2a8d"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "default": [],
+        "jieba": [
+          "dep:jieba-rs"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:jieba",
+        "all-features"
+      ]
+    },
+    {
+      "name": "metrics-prometheus",
+      "manifest": "crates/metrics-prometheus/Cargo.toml",
+      "manifest_sha256": "0705d238b9d2e78c38796996f5c622bf7fd1823b8f36b6841d71a96936618df6",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "metrics_prometheus",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/metrics-prometheus/src/lib.rs",
+          "sha256": "271d3dc1b0fd3d0a635f2e0da2e1e23f9ca755520cee33624da9e2c28d13c3b0"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "metrics-remote-write",
+      "manifest": "crates/metrics-remote-write/Cargo.toml",
+      "manifest_sha256": "a69bab27d788efd077dabab81aaeedd17c0d75f5bf760a4222c712eb607914d4",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "metrics_remote_write",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/metrics-remote-write/src/lib.rs",
+          "sha256": "27b45d40d0af6289c10c1bcb0a2ab3e382b74cc1d29dadf74f7a2c1233b97dd6"
+        },
+        {
+          "name": "remote_write_contract",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/metrics-remote-write/tests/remote_write_contract.rs",
+          "sha256": "3285889aecf51e9f4d2f395c614aa96a4d5ddc584a93984c5a46041c19c6ecca"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "openapi-codegen",
+      "manifest": "crates/openapi-codegen/Cargo.toml",
+      "manifest_sha256": "5823b6d94b8bd9d1772c9fbcbcdc2c832f3814baf931e327ef380e9a8df05bac",
+      "features": {},
+      "local_dependencies": [
+        "cli-std"
+      ],
+      "targets": [
+        {
+          "name": "openapi_codegen",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/openapi-codegen/src/lib.rs",
+          "sha256": "7891976f695b53f593e27d8a8041834e905f399449e5a2aa7d452668fc1b9558"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/openapi-codegen/tests/it/main.rs",
+          "sha256": "eae2a9570d9f6d21f81e0e6f7224d66dd7cb3a0ac4fbcd2424f2eac6b9351ebc"
+        }
+      ],
+      "integration_modules": [
+        "crates/openapi-codegen/tests/it/file_bearer_auth.rs",
+        "crates/openapi-codegen/tests/it/run_entry.rs",
+        "crates/openapi-codegen/tests/it/target_profile_matrix.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "peer-tls",
+      "manifest": "crates/peer-tls/Cargo.toml",
+      "manifest_sha256": "3dc438861b221d9b7c242b890ae8c1e52f2c6b9742b07bb4af25a6980cfe7fbe",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "peer_tls",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/peer-tls/src/lib.rs",
+          "sha256": "0fc0fcf0b26692612994af89608717b9f06c04c9242ad8e837a912f699b490a4"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/peer-tls/tests/it/main.rs",
+          "sha256": "939c2bb80ad5b64d43b9a6928d863ae40439531c48d6af701d3a3ecd77e6b6a4"
+        }
+      ],
+      "integration_modules": [
+        "crates/peer-tls/tests/it/material_rejection.rs",
+        "crates/peer-tls/tests/it/peer_rotation.rs",
+        "crates/peer-tls/tests/it/tls_reload.rs",
+        "crates/peer-tls/tests/it/trust_overlap.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "raft-core",
+      "manifest": "crates/raft-core/Cargo.toml",
+      "manifest_sha256": "aa98533a6df10f0d520da0d5b7ddf2d1ddf0bd300d50f807e4782b1ed6154fc6",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "raft_core",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/raft-core/src/lib.rs",
+          "sha256": "dbbfaaf7352b4f196b7369170cd54c0e5deab1304c5488630ab817c9eb10878b"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/raft-core/tests/it/main.rs",
+          "sha256": "569d647b20ea774175d88f20ba72f71a836954fffefd18ed1aa99bf012ac0dbc"
+        }
+      ],
+      "integration_modules": [
+        "crates/raft-core/tests/it/consensus.rs",
+        "crates/raft-core/tests/it/demotion_removal.rs",
+        "crates/raft-core/tests/it/driver_ports.rs",
+        "crates/raft-core/tests/it/handoff_selection.rs",
+        "crates/raft-core/tests/it/joint_promotion.rs",
+        "crates/raft-core/tests/it/leader_self_demotion.rs",
+        "crates/raft-core/tests/it/leadership_transfer.rs",
+        "crates/raft-core/tests/it/learner_admission.rs",
+        "crates/raft-core/tests/it/membership_durability.rs",
+        "crates/raft-core/tests/it/snapshot.rs",
+        "crates/raft-core/tests/it/source_ownership.rs",
+        "crates/raft-core/tests/it/wire_golden.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "raft-runtime",
+      "manifest": "crates/raft-runtime/Cargo.toml",
+      "manifest_sha256": "3a938da310ed7c373f0faa6ddd5354201932665e895edeb2a5d6f8139cd12a99",
+      "features": {},
+      "local_dependencies": [
+        "cli-std",
+        "peer-tls",
+        "raft-core",
+        "server-lifecycle",
+        "storage-durable",
+        "transport-h2c"
+      ],
+      "targets": [
+        {
+          "name": "raft_runtime",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/raft-runtime/src/lib.rs",
+          "sha256": "cbbeeeef9626c8feb04b93235971d75744e187eb5c5b70cf1e4bd70529271da6"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/raft-runtime/tests/it/main.rs",
+          "sha256": "36f3e143bfaa54b93f5f9f2f1522d174c87d040297e797bae26c126061a722d8"
+        },
+        {
+          "name": "resident_log_admission",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/raft-runtime/tests/resident_log_admission.rs",
+          "sha256": "3b1c2f9178cf27daacd59e84ecfa2e5f5d1247db83298d60efdf666ccee0f132"
+        },
+        {
+          "name": "snapshot_peak_memory",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/raft-runtime/tests/snapshot_peak_memory.rs",
+          "sha256": "377aebe3fefe5848ecc7c8d5fe623507b332968baf942120eeb47c675364d0a7"
+        }
+      ],
+      "integration_modules": [
+        "crates/raft-runtime/tests/it/adversarial_recovery.rs",
+        "crates/raft-runtime/tests/it/applied_watch.rs",
+        "crates/raft-runtime/tests/it/concurrent_host.rs",
+        "crates/raft-runtime/tests/it/conf_state_durability.rs",
+        "crates/raft-runtime/tests/it/durable_layout.rs",
+        "crates/raft-runtime/tests/it/durable_persistence.rs",
+        "crates/raft-runtime/tests/it/fenced_assignment.rs",
+        "crates/raft-runtime/tests/it/group_identity.rs",
+        "crates/raft-runtime/tests/it/group_membership_isolation.rs",
+        "crates/raft-runtime/tests/it/group_registry.rs",
+        "crates/raft-runtime/tests/it/host_shutdown_deadline.rs",
+        "crates/raft-runtime/tests/it/leadership_transfer.rs",
+        "crates/raft-runtime/tests/it/legacy_store_migration.rs",
+        "crates/raft-runtime/tests/it/member_admission.rs",
+        "crates/raft-runtime/tests/it/membership_changes.rs",
+        "crates/raft-runtime/tests/it/peer_mtls.rs",
+        "crates/raft-runtime/tests/it/port_error_downcast.rs",
+        "crates/raft-runtime/tests/it/proposal_admission_boundary.rs",
+        "crates/raft-runtime/tests/it/proposal_outcomes.rs",
+        "crates/raft-runtime/tests/it/publish_preflight.rs",
+        "crates/raft-runtime/tests/it/replica_host_builder.rs",
+        "crates/raft-runtime/tests/it/shutdown_handoff.rs",
+        "crates/raft-runtime/tests/it/shutdown_idempotency.rs",
+        "crates/raft-runtime/tests/it/snapshot_at_index.rs",
+        "crates/raft-runtime/tests/it/snapshot_generations.rs",
+        "crates/raft-runtime/tests/it/snapshot_install_safety.rs",
+        "crates/raft-runtime/tests/it/snapshot_preflight_release.rs",
+        "crates/raft-runtime/tests/it/undeliverable_messages.rs",
+        "crates/raft-runtime/tests/it/wire_golden.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "server-http",
+      "manifest": "crates/server-http/Cargo.toml",
+      "manifest_sha256": "13934079227f10b5261624b8cb79c1542c927661fc223d08c566dfd7f37789dc",
+      "features": {},
+      "local_dependencies": [
+        "peer-tls",
+        "server-lifecycle",
+        "server-tcp",
+        "transport-h2c"
+      ],
+      "targets": [
+        {
+          "name": "server_http",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/server-http/src/lib.rs",
+          "sha256": "a1c658cc41878cb91f7101839c2dd75afce1d2e731bfbd53b0bd87689fa4fab4"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/server-http/tests/it/main.rs",
+          "sha256": "9713a2a714a97ba93aebe65b425e202d06905125d857ea02e25d8659038cef3c"
+        }
+      ],
+      "integration_modules": [
+        "crates/server-http/tests/it/lifecycle_composition.rs",
+        "crates/server-http/tests/it/options.rs",
+        "crates/server-http/tests/it/ownership.rs",
+        "crates/server-http/tests/it/tls_reload.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "server-lifecycle",
+      "manifest": "crates/server-lifecycle/Cargo.toml",
+      "manifest_sha256": "9a642456b98b29f2fbfa4877bf529f60e7565734f370915188b3df7a78a3e3f1",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "server_lifecycle",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/server-lifecycle/src/lib.rs",
+          "sha256": "1518d68a987dbdcff6624d36cb8c3b85e83e4559c1e48b47678b49c4207bd05a"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/server-lifecycle/tests/it/main.rs",
+          "sha256": "067860d8703b9f9c87850ff42c4e97ebf4f95ff7ba11cc394f7d995bd53b134b"
+        }
+      ],
+      "integration_modules": [
+        "crates/server-lifecycle/tests/it/bind_config.rs",
+        "crates/server-lifecycle/tests/it/compatibility.rs",
+        "crates/server-lifecycle/tests/it/drain_prestart.rs",
+        "crates/server-lifecycle/tests/it/lifecycle_concurrency.rs",
+        "crates/server-lifecycle/tests/it/lifecycle_hooks.rs",
+        "crates/server-lifecycle/tests/it/lifecycle_state.rs",
+        "crates/server-lifecycle/tests/it/shutdown_deadline.rs",
+        "crates/server-lifecycle/tests/it/shutdown_deadline_publication.rs",
+        "crates/server-lifecycle/tests/it/task_supervisor.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "server-tcp",
+      "manifest": "crates/server-tcp/Cargo.toml",
+      "manifest_sha256": "0efa549ce5abc0f9c31fe50385ee5647ca853ead539105563154e75d592dd81e",
+      "features": {},
+      "local_dependencies": [
+        "server-lifecycle"
+      ],
+      "targets": [
+        {
+          "name": "server_tcp",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/server-tcp/src/lib.rs",
+          "sha256": "752ca9e279725d5ef710eae687df0abc2fe0754bec5a6150efd29d7145dd1506"
+        },
+        {
+          "name": "lifecycle_report",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/server-tcp/tests/lifecycle_report.rs",
+          "sha256": "b2cec0c7704f11e0da50ab62ee6d9c6d4633bc80b414fb699496c84e94385a45"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "service-auth",
+      "manifest": "crates/service-auth/Cargo.toml",
+      "manifest_sha256": "787f7744e548317644694472d92b85fdf8b23c030a8f1bbf1c491ae5976bb043",
+      "features": {
+        "k8s": [
+          "dep:kube",
+          "dep:k8s-openapi"
+        ]
+      },
+      "local_dependencies": [
+        "cli-std",
+        "metrics-prometheus"
+      ],
+      "targets": [
+        {
+          "name": "service_auth",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-auth/src/lib.rs",
+          "sha256": "8fafc96d88244613209c6146c515411dc0be0dd80dbede82f2e2b52ac80794e3"
+        },
+        {
+          "name": "gcp_id_token_spike",
+          "kind": [
+            "example"
+          ],
+          "test": false,
+          "doctest": false,
+          "path": "crates/service-auth/examples/gcp_id_token_spike.rs",
+          "sha256": "f71cc7653ea75214283a0848f53201199a8296c432ecd4b03b5c92ca50dbfcb0"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-auth/tests/it/main.rs",
+          "sha256": "ebb6feb78469e809c31653f3836610e8e97e8625917b0d31cf030461c5f580e0"
+        }
+      ],
+      "integration_modules": [
+        "crates/service-auth/tests/it/async_trait_review_backend.rs",
+        "crates/service-auth/tests/it/scoped_authorization.rs",
+        "crates/service-auth/tests/it/wire_golden.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "k8s": [
+          "dep:kube",
+          "dep:k8s-openapi"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:k8s",
+        "all-features"
+      ]
+    },
+    {
+      "name": "service-backup",
+      "manifest": "crates/service-backup/Cargo.toml",
+      "manifest_sha256": "f0f1e3ce0f2315807657b18518c9b9441ddf46afbb072b2c03771553f726ba4b",
+      "features": {
+        "default": [],
+        "http-client": [
+          "dep:tokio",
+          "dep:service-auth"
+        ],
+        "s3": [
+          "dep:aws-config",
+          "dep:aws-sdk-s3",
+          "dep:tokio"
+        ]
+      },
+      "local_dependencies": [
+        "cli-std",
+        "service-auth",
+        "storage-durable",
+        "storage-object"
+      ],
+      "targets": [
+        {
+          "name": "service_backup",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-backup/src/lib.rs",
+          "sha256": "3fb062db9fe3baa3ee22c60d0bd477c8af9f1118fa39e5ba7e82cea7d3008c54"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-backup/tests/it/main.rs",
+          "sha256": "f769c57aba361e194159d3564fedfd35df128b2db213761ff8ad2428f6421945"
+        }
+      ],
+      "integration_modules": [
+        "crates/service-backup/tests/it/admin_request_golden.rs",
+        "crates/service-backup/tests/it/admin_snapshot_backup.rs",
+        "crates/service-backup/tests/it/projected_admin_transport.rs",
+        "crates/service-backup/tests/it/schema_golden.rs",
+        "crates/service-backup/tests/it/sink_error.rs",
+        "crates/service-backup/tests/it/wire_golden.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "default": [],
+        "http-client": [
+          "dep:tokio",
+          "dep:service-auth"
+        ],
+        "s3": [
+          "dep:aws-config",
+          "dep:aws-sdk-s3",
+          "dep:tokio"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:http-client",
+        "feature:s3",
+        "all-features"
+      ]
+    },
+    {
+      "name": "service-collector",
+      "manifest": "crates/service-collector/Cargo.toml",
+      "manifest_sha256": "713b128236fef991bca404c2684dd969e2b9ee0c27ba406ecb1a3fc19b9d67ff",
+      "features": {},
+      "local_dependencies": [
+        "storage-durable"
+      ],
+      "targets": [
+        {
+          "name": "service_collector",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-collector/src/lib.rs",
+          "sha256": "4031769841e800fe1d82a11a21369c2e02c3cd220a1b2f9274a8915b73d0fef6"
+        },
+        {
+          "name": "collector_runtime_contract",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-collector/tests/collector_runtime_contract.rs",
+          "sha256": "df8c012e40a82210dd3c5b99328ef399151619626fa099c6edbc90ce9a1b022f"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "service-executor",
+      "manifest": "crates/service-executor/Cargo.toml",
+      "manifest_sha256": "48f95ab1262e4ff5fb30470c4250bc47a370cee33876b94d499a53a593b5b5e2",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "service_executor",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-executor/src/lib.rs",
+          "sha256": "ead9c84eb5e92b2b0e4c3a222a94f75a649d95992b435e0f53227cd50c2e47c7"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-executor/tests/it/main.rs",
+          "sha256": "4bfb5865fa4918e982b0d4f4ce2ef7d2948f7ff2ecc54f6499764f5c8d1da3a1"
+        }
+      ],
+      "integration_modules": [
+        "crates/service-executor/tests/it/group_commit.rs",
+        "crates/service-executor/tests/it/job_runner.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "service-http",
+      "manifest": "crates/service-http/Cargo.toml",
+      "manifest_sha256": "6d72eb7c7e3f5dd78c3544f08320232a6fd0fab0546455ff6cf23e68a3ea9b71",
+      "features": {
+        "otlp": [
+          "service-observability/otlp",
+          "dep:opentelemetry",
+          "dep:tracing-opentelemetry"
+        ]
+      },
+      "local_dependencies": [
+        "server-http",
+        "server-lifecycle",
+        "service-observability"
+      ],
+      "targets": [
+        {
+          "name": "service_http",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-http/src/lib.rs",
+          "sha256": "e3e6129ebbe8b832f6694dbf8c93a7c41e607ee63b45bd9b16f5d9bb413929c1"
+        },
+        {
+          "name": "minimal_service",
+          "kind": [
+            "example"
+          ],
+          "test": false,
+          "doctest": false,
+          "path": "crates/service-http/examples/minimal_service.rs",
+          "sha256": "151fa6f6a163f68eb6a1f08d92304b625dcdafc1d2ece8d3544de4cb0b0858e9"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-http/tests/it/main.rs",
+          "sha256": "958bbccb7286028a15d6b74b6c009b21a68cbff410f99418835a8bc7a1687e9e"
+        }
+      ],
+      "integration_modules": [
+        "crates/service-http/tests/it/access_log.rs",
+        "crates/service-http/tests/it/body_limit.rs",
+        "crates/service-http/tests/it/detailed_error.rs",
+        "crates/service-http/tests/it/ingest_runtime.rs",
+        "crates/service-http/tests/it/lifecycle_observability.rs",
+        "crates/service-http/tests/it/lifecycle_probes.rs",
+        "crates/service-http/tests/it/lifecycle_signal.rs",
+        "crates/service-http/tests/it/otlp_tracing.rs",
+        "crates/service-http/tests/it/request_trace_context.rs",
+        "crates/service-http/tests/it/reverse_proxy.rs",
+        "crates/service-http/tests/it/server_timing.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "otlp": [
+          "service-observability/otlp",
+          "dep:opentelemetry",
+          "dep:tracing-opentelemetry"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:otlp",
+        "all-features"
+      ]
+    },
+    {
+      "name": "service-k8s",
+      "manifest": "crates/service-k8s/Cargo.toml",
+      "manifest_sha256": "79b336722f93f2db9e27db69bd2a2ad5353213970c987a6f15eed10326672ad2",
+      "features": {
+        "default": [
+          "full"
+        ],
+        "render-only": [],
+        "controller": [
+          "render-only",
+          "dep:kube",
+          "dep:k8s-openapi",
+          "dep:axum",
+          "dep:metrics-prometheus",
+          "dep:cli-std"
+        ],
+        "certificate": [
+          "dep:rcgen",
+          "dep:x509-parser",
+          "dep:kube",
+          "dep:k8s-openapi"
+        ],
+        "gcp-cas-client": [
+          "certificate",
+          "dep:reqwest",
+          "dep:serde_urlencoded"
+        ],
+        "gcp-cas": [
+          "full"
+        ],
+        "full": [
+          "controller",
+          "certificate",
+          "gcp-cas-client"
+        ]
+      },
+      "local_dependencies": [
+        "cli-std",
+        "metrics-prometheus"
+      ],
+      "targets": [
+        {
+          "name": "service_k8s",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-k8s/src/lib.rs",
+          "sha256": "d34ee390c40e07a6a4eba09f083fd90a62fabcddee8a9bfa6deed7a3dcfd91db"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-k8s/tests/it/main.rs",
+          "sha256": "4ec4cd8fcb16fbcca9a82c1558f4523efee3dde85e59b2b3c5226dd5b1364888"
+        }
+      ],
+      "integration_modules": [
+        "crates/service-k8s/tests/it/certificate_kubernetes_store.rs",
+        "crates/service-k8s/tests/it/certificate_lifecycle.rs",
+        "crates/service-k8s/tests/it/certificate_ownership.rs",
+        "crates/service-k8s/tests/it/certificate_rbac_least_privilege.rs",
+        "crates/service-k8s/tests/it/certificate_rotation.rs",
+        "crates/service-k8s/tests/it/certificate_status.rs",
+        "crates/service-k8s/tests/it/lifecycle_render.rs",
+        "crates/service-k8s/tests/it/prune_unserved_api_is_scoped.rs",
+        "crates/service-k8s/tests/it/reconcile_once_does_not_assume_leadership.rs",
+        "crates/service-k8s/tests/it/stateful_adapter_equivalence.rs",
+        "crates/service-k8s/tests/it/stateful_instance_render.rs",
+        "crates/service-k8s/tests/it/status_conditions_survive_the_recovery_pass.rs",
+        "crates/service-k8s/tests/it/status_patch_golden.rs",
+        "crates/service-k8s/tests/it/wire_golden.rs",
+        "crates/service-k8s/tests/it/workload_plan.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "certificate": [
+          "dep:rcgen",
+          "dep:x509-parser",
+          "dep:kube",
+          "dep:k8s-openapi"
+        ],
+        "controller": [
+          "render-only",
+          "dep:kube",
+          "dep:k8s-openapi",
+          "dep:axum",
+          "dep:metrics-prometheus",
+          "dep:cli-std"
+        ],
+        "default": [
+          "full"
+        ],
+        "full": [
+          "controller",
+          "certificate",
+          "gcp-cas-client"
+        ],
+        "gcp-cas": [
+          "full"
+        ],
+        "gcp-cas-client": [
+          "certificate",
+          "dep:reqwest",
+          "dep:serde_urlencoded"
+        ],
+        "render-only": []
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:certificate",
+        "feature:controller",
+        "feature:full",
+        "feature:gcp-cas",
+        "feature:gcp-cas-client",
+        "feature:render-only",
+        "all-features"
+      ]
+    },
+    {
+      "name": "service-mcp",
+      "manifest": "crates/service-mcp/Cargo.toml",
+      "manifest_sha256": "072cd7b80beea3a9f0f11fbbb7a0dbee38581524bba97f20d2e01e2833a8e5da",
+      "features": {},
+      "local_dependencies": [
+        "service-auth"
+      ],
+      "targets": [
+        {
+          "name": "service_mcp",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-mcp/src/lib.rs",
+          "sha256": "04acf2d59e67f54aebcbffd553c09da85b65fbccfeea5734b7e6e94ffa9c57e7"
+        },
+        {
+          "name": "mcp_transport_contract",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-mcp/tests/mcp_transport_contract.rs",
+          "sha256": "a2b0666eaa8500c8203568ae4cdd2c1f73f0a5320cc96c31cd790384a0145c9c"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "service-observability",
+      "manifest": "crates/service-observability/Cargo.toml",
+      "manifest_sha256": "d204bd8d8869d3585e7bc1c924063fb708d7b05a676bc665d27bdf59b5d290ae",
+      "features": {
+        "default": [],
+        "otlp": [
+          "dep:opentelemetry",
+          "dep:opentelemetry-otlp",
+          "dep:opentelemetry_sdk",
+          "dep:tracing-opentelemetry"
+        ]
+      },
+      "local_dependencies": [
+        "metrics-prometheus",
+        "server-lifecycle"
+      ],
+      "targets": [
+        {
+          "name": "service_observability",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-observability/src/lib.rs",
+          "sha256": "59b83728038700daea31e395aeb667fa3e7adbeb920af497f96241031702fcf7"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-observability/tests/it/main.rs",
+          "sha256": "dee90ce3ab86cf5765f292972eb662df68be98eeba9500faf35c2829e9e74ebe"
+        }
+      ],
+      "integration_modules": [
+        "crates/service-observability/tests/it/filesystem_usage_is_physical.rs",
+        "crates/service-observability/tests/it/service_log_jsonl.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "default": [],
+        "otlp": [
+          "dep:opentelemetry",
+          "dep:opentelemetry-otlp",
+          "dep:opentelemetry_sdk",
+          "dep:tracing-opentelemetry"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:otlp",
+        "all-features"
+      ]
+    },
+    {
+      "name": "service-projection",
+      "manifest": "crates/service-projection/Cargo.toml",
+      "manifest_sha256": "abcabda004d3fb898d5aa6304f0a7c4205edc14052ec974ac0a28329e023882d",
+      "features": {},
+      "local_dependencies": [
+        "storage-durable"
+      ],
+      "targets": [
+        {
+          "name": "service_projection",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/service-projection/src/lib.rs",
+          "sha256": "1dd5c84353ce1a7666400722c7751e9dbb926ec07d8334e12f530846af1985f7"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/service-projection/tests/it/main.rs",
+          "sha256": "a707cef4fc440a92d9a0d2084e6d0680203b6f7054025a02006617c07d170297"
+        }
+      ],
+      "integration_modules": [
+        "crates/service-projection/tests/it/newtype_wire_golden.rs",
+        "crates/service-projection/tests/it/typed_projection_runtime.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "storage-durable",
+      "manifest": "crates/storage-durable/Cargo.toml",
+      "manifest_sha256": "b8686a9b19f71598083fad7a501394ba4688a126c031947da08757a24b75c297",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "storage_durable",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/storage-durable/src/lib.rs",
+          "sha256": "ee29562a5f7540af8f4e003bb3711f7a5bf927ade5b335514df15ecb3753854f"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/storage-durable/tests/it/main.rs",
+          "sha256": "0c73fb0e20fd3a1d5539c6105aded7e50813ab1270167d40556bbde6ec6c308f"
+        }
+      ],
+      "integration_modules": [
+        "crates/storage-durable/tests/it/capacity_guard.rs",
+        "crates/storage-durable/tests/it/data_root.rs",
+        "crates/storage-durable/tests/it/data_root_errors.rs",
+        "crates/storage-durable/tests/it/data_root_golden.rs",
+        "crates/storage-durable/tests/it/framed_log_bytes.rs",
+        "crates/storage-durable/tests/it/framed_log_streaming.rs",
+        "crates/storage-durable/tests/it/log_frame.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "storage-object",
+      "manifest": "crates/storage-object/Cargo.toml",
+      "manifest_sha256": "e0075bc3108ef143fa5b5ed9814fb2ed95972ced0222ae0fc413e47d8f5fd08d",
+      "features": {
+        "default": [
+          "gcs"
+        ],
+        "gcs": [
+          "dep:reqwest",
+          "dep:urlencoding"
+        ],
+        "s3": [
+          "dep:aws-config",
+          "dep:aws-sdk-s3",
+          "dep:tokio"
+        ]
+      },
+      "local_dependencies": [
+        "storage-durable"
+      ],
+      "targets": [
+        {
+          "name": "storage_object",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/storage-object/src/lib.rs",
+          "sha256": "9444d777236a63b14dbc4b00a449ec8f06be9313b39157a0419e26f9b5beea9c"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/storage-object/tests/it/main.rs",
+          "sha256": "63fb664a12a15462edee3d9d586517754e494daa406b7a8a59a6ec09617cfbcc"
+        }
+      ],
+      "integration_modules": [
+        "crates/storage-object/tests/it/gcs_conditional_put.rs",
+        "crates/storage-object/tests/it/local_object_store.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "default": [
+          "gcs"
+        ],
+        "gcs": [
+          "dep:reqwest",
+          "dep:urlencoding"
+        ],
+        "s3": [
+          "dep:aws-config",
+          "dep:aws-sdk-s3",
+          "dep:tokio"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:gcs",
+        "feature:s3",
+        "all-features"
+      ]
+    },
+    {
+      "name": "storage-segment",
+      "manifest": "crates/storage-segment/Cargo.toml",
+      "manifest_sha256": "5d839fb5f30402eaec17af86498f7ed9b47206e48c1c3771d8f3b124e12aa775",
+      "features": {},
+      "local_dependencies": [
+        "storage-object"
+      ],
+      "targets": [
+        {
+          "name": "storage_segment",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/storage-segment/src/lib.rs",
+          "sha256": "f00518e9a66303babf135b5058d5e3df5eed82df0a66b39c46cfb7882db912ac"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/storage-segment/tests/it/main.rs",
+          "sha256": "8d4ec7d5f974d822216e03cb04199f1d6a0663298fb79e4757e7471e352e0abd"
+        }
+      ],
+      "integration_modules": [
+        "crates/storage-segment/tests/it/archive_coordinator.rs",
+        "crates/storage-segment/tests/it/paged_catalog.rs",
+        "crates/storage-segment/tests/it/persisted_format.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "surface",
+      "manifest": "crates/surface/Cargo.toml",
+      "manifest_sha256": "117e5be63484b55a79f2de43e221cc870baae18bd85d4e0266a7f871f10f3ce8",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "surface",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/surface/src/lib.rs",
+          "sha256": "a13da94f7ea44fa35843105174d6985dad58072fccab93b3d95136e8f7e9e169"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/surface/tests/it/main.rs",
+          "sha256": "9ae9ef1b79488d60df454090fc59f6262ec1df8395b8e5f8d02e8d98bb23d638"
+        }
+      ],
+      "integration_modules": [
+        "crates/surface/tests/it/behavior_renderer_neutral_ui_surface_model_contract.rs",
+        "crates/surface/tests/it/builders.rs",
+        "crates/surface/tests/it/snapshot.rs",
+        "crates/surface/tests/it/snapshot_json.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "transport-h2c",
+      "manifest": "crates/transport-h2c/Cargo.toml",
+      "manifest_sha256": "ba798e72922e111e056d37daeb347526da435e26d6f79fbb0e53fe329979b901",
+      "features": {
+        "server": [
+          "dep:hyper",
+          "dep:hyper-util",
+          "dep:tower",
+          "dep:axum"
+        ]
+      },
+      "local_dependencies": [
+        "cli-std",
+        "server-lifecycle"
+      ],
+      "targets": [
+        {
+          "name": "transport_h2c",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/transport-h2c/src/lib.rs",
+          "sha256": "ad738f2f3924ea1d07fac15a806a239314cdb50ba8672cb08a87cea778338a98"
+        },
+        {
+          "name": "conn_sweep",
+          "kind": [
+            "example"
+          ],
+          "test": false,
+          "doctest": false,
+          "path": "crates/transport-h2c/examples/conn_sweep.rs",
+          "sha256": "b10262ded12c6340b1a7159017b4ecfbd7259fa027549d07b74564409a58c802"
+        },
+        {
+          "name": "it",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/transport-h2c/tests/it/main.rs",
+          "sha256": "510642f64b3777c7ce30dc5684c9fefe4d9f74cf07469f7c3bbf17137d60dba2"
+        }
+      ],
+      "integration_modules": [
+        "crates/transport-h2c/tests/it/config.rs",
+        "crates/transport-h2c/tests/it/graceful_drain.rs",
+        "crates/transport-h2c/tests/it/manager.rs"
+      ],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "server": [
+          "dep:hyper",
+          "dep:hyper-util",
+          "dep:tower",
+          "dep:axum"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:server",
+        "all-features"
+      ]
+    },
+    {
+      "name": "transport-otlp",
+      "manifest": "crates/transport-otlp/Cargo.toml",
+      "manifest_sha256": "894a2305349d7cabd13543e324c528146b9da09e542f8013ade97644afe59899",
+      "features": {},
+      "local_dependencies": [],
+      "targets": [
+        {
+          "name": "transport_otlp",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/transport-otlp/src/lib.rs",
+          "sha256": "74714ca468daa89f6e1b8895e66027af4054ed135b9daf6fc068b9d40bf8671a"
+        },
+        {
+          "name": "otlp_transport",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/transport-otlp/tests/otlp_transport.rs",
+          "sha256": "3be5b9ee56f5261fcd9508f052f688ead9be501051ffa15d1426859d95a81285"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {},
+      "unit_static_profiles": [
+        "default"
+      ]
+    },
+    {
+      "name": "ui-runtime",
+      "manifest": "crates/ui-runtime/Cargo.toml",
+      "manifest_sha256": "181b80b47a2c034202255ebb4dd620d420ed42ec8e2e12cbfdf8c1ccd7b9e918",
+      "features": {
+        "default": [],
+        "debug": [
+          "serde_json"
+        ]
+      },
+      "local_dependencies": [
+        "surface"
+      ],
+      "targets": [
+        {
+          "name": "ui_runtime",
+          "kind": [
+            "lib"
+          ],
+          "test": true,
+          "doctest": true,
+          "path": "crates/ui-runtime/src/lib.rs",
+          "sha256": "e53ab689197046404d2b331f652018df8f25a0bc0337bd9c632a4f4a1e5860a3"
+        },
+        {
+          "name": "behavior_renderer_neutral_component_runtime_contract",
+          "kind": [
+            "test"
+          ],
+          "test": true,
+          "doctest": false,
+          "path": "crates/ui-runtime/tests/behavior_renderer_neutral_component_runtime_contract.rs",
+          "sha256": "64f444a5ce38e87ca8151c8fed5225279107de08307d8907b0c7901f3d36bcd7"
+        }
+      ],
+      "integration_modules": [],
+      "bench_sources": [],
+      "cargo_effective_features": {
+        "debug": [
+          "serde_json"
+        ],
+        "default": [],
+        "serde_json": [
+          "dep:serde_json"
+        ]
+      },
+      "unit_static_profiles": [
+        "default",
+        "no-default",
+        "feature:debug",
+        "feature:serde_json",
+        "all-features"
+      ]
+    }
+  ],
+  "profile_count": 70
+}

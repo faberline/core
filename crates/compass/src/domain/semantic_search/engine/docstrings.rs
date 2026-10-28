@@ -168,13 +168,13 @@ impl SemanticSearchEngine {
         let trimmed = raw.trim();
 
         // Remove triple quotes or single quotes
-        let cleaned = if trimmed.starts_with("\"\"\"") && trimmed.ends_with("\"\"\"") {
+        let cleaned = if (trimmed.starts_with("\"\"\"") && trimmed.ends_with("\"\"\""))
+            || (trimmed.starts_with("'''") && trimmed.ends_with("'''"))
+        {
             &trimmed[3..trimmed.len() - 3]
-        } else if trimmed.starts_with("'''") && trimmed.ends_with("'''") {
-            &trimmed[3..trimmed.len() - 3]
-        } else if trimmed.starts_with('"') && trimmed.ends_with('"') {
-            &trimmed[1..trimmed.len() - 1]
-        } else if trimmed.starts_with('\'') && trimmed.ends_with('\'') {
+        } else if (trimmed.starts_with('"') && trimmed.ends_with('"'))
+            || (trimmed.starts_with('\'') && trimmed.ends_with('\''))
+        {
             &trimmed[1..trimmed.len() - 1]
         } else {
             trimmed
@@ -201,8 +201,8 @@ impl SemanticSearchEngine {
             .lines()
             .map(|line| {
                 let l = line.trim();
-                if l.starts_with('*') {
-                    l[1..].trim()
+                if let Some(rest) = l.strip_prefix('*') {
+                    rest.trim()
                 } else {
                     l
                 }

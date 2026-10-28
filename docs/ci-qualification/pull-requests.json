@@ -1,0 +1,273 @@
+{
+  "schema_version": 1,
+  "queried_at": "2026-10-27T09:36:04Z",
+  "source": "GitHub connector; 22 known open PRs #51..#72 read individually",
+  "baseline_sha": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "pull_requests": [
+    {
+      "pr": 51,
+      "issues": [
+        47
+      ],
+      "head_sha": "019061dd744aaa8386d77246d5f9b61bf3f5bef4",
+      "changed_crates": [
+        "raft-runtime"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/51.json"
+    },
+    {
+      "pr": 52,
+      "issues": [
+        48
+      ],
+      "head_sha": "38f9b3c060c0d9fc1c3b7e802cc6440401194970",
+      "changed_crates": [
+        "raft-runtime"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/52.json"
+    },
+    {
+      "pr": 53,
+      "issues": [
+        16
+      ],
+      "head_sha": "6d8f6eb7b2abe3ba7d68aaae02b5925ec6941cf9",
+      "changed_crates": [
+        "service-backup"
+      ],
+      "selected_crates": 30,
+      "snapshot": "pull-requests/53.json"
+    },
+    {
+      "pr": 54,
+      "issues": [
+        15
+      ],
+      "head_sha": "a6ec47f5f8d1f870b3bbbc88eae441f51c361436",
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/54.json"
+    },
+    {
+      "pr": 55,
+      "issues": [
+        26
+      ],
+      "head_sha": "1e4bef6567f9b23dfc63bd5cd838907968f2fea9",
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/55.json"
+    },
+    {
+      "pr": 56,
+      "issues": [
+        27
+      ],
+      "head_sha": "6e58f41e89e21a29addc9f27a022e05734983524",
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/56.json"
+    },
+    {
+      "pr": 57,
+      "issues": [
+        28
+      ],
+      "head_sha": "a174627fd70207750cbf2c55f41ab723c4c57c81",
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/57.json"
+    },
+    {
+      "pr": 58,
+      "issues": [
+        29
+      ],
+      "head_sha": "4ad9db76e0f57521819faa594086faba78ba8379",
+      "changed_crates": [
+        "service-auth"
+      ],
+      "selected_crates": 3,
+      "snapshot": "pull-requests/58.json"
+    },
+    {
+      "pr": 59,
+      "issues": [
+        33
+      ],
+      "head_sha": "bf4b8e80ce97b12565d219247891f34960a5d74c",
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/59.json"
+    },
+    {
+      "pr": 60,
+      "issues": [
+        30
+      ],
+      "head_sha": "b66321d916f316170477bebd81196f565e30e413",
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/60.json"
+    },
+    {
+      "pr": 61,
+      "issues": [
+        31
+      ],
+      "head_sha": "352419ef9fe9c67789927fa81c65e3fcdf2932c7",
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/61.json"
+    },
+    {
+      "pr": 62,
+      "issues": [
+        32
+      ],
+      "head_sha": "323e12e2f52e6877242689d43e15aeb4f50e692f",
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/62.json"
+    },
+    {
+      "pr": 63,
+      "issues": [
+        17
+      ],
+      "head_sha": "597c84147a08ff775fa47ec595733a09be916b67",
+      "changed_crates": [
+        "service-backup"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/63.json"
+    },
+    {
+      "pr": 64,
+      "issues": [
+        18
+      ],
+      "head_sha": "625f003461e7f16175857a32e5f129006a85e526",
+      "changed_crates": [
+        "service-backup"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/64.json"
+    },
+    {
+      "pr": 65,
+      "issues": [
+        19
+      ],
+      "head_sha": "a01978cea39831c570ea37637451faaab835f759",
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/65.json"
+    },
+    {
+      "pr": 66,
+      "issues": [
+        34
+      ],
+      "head_sha": "5d99c6672f6a57fa717b4e96910818f907d5073d",
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/66.json"
+    },
+    {
+      "pr": 67,
+      "issues": [
+        35
+      ],
+      "head_sha": "eb36873af2e9421172a0df9d593c0c50edbf0f25",
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selected_crates": 30,
+      "snapshot": "pull-requests/67.json"
+    },
+    {
+      "pr": 68,
+      "issues": [
+        36
+      ],
+      "head_sha": "4e7b8b093f9ec75bfc7127bd8922fa224acf4c6c",
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/68.json"
+    },
+    {
+      "pr": 69,
+      "issues": [
+        42
+      ],
+      "head_sha": "9ab26c1b377791074a0ad3d513e5af94476c8219",
+      "changed_crates": [
+        "raft-runtime"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/69.json"
+    },
+    {
+      "pr": 70,
+      "issues": [
+        45
+      ],
+      "head_sha": "aadac4deca3a0a994fd84b86bab89c035fcbc6bd",
+      "changed_crates": [
+        "raft-core",
+        "raft-runtime"
+      ],
+      "selected_crates": 2,
+      "snapshot": "pull-requests/70.json"
+    },
+    {
+      "pr": 71,
+      "issues": [
+        49
+      ],
+      "head_sha": "c09d6bdfd5b3819576d7a181cc63997cb6effb74",
+      "changed_crates": [
+        "raft-runtime"
+      ],
+      "selected_crates": 1,
+      "snapshot": "pull-requests/71.json"
+    },
+    {
+      "pr": 72,
+      "issues": [
+        9
+      ],
+      "head_sha": "95496c12f2f9f9ea7f70340bf7742257b6d20922",
+      "changed_crates": [
+        "cli-std"
+      ],
+      "selected_crates": 10,
+      "snapshot": "pull-requests/72.json"
+    }
+  ]
+}

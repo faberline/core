@@ -187,10 +187,8 @@ impl JsonSchemaParser {
             Value::Number(n) => {
                 if let Some(i) = n.as_i64() {
                     Some(Type::Literal(LiteralValue::Int(i)))
-                } else if let Some(f) = n.as_f64() {
-                    Some(Type::Literal(LiteralValue::Float(f)))
                 } else {
-                    None
+                    n.as_f64().map(|f| Type::Literal(LiteralValue::Float(f)))
                 }
             }
             Value::Bool(b) => Some(Type::Literal(LiteralValue::Bool(*b))),

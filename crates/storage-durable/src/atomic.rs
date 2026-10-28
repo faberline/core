@@ -254,10 +254,7 @@ fn atomic_write_strict_injected(
 ) -> std::result::Result<(), StrictAtomicWriteError> {
     let mut failure = move |step| {
         if std::mem::discriminant(&step) == std::mem::discriminant(&fail_at) {
-            Err(io::Error::new(
-                io::ErrorKind::Other,
-                "injected strict failure",
-            ))
+            Err(io::Error::other("injected strict failure"))
         } else {
             Ok(())
         }

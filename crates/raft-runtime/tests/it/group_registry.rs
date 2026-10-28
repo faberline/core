@@ -156,7 +156,7 @@ async fn row1_multi_group_multiplexing() {
 
     // Propose 11 and 12 to group alpha via shared listener
     let resp1 = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&serde_json::json!({
             "group_id": "alpha",
             "command": 11u64.to_le_bytes().to_vec(),
@@ -167,7 +167,7 @@ async fn row1_multi_group_multiplexing() {
     assert_eq!(resp1.status(), reqwest::StatusCode::OK);
 
     let resp2 = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&serde_json::json!({
             "group_id": "alpha",
             "command": 12u64.to_le_bytes().to_vec(),
@@ -179,7 +179,7 @@ async fn row1_multi_group_multiplexing() {
 
     // Propose 21 to group beta via shared listener
     let resp3 = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&serde_json::json!({
             "group_id": "beta",
             "command": 21u64.to_le_bytes().to_vec(),
@@ -268,7 +268,7 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
         let client = h2c_client();
 
         let resp1 = client
-            .post(&format!("{}/raft/publish", url))
+            .post(format!("{}/raft/publish", url))
             .json(&serde_json::json!({
                 "group_id": "alpha",
                 "command": 11u64.to_le_bytes().to_vec(),
@@ -279,7 +279,7 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
         assert_eq!(resp1.status(), reqwest::StatusCode::OK);
 
         let resp2 = client
-            .post(&format!("{}/raft/publish", url))
+            .post(format!("{}/raft/publish", url))
             .json(&serde_json::json!({
                 "group_id": "alpha",
                 "command": 12u64.to_le_bytes().to_vec(),
@@ -290,7 +290,7 @@ async fn row2_reopen_from_same_dir_replay_isolation() {
         assert_eq!(resp2.status(), reqwest::StatusCode::OK);
 
         let resp3 = client
-            .post(&format!("{}/raft/publish", url))
+            .post(format!("{}/raft/publish", url))
             .json(&serde_json::json!({
                 "group_id": "beta",
                 "command": 21u64.to_le_bytes().to_vec(),
@@ -415,7 +415,7 @@ async fn row3_unknown_group_refusal_negative_control() {
     let client = h2c_client();
 
     let z_before: BTreeMap<String, RaftStatus> = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -425,7 +425,7 @@ async fn row3_unknown_group_refusal_negative_control() {
 
     // Unknown group request-vote RPC
     let resp = client
-        .post(&format!("{}/raft/request-vote", url))
+        .post(format!("{}/raft/request-vote", url))
         .json(&serde_json::json!({
             "group_id": "unregistered_group",
             "from": 99,
@@ -444,7 +444,7 @@ async fn row3_unknown_group_refusal_negative_control() {
     assert_eq!(resp.status(), reqwest::StatusCode::NOT_FOUND);
 
     let z_after: BTreeMap<String, RaftStatus> = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -537,7 +537,7 @@ async fn row4_duplicate_registration_error() {
     let client = h2c_client();
 
     let resp = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&serde_json::json!({
             "group_id": "alpha",
             "command": 42u64.to_le_bytes().to_vec(),
@@ -622,7 +622,7 @@ async fn row5_registry_status_surface() {
     host2.propose(200u64.to_le_bytes().to_vec()).await.unwrap();
 
     let statuses: BTreeMap<String, RaftStatus> = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -710,7 +710,7 @@ async fn row6_failure_isolation() {
 
     // Proposal into alpha fails
     let resp_alpha = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&serde_json::json!({
             "group_id": "alpha",
             "command": 10u64.to_le_bytes().to_vec(),
@@ -726,7 +726,7 @@ async fn row6_failure_isolation() {
 
     // Proposal into beta succeeds
     let resp_beta = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&serde_json::json!({
             "group_id": "beta",
             "command": 20u64.to_le_bytes().to_vec(),
@@ -738,7 +738,7 @@ async fn row6_failure_isolation() {
 
     // Status check
     let statuses: BTreeMap<String, RaftStatus> = client
-        .get(&format!("{}/raftz", url))
+        .get(format!("{}/raftz", url))
         .send()
         .await
         .unwrap()
@@ -828,7 +828,7 @@ async fn row7_snapshot_compaction_isolation() {
         meta_before.ino()
     };
     let len_before = meta_before.len();
-    let applied_before = host2.applied_watch().borrow().clone();
+    let applied_before = *host2.applied_watch().borrow();
 
     // Snapshot and compact group alpha
     host1.snapshot_and_compact().await.unwrap();
@@ -841,7 +841,7 @@ async fn row7_snapshot_compaction_isolation() {
         meta_after.ino()
     };
     let len_after = meta_after.len();
-    let applied_after = host2.applied_watch().borrow().clone();
+    let applied_after = *host2.applied_watch().borrow();
 
     #[cfg(unix)]
     assert_eq!(inode_before, inode_after);
@@ -850,7 +850,7 @@ async fn row7_snapshot_compaction_isolation() {
 
     // Proposal into beta through shared listener still succeeds
     let resp_beta = client
-        .post(&format!("{}/raft/publish", url))
+        .post(format!("{}/raft/publish", url))
         .json(&serde_json::json!({
             "group_id": "beta",
             "command": 51u64.to_le_bytes().to_vec(),
@@ -904,7 +904,7 @@ async fn row8_foreign_group_single_host_returns_400() {
     let client = h2c_client();
 
     let resp = client
-        .post(&format!("{}/raft/request-vote", url))
+        .post(format!("{}/raft/request-vote", url))
         .json(&serde_json::json!({
             "group_id": "beta",
             "from": 1,

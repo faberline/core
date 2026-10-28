@@ -113,7 +113,7 @@ impl SymbolTableBuilder {
             }
 
             // Field definition (inside message): type name = number;
-            let in_message = context_stack.last().map_or(false, |c| c == "message");
+            let in_message = context_stack.last().is_some_and(|c| c == "message");
             if in_message
                 && brace_depth >= 1
                 && trimmed.contains('=')

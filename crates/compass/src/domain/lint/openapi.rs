@@ -197,10 +197,11 @@ impl OpenApiChecker {
                 } else {
                     current_path = None;
                 }
-            } else if indent >= 4 && current_path.is_some() {
-                if http_methods.iter().any(|&m| trimmed.starts_with(m)) {
-                    path_has_method = true;
-                }
+            } else if indent >= 4
+                && current_path.is_some()
+                && http_methods.iter().any(|&m| trimmed.starts_with(m))
+            {
+                path_has_method = true;
             }
         }
 

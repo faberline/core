@@ -159,7 +159,7 @@ impl PythonChecker {
                                     let range = node.to_range();
                                     diagnostics.push(
                                         Diagnostic::warning(
-                                            range.clone(),
+                                            range,
                                             "PY405",
                                             DiagnosticCategory::Style,
                                             suggestion,
@@ -196,7 +196,7 @@ impl PythonChecker {
                                         let range = node.to_range();
                                         diagnostics.push(
                                             Diagnostic::warning(
-                                                range.clone(),
+                                                range,
                                                 "PY405",
                                                 DiagnosticCategory::Style,
                                                 suggestion,

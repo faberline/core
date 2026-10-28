@@ -66,7 +66,7 @@ impl TitanGenerator {
         // Generate relationships
         let rels = self.get_model_relationships(&model.name, spec);
         for rel in rels {
-            lines.push(self.generate_relationship(&rel, ctx));
+            lines.push(self.generate_relationship(rel, ctx));
         }
 
         lines.join("\n")

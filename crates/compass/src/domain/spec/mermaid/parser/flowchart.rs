@@ -80,7 +80,7 @@ impl MermaidParser {
         let s = s.trim();
 
         // Find bracket type
-        if let Some(bracket_start) = s.find(|c| c == '[' || c == '{' || c == '(') {
+        if let Some(bracket_start) = s.find(['[', '{', '(']) {
             let id = s[..bracket_start].trim().to_string();
             let bracket_char = s.chars().nth(bracket_start).unwrap();
 

@@ -39,10 +39,11 @@ impl RaftStore {
             for entry in entries.flatten() {
                 let path = entry.path();
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                    if name.starts_with(&prefix) && name.ends_with(".artifact") {
-                        if current_artifact.map_or(true, |cur| cur != path.as_path()) {
-                            let _ = std::fs::remove_file(&path);
-                        }
+                    if name.starts_with(&prefix)
+                        && name.ends_with(".artifact")
+                        && current_artifact != Some(path.as_path())
+                    {
+                        let _ = std::fs::remove_file(&path);
                     }
                 }
             }
@@ -67,7 +68,7 @@ impl RaftStore {
                 if let Some(name) = path.file_name().and_then(|value| value.to_str()) {
                     if name.starts_with(&prefix)
                         && name.ends_with(".artifact")
-                        && current_artifact.map_or(true, |current| current != path.as_path())
+                        && (current_artifact != Some(path.as_path()))
                         && !self.log_artifact_is_pinned(&path)
                     {
                         let _ = std::fs::remove_file(&path);

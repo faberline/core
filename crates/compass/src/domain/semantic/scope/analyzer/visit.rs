@@ -16,7 +16,7 @@ impl ScopeAnalyzer {
                 // Check if this is a stub function (body is just ... or pass)
                 let is_stub = node
                     .child_by_field_name("body")
-                    .map_or(false, |body| Self::is_stub_body(&body, file));
+                    .is_some_and(|body| Self::is_stub_body(&body, file));
 
                 // Create new scope for function body
                 self.push_scope(ScopeKind::Function);

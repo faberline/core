@@ -15,32 +15,29 @@ impl SemanticSearchEngine {
         let mut all_matches: Vec<(SearchMatch, f64)> = Vec::new();
 
         // Search for functions with matching signatures
-        for (_sig_key, locations) in &self.type_signature_index {
+        for locations in self.type_signature_index.values() {
             for location in locations {
-                if let Some(ref loc_type) = location.ty {
-                    if let Type::Callable {
-                        params: loc_params,
-                        ret: loc_ret,
-                    } = loc_type
-                    {
-                        let score = self.compute_signature_match_score(
-                            params,
-                            return_type,
-                            loc_params,
-                            loc_ret,
-                        );
-
-                        if score > 0.0 {
-                            let search_match = SearchMatch {
-                                file: location.file.clone(),
-                                span: location.span,
-                                symbol: Some(location.name.clone()),
-                                kind: location.kind.clone(),
-                                score,
-                                context: None,
-                            };
-                            all_matches.push((search_match, score));
-                        }
+                if let Some(Type::Callable {
+                    params: loc_params,
+                    ret: loc_ret,
+                }) = location.ty.as_ref()
+                {
+                    let score = self.compute_signature_match_score(
+                        params,
+                        return_type,
+                        loc_params,
+                        loc_ret,
+                    );
+                    if score > 0.0 {
+                        let search_match = SearchMatch {
+                            file: location.file.clone(),
+                            span: location.span,
+                            symbol: Some(location.name.clone()),
+                            kind: location.kind.clone(),
+                            score,
+                            context: None,
+                        };
+                        all_matches.push((search_match, score));
                     }
                 }
             }
@@ -159,13 +156,7 @@ impl SemanticSearchEngine {
             }
 
             // Class types
-            (Type::ClassType { name: n1, .. }, Type::ClassType { name: n2, .. }) => {
-                if n1 == n2 {
-                    0.9
-                } else {
-                    0.0
-                }
-            }
+            (Type::ClassType { name: n1, .. }, Type::ClassType { name: n2, .. }) if n1 == n2 => 0.9,
 
             _ => 0.0,
         }

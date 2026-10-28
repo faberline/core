@@ -204,11 +204,7 @@ fn accepts_a_leaf_against_a_bundle_that_carries_more_than_one_anchor() {
     let retiring = authority("axiom-peer-ca-gen1");
     let incoming = authority("axiom-peer-ca-gen2");
     let leaf = peer_leaf(&incoming);
-    let pem = MaterialPem::new(
-        leaf.cert_pem,
-        leaf.key_pem,
-        bundle(&[&retiring, &incoming]),
-    );
+    let pem = MaterialPem::new(leaf.cert_pem, leaf.key_pem, bundle(&[&retiring, &incoming]));
 
     let validated = validate(&pem, &peer_expectation(), SystemTime::now())
         .expect("an overlapping bundle must not be a rejection");
@@ -224,7 +220,10 @@ fn a_rejection_detail_never_carries_key_material() {
 
     let rejection = validate(&pem, &peer_expectation(), SystemTime::now()).unwrap_err();
     let text = rejection.to_string();
-    assert!(!text.contains("BEGIN"), "rejection leaked a PEM block: {text}");
+    assert!(
+        !text.contains("BEGIN"),
+        "rejection leaked a PEM block: {text}"
+    );
     assert!(
         !text.contains("PRIVATE KEY"),
         "rejection leaked key material: {text}"

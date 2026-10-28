@@ -77,8 +77,16 @@ fn read(path: &str) -> String {
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let mut args = std::env::args().skip(1);
-    let token_a = read(&args.next().expect("usage: <token-aud-team-a> <token-aud-team-b>"));
-    let token_b = read(&args.next().expect("usage: <token-aud-team-a> <token-aud-team-b>"));
+    let token_a = read(
+        &args
+            .next()
+            .expect("usage: <token-aud-team-a> <token-aud-team-b>"),
+    );
+    let token_b = read(
+        &args
+            .next()
+            .expect("usage: <token-aud-team-a> <token-aud-team-b>"),
+    );
 
     // team-a granted this SA read on one collection, and nothing else.
     let granted = format!(
@@ -89,8 +97,9 @@ async fn main() {
     // A deliberately over-permissive team-b, used only to isolate layer 1:
     // if the audience check were absent, this registry would say yes to
     // everything, so a rejection here can only have come from `aud`.
-    let permissive =
-        format!(r#"{{"identities":{{"{SA}":{{"subject":"team-b:api","roles":{{"*":"admin"}}}}}}}}"#);
+    let permissive = format!(
+        r#"{{"identities":{{"{SA}":{{"subject":"team-b:api","roles":{{"*":"admin"}}}}}}}}"#
+    );
 
     let team_a = instance(AUD_A, &granted);
     let team_b = instance(AUD_B, &empty);

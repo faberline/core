@@ -162,10 +162,11 @@ impl<'a> DataFlowAnalyzer<'a> {
             return None;
         }
         // Check if it's a valid identifier
-        if text.chars().all(|c| c.is_alphanumeric() || c == '_') && !text.is_empty() {
-            if !text.chars().next().unwrap().is_numeric() {
-                return Some(text);
-            }
+        if text.chars().all(|c| c.is_alphanumeric() || c == '_')
+            && !text.is_empty()
+            && !text.chars().next().unwrap().is_numeric()
+        {
+            return Some(text);
         }
         None
     }
@@ -181,20 +182,20 @@ impl<'a> DataFlowAnalyzer<'a> {
             } else {
                 if !current.is_empty() {
                     // Check if it's a valid identifier (not a number, not a keyword)
-                    if !current.chars().next().unwrap().is_numeric() {
-                        if !Self::is_keyword(&current) {
-                            identifiers.push(current.clone());
-                        }
+                    if !current.chars().next().unwrap().is_numeric() && !Self::is_keyword(&current)
+                    {
+                        identifiers.push(current.clone());
                     }
                     current.clear();
                 }
             }
         }
 
-        if !current.is_empty() && !current.chars().next().unwrap().is_numeric() {
-            if !Self::is_keyword(&current) {
-                identifiers.push(current);
-            }
+        if !current.is_empty()
+            && !current.chars().next().unwrap().is_numeric()
+            && !Self::is_keyword(&current)
+        {
+            identifiers.push(current);
         }
 
         identifiers

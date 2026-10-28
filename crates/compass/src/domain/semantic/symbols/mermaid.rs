@@ -191,7 +191,7 @@ impl SymbolTableBuilder {
 
 /// Extract a node ID from a token like `A`, `A[text]`, `A(text)`, `A{text}`
 fn extract_node_id(token: &str) -> Option<&str> {
-    let end = token.find(|c| matches!(c, '[' | '(' | '{' | '>'));
+    let end = token.find(['[', '(', '{', '>']);
     let id = match end {
         Some(pos) => &token[..pos],
         None => token,

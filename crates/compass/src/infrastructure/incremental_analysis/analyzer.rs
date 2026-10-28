@@ -250,18 +250,15 @@ impl IncrementalAnalyzer {
                 }
                 Language::TypeScript => {
                     // Look for import statements
-                    match node.kind() {
-                        "import_statement" => {
-                            if let Some(source_node) = node.child_by_field_name("source") {
-                                let import_path =
-                                    &source[source_node.start_byte()..source_node.end_byte()];
-                                // Remove quotes
-                                let path_str = import_path.trim_matches(|c| c == '"' || c == '\'');
-                                let path = PathBuf::from(path_str);
-                                dependencies.push(path);
-                            }
+                    if node.kind() == "import_statement" {
+                        if let Some(source_node) = node.child_by_field_name("source") {
+                            let import_path =
+                                &source[source_node.start_byte()..source_node.end_byte()];
+                            // Remove quotes
+                            let path_str = import_path.trim_matches(|c| c == '"' || c == '\'');
+                            let path = PathBuf::from(path_str);
+                            dependencies.push(path);
                         }
-                        _ => {}
                     }
                 }
                 Language::Rust => {

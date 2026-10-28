@@ -263,9 +263,8 @@ fn strip_bearer(text: &str) -> String {
             continue;
         }
         out.push_str("Bearer [redacted]");
-        match segment.find(char::is_whitespace) {
-            Some(idx) => out.push_str(&segment[idx..]),
-            None => {}
+        if let Some(idx) = segment.find(char::is_whitespace) {
+            out.push_str(&segment[idx..])
         }
     }
     out

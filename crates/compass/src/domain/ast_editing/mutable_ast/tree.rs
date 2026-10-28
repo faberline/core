@@ -137,15 +137,15 @@ impl MutableAst {
         }
 
         let children = Arc::make_mut(&mut node.children);
-        for i in 0..children.len() {
-            if children[i].id == target {
-                children[i] = new_node;
+        for child in children.iter_mut() {
+            if child.id == target {
+                *child = new_node;
                 return Some(node.clone());
             }
             if let Some(updated) =
-                self.replace_in_subtree(&mut children[i].clone(), target, new_node.clone())
+                self.replace_in_subtree(&mut child.clone(), target, new_node.clone())
             {
-                children[i] = updated;
+                *child = updated;
                 return Some(node.clone());
             }
         }

@@ -49,7 +49,7 @@ mod status;
 mod voter_barriers;
 
 pub use backpressure::ProposalBackpressure;
-pub use chunk_sink::{ChunkSink, SNAPSHOT_CHUNK_SIZE};
+pub use chunk_sink::{ChunkHandler, ChunkSink, SNAPSHOT_CHUNK_SIZE};
 pub use membership_ops::AdmissionRefused;
 pub use outcome::{ProposalOutcome, SnapshotCompactionOutcome, StorageFailed};
 pub use shutdown_report::{

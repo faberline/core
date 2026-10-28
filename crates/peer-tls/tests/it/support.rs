@@ -182,7 +182,10 @@ pub async fn handshake(
     let name = rustls::pki_types::ServerName::try_from(server_name.to_string()).unwrap();
 
     let server_side = tokio::spawn(async move {
-        let mut stream = acceptor.accept(server_io).await.map_err(|e| e.to_string())?;
+        let mut stream = acceptor
+            .accept(server_io)
+            .await
+            .map_err(|e| e.to_string())?;
         let alpn = stream.get_ref().1.alpn_protocol().map(|p| p.to_vec());
         stream.write_all(b"ok").await.map_err(|e| e.to_string())?;
         stream.flush().await.map_err(|e| e.to_string())?;
@@ -201,7 +204,10 @@ pub async fn handshake(
             .and_then(|chain| chain.first())
             .map(|leaf| sha256_hex(leaf.as_ref()));
         let mut buf = [0u8; 2];
-        stream.read_exact(&mut buf).await.map_err(|e| e.to_string())?;
+        stream
+            .read_exact(&mut buf)
+            .await
+            .map_err(|e| e.to_string())?;
         Ok::<_, String>(seen)
     };
 

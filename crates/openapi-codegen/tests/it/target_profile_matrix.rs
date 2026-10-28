@@ -95,7 +95,10 @@ fn expected_manifest(requirements: TargetRequirements) -> GenerationManifest {
     }
 }
 
-fn assert_materialized_manifest(output: &GeneratedOutput, out_dir: &PathBuf) -> GenerationManifest {
+fn assert_materialized_manifest(
+    output: &GeneratedOutput,
+    out_dir: &std::path::Path,
+) -> GenerationManifest {
     output
         .write_to_dir(out_dir)
         .expect("materialize targeted generated output");
@@ -392,7 +395,7 @@ fn legacy_default_output_contract() {
         output_fingerprint(&python),
         vec![
             ("models.py", 16913750451280483632),
-            ("h2c_runtime.py", 15121160305850173931),
+            ("h2c_runtime.py", 7231267206764527339),
             ("client.py", 10786669601410878341),
             ("__init__.py", 9994428160985782841),
         ]

@@ -64,7 +64,7 @@ fn spec_managed_headers_name_existing_paths() {
             let line_no = idx + 1;
             let trimmed = line.trim_start();
             if let Some(rest) = trimmed.strip_prefix("// SPEC-MANAGED:") {
-                let spec_target = rest.trim().split_whitespace().next().unwrap_or("");
+                let spec_target = rest.split_whitespace().next().unwrap_or("");
                 let file_target = spec_target.split('#').next().unwrap_or("");
                 if !file_target.is_empty() {
                     let resolved = repo_root.join(file_target);

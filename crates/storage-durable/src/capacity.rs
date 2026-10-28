@@ -1,8 +1,7 @@
 //! Local filesystem capacity admission with reversible reservations.
 
 use std::{
-    fmt,
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
@@ -124,7 +123,10 @@ impl CapacityGuard {
         thresholds: CapacityThresholds,
         space_probe: Arc<dyn SpaceProbe>,
     ) -> Result<Self> {
-        anyhow::ensure!(max_bytes > 0, "maximum local storage bytes must be positive");
+        anyhow::ensure!(
+            max_bytes > 0,
+            "maximum local storage bytes must be positive"
+        );
         let root = root.as_ref().to_path_buf();
         let committed_bytes = directory_bytes(&root)?;
         Ok(Self {
@@ -191,11 +193,7 @@ impl CapacityGuard {
         let used = self.used_bytes();
         if percent_at_least(used, self.max_bytes, self.thresholds.critical_percent) {
             CapacityLevel::Critical
-        } else if percent_at_least(
-            used,
-            self.max_bytes,
-            self.thresholds.backpressure_percent,
-        ) {
+        } else if percent_at_least(used, self.max_bytes, self.thresholds.backpressure_percent) {
             CapacityLevel::Backpressure
         } else if percent_at_least(used, self.max_bytes, self.thresholds.warning_percent) {
             CapacityLevel::Warning

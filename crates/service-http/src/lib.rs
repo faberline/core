@@ -92,6 +92,7 @@ mod application;
 mod infrastructure;
 mod interfaces;
 
+pub use api::transport;
 pub use application::{
     AdmissionConfig, AdmissionConfigError, AdmissionController, AdmissionDecision, AdmissionEvent,
     AdmissionInput, AdmissionObserver, AdmissionOutcome, AdmissionPolicy, AdmissionPolicyError,
@@ -101,7 +102,6 @@ pub use application::{
     ConcurrencyLease, WeightedAdmission, WeightedAdmissionConfig, WeightedAdmissionConfigError,
     WeightedAdmissionError,
 };
-pub use api::transport;
 #[cfg(feature = "otlp")]
 pub use infrastructure::extract_trace_context;
 pub use infrastructure::{
