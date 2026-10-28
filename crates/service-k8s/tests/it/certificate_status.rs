@@ -97,7 +97,10 @@ fn certificate_status_reports_ready_once_material_is_projected() {
     let reconciler = Reconciler::new(&scope, &owner, &harness.store, &harness.issuer);
 
     let actions = drive(&reconciler, &profile, &RuntimeReport::default(), start(), 6);
-    assert!(actions.len() >= 2, "expected a bootstrap sequence: {actions:#?}");
+    assert!(
+        actions.len() >= 2,
+        "expected a bootstrap sequence: {actions:#?}"
+    );
 
     let settled = step(
         &reconciler,
@@ -213,7 +216,8 @@ fn certificate_status_publishes_a_fingerprint_prefix_not_a_certificate() {
 
 #[test]
 fn certificate_status_redacts_a_leaked_pem_block() {
-    let leaked = "issuance failed: -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkq\n-----END PRIVATE KEY-----";
+    let leaked =
+        "issuance failed: -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkq\n-----END PRIVATE KEY-----";
     let cleaned = redact(leaked);
     assert!(!cleaned.contains("MIIEvQIBADANBgkq"));
     assert!(!cleaned.contains("BEGIN PRIVATE KEY"));
@@ -231,7 +235,10 @@ fn certificate_status_redacts_a_leaked_projected_token() {
 fn certificate_status_redacts_a_leaked_bearer_header() {
     let cleaned = redact("upstream returned 401 for Bearer ya29.c.b0Aaekm1Kexample rest");
     assert!(!cleaned.contains("ya29.c.b0Aaekm1Kexample"));
-    assert!(cleaned.ends_with("rest"), "redaction ate the surrounding text: {cleaned}");
+    assert!(
+        cleaned.ends_with("rest"),
+        "redaction ate the surrounding text: {cleaned}"
+    );
 }
 
 #[test]

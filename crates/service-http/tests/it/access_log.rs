@@ -100,8 +100,16 @@ async fn access_log_emits_info_for_non_probe_requests() {
 
     eprintln!("Parsed {} records", records.len());
     for (i, r) in records.iter().enumerate() {
-        let target = r.get("attributes").and_then(|a| a.get("target")).and_then(|t| t.as_str());
-        eprintln!("Record {}: target={:?}, severity={:?}", i, target, r.get("severity"));
+        let target = r
+            .get("attributes")
+            .and_then(|a| a.get("target"))
+            .and_then(|t| t.as_str());
+        eprintln!(
+            "Record {}: target={:?}, severity={:?}",
+            i,
+            target,
+            r.get("severity")
+        );
     }
 
     // Find the access log line - should be INFO level for non-probe
@@ -110,7 +118,8 @@ async fn access_log_emits_info_for_non_probe_requests() {
         .find(|r| {
             r.get("attributes")
                 .and_then(|a| a.get("target"))
-                .and_then(|t| t.as_str()) == Some("http.access")
+                .and_then(|t| t.as_str())
+                == Some("http.access")
                 && r.get("severity").and_then(|s| s.as_str()) == Some("INFO")
         })
         .expect("should have INFO-level access log line for non-probe request");
@@ -160,7 +169,12 @@ async fn access_log_emits_debug_for_probe_requests() {
 
     let response = app
         .clone()
-        .oneshot(Request::builder().uri("/healthz").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/healthz")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
 
@@ -183,7 +197,8 @@ async fn access_log_emits_debug_for_probe_requests() {
         .find(|r| {
             r.get("attributes")
                 .and_then(|a| a.get("target"))
-                .and_then(|t| t.as_str()) == Some("http.access")
+                .and_then(|t| t.as_str())
+                == Some("http.access")
                 && r.get("severity").and_then(|s| s.as_str()) == Some("DEBUG")
         })
         .expect("should have DEBUG-level access log line for probe request");
@@ -264,7 +279,12 @@ async fn access_log_probe_paths_all_demoted() {
 
         let access_log = records
             .iter()
-            .find(|r| r.get("attributes").and_then(|a| a.get("target")).and_then(|t| t.as_str()) == Some("http.access"))
+            .find(|r| {
+                r.get("attributes")
+                    .and_then(|a| a.get("target"))
+                    .and_then(|t| t.as_str())
+                    == Some("http.access")
+            })
             .expect(&format!("should have access log for probe path {}", path));
 
         assert_eq!(
@@ -322,7 +342,12 @@ async fn access_log_captured_sample_line() {
 
     let access_log_line = records
         .iter()
-        .find(|r| r.get("attributes").and_then(|a| a.get("target")).and_then(|t| t.as_str()) == Some("http.access"))
+        .find(|r| {
+            r.get("attributes")
+                .and_then(|a| a.get("target"))
+                .and_then(|t| t.as_str())
+                == Some("http.access")
+        })
         .expect("should have access log line");
 
     // Print the captured JSON for reference (this will show in test output)
@@ -359,9 +384,9 @@ async fn access_log_filter_independent() {
         .with_current_span(true)
         .event_format(ServiceJsonFormatter::new(identity));
 
-    let subscriber = tracing_subscriber::registry()
-        .with(layer)
-        .with(tracing_subscriber::filter::EnvFilter::new("info,http.access=warn"));
+    let subscriber = tracing_subscriber::registry().with(layer).with(
+        tracing_subscriber::filter::EnvFilter::new("info,http.access=warn"),
+    );
 
     let app = Router::new()
         .route("/test", get(handler_ok))
@@ -392,7 +417,8 @@ async fn access_log_filter_independent() {
     let access_log_info = records.iter().find(|r| {
         r.get("attributes")
             .and_then(|a| a.get("target"))
-            .and_then(|t| t.as_str()) == Some("http.access")
+            .and_then(|t| t.as_str())
+            == Some("http.access")
             && r.get("severity").and_then(|s| s.as_str()) == Some("INFO")
     });
 
@@ -430,7 +456,12 @@ async fn access_log_tracks_4xx_responses() {
     // Send request to non-existent path - should get 404
     let response = app
         .clone()
-        .oneshot(Request::builder().uri("/notfound").body(Body::empty()).unwrap())
+        .oneshot(
+            Request::builder()
+                .uri("/notfound")
+                .body(Body::empty())
+                .unwrap(),
+        )
         .await
         .unwrap();
     assert_eq!(response.status().as_u16(), 404);
@@ -452,7 +483,8 @@ async fn access_log_tracks_4xx_responses() {
         .find(|r| {
             r.get("attributes")
                 .and_then(|a| a.get("target"))
-                .and_then(|t| t.as_str()) == Some("http.access")
+                .and_then(|t| t.as_str())
+                == Some("http.access")
                 && r.get("attributes")
                     .and_then(|a| a.get("status"))
                     .and_then(|s| s.as_u64())

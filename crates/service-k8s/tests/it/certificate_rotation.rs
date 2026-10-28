@@ -21,13 +21,7 @@ fn settled_on(issuer_id: &str) -> (Harness, String) {
     let owner = owner();
     let scope = scope();
     let reconciler = Reconciler::new(&scope, &owner, &harness.store, &harness.issuer);
-    drive(
-        &reconciler,
-        &profile,
-        &RuntimeReport::default(),
-        start(),
-        6,
-    );
+    drive(&reconciler, &profile, &RuntimeReport::default(), start(), 6);
     let fingerprint = harness
         .projected_fingerprint(Purpose::Peer)
         .expect("a leaf was projected");
@@ -42,13 +36,7 @@ fn certificate_rotation_publishes_trust_before_it_issues_anything() {
     let scope = scope();
     let reconciler = Reconciler::new(&scope, &owner, &harness.store, &harness.issuer);
 
-    let actions = drive(
-        &reconciler,
-        &profile,
-        &RuntimeReport::default(),
-        start(),
-        6,
-    );
+    let actions = drive(&reconciler, &profile, &RuntimeReport::default(), start(), 6);
 
     assert!(
         matches!(actions[0], Action::PublishTrustBundle { .. }),
@@ -185,7 +173,10 @@ fn certificate_rotation_keeps_the_serving_material_when_a_step_fails() {
         &activated(Some(fingerprint.clone())),
         renewal_due,
     ));
-    assert!(failed.is_err(), "the CA refused; the reconcile must not succeed");
+    assert!(
+        failed.is_err(),
+        "the CA refused; the reconcile must not succeed"
+    );
 
     assert_eq!(
         harness.projected_fingerprint(Purpose::Peer).as_deref(),
