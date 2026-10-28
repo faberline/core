@@ -48,3 +48,103 @@ jobs:
         run: |
           set -euo pipefail
           cargo test --locked ${{ matrix.args }}
+
+
+  # These are proposal checks. Trusted qualification still requires an approved
+  # immutable workflow/driver identity in the unchanged failure-only policy.
+  unit-plan:
+    name: candidate workspace unit inventory and format
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+          persist-credentials: false
+      - name: Verify event identities and trusted bootstrap
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C candidate rev-parse HEAD)" = "$EXPECTED_HEAD"
+          test "$(git -C trusted rev-parse HEAD)" = "$EXPECTED_BASE"
+          if ! test -f trusted/scripts/pr-gates/plan.py; then
+            echo "::error::Trusted base has no PR gate driver. Reviewed bootstrap required; PR-owned helper is not a fallback."
+            exit 1
+          fi
+          test "$(git -C trusted rev-parse HEAD:scripts/pr-gates)" = "$(git -C candidate rev-parse HEAD:scripts/pr-gates)" || {
+            echo "::error::Gate driver changes need independent bootstrap review; no self-qualification."
+            exit 1
+          }
+          test "$(git -C trusted rev-parse HEAD:.github/workflows/ci.yml)" = "$(git -C candidate rev-parse HEAD:.github/workflows/ci.yml)" || {
+            echo "::error::Workflow changes need an independently approved workflow identity."
+            exit 1
+          }
+      - name: Check nonempty baseline planner fixtures
+        working-directory: trusted
+        run: |
+          python3 -c 'import sys,unittest; suite=unittest.defaultTestLoader.discover("scripts/pr-gates/tests"); count=suite.countTestCases(); print("baseline_fixture_count="+str(count)); sys.exit(0 if count > 0 and unittest.TextTestRunner(verbosity=2).run(suite).wasSuccessful() else 1)'
+      - name: Derive complete current-head matrix using baseline driver
+        id: plan
+        env:
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else "Python 3.11+ required")'
+          python3 trusted/scripts/pr-gates/plan.py inventory --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE"
+          echo "matrix=$(python3 trusted/scripts/pr-gates/plan.py matrix --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE")" >> "$GITHUB_OUTPUT"
+      - name: Check workspace format
+        working-directory: candidate
+        run: cargo fmt --all -- --check
+
+  workspace-unit-static:
+    name: candidate unit-static (${{ matrix.package }}, ${{ matrix.profile }})
+    needs: unit-plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJSON(needs.unit-plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+          persist-credentials: false
+      - name: Run package units through baseline driver and validate nonzero roster
+        env:
+          PACKAGE: ${{ matrix.package }}
+          PROFILE: ${{ matrix.profile }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
+          CARGO_INCREMENTAL: "0"
+        run: python3 trusted/scripts/pr-gates/plan.py run --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE" --package "$PACKAGE" --profile "$PROFILE" --kind unit
+      - name: Verify baseline driver remains unchanged
+        run: git -C trusted diff --exit-code HEAD -- scripts/pr-gates
+      - name: Check package all-target clippy through baseline driver
+        env:
+          PACKAGE: ${{ matrix.package }}
+          PROFILE: ${{ matrix.profile }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
+          CARGO_INCREMENTAL: "0"
+        run: python3 trusted/scripts/pr-gates/plan.py run --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE" --package "$PACKAGE" --profile "$PROFILE" --kind clippy

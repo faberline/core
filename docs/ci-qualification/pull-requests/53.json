@@ -1,0 +1,142 @@
+{
+  "schema_version": 1,
+  "queried_at": "2026-10-27T09:36:04Z",
+  "pr": 53,
+  "url": "https://github.com/faberline/core/pull/53",
+  "title": "[01/03] service-backup: define streaming BackupSetV1 manifest and single-object compatibility",
+  "state": "open",
+  "head_sha": "6d8f6eb7b2abe3ba7d68aaae02b5925ec6941cf9",
+  "base_sha": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "branch": "issue/16",
+  "source": "GitHub connector get_pr_info and paginated list_pr_changed_filenames",
+  "source_issue_contracts": [
+    {
+      "number": 16,
+      "url": "https://github.com/faberline/core/issues/16",
+      "title": "[01/03] service-backup: define streaming BackupSetV1 manifest and single-object compatibility",
+      "body_sha256": "c49713d34570700901581064272a7d5ee50ab90904b97dabcd9b1aa16f6711d3",
+      "updated_at": "2026-10-24T14:59:53Z",
+      "source_commands": [
+        "cargo test -p service-backup --all-features",
+        "cargo test -p service-backup --doc --all-features"
+      ],
+      "source_command_status": "not executed by this inventory; see recorded CI observations where present. Legacy libs/ or scripts/meta paths may not exist in this split repo and need reviewed mapping.",
+      "contract_note": "Source issue remains authoritative; this inventory does not narrow acceptance or turn a partial PR into completion."
+    }
+  ],
+  "changed_paths": [
+    "Cargo.lock",
+    "crates/service-backup/Cargo.toml",
+    "crates/service-backup/src/domain.rs",
+    "crates/service-backup/src/domain/artifact_verifier.rs",
+    "crates/service-backup/src/domain/backup_set.rs",
+    "crates/service-backup/src/domain/backup_set_error.rs",
+    "crates/service-backup/src/lib.rs",
+    "crates/service-backup/tests/it/backup_set.rs",
+    "crates/service-backup/tests/it/main.rs",
+    "crates/service-backup/tests/it/projected_admin_transport.rs"
+  ],
+  "changed_crates": [
+    "service-backup"
+  ],
+  "reverse_dependency_closure_at_baseline": [
+    "service-backup"
+  ],
+  "unknown_or_global_paths": [
+    "Cargo.lock"
+  ],
+  "conservative_selection": [
+    "build-stamp",
+    "claim-token",
+    "cli-std",
+    "compass",
+    "index-text",
+    "metrics-prometheus",
+    "metrics-remote-write",
+    "openapi-codegen",
+    "peer-tls",
+    "raft-core",
+    "raft-runtime",
+    "server-http",
+    "server-lifecycle",
+    "server-tcp",
+    "service-auth",
+    "service-backup",
+    "service-collector",
+    "service-executor",
+    "service-http",
+    "service-k8s",
+    "service-mcp",
+    "service-observability",
+    "service-projection",
+    "storage-durable",
+    "storage-object",
+    "storage-segment",
+    "surface",
+    "transport-h2c",
+    "transport-otlp",
+    "ui-runtime"
+  ],
+  "selection_reason": "all workspace because global/unknown paths changed",
+  "inventory_sha": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "inventory_limit": "Baseline manifests are not exact-head feature/dependency proof. Head manifest changes, deleted/renamed paths or unresolvable graphs require fresh metadata and conservative all-workspace selection.",
+  "obligations": [
+    {
+      "kind": "unit",
+      "command": "cargo test --locked -p service-backup --lib",
+      "oracle": "Every discovered library unit target runs; record named test counts/failures; include documented feature profiles. No success recorded by this snapshot.",
+      "status": "pending_online"
+    },
+    {
+      "kind": "static",
+      "command": "cargo clippy --locked -p service-backup --all-targets -- -D warnings",
+      "oracle": "Exit zero without suppressing warnings, on exact PR HEAD and required features; includes dependencies.",
+      "status": "pending_online"
+    },
+    {
+      "kind": "functional_e2e_candidate",
+      "command": "cargo test --locked -p service-backup --test it",
+      "oracle": "Existing assertions in crates/service-backup/tests/it/main.rs and declared modules; compare issue acceptance to executed named test roster. Full target may include network/cluster/process tests; online only.",
+      "source": "https://github.com/faberline/core/blob/41c352eaae687a1914087d279f36adbe9e9b4af5/crates/service-backup/tests/it/main.rs",
+      "status": "pending_online_and_applicability_review"
+    }
+  ],
+  "performance": {
+    "command": null,
+    "oracle": null,
+    "measurement": null,
+    "status": "blocked_no_reviewed_command_or_baseline",
+    "followup_issue": 73,
+    "requirement": "Map measured affected-performance command, baseline, workload/environment, thresholds and immutable output identity; no measurement or waiver has been verified."
+  },
+  "functional_qualification": {
+    "status": "blocked_no_approved_affected_gate_mapping",
+    "followup_issues": [
+      16
+    ],
+    "requirement": "Existing integration targets are candidate commands, not proof the whole original acceptance is covered. Compare every source issue criterion, downstream consumer/cluster scenarios and negative controls; map missing rows to the same original issue."
+  },
+  "evidence_identity_required": [
+    "repository",
+    "exact head SHA",
+    "base SHA",
+    "workflow path and immutable workflow/policy revision",
+    "job name/matrix",
+    "run id and attempt",
+    "command/feature profile",
+    "test roster and counts",
+    "oracle/threshold revision",
+    "immutable result artifact digest",
+    "applicability approval reference"
+  ],
+  "verified_online_evidence": [],
+  "qualification": "nonqualified; inventory only; no online execution or independent review performed by this task",
+  "observations": [
+    {
+      "url": "https://github.com/faberline/core/actions/runs/40423896447/job/121924770170",
+      "status": "pending",
+      "scope": "historical handoff reconciled all 22 heads; success of handoff did not qualify product gates",
+      "observed_by": "parent tracking session; reread logs 2026-10-27"
+    }
+  ]
+}
