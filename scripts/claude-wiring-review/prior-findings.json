@@ -1,0 +1,141 @@
+{
+  "repo": "faberline/aw",
+  "pr": 92,
+  "head": "3df66d0788960cf9d631e0669779922fce1b3571",
+  "base": "23ce1028e73e8c6342ac14b0bc650c19db5898a3",
+  "decision": "fail",
+  "summary": "The adapter implements the requested structure: pinned controller, tool-free review, a negative review that fails its job while its receipt stays readable to the outcome writer, per-PR indexing, a pending-then-queue-then-success native auto-merge sequence, a shared issue-ci-handoff mutex, and return to agy:doing that preserves unrelated labels. However, the merge and lifecycle paths have correctness defects that break the issue's requirements. (1) A fail/block review, or a later failed verification of an already approved head, never withdraws the earlier success status or the queued native auto-merge request, so GitHub can still merge a rejected or stale head. (2) The review-attempt index aborts the whole queue reconciliation when any untitled in-progress run exists or any completed run has no single review job. (3) Single linked-issue closure is not enforced: other closing keywords or references in the PR body pass the check and would close more issues. (4) Making negative reviews fail the job silently stops the included findings publisher from posting fail/block findings, contradicting its documentation.",
+  "reviewed_files": [
+    ".github/actions/claude-findings/action.yml",
+    ".github/actions/claude-review/action.yml",
+    ".github/actions/native-auto-merge/action.yml",
+    ".github/workflows/native-auto-merge-controls.yml",
+    "plugins/faberline/skills/issue-ci/CLAUDE-FINAL-REVIEW.md",
+    "plugins/faberline/skills/issue-ci/CLAUDE-PIPELINE-PLAN.md",
+    "plugins/faberline/skills/issue-ci/EVIDENCE-COMPLETENESS.md",
+    "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+    "plugins/faberline/skills/issue-ci/OAUTH-ISOLATION.md",
+    "plugins/faberline/skills/issue-ci/OUTPUT-CONTRACT-AUDIT.md",
+    "plugins/faberline/skills/issue-ci/SKILL.md",
+    "plugins/faberline/skills/issue-ci/scripts/claude_findings.py",
+    "plugins/faberline/skills/issue-ci/scripts/claude_review.py",
+    "plugins/faberline/skills/issue-ci/scripts/native-controls-requirements.in",
+    "plugins/faberline/skills/issue-ci/scripts/native-controls-requirements.txt",
+    "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+    "plugins/faberline/skills/issue-ci/scripts/native_review_index.py",
+    "plugins/faberline/skills/issue-ci/templates/claude-final-review.yml.example",
+    "plugins/faberline/skills/issue-ci/templates/claude-guarded-merge.yml.example",
+    "plugins/faberline/skills/issue-ci/templates/claude-native-merge.yml.example",
+    "plugins/faberline/skills/issue-ci/tests/test_claude_output_contract.py",
+    "plugins/faberline/skills/issue-ci/tests/test_claude_phase_contract.py",
+    "plugins/faberline/skills/issue-ci/tests/test_claude_plan_protocol.py",
+    "plugins/faberline/skills/issue-ci/tests/test_claude_review.py",
+    "plugins/faberline/skills/issue-ci/tests/test_claude_skill_findings.py",
+    "plugins/faberline/skills/issue-ci/tests/test_native_merge.py",
+    "plugins/faberline/skills/issue-ci/tests/test_native_review_index.py",
+    "plugins/faberline/skills/issue-ci/tests/test_review_lifecycle.py",
+    "plugins/faberline/skills/issue-conformance/SKILL.md",
+    "scripts/security/README.md",
+    "scripts/security/source_preflight.py",
+    "scripts/security/tests/test_source_preflight.py"
+  ],
+  "requirement_results": [
+    {
+      "id": "r1",
+      "status": "met",
+      "evidence": "The claude-review action is pinned through AW_ACTION_REF. claude_review.collect/gate_evidence require every configured gate to succeed at the exact head/base with trusted workflow IDs and blobs. Policy is loaded via action.trusted_policy from the default branch. invoke_json passes --tools '' and an empty MCP configuration, and supplies only data fetched through the API."
+    },
+    {
+      "id": "r2",
+      "status": "missing",
+      "evidence": "native_merge.enqueue posts a pending status, queues SQUASH with expectedHeadOid, re-verifies and then posts success, and base_rules requires a strict ruleset. However, a later failed verification (native_merge.py:166) or a fail/block result (native_merge.py:286) never withdraws the earlier success status or the queued auto-merge. collect counts only '^Closes #N$' lines, so other closing references would close more issues (claude_review.py:324)."
+    },
+    {
+      "id": "r3",
+      "status": "met",
+      "evidence": "native_merge.return_doing adds agy:doing before removing todo/done. Each step re-verifies the receipt, head, issue contract hash, open state and agy:blocked. Unrelated labels are kept, and interrupted label updates are recovered (test_review_lifecycle.py). The writer template and writer_contract enforce the issue-ci-handoff group with cancel-in-progress false."
+    },
+    {
+      "id": "r4",
+      "status": "met",
+      "evidence": "claude_review.main returns 1 for non-pass decisions after printing the receipt. verify_result_receipt(allow_rejected=True) accepts a failure conclusion only for fail/block decisions, and test_pass_receipt_from_a_failed_job_is_not_a_passing_review covers the refusal of a pass receipt from a failed job."
+    },
+    {
+      "id": "r5",
+      "status": "missing",
+      "evidence": "reconcile iterates every open PR and isolates per-PR errors, and the index is keyed per PR. However, native_review_index.attempts raises globally for untitled in-progress runs (line 61) and for completed runs whose review job identity is refused (line 39). Because this happens outside the per-PR try, the whole queue reconciliation aborts."
+    },
+    {
+      "id": "r6",
+      "status": "met",
+      "evidence": "The native-auto-merge-controls.yml workflow fails on skipped tests, and both hosted control jobs at the head succeeded. Templates and NATIVE-AUTO-MERGE.md keep placeholder IDs and leave rollout to the consumer step."
+    },
+    {
+      "id": "r7",
+      "status": "met",
+      "evidence": "No threshold changes. native_merge.policy requires lifecycle_mode full and empty qualification_blockers. test_a_green_review_with_a_coverage_hold_cannot_queue_merge covers the hold."
+    },
+    {
+      "id": "r8",
+      "status": "uncertain",
+      "evidence": "guarded_merge and the merge operation remain hard-disabled. Whether every non-adapter file (for example scripts/security/*) comes from c9ec41e could not be verified from the supplied evidence."
+    },
+    {
+      "id": "r9",
+      "status": "met",
+      "evidence": "native_merge.policy(require_qualification=True) refuses with qualification_hold before any write. The rejection path deliberately does not require qualification."
+    },
+    {
+      "id": "r10",
+      "status": "missing",
+      "evidence": "The correctness review found defects in negative-decision and stale-approval revocation, per-PR attempt indexing robustness, closing-keyword semantics, and the findings publisher's behaviour after negative jobs began failing."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Fail/block review does not revoke existing success status or queued native auto-merge",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+      "line": 286,
+      "detail": "When the latest review for a head is fail/block, reconcile only calls return_doing. If an earlier passing attempt for the same head already posted claude/verified-merge=success and enabled auto-merge, both remain. GitHub will merge (and close the issue) once its other requirements are met, despite the latest negative review. This violates the rule that a failed review cannot supply passing evidence and that only a passing current review enables merge.",
+      "required_fix": "On an authenticated fail/block result (and before or with the label change), post a non-success status for the exact head and disable the native auto-merge request. Add tests for a pass followed by a fail on the same head."
+    },
+    {
+      "title": "Stale or invalid approvals are never withdrawn after the first success",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+      "line": 166,
+      "detail": "enqueue verifies the receipt, qualification, base rules and binding before posting the pending status. If any of these now fail on a later wake (issue contract edited, qualification blocker added, policy changed, newer non-pass attempt), the function raises before touching the provider. The earlier success status and the queued auto-merge stay in effect on the unchanged head.",
+      "required_fix": "When a head with an existing success status or auto-merge request no longer verifies, set the status to pending/failure and disable auto-merge before holding. Add regression tests."
+    },
+    {
+      "title": "Review-attempt index aborts the entire outcome reconciliation on unrelated runs",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/scripts/native_review_index.py",
+      "line": 61,
+      "detail": "attempts() raises review_target_title_unknown for any non-completed producer run whose title has no PR number, for example a review woken by a push-event test run. It also lets producer() refusals propagate for completed runs without exactly one review job (line 39), for example runs cancelled by concurrency replacement. reconcile calls index() outside its per-PR try, so no PR is merged or returned to doing on that wake, and a bad completed run stays in history.",
+      "required_fix": "Treat untitled or malformed runs as non-evidence: exclude them, or mark them as an error only for their PR when the target is known. Never fail the whole index. Add tests for untitled in-progress runs and runs with no jobs."
+    },
+    {
+      "title": "Single linked-issue closure not enforced against other closing references",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/claude_review.py",
+      "line": 324,
+      "detail": "The contract requires exactly one line matching '^Closes #N$', but other GitHub closing keywords or references are not rejected: 'fixes #9', 'resolves #9', inline 'closes #9', or cross-repo 'owner/repo#9'. When native auto-merge completes, GitHub would close those issues too, contradicting 'GitHub closes the single linked issue'.",
+      "required_fix": "Refuse PRs whose title or body contains any other GitHub closing keyword reference besides the single required Closes #N line, re-check this in enqueue before posting success, and add tests."
+    },
+    {
+      "title": "Findings publisher can no longer publish fail/block findings after negative reviews fail the job",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/claude_findings.py",
+      "line": 200,
+      "detail": "claude_review.main now exits 1 for non-pass decisions. claude_findings.main still requires wake conclusion == 'success', and publish uses verify_result_receipt with completed success required. Fail/block findings, the publisher's main purpose, are therefore never posted. CLAUDE-FINAL-REVIEW.md still says fail/block come from a successful producer run.",
+      "required_fix": "Let the findings publisher authenticate negative receipts from failed review jobs (as native_review_index.result does with allow_rejected), or explicitly document and test the behaviour change and update the contradictory documentation."
+    }
+  ],
+  "uncertainties": [
+    "The new writer uses agy:doing/agy:todo/agy:done/agy:blocked as the issue names, while the existing handoff.py lifecycle uses bare todo/doing/done/blocked. If consumers still use the bare 'blocked' label, blocked issues won't be detected.",
+    "Whether scripts/security/* and some docs are part of the adopted c9ec41e revision could not be verified; if not, they are extra changes.",
+    "The hosted control workflow runs only issue-ci tests, not scripts/security/tests. It is unclear whether 'complete inherited suite' includes those tests."
+  ]
+}
