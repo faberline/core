@@ -132,6 +132,16 @@ jobs:
         with:
           toolchain: stable
           components: clippy
+      - name: Install generated Python client test dependency
+        if: matrix.package == 'openapi-codegen'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/pr-gates-python"
+          "$RUNNER_TEMP/pr-gates-python/bin/python" -m pip install 'pydantic>=2,<3'
+          "$RUNNER_TEMP/pr-gates-python/bin/python" -m pip freeze
+          "$RUNNER_TEMP/pr-gates-python/bin/python" -c 'import pydantic; assert pydantic.__version__.split(".")[0] == "2"'
+          echo "$RUNNER_TEMP/pr-gates-python/bin" >> "$GITHUB_PATH"
       - name: Run every enabled package unit target and retain nonzero evidence
         env:
           PACKAGE: ${{ matrix.package }}

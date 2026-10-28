@@ -109,7 +109,7 @@ def command(package, profile, kind, target=None):
     if kind == 'unit':
         return ['cargo', 'test', '--locked', '-p', package['name'], *selectors, *feature_args(profile)]
     if kind == 'clippy':
-        return ['cargo', 'clippy', '--locked', '-p', package['name'], '--all-targets',
+        return ['cargo', 'clippy', '--locked', '-p', package['name'], '--all-targets', '--message-format=json',
                 *feature_args(profile), '--', '-D', 'warnings']
     raise ValueError('unknown command kind')
 

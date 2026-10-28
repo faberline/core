@@ -129,3 +129,27 @@ format failure cannot skip all 70 unit rows. Original five-crate jobs remain
 unchanged. The driver hash remains the reviewed value; the workflow hash changed
 and requires fresh independent review. Historical workflow review is not reused
 for this modification.
+
+## Online repair follow-up
+
+Run `40648907939` successfully started all 70 matrix rows after the bootstrap
+repair. Formatting and inventory passed. It found previously hidden product
+failures, so runner availability is not recorded as product success.
+
+The next repair adds Remote Write wire-validation unit tests, gates the CJK
+fallback helper to its actual feature profile, applies diagnosed equivalent
+histogram/Raft/code-generator lint fixes, and installs Pydantic 2 in an isolated
+online Python environment. This prevents generated-client tests from taking
+their missing-dependency return path.
+
+The reused-connection performance guard took 10.427 seconds for 128 local
+requests against a 5-second limit. Its fixture sent frame headers and bodies
+in separate TCP writes. The fixture now disables Nagle buffering so delayed
+ACKs cannot add a fixed wait to each response. Request count, client, assertions
+and 5-second threshold remain unchanged. The diagnosis needs the fresh online
+run; no timing result is claimed locally.
+
+Clippy now retains Cargo JSON diagnostics in addition to exact command/identity
+records. This supplies precise suggested source spans for repair without
+waiving findings or compiling product code locally. Other diagnosed lint debt,
+including Compass, remains a failing obligation until a current-head run passes.

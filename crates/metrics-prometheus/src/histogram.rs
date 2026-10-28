@@ -120,7 +120,7 @@ impl Histogram {
 fn scale_decimal(value: u64, divisor: u64) -> String {
     let mut places = 0usize;
     let mut remaining = divisor;
-    while remaining > 1 && remaining % 10 == 0 {
+    while remaining > 1 && remaining.is_multiple_of(10) {
         remaining /= 10;
         places += 1;
     }

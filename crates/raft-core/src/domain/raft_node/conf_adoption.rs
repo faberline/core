@@ -23,10 +23,7 @@ impl RaftNode {
         members.dedup();
         self.peers = members.into_iter().filter(|m| *m != self.id).collect();
         self.is_voter = conf.membership.voters().contains(&self.id)
-            || conf
-                .outgoing
-                .as_ref()
-                .map_or(false, |o| o.contains(&self.id));
+            || conf.outgoing.as_ref().is_some_and(|o| o.contains(&self.id));
         self.conf_state = conf;
         for l in self.conf_state.membership.learners() {
             self.learner_read_targets
