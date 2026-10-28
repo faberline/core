@@ -169,8 +169,9 @@ excluded from the cache. No tests or lint checks are omitted by the cache.
 
 The controller applied precise machine-applicable diagnostic spans only after
 verifying each file against the diagnosed `c95c6c6` source. Manual equivalents
-preserve parser outputs, use named callback/log types and keep old public
-parsing methods while adding the standard parsing traits. No lint allowance,
+preserve parser outputs and use named callback/log types. The public parser
+method names change as described below; the old inherent methods are not kept.
+No lint allowance,
 ignored test, weaker assertion or threshold was added. The local object-store
 lock explicitly uses `truncate(false)`, preserving its prior behavior.
 
@@ -203,3 +204,33 @@ Parsed values, case handling and rejection assertions are unchanged. Remaining
 field shorthand and fixture type aliases are equivalent lint cleanup.
 The shared runner now includes ignored units instead of accepting skipped work.
 Its evidence parser continues to reject ignored, filtered or incomplete results.
+
+## Public parser API migration
+
+The final Claude review at `78d9692084afa8b8becfb7d4ca8bc14e3a8e587b`
+identified a real source compatibility change in the Clippy repair. `TechStack`,
+`OutputFormat` and `ArgusConfig` are publicly re-exported from `compass`.
+Their inherent `from_str` methods were public APIs, not private helpers.
+
+This draft explicitly proposes the following breaking method renames. It does
+not claim that existing callers compile without changes:
+
+| Old call | Replacement with the same return type |
+|---|---|
+| `TechStack::from_str(value)` | `TechStack::parse_name(value)` (`Option<TechStack>`) |
+| `OutputFormat::from_str(value)` | `OutputFormat::parse_name(value)` (`Option<OutputFormat>`) |
+| `ArgusConfig::from_str(value)` | `ArgusConfig::parse_toml(value)` (`Result<ArgusConfig, ConfigError>`) |
+
+The standard `value.parse::<TechStack>()`, `value.parse::<OutputFormat>()` and
+`value.parse::<ArgusConfig>()` alternatives all return `Result`. In particular,
+the standard trait alternatives for the first two methods do not return the
+old `Option` type. An explicit `FromStr::from_str` call requires the trait in
+scope. No Rust edition prelude is assumed to import that trait.
+
+The named parsers retain the existing accepted values, case handling and error
+behavior. The existing parser tests retain their assertions and also exercise
+the standard trait. Restoring the ambiguous inherent names would restore the
+strict Clippy failure, so this proposal adds no lint exemption. Downstream
+callers must migrate before adopting this API change. The draft remains subject
+to delivery and compatibility review; CI and this document do not authorize a
+release, merge or qualification-policy change.
