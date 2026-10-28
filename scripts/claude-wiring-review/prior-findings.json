@@ -1,10 +1,10 @@
 {
   "repo": "faberline/aw",
   "pr": 92,
-  "head": "07bc014beea58bb6c96cc6461aaa1256ef6fa41b",
+  "head": "24abd95c389586d63c7c506c971bb455cbb94162",
   "base": "23ce1028e73e8c6342ac14b0bc650c19db5898a3",
   "decision": "fail",
-  "summary": "Four of the five defects from the first review are fixed, and the fifth (a fail/block review leaving earlier approval active) is fixed when the wake runs:\n- Every outcome wake now withdraws earlier authorization (pending status, then disabling auto-merge) before fresh checks.\n- A fail/block review returns the issue to bare `doing`, preserving unrelated labels.\n- Per-PR index errors no longer abort the queue.\n- Extra closing keywords and references are refused, and the squash commit text is fixed to `Closes #N`.\n- The findings publisher authenticates negative receipts from failed jobs but still rejects a pass receipt from a failed job.\n- The hosted control workflow now includes the security tests and refuses skipped tests.\n\nTwo correctness defects remain in the wake and retry paths, so the PR fails.\n\n1. Sharing the repository-wide `issue-ci-handoff` concurrency group across two different workflows lets each workflow's queued run cancel the other's pending run. This loses CI failure handoffs and also outcome wakes, including withdrawal and the return to doing.\n2. The outcome writer checks its own run with `producer_identity`, which requires a default-branch head branch and a same-repository head. `pull_request_target` runs very likely report the PR head branch and head repository, so PR metadata and head-change wakes would be refused before any withdrawal or reconciliation. This path is untested because the test mocks the check.",
+  "summary": "Both findings from the previous review are addressed in design. There is now a single writer that replaces issue-ci.yml. On every wake it withdraws earlier approvals, then runs the existing CI handoff for the whole queue, then the Claude outcome step for the whole queue. A pull_request_target run now proves its identity from GitHub's base-branch workflow ref and SHA.\n\nSeveral things are correct:\n- The native squash request is queued before a pending status and checked again before the success status.\n- The commit text is fixed to the one linked issue, and extra closing references are refused.\n- A fail or block review returns the issue to bare `doing` and keeps unrelated labels.\n- The qualification hold still blocks merges.\n- The legacy custom merger stays disabled.\n\nThree defects remain, so the PR fails:\n1. **The per-PR review index makes far too many API calls.** Each check rebuilds the index over the review workflow's whole run history, and for each completed run it calls the contents, run, blob and jobs endpoints and downloads the job log. Verification does this several times for each PR on every wake. Even a modest history will hit the GitHub token's API rate limit, so the pass and reject paths can't work reliably.\n2. **A PR whose base is not the default branch can break the writer.** Its pull_request_target event is refused before reconciliation starts, yet that run can already have replaced a legitimate pending wake in the shared concurrency group. That wake's work is then lost.\n3. **The existing findings publisher still can't reliably read negative receipts.** It picks the latest review run across all PRs, so any newer review run for another PR, or one with no PR attached, makes the receipt unreadable.",
   "reviewed_files": [
     ".github/actions/claude-findings/action.yml",
     ".github/actions/claude-review/action.yml",
@@ -34,6 +34,7 @@
     "plugins/faberline/skills/issue-ci/tests/test_native_merge.py",
     "plugins/faberline/skills/issue-ci/tests/test_native_review_index.py",
     "plugins/faberline/skills/issue-ci/tests/test_review_lifecycle.py",
+    "plugins/faberline/skills/issue-ci/tests/test_unified_outcome.py",
     "plugins/faberline/skills/issue-conformance/SKILL.md",
     "scripts/security/README.md",
     "scripts/security/source_preflight.py",
@@ -43,64 +44,69 @@
     {
       "id": "r1",
       "status": "met",
-      "evidence": "The claude-review action is pinned through AW_ACTION_REF. collect() and gate_evidence() require every configured gate to succeed at the exact head and base, with trusted workflow IDs and blobs. Policy comes from action.trusted_policy on the default branch. invoke_json passes --tools '' and an empty strict MCP configuration, and supplies only data fetched through the API."
+      "evidence": "The actions are pinned through AW_ACTION_REF. Policy comes from the default branch via action.trusted_policy. collect() and gate_evidence() require every configured gate to succeed at the exact head and base, with trusted workflow IDs and blobs, and bind the issue contract hash. invoke_json passes --tools '' with an empty strict MCP configuration, gives the model API-fetched data only, and supplies no GitHub token."
     },
     {
       "id": "r2",
       "status": "met",
-      "evidence": "native_merge.enqueue runs: pending status, then QUEUE with expectedHeadOid and SQUASH, then re-verification, then success. base_rules requires an active strict ruleset with the integration-bound status and no bypass actors. linked_issue allows one canonical 'Closes #N' line and rejects other closing keywords in the title or body. commitHeadline/commitBody are fixed to 'Merge PR #N'/'Closes #N'. policy() enforces the qualification hold (lifecycle_mode full and empty blockers)."
+      "evidence": "native_merge.enqueue runs in this order: pending status, then enablePullRequestAutoMerge with expectedHeadOid and SQUASH, then verification again, then the success status. base_rules requires an active strict ruleset with the integration-bound status and no bypass actors. linked_issue allows one canonical 'Closes #N' line and refuses other closing keywords. The commit text is fixed to 'Merge PR #N' / 'Closes #N'. policy() enforces lifecycle_mode full with empty blockers. The workability of this path in practice is limited by the index cost finding under r5."
     },
     {
       "id": "r3",
       "status": "met",
-      "evidence": "return_doing adds bare 'doing' before removing todo/done. Each step re-verifies the receipt, head, issue contract hash, open state and both blocked spellings. Unrelated labels are preserved and interrupted updates recover (test_review_lifecycle.py). The template and writer_contract bind the issue-ci-handoff group; see the finding about cross-workflow pending replacement."
+      "evidence": "return_doing adds bare 'doing' before removing todo or done. It checks the receipt, PR identity, open state, issue contract hash and both blocked spellings again before every write, and keeps unrelated labels. test_review_lifecycle.py covers recovery of an interrupted update. The single writer in issue-ci-handoff also runs the existing process_head handoff (reconcile_ci)."
     },
     {
       "id": "r4",
-      "status": "met",
-      "evidence": "claude_review.main returns 1 for non-pass decisions after printing the receipt. verify_result_receipt(allow_rejected=True) accepts a failed job only for fail/block decisions. claude_findings.main now accepts failure wakes. Tests cover a negative receipt from a failed job and refusal of a pass receipt from a failed job."
+      "status": "missing",
+      "evidence": "The review job fails after printing a fail/block receipt (claude_review.main returns 1). verify_result_receipt(allow_rejected=True) refuses a pass receipt from a failed job, and the outcome writer reads negative receipts through the per-PR index. However, the existing findings publisher (claude_findings.publish) calls verify_result_receipt with the default latest-across-all-runs selector. Any newer review run for another PR, or one with no PR attached, refuses the receipt with review_superseded, so it is not reliably readable by that publisher."
     },
     {
       "id": "r5",
       "status": "missing",
-      "evidence": "reconcile withdraws approval for every open PR before indexing and isolates per-PR errors, and the index no longer raises on untitled or unknown runs. However, sharing the cross-workflow concurrency group can cancel pending outcome wakes (template line 18). pull_request_target wakes are likely refused in main() by producer_identity's default-branch check (native_merge.py ~381). Either way, withdrawal and reconciliation can be skipped for real metadata, head or issue changes."
+      "evidence": "reconcile() withdraws approval for every open PR first. It isolates errors per PR, holds after unknown writes and does not retry them, and treats active or missing review evidence as held. But native_review_index.attempts rebuilds its index from the whole review-run history, with several API calls and a log download per completed run. It does this several times for each PR on every wake, which exhausts the GitHub token's API rate limit. Separately, a refused pull_request_target run for a PR whose base is not the default branch can replace a pending legitimate wake and then exit before reconciling."
     },
     {
       "id": "r6",
       "status": "met",
-      "evidence": "native-auto-merge-controls.yml discovers both plugins/faberline/skills/issue-ci/tests and scripts/security/tests and fails on skipped tests or zero tests. Hosted runs 40743480102 and 40743487860 succeeded at this head. Templates and docs keep placeholder IDs for the later rollout step."
+      "evidence": "native-auto-merge-controls.yml discovers both the issue-ci tests and scripts/security/tests, and fails on zero tests or any skipped test. Two hosted runs at this head (jobs 123018823534 and 123018791129) succeeded. Templates keep placeholder IDs for the later rollout step."
     },
     {
       "id": "r7",
       "status": "met",
-      "evidence": "No thresholds or blockers change. test_a_green_review_with_a_coverage_hold_cannot_queue_merge shows the coverage hold is honoured."
+      "evidence": "No thresholds or blockers change. policy() requires full mode with empty blockers before any merge, and test_a_green_review_with_a_coverage_hold_cannot_queue_merge confirms this. The legacy issue-ci template and handoff.py are unchanged."
     },
     {
       "id": "r8",
       "status": "met",
-      "evidence": "The provenance packet shows the final-review source descends from c9ec41e, and scripts/security/* and other inherited files are unchanged from it. guarded_merge and the 'merge' operation stay hard-disabled, and the guarded-merge template is unchanged."
+      "evidence": "The provenance packet shows c9ec41e is an ancestor and the inherited files are unchanged, apart from listed repairs. guarded_merge and the 'merge' operation still refuse in code, and the guarded-merge template is unchanged."
     }
   ],
   "findings": [
     {
-      "title": "Sharing issue-ci-handoff across two workflows lets pending replacement drop CI handoff and outcome wakes",
-      "severity": "medium",
-      "path": "plugins/faberline/skills/issue-ci/templates/claude-native-merge.yml.example",
-      "line": 18,
-      "detail": "GitHub concurrency groups are repository-wide across workflows. With cancel-in-progress false, a newly queued run cancels any previously pending run in the same group. The existing handoff template justifies pending replacement only because every handoff wake reconciles all managed PRs. Now an outcome-writer run can replace a pending CI handoff run, losing a CI failure→todo handoff until the next test completion; this changes existing CI behaviour. Conversely, a handoff run can replace a pending outcome run (an issue contract edit, review start or new head). That outcome's withdrawal or return to doing then never runs until some later outcome wake, so an earlier success status or native request can remain active and a rejection is not reflected in the lifecycle.",
-      "required_fix": "Keep serialization but make it lossless across both writers. For example, have each workflow also run the other's full reconciliation on every wake, or merge both into one writer workflow. Add tests where a pending wake of each workflow is replaced by the other."
+      "title": "Per-PR review index scans the whole review history with per-run API calls and log downloads on every verification",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/scripts/native_review_index.py",
+      "line": 15,
+      "detail": "attempts() visits every producer run that verify_result_receipt fetched without bound. For each run whose title names a PR, it calls the contents API. For each completed run it also runs review.producer() (repository, run, two blob reads and a jobs page), lists jobs again, and downloads the job log. result() runs this selector twice for each verify_result_receipt call. For one PR on one wake, reconcile calls it through result_verify, twice through verify inside enqueue, or up to five times through return_doing. The review workflow runs on every CI completion, so its history grows steadily. A history of about 100 runs needs thousands of requests per PR per wake, far above the GITHUB_TOKEN limit (about 1000 requests per hour per repository). Every wake type (requested, in_progress, completed, issue or PR metadata) repeats this. Once the limit is hit, verification fails closed and the PR is held. A qualified pass then never queues, and a rejection may never return the issue to doing. The tests use histories of 1–3 runs and do not exercise this.",
+      "required_fix": "Bound and cache the index. Build it once per wake, filter runs to the current open PR targets and heads (for example by run title, or the latest run per PR), download a log only for the latest candidate of each PR, and reuse that index for all verifications in the wake. Add a regression control that counts API calls against a large synthetic history."
     },
     {
-      "title": "Outcome writer self-identity check likely refuses all pull_request_target wakes",
+      "title": "pull_request_target wake from a PR whose base is not the default branch can replace a pending wake and then refuse",
       "severity": "medium",
       "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
-      "line": 381,
-      "detail": "main() calls review.producer_identity for the current run with EVENTS. producer_identity requires run.head_branch == default_branch and head_repository == repo. For pull_request_target runs, GitHub reports the PR's head branch, head SHA and head repository, which may be a fork. Every PR opened/synchronize/edited/ready_for_review/converted_to_draft wake would therefore exit with an error before withdrawing approval or reconciling the queue, contrary to the documented PR-metadata wake behaviour. test_entrypoint_checks_merge_producer_and_surfaces_unknown_writes mocks producer_identity, so this path is untested.",
-      "required_fix": "Authenticate the writer run per event type. For pull_request_target, verify the workflow definition blob at the base/default-branch commit rather than the PR head branch or repository. Add an entrypoint test that runs the real identity check for each trigger event."
+      "line": 126,
+      "detail": "writer_identity requires GITHUB_REF and GITHUB_WORKFLOW_REF to name the default branch, and main() calls it before any withdrawal or reconciliation, without a try. Consumers merge PRs into non-default dependency branches (for example Lumen #185). If such a base branch carries the same issue-ci.yml, a pull_request_target event runs in the repository-wide issue-ci-handoff group. Under default pending replacement it can displace a pending legitimate wake, for example a review completion. It then raises writer_base_workflow_context. The displaced withdrawal, success status or return to doing is lost until some unrelated later wake. This breaks the lossless single-writer property that fixes the previous finding.",
+      "required_fix": "Make that wake lossless. For example, filter pull_request_target to the default base in the template, before the run joins the group (branches: [default]). Or treat a non-default-base wake as a wake only and still run the trusted default-branch reconciliation. Add a test for a non-default-base wake that replaces a pending wake."
+    },
+    {
+      "title": "Existing findings publisher still uses the global latest-run selector, so negative receipts are often unreadable",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/claude_findings.py",
+      "line": 160,
+      "detail": "publish() calls g.verify_result_receipt(..., allow_rejected=True) without latest_selector. The default selector requires the source run to be the highest run_number among all review-producer runs. Reviews for different PRs run concurrently, since the concurrency group is per PR, and runs with no PR attached also appear. So when the publisher wakes on a completed failed review, a newer review run for any other target commonly exists, and the call refuses with review_superseded. The issue requires the authenticated negative receipt to remain readable by the existing findings publisher. That holds only when no other review run has started in the meantime. The index-based per-PR selector added for the outcome writer is not used here.",
+      "required_fix": "Have the publisher use the per-PR authenticated index selector (native_review_index.result or an equivalent latest_selector), keeping the failed-job and negative-only rules. Add a test where another PR's newer review run exists."
     }
   ],
-  "uncertainties": [
-    "The pull_request_target finding assumes GitHub's run metadata reports the PR head branch and head repository for those runs; this was not verified live.",
-    "The findings publisher still uses the default latest-run-across-all-PRs selector. A negative receipt may be unreadable to it whenever another PR's review run starts first. This behaviour was already in c9ec41e."
-  ]
+  "uncertainties": []
 }
