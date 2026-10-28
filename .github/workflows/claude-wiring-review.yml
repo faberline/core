@@ -1,0 +1,50 @@
+name: Independent Claude completion-wiring review
+on:
+  push:
+    branches: [codex/claude-wiring-review]
+    paths: [.github/workflows/claude-wiring-review.yml, scripts/claude-wiring-review/**]
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  issues: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Provision fixed signed official Claude without credentials
+        id: provision
+        run: python3 -I scripts/claude-wiring-review/provision-claude.py
+      - name: Install verified binary
+        env:
+          VERIFIED_BINARY: ${{ steps.provision.outputs.binary }}
+        run: sudo install -m 0755 -- "$VERIFIED_BINARY" /usr/local/bin/claude
+      - name: Read public shared source at the exact candidate commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: faberline/aw
+          ref: 3df66d0788960cf9d631e0669779922fce1b3571
+          path: scripts/claude-wiring-review/source
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Review shared diff and issue contract without executing source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          REVIEW_REPO: faberline/aw
+          REVIEW_PR: '92'
+          REVIEW_ISSUE: '91'
+          REVIEW_HEAD: 3df66d0788960cf9d631e0669779922fce1b3571
+          REVIEW_BASE: 23ce1028e73e8c6342ac14b0bc650c19db5898a3
+        run: python3 -I scripts/claude-wiring-review/runner.py
+      - name: Keep review evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: claude-wiring-3df66d0
+          path: scripts/claude-wiring-review/evidence/
+          if-no-files-found: warn
