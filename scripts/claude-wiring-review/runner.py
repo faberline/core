@@ -178,7 +178,7 @@ for item in changed:
 diff=''.join(parts)
 assert len(diff.encode())<=4*1024*1024, 'diff_bound'
 human = """The human asks for strict qualification, independent review, and automatic merge after all gates pass. Product acceptance belongs to the source issue and planner. Do not weaken any gate.
-Review AW issue 117 and PR 118. The change must remove only the used Core #75 grant for evaluator 8e2e93e5ba8feb30b6668de39139980ea3bb085c after verifying the PR merged and issue closed. Other grants must remain unchanged. Removing this grant does not authorize any new merge. The complete hosted control suite must pass with no skips. The issue closes after merge, so do not require post-merge closure before this review. Preserve all other scope and peer work.
+Review AW issue 121 and PR 122. The change must remove only the used Core #77 grant for evaluator 8e2e93e5ba8feb30b6668de39139980ea3bb085c after verifying the PR merged and issue closed. Other grants must remain unchanged. Removing this grant does not authorize any new merge. The complete hosted control suite must pass with no skips. The issue closes after merge, so do not require post-merge closure before this review. Preserve all other scope and peer work.
 """
 def completed_core_grant_target():
     def read(path):
@@ -186,11 +186,11 @@ def completed_core_grant_target():
             headers={'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github+json'})
         with urllib.request.urlopen(request, timeout=60) as response:
             return json.load(response)
-    pull = read('pulls/75')
-    source_issue = read('issues/73')
-    assert pull['state'] == 'closed' and pull.get('merged_at') and pull['head']['sha'] == 'cfb1d50e06a6bcefdf1c0b7c9523f0eb8f1d7155', 'core_grant_target_not_merged'
-    assert source_issue['number'] == 73 and source_issue['state'] == 'closed', 'core_grant_issue_not_closed'
-    return dict(pr=75, head=pull['head']['sha'], merged_at=pull['merged_at'], issue=73, issue_state=source_issue['state'], issue_closed_at=source_issue['closed_at'])
+    pull = read('pulls/77')
+    source_issue = read('issues/76')
+    assert pull['state'] == 'closed' and pull.get('merged_at') and pull['head']['sha'] == 'b9d52079b0cc151699f3f5672c5b9ccb4d6033e3', 'core_grant_target_not_merged'
+    assert source_issue['number'] == 76 and source_issue['state'] == 'closed', 'core_grant_issue_not_closed'
+    return dict(pr=77, head=pull['head']['sha'], merged_at=pull['merged_at'], issue=76, issue_state=source_issue['state'], issue_closed_at=source_issue['closed_at'])
 
 completed_target = completed_core_grant_target()
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
