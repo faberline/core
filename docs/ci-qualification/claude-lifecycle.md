@@ -1,24 +1,35 @@
 # Formal Claude review and PR completion
 
-The default branch now declares the formal read-only Claude producer and one CI/outcome writer.
-The writer replaces the previous issue-ci workflow. Each wake reconciles both queues.
+The candidate pins shared source
+`faberline/aw@568c7512c5d4daad65e0430b8b6e623ad8ee4835` (AW #94).
+Its 354 complete shared/security controls and independent Claude review passed.
+This is not yet a Core adoption receipt.
 
-- Complete trusted qualification is required before paid final review.
-- A current-head PASS plus all required evidence enables native squash auto-merge.
-- GitHub closes the one Closes #N issue only after merging to the default branch.
-- A valid fail/block returns the linked open issue to doing and preserves unrelated labels.
-- Stale, missing, skipped or unknown evidence cannot approve merge.
+The candidate's one authoritative policy is
+`.github/issue-ci-required-gates.json`. It requires the complete 140-job
+workspace baseline described in [formal-pipeline.md](formal-pipeline.md).
+Every declared unit/static and integration feature row is required. Missing,
+skipped, cancelled, stale or partial evidence blocks qualification. There are
+no category exemptions or documentation/unknown-path zero-check passes.
 
-The existing required CI jobs, qualification mode and coverage blockers are unchanged.
-The exact previous CI policy is retained for handoff journal continuity.
-Current coverage holds still prevent final review and automatic merge.
+The formal read-only Claude producer runs only after trusted qualification.
+A current-head PASS plus every required gate enables native squash auto-merge.
+GitHub closes the one `Closes #N` issue after merging to the default branch.
+A valid fail/block returns the linked managed issue to `todo`, preserving
+unrelated labels. Receipt-bound recovery cannot undo a later retry claim.
 
-Shared source: faberline/aw@28637704225692e5a1766b9c6b9778ef2b52e155 (AW #92).
+Workflow, driver, Cargo manifest and policy changes require separately reviewed
+adoption. A candidate cannot approve its own protected gate changes. The old
+default policy remains failure-only until the exact candidate has complete
+online CI, independent review and verified delivery. Old product heads with an
+untrusted workflow/base or missing issue-specific evidence remain held.
+
+The CI handoff and native merge writer use identical complete qualification
+semantics. Existing historical failure receipts are not qualifying evidence.
+Full CI still does not substitute for each source issue's additional acceptance
+or for the final independent review.
+
 Formal workflow ID: 399789974.
 Unified writer ID: 394215097.
 Native protection ruleset: 26069017.
-
-Retained blockers:
-
-- Existing CI covers only five fixed crates, not an approved affected-crate selection or complete MR unit policy.
-- No approved current-head affected functional/e2e/performance qualification gates.
+Required status: `claude/verified-merge` by GitHub Actions app 15368.

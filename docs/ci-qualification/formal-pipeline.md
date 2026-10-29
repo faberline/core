@@ -5,7 +5,7 @@ The current default policy remains failure-only until the proposed policy has
 complete current-head CI and independent Claude review. This document is not
 an approval receipt. It does not mark any product issue complete.
 
-The proposed configuration is `.github/core-coverage-policy.json`.
+The candidate configuration is `.github/issue-ci-required-gates.json`.
 It binds the real Core CI workflow ID and reviewed Git blob. It requires all
 140 jobs: the original five crate jobs, inventory and format, 70 complete
 unit/static rows, 62 integration rows and one measured-performance job.
@@ -14,6 +14,13 @@ whole matrix. There are no category exemptions. The existing shared selector
 rejects incomplete files, unknown rename sources and mismatched head/base
 workflow definitions. Workflow, runner, policy and Cargo manifest changes
 require a separately reviewed policy update. A PR cannot approve its own gates.
+
+Every unit/static row also builds its package documentation and runs the
+complete profile's doctests. This includes issue #16's explicit all-features
+documentation gate. Any ignored examples require a complete release run with
+`--include-ignored`; they cannot disappear from its passing roster. A real empty
+doctest collection is recorded as no examples, not as unit evidence. Missing
+harness output fails, and the separate mandatory unit target remains nonzero.
 
 The 62 integration rows derive from all 29 current Cargo integration targets
 and every applicable default, no-default, individual-feature and all-features
@@ -51,8 +58,10 @@ at their own current heads before using their issue evidence.
 After reviewed adoption, qualified CI plus an authenticated current-head
 Claude PASS can queue GitHub auto-merge and close the one linked issue.
 Review fail/block returns the linked open issue to `todo`, preserves unrelated
-labels, and never merges it. The shared deployed rejection code still needs
-the human's latest doing-to-todo correction before this rollout is complete.
+labels, and never merges it. The candidate producer/writer pins the reviewed
+immutable todo implementation at AW `568c751` (PR #94), with 354 complete
+controls and independent Claude PASS. It still requires reviewed adoption on
+Core before it can operate there.
 
 ## First online diagnostics
 

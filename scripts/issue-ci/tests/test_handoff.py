@@ -18,7 +18,8 @@ def load(name, path):
 
 ci = load("handoff", ROOT / "scripts/issue-ci/handoff.py")
 guard = load("guard", ROOT / "scripts/issue-ci/check-policy.py")
-CONFIG = json.loads((ROOT / ".github/issue-ci-required-gates.json").read_text())
+LEGACY_POLICY = ROOT / "scripts/issue-ci/tests/fixtures/legacy-policy.json"
+CONFIG = json.loads(LEGACY_POLICY.read_text())
 GATES = CONFIG["workflows"]
 SHA = "a" * 40
 
@@ -30,11 +31,11 @@ def evidence():
 
 class PolicyTests(unittest.TestCase):
     def test_pinned_controller(self):
-        self.assertEqual(hashlib.sha256((ROOT / "scripts/issue-ci/handoff.py").read_bytes()).hexdigest(), "c67533b39d45ad62d407af3748856be396941647c349b63464424fa6aff1c198")
+        self.assertEqual(hashlib.sha256((ROOT / "scripts/issue-ci/handoff.py").read_bytes()).hexdigest(), "9a93b84fef81abe6d527c03bd7dcbfa05a6df10e6d21b14bc2686f83f44ed8be")
         self.assertEqual(CONFIG["aw_revision"], "67af8d020df3ca2ec4b064289408cfb0c2f8b299")
 
     def test_failure_only_policy_never_done_even_if_existing_gates_green(self):
-        guard.check(ROOT / ".github/issue-ci-required-gates.json")
+        guard.check(LEGACY_POLICY)
         self.assertEqual(CONFIG["lifecycle_mode"], "failure-only")
         self.assertTrue(CONFIG["qualification_blockers"])
         self.assertEqual(ci.evaluate_policy(CONFIG, evidence())[0], "pending")
@@ -58,7 +59,7 @@ class PolicyTests(unittest.TestCase):
     def test_guard_refuses_old_controller_without_policy_api(self):
         from types import SimpleNamespace
         with patch.object(guard, "load_controller", return_value=SimpleNamespace(load_config=ci.load_config)):
-            with self.assertRaises(RuntimeError): guard.check(ROOT / ".github/issue-ci-required-gates.json")
+            with self.assertRaises(RuntimeError): guard.check(LEGACY_POLICY)
 
     def test_exact_live_gate_contract(self):
         expected = [{'path': '.github/workflows/ci.yml', 'jobs': ['service-k8s', 'storage-durable', 'service-backup', 'raft-core', 'raft-runtime']}]
@@ -66,12 +67,14 @@ class PolicyTests(unittest.TestCase):
         source = (ROOT / expected[0]["path"]).read_text()
         self.assertEqual(re.findall(r"^          - crate: (.+)$", source, re.M), expected[0]["jobs"])
         workflow = (ROOT / ".github/workflows/issue-ci.yml").read_text()
-        self.assertIn('workflows: [\"core ci\"]', workflow)
-        self.assertLess(workflow.index("check-policy.py"), workflow.index("handoff.py"))
-        self.assertIn("ref: ${{ github.event.repository.default_branch }}", workflow)
-        self.assertIn("persist-credentials: false", workflow)
-        self.assertNotIn("pull_request_target", workflow)
-        self.assertNotIn("download-artifact", workflow)
+        self.assertIn('workflows: ["core ci", "Claude final review"]', workflow)
+        self.assertIn('faberline/aw/.github/actions/native-auto-merge@568c7512c5d4daad65e0430b8b6e623ad8ee4835',workflow)
+        self.assertIn('group: issue-ci-handoff',workflow)
+        self.assertIn('pull_request_target:',workflow)
+        self.assertNotIn('uses: actions/checkout',workflow)
+        self.assertNotIn('download-artifact',workflow)
+        self.assertNotRegex(workflow,r'(?m)^\s+run:')
+
 
     def test_missing_workflow_or_job_never_passes(self):
         self.assertEqual(ci.evaluate_policy(CONFIG, {})[0], "pending")

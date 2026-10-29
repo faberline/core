@@ -9,7 +9,7 @@ import unittest
 ROOT=Path(__file__).resolve().parents[3]
 SPEC=importlib.util.spec_from_file_location('qualification_policy',ROOT/'scripts/issue-ci/qualification.py')
 q=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(q)
-CONFIG=json.loads((ROOT/'.github/core-coverage-policy.json').read_text())
+CONFIG=json.loads((ROOT/'.github/issue-ci-required-gates.json').read_text())
 HEAD,BASE='a'*40,'b'*40
 WORKFLOW='.github/workflows/ci.yml'
 
@@ -23,6 +23,34 @@ def scope(config=None,path='crates/raft-runtime/src/application/host.rs'):
 
 
 class FullPolicyTests(unittest.TestCase):
+    def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
+        self.assertEqual(CONFIG['aw_revision'],'568c7512c5d4daad65e0430b8b6e623ad8ee4835')
+        for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
+            raw=(ROOT/producer['path']).read_bytes()
+            blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+            self.assertEqual(blob,producer['definition_sha'])
+            self.assertIn(b'@568c7512c5d4daad65e0430b8b6e623ad8ee4835',raw)
+        self.assertEqual(CONFIG['native_auto_merge']['status_context'],'claude/verified-merge')
+        self.assertEqual(CONFIG['native_auto_merge']['status_app_id'],15368)
+
+    def test_copied_inspection_modules_match_published_shared_source(self):
+        expected={'handoff.py':'9a93b84fef81abe6d527c03bd7dcbfa05a6df10e6d21b14bc2686f83f44ed8be',
+                  'qualification.py':'acc235139940b4e5d8ea1e75b4101ac442ee14a1e77ea01207838a55fdc7eaed',
+                  'json_data.py':'35dc74be907733cfff108eae9bf217eec5c69a028487919f84c86c06d805facf'}
+        for name,digest in expected.items():
+            self.assertEqual(hashlib.sha256((ROOT/'scripts/issue-ci'/name).read_bytes()).hexdigest(),digest)
+
+    def test_operational_root_requires_complete_full_contract(self):
+        spec=importlib.util.spec_from_file_location('policy_guard',ROOT/'scripts/issue-ci/check-policy.py')
+        guard=importlib.util.module_from_spec(spec);spec.loader.exec_module(guard)
+        self.assertEqual(guard.check(ROOT/'.github/issue-ci-required-gates.json')['lifecycle_mode'],'full')
+        import tempfile
+        with tempfile.TemporaryDirectory()as directory:
+            path=Path(directory)/'policy.json'
+            for edit in [lambda c:c.pop('qualification'),lambda c:c.update(qualification_blockers=['unknown']),lambda c:c.update(_qualification_context={})]:
+                candidate=copy.deepcopy(CONFIG);edit(candidate);path.write_text(json.dumps(candidate))
+                with self.assertRaises(RuntimeError):guard.check(path)
+
     def test_actual_workflow_definition_is_hash_bound(self):
         raw=(ROOT/WORKFLOW).read_bytes()
         blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
@@ -46,7 +74,7 @@ class FullPolicyTests(unittest.TestCase):
                 self.assertTrue(all(not value for value in scoped['_qualification_context']['exemptions'].values()))
 
     def test_workflow_driver_policy_or_manifest_change_cannot_self_approve(self):
-        for path in ['.github/workflows/ci.yml','.github/issue-ci-required-gates.json','.github/core-coverage-policy.json','scripts/pr-gates/plan.py','Cargo.toml','crates/raft-runtime/Cargo.toml']:
+        for path in ['.github/workflows/ci.yml','.github/issue-ci-required-gates.json','scripts/pr-gates/plan.py','Cargo.toml','crates/raft-runtime/Cargo.toml']:
             with self.subTest(path=path):self.assertTrue(scope(path=path)['_qualification_context']['issues'])
 
     def test_missing_base_or_capped_or_partial_files_refuse(self):

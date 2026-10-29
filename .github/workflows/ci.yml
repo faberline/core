@@ -78,7 +78,7 @@ jobs:
       - name: Check nonempty PR gate fixtures
         working-directory: candidate
         run: |
-          python3 -c 'import sys,unittest; suite=unittest.defaultTestLoader.discover("scripts/pr-gates/tests"); count=suite.countTestCases(); print("fixture_count="+str(count)); result=unittest.TextTestRunner(verbosity=2).run(suite); sys.exit(0 if count > 0 and result.wasSuccessful() and not result.skipped else 1)'
+          python3 -c 'import sys,unittest; suite=unittest.TestSuite([unittest.defaultTestLoader.discover("scripts/pr-gates/tests"),unittest.defaultTestLoader.discover("scripts/issue-ci/tests",top_level_dir="scripts/issue-ci/tests")]); count=suite.countTestCases(); print("fixture_count="+str(count)); result=unittest.TextTestRunner(verbosity=2).run(suite); sys.exit(0 if count > 0 and result.wasSuccessful() and not result.skipped else 1)'
       - name: Derive complete current-head matrix and baseline inventory
         id: plan
         env:
@@ -176,6 +176,16 @@ jobs:
           EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
           CARGO_INCREMENTAL: "0"
         run: python3 candidate/scripts/pr-gates/plan.py run --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE" --package "$PACKAGE" --profile "$PROFILE" --kind clippy
+
+      - name: Build documentation and execute every collected example
+        if: ${{ !cancelled() }}
+        env:
+          PACKAGE: ${{ matrix.package }}
+          PROFILE: ${{ matrix.profile }}
+          EXPECTED_HEAD: ${{ github.event.pull_request.head.sha }}
+          EXPECTED_BASE: ${{ github.event.pull_request.base.sha }}
+          CARGO_INCREMENTAL: "0"
+        run: python3 candidate/scripts/pr-gates/docs.py --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE" --package "$PACKAGE" --profile "$PROFILE"
 
   workspace-contracts:
     name: candidate contracts (${{ matrix.package }}, ${{ matrix.profile }})
