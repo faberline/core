@@ -1,58 +1,50 @@
 {
   "repo": "faberline/aw",
   "pr": 116,
-  "head": "9cfa05635897b7d37d08a6af5ffa17cec9b25dda",
+  "head": "06d1059042455b44bc564e490b9f361070ca5fb3",
   "base": "d58bf67c196abb8955bc3b0f509484a5f58315ba",
   "decision": "fail",
-  "summary": "Fail. The issue outcome is still not delivered.\n\nWhat this head fixes: reconcile() now calls block_unadmitted before settle for admitted PRs with the safe holds review_missing, review_target_record_unknown and latest_review_not_success. A never-reviewed PR therefore no longer keeps its guard, and a test that runs two wakes in a row covers this. Recovery before the first status works when no merge request exists (cancel_blocked \u2192 block_unadmitted \u2192 settle).\n\nWhat is still missing:\n- recovery_entry.verify_rollout always refuses. Every guarded writer, adoption publisher and recovery wake stops before any issue write, so after a real asynchronous native merge the linked issue stays open (as in Core #75, #77 and #79).\n- There is no hosted asynchronous merge that closes its issue.\n- There is no controlled hosted test of the issues:write permission hypothesis.\n- Actor and launcher adoption are unproven.\n- Request ownership is unproven, and safe cancellation is not implemented.\n- A queued request whose guard is held by another run can stay blocked, and that guard retained, forever.\n\nNew liveness defect: the release path covers only the three safe-hold reasons. An admitted PR held for any other reason keeps its guard forever: CI pending or failing, qualification_not_ready, a changed issue, or verification_or_provider_failed. Later wakes cannot acquire the guard, so they skip that PR (guard_unavailable). If CI fails and the issue returns to todo, no worker can reclaim it. Only the disabled recovery workflow could release such a guard.\n\nExisting CI, performance, review, protected-branch, no-bypass and failure-to-todo gates are preserved. No schedule is deployed, and other sessions' worktrees and leases are preserved.",
+  "summary": "Fail. The issue outcome is still not delivered.\n\nWhat is in place: the guarded close checks the exact merge into the default branch, issue identity and contract, and ownership before it would close an issue. It never takes over another owner's claim, and unknown provider results keep the guard and leave the issue open. Existing CI, performance, review, protected-branch, no-bypass and failure-to-todo gates are preserved. No schedule is deployed, and other sessions' worktrees and leases are preserved.\n\nWhat is still missing:\n- recovery_entry.verify_rollout always refuses. Every guarded writer, adoption publisher and recovery wake stops before it closes anything, so a linked issue stays open after an asynchronous merge.\n- No hosted asynchronous merge has closed its issue automatically.\n- The controlled hosted test of the issues:write permission hypothesis has not been run.\n- Actor and launcher adoption, request ownership and safe cancellation are not established.\n\nWhat this head changes: reconcile now also releases the guard for qualification_not_ready and issue_not_eligible. Both refusals happen before any write, so this is correct.\n\nDefects that remain: other pre-write refusals still keep the guard forever. These include required_gates_not_success (the normal state while CI is pending), review_stale, issue_contract_changed, pr_description_changed and base_changed. Later wakes cannot acquire that guard, so the PR is reported only as guard_unavailable and is never checked again. If CI fails and the issue returns to todo, no worker can reclaim it. Guards for queued or merged requests also have no liveness path.",
   "findings": [
     {
       "title": "Verified post-merge closure remains unreachable",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/recovery_entry.py",
-      "line": 119,
-      "detail": "verify_rollout unconditionally raises recovery_rollout_not_verified. Every guarded writer, adoption publisher and recovery entry calls it before any write. No recovery workflow is deployed. After an asynchronous native merge, the linked issue therefore stays open.",
-      "required_fix": "Implement and review a rollout-evidence verifier. Deploy the recovery workflow through reviewed policy adoption. Then demonstrate automatic closure."
+      "line": 118,
+      "detail": "verify_rollout always raises. Every guarded path, and recovery itself, stops before any issue write, so linked issues stay open after an asynchronous merge.",
+      "required_fix": "Implement and review a rollout-evidence verifier. Deploy recovery through reviewed policy adoption. Then demonstrate an automatic close."
     },
     {
-      "title": "No hosted asynchronous merge with automatic close proof",
-      "severity": "high",
-      "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
-      "line": 108,
-      "detail": "All controls are synthetic. The only real-provider fixture (Core #77) records a manual close.",
-      "required_fix": "Run a controlled hosted asynchronous native merge in which the mechanism closes the linked issue, together with hosted negative controls."
-    },
-    {
-      "title": "issues:write permission hypothesis not tested",
-      "severity": "medium",
-      "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
-      "line": 102,
-      "detail": "The issue requires a controlled hosted comparison before any production permission change or reliance on native auto-close. None is implemented or recorded.",
-      "required_fix": "Perform and document the controlled hosted permission comparison, keeping the exact CI, independent review and ownership gates."
-    },
-    {
-      "title": "Guard retained forever for admitted PRs held for any non-safe reason",
+      "title": "Guard retained forever for CI-pending and other pre-write holds",
       "severity": "medium",
       "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
-      "line": 782,
-      "detail": "In reconcile, only the reasons review_missing, review_target_record_unknown and latest_review_not_success lead to block_unadmitted plus settle. Any other hold skips settle and keeps the merge guard: required_gates_not_success, qualification_not_ready, issue_not_eligible, verification_or_provider_failed and similar. On later wakes guarded.begin fails because the earlier completed run owns the guard, so the PR is only blocked (guard_unavailable) and is never re-evaluated. When the CI handoff returns the issue to todo, workers cannot claim it either. Only the disabled admission_recovery path could release such a guard.",
-      "required_fix": "For every refused or held admitted row with no merge request, establish and read back a blocking status, then settle (release) the guard. Add controls for CI-failed and qualification-held PRs across consecutive wakes."
+      "line": 776,
+      "detail": "safe_holds now also covers qualification_not_ready and issue_not_eligible. It does not cover other refusals raised by verify before any write: required_gates_not_success (the normal state while CI is pending), review_stale, issue_contract_changed, pr_description_changed and base_changed. Those rows keep the guard forever. Later wakes fail guarded.begin and only report guard_unavailable, so the PR is never re-evaluated and a CI-failed issue cannot be reclaimed by a worker.",
+      "required_fix": "Classify every deterministic refusal raised before enqueue writes as releasable. Release after block_held plus settle. Add controls for CI-pending and CI-failed PRs across consecutive wakes."
     },
     {
-      "title": "Queued-request guards and blocked queued PRs have no liveness path",
+      "title": "Queued-request guards have no liveness or ownership path",
       "severity": "medium",
       "path": "plugins/faberline/skills/issue-ci/scripts/guarded_admission.py",
-      "line": 159,
-      "detail": "cancel_blocked returns 'retained' when the PR is MERGED or a request exists, so a writer that died after queueing without a record keeps its guard forever. A later wake that fails guarded.begin calls block_unadmitted, which posts pending over the queued PR's success status. Nothing can restore approval.",
-      "required_fix": "Bind native request provenance to the guard so a later actor can safely take over, re-verify, republish success or cancel. Add recovery for a merge with no record, and controls for a queued PR followed by a later wake."
+      "line": 170,
+      "detail": "cancel_blocked and settle return 'retained' whenever a request exists or the PR merged without a record. block_unadmitted from a later wake can override a queued PR's success status, and nothing restores it.",
+      "required_fix": "Bind request provenance to the guard. Implement safe takeover or cancellation and recovery for a merge with no record, with controls."
     },
     {
-      "title": "Actor and launcher adoption and request ownership unproven",
+      "title": "No hosted asynchronous merge, automatic-close proof or permission comparison",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+      "line": 102,
+      "detail": "All controls are synthetic. The Core #77 fixture records a manual close. The controlled hosted test of the issues:write hypothesis is absent.",
+      "required_fix": "Run hosted positive and negative asynchronous merge controls that close the linked issue, plus the controlled issues:write comparison."
+    },
+    {
+      "title": "Actor and launcher adoption unproven",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/rollout_inventory.py",
       "line": 69,
-      "detail": "actor_rollout is always 'unknown'. request_history does not prove which run created a request. Cancellation and its race with merging are not implemented. The guard protocol requires every actor to adopt it.",
-      "required_fix": "Provide verified actor and launcher adoption evidence bound to the exact policy and runtime. Implement request-ownership provenance and safe cancellation."
+      "detail": "actor_rollout is always 'unknown'. The guard protocol requires every active worker and writer to adopt it.",
+      "required_fix": "Provide verified actor and launcher adoption evidence bound to the exact policy and runtime."
     }
   ],
   "uncertainties": []
