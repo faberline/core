@@ -1,69 +1,1959 @@
 {
-  "aw_revision": "28637704225692e5a1766b9c6b9778ef2b52e155",
+  "aw_revision": "8e2e93e5ba8feb30b6668de39139980ea3bb085c",
   "workflows": [
     {
       "path": ".github/workflows/ci.yml",
       "jobs": [
+        "candidate workspace unit inventory",
+        "candidate workspace format",
         "service-k8s",
         "storage-durable",
         "service-backup",
         "raft-core",
-        "raft-runtime"
+        "raft-runtime",
+        "candidate unit-static (build-stamp, default)",
+        "candidate unit-static (claim-token, default)",
+        "candidate unit-static (cli-std, default)",
+        "candidate unit-static (compass, default)",
+        "candidate unit-static (index-text, default)",
+        "candidate unit-static (metrics-prometheus, default)",
+        "candidate unit-static (metrics-remote-write, default)",
+        "candidate unit-static (openapi-codegen, default)",
+        "candidate unit-static (peer-tls, default)",
+        "candidate unit-static (raft-core, default)",
+        "candidate unit-static (raft-runtime, default)",
+        "candidate unit-static (server-http, default)",
+        "candidate unit-static (server-lifecycle, default)",
+        "candidate unit-static (server-tcp, default)",
+        "candidate unit-static (service-auth, default)",
+        "candidate unit-static (service-backup, default)",
+        "candidate unit-static (service-collector, default)",
+        "candidate unit-static (service-executor, default)",
+        "candidate unit-static (service-http, default)",
+        "candidate unit-static (service-k8s, default)",
+        "candidate unit-static (service-mcp, default)",
+        "candidate unit-static (service-observability, default)",
+        "candidate unit-static (service-projection, default)",
+        "candidate unit-static (storage-durable, default)",
+        "candidate unit-static (storage-object, default)",
+        "candidate unit-static (storage-segment, default)",
+        "candidate unit-static (surface, default)",
+        "candidate unit-static (transport-h2c, default)",
+        "candidate unit-static (transport-otlp, default)",
+        "candidate unit-static (ui-runtime, default)",
+        "candidate unit-static (cli-std, all-features)",
+        "candidate unit-static (cli-std, feature:k8s)",
+        "candidate unit-static (cli-std, feature:online)",
+        "candidate unit-static (cli-std, feature:registry)",
+        "candidate unit-static (cli-std, no-default)",
+        "candidate unit-static (index-text, all-features)",
+        "candidate unit-static (index-text, feature:jieba)",
+        "candidate unit-static (index-text, no-default)",
+        "candidate unit-static (service-auth, all-features)",
+        "candidate unit-static (service-auth, feature:k8s)",
+        "candidate unit-static (service-auth, no-default)",
+        "candidate unit-static (service-backup, all-features)",
+        "candidate unit-static (service-backup, feature:http-client)",
+        "candidate unit-static (service-backup, feature:s3)",
+        "candidate unit-static (service-backup, no-default)",
+        "candidate unit-static (service-http, all-features)",
+        "candidate unit-static (service-http, feature:otlp)",
+        "candidate unit-static (service-http, no-default)",
+        "candidate unit-static (service-k8s, all-features)",
+        "candidate unit-static (service-k8s, feature:certificate)",
+        "candidate unit-static (service-k8s, feature:controller)",
+        "candidate unit-static (service-k8s, feature:full)",
+        "candidate unit-static (service-k8s, feature:gcp-cas)",
+        "candidate unit-static (service-k8s, feature:gcp-cas-client)",
+        "candidate unit-static (service-k8s, feature:render-only)",
+        "candidate unit-static (service-k8s, no-default)",
+        "candidate unit-static (service-observability, all-features)",
+        "candidate unit-static (service-observability, feature:otlp)",
+        "candidate unit-static (service-observability, no-default)",
+        "candidate unit-static (storage-object, all-features)",
+        "candidate unit-static (storage-object, feature:gcs)",
+        "candidate unit-static (storage-object, feature:s3)",
+        "candidate unit-static (storage-object, no-default)",
+        "candidate unit-static (transport-h2c, all-features)",
+        "candidate unit-static (transport-h2c, feature:server)",
+        "candidate unit-static (transport-h2c, no-default)",
+        "candidate unit-static (ui-runtime, all-features)",
+        "candidate unit-static (ui-runtime, feature:debug)",
+        "candidate unit-static (ui-runtime, feature:serde_json)",
+        "candidate unit-static (ui-runtime, no-default)",
+        "candidate contracts (claim-token, default)",
+        "candidate contracts (compass, default)",
+        "candidate contracts (index-text, default)",
+        "candidate contracts (metrics-remote-write, default)",
+        "candidate contracts (openapi-codegen, default)",
+        "candidate contracts (peer-tls, default)",
+        "candidate contracts (raft-core, default)",
+        "candidate contracts (raft-runtime, default)",
+        "candidate contracts (server-http, default)",
+        "candidate contracts (server-lifecycle, default)",
+        "candidate contracts (server-tcp, default)",
+        "candidate contracts (service-auth, default)",
+        "candidate contracts (service-backup, default)",
+        "candidate contracts (service-collector, default)",
+        "candidate contracts (service-executor, default)",
+        "candidate contracts (service-http, default)",
+        "candidate contracts (service-k8s, default)",
+        "candidate contracts (service-mcp, default)",
+        "candidate contracts (service-observability, default)",
+        "candidate contracts (service-projection, default)",
+        "candidate contracts (storage-durable, default)",
+        "candidate contracts (storage-object, default)",
+        "candidate contracts (storage-segment, default)",
+        "candidate contracts (surface, default)",
+        "candidate contracts (transport-h2c, default)",
+        "candidate contracts (transport-otlp, default)",
+        "candidate contracts (ui-runtime, default)",
+        "candidate contracts (index-text, all-features)",
+        "candidate contracts (index-text, feature:jieba)",
+        "candidate contracts (index-text, no-default)",
+        "candidate contracts (service-auth, all-features)",
+        "candidate contracts (service-auth, feature:k8s)",
+        "candidate contracts (service-auth, no-default)",
+        "candidate contracts (service-backup, all-features)",
+        "candidate contracts (service-backup, feature:http-client)",
+        "candidate contracts (service-backup, feature:s3)",
+        "candidate contracts (service-backup, no-default)",
+        "candidate contracts (service-http, all-features)",
+        "candidate contracts (service-http, feature:otlp)",
+        "candidate contracts (service-http, no-default)",
+        "candidate contracts (service-k8s, all-features)",
+        "candidate contracts (service-k8s, feature:certificate)",
+        "candidate contracts (service-k8s, feature:controller)",
+        "candidate contracts (service-k8s, feature:full)",
+        "candidate contracts (service-k8s, feature:gcp-cas)",
+        "candidate contracts (service-k8s, feature:gcp-cas-client)",
+        "candidate contracts (service-k8s, feature:render-only)",
+        "candidate contracts (service-k8s, no-default)",
+        "candidate contracts (service-observability, all-features)",
+        "candidate contracts (service-observability, feature:otlp)",
+        "candidate contracts (service-observability, no-default)",
+        "candidate contracts (storage-object, all-features)",
+        "candidate contracts (storage-object, feature:gcs)",
+        "candidate contracts (storage-object, feature:s3)",
+        "candidate contracts (storage-object, no-default)",
+        "candidate contracts (transport-h2c, all-features)",
+        "candidate contracts (transport-h2c, feature:server)",
+        "candidate contracts (transport-h2c, no-default)",
+        "candidate contracts (ui-runtime, all-features)",
+        "candidate contracts (ui-runtime, feature:debug)",
+        "candidate contracts (ui-runtime, feature:serde_json)",
+        "candidate contracts (ui-runtime, no-default)",
+        "candidate measured performance",
+        "candidate source issue contract inspection",
+        "candidate issue 47 (proposal)",
+        "candidate issue 47 (raft-full)",
+        "candidate issue 47 (clippy)"
       ]
     }
   ],
-  "qualification_blockers": [
-    "Existing CI covers only five fixed crates, not an approved affected-crate selection or complete MR unit policy.",
-    "No approved current-head affected functional/e2e/performance qualification gates."
-  ],
-  "lifecycle_mode": "failure-only",
+  "qualification_blockers": [],
+  "lifecycle_mode": "full",
   "ci_handoff_policy": {
-    "aw_revision": "67af8d020df3ca2ec4b064289408cfb0c2f8b299",
+    "aw_revision": "8e2e93e5ba8feb30b6668de39139980ea3bb085c",
     "workflows": [
       {
         "path": ".github/workflows/ci.yml",
         "jobs": [
+          "candidate workspace unit inventory",
+          "candidate workspace format",
           "service-k8s",
           "storage-durable",
           "service-backup",
           "raft-core",
-          "raft-runtime"
+          "raft-runtime",
+          "candidate unit-static (build-stamp, default)",
+          "candidate unit-static (claim-token, default)",
+          "candidate unit-static (cli-std, default)",
+          "candidate unit-static (compass, default)",
+          "candidate unit-static (index-text, default)",
+          "candidate unit-static (metrics-prometheus, default)",
+          "candidate unit-static (metrics-remote-write, default)",
+          "candidate unit-static (openapi-codegen, default)",
+          "candidate unit-static (peer-tls, default)",
+          "candidate unit-static (raft-core, default)",
+          "candidate unit-static (raft-runtime, default)",
+          "candidate unit-static (server-http, default)",
+          "candidate unit-static (server-lifecycle, default)",
+          "candidate unit-static (server-tcp, default)",
+          "candidate unit-static (service-auth, default)",
+          "candidate unit-static (service-backup, default)",
+          "candidate unit-static (service-collector, default)",
+          "candidate unit-static (service-executor, default)",
+          "candidate unit-static (service-http, default)",
+          "candidate unit-static (service-k8s, default)",
+          "candidate unit-static (service-mcp, default)",
+          "candidate unit-static (service-observability, default)",
+          "candidate unit-static (service-projection, default)",
+          "candidate unit-static (storage-durable, default)",
+          "candidate unit-static (storage-object, default)",
+          "candidate unit-static (storage-segment, default)",
+          "candidate unit-static (surface, default)",
+          "candidate unit-static (transport-h2c, default)",
+          "candidate unit-static (transport-otlp, default)",
+          "candidate unit-static (ui-runtime, default)",
+          "candidate unit-static (cli-std, all-features)",
+          "candidate unit-static (cli-std, feature:k8s)",
+          "candidate unit-static (cli-std, feature:online)",
+          "candidate unit-static (cli-std, feature:registry)",
+          "candidate unit-static (cli-std, no-default)",
+          "candidate unit-static (index-text, all-features)",
+          "candidate unit-static (index-text, feature:jieba)",
+          "candidate unit-static (index-text, no-default)",
+          "candidate unit-static (service-auth, all-features)",
+          "candidate unit-static (service-auth, feature:k8s)",
+          "candidate unit-static (service-auth, no-default)",
+          "candidate unit-static (service-backup, all-features)",
+          "candidate unit-static (service-backup, feature:http-client)",
+          "candidate unit-static (service-backup, feature:s3)",
+          "candidate unit-static (service-backup, no-default)",
+          "candidate unit-static (service-http, all-features)",
+          "candidate unit-static (service-http, feature:otlp)",
+          "candidate unit-static (service-http, no-default)",
+          "candidate unit-static (service-k8s, all-features)",
+          "candidate unit-static (service-k8s, feature:certificate)",
+          "candidate unit-static (service-k8s, feature:controller)",
+          "candidate unit-static (service-k8s, feature:full)",
+          "candidate unit-static (service-k8s, feature:gcp-cas)",
+          "candidate unit-static (service-k8s, feature:gcp-cas-client)",
+          "candidate unit-static (service-k8s, feature:render-only)",
+          "candidate unit-static (service-k8s, no-default)",
+          "candidate unit-static (service-observability, all-features)",
+          "candidate unit-static (service-observability, feature:otlp)",
+          "candidate unit-static (service-observability, no-default)",
+          "candidate unit-static (storage-object, all-features)",
+          "candidate unit-static (storage-object, feature:gcs)",
+          "candidate unit-static (storage-object, feature:s3)",
+          "candidate unit-static (storage-object, no-default)",
+          "candidate unit-static (transport-h2c, all-features)",
+          "candidate unit-static (transport-h2c, feature:server)",
+          "candidate unit-static (transport-h2c, no-default)",
+          "candidate unit-static (ui-runtime, all-features)",
+          "candidate unit-static (ui-runtime, feature:debug)",
+          "candidate unit-static (ui-runtime, feature:serde_json)",
+          "candidate unit-static (ui-runtime, no-default)",
+          "candidate contracts (claim-token, default)",
+          "candidate contracts (compass, default)",
+          "candidate contracts (index-text, default)",
+          "candidate contracts (metrics-remote-write, default)",
+          "candidate contracts (openapi-codegen, default)",
+          "candidate contracts (peer-tls, default)",
+          "candidate contracts (raft-core, default)",
+          "candidate contracts (raft-runtime, default)",
+          "candidate contracts (server-http, default)",
+          "candidate contracts (server-lifecycle, default)",
+          "candidate contracts (server-tcp, default)",
+          "candidate contracts (service-auth, default)",
+          "candidate contracts (service-backup, default)",
+          "candidate contracts (service-collector, default)",
+          "candidate contracts (service-executor, default)",
+          "candidate contracts (service-http, default)",
+          "candidate contracts (service-k8s, default)",
+          "candidate contracts (service-mcp, default)",
+          "candidate contracts (service-observability, default)",
+          "candidate contracts (service-projection, default)",
+          "candidate contracts (storage-durable, default)",
+          "candidate contracts (storage-object, default)",
+          "candidate contracts (storage-segment, default)",
+          "candidate contracts (surface, default)",
+          "candidate contracts (transport-h2c, default)",
+          "candidate contracts (transport-otlp, default)",
+          "candidate contracts (ui-runtime, default)",
+          "candidate contracts (index-text, all-features)",
+          "candidate contracts (index-text, feature:jieba)",
+          "candidate contracts (index-text, no-default)",
+          "candidate contracts (service-auth, all-features)",
+          "candidate contracts (service-auth, feature:k8s)",
+          "candidate contracts (service-auth, no-default)",
+          "candidate contracts (service-backup, all-features)",
+          "candidate contracts (service-backup, feature:http-client)",
+          "candidate contracts (service-backup, feature:s3)",
+          "candidate contracts (service-backup, no-default)",
+          "candidate contracts (service-http, all-features)",
+          "candidate contracts (service-http, feature:otlp)",
+          "candidate contracts (service-http, no-default)",
+          "candidate contracts (service-k8s, all-features)",
+          "candidate contracts (service-k8s, feature:certificate)",
+          "candidate contracts (service-k8s, feature:controller)",
+          "candidate contracts (service-k8s, feature:full)",
+          "candidate contracts (service-k8s, feature:gcp-cas)",
+          "candidate contracts (service-k8s, feature:gcp-cas-client)",
+          "candidate contracts (service-k8s, feature:render-only)",
+          "candidate contracts (service-k8s, no-default)",
+          "candidate contracts (service-observability, all-features)",
+          "candidate contracts (service-observability, feature:otlp)",
+          "candidate contracts (service-observability, no-default)",
+          "candidate contracts (storage-object, all-features)",
+          "candidate contracts (storage-object, feature:gcs)",
+          "candidate contracts (storage-object, feature:s3)",
+          "candidate contracts (storage-object, no-default)",
+          "candidate contracts (transport-h2c, all-features)",
+          "candidate contracts (transport-h2c, feature:server)",
+          "candidate contracts (transport-h2c, no-default)",
+          "candidate contracts (ui-runtime, all-features)",
+          "candidate contracts (ui-runtime, feature:debug)",
+          "candidate contracts (ui-runtime, feature:serde_json)",
+          "candidate contracts (ui-runtime, no-default)",
+          "candidate measured performance",
+          "candidate source issue contract inspection",
+          "candidate issue 47 (proposal)",
+          "candidate issue 47 (raft-full)",
+          "candidate issue 47 (clippy)"
         ]
       }
     ],
-    "qualification_blockers": [
-      "Existing CI covers only five fixed crates, not an approved affected-crate selection or complete MR unit policy.",
-      "No approved current-head affected functional/e2e/performance qualification gates."
-    ],
-    "lifecycle_mode": "failure-only"
+    "qualification_blockers": [],
+    "lifecycle_mode": "full",
+    "qualification": {
+      "version": 2,
+      "checks": {
+        "policy-0": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate workspace unit inventory"
+        },
+        "policy-1": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate workspace format"
+        },
+        "policy-2": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "service-k8s"
+        },
+        "policy-3": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "storage-durable"
+        },
+        "policy-4": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "service-backup"
+        },
+        "policy-5": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "raft-core"
+        },
+        "policy-6": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "raft-runtime"
+        },
+        "unit-0": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (build-stamp, default)"
+        },
+        "unit-1": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (claim-token, default)"
+        },
+        "unit-2": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (cli-std, default)"
+        },
+        "unit-3": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (compass, default)"
+        },
+        "unit-4": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (index-text, default)"
+        },
+        "unit-5": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (metrics-prometheus, default)"
+        },
+        "unit-6": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (metrics-remote-write, default)"
+        },
+        "unit-7": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (openapi-codegen, default)"
+        },
+        "unit-8": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (peer-tls, default)"
+        },
+        "unit-9": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (raft-core, default)"
+        },
+        "unit-10": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (raft-runtime, default)"
+        },
+        "unit-11": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (server-http, default)"
+        },
+        "unit-12": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (server-lifecycle, default)"
+        },
+        "unit-13": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (server-tcp, default)"
+        },
+        "unit-14": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-auth, default)"
+        },
+        "unit-15": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-backup, default)"
+        },
+        "unit-16": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-collector, default)"
+        },
+        "unit-17": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-executor, default)"
+        },
+        "unit-18": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-http, default)"
+        },
+        "unit-19": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, default)"
+        },
+        "unit-20": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-mcp, default)"
+        },
+        "unit-21": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-observability, default)"
+        },
+        "unit-22": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-projection, default)"
+        },
+        "unit-23": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (storage-durable, default)"
+        },
+        "unit-24": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (storage-object, default)"
+        },
+        "unit-25": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (storage-segment, default)"
+        },
+        "unit-26": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (surface, default)"
+        },
+        "unit-27": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (transport-h2c, default)"
+        },
+        "unit-28": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (transport-otlp, default)"
+        },
+        "unit-29": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (ui-runtime, default)"
+        },
+        "unit-30": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (cli-std, all-features)"
+        },
+        "unit-31": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (cli-std, feature:k8s)"
+        },
+        "unit-32": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (cli-std, feature:online)"
+        },
+        "unit-33": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (cli-std, feature:registry)"
+        },
+        "unit-34": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (cli-std, no-default)"
+        },
+        "unit-35": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (index-text, all-features)"
+        },
+        "unit-36": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (index-text, feature:jieba)"
+        },
+        "unit-37": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (index-text, no-default)"
+        },
+        "unit-38": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-auth, all-features)"
+        },
+        "unit-39": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-auth, feature:k8s)"
+        },
+        "unit-40": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-auth, no-default)"
+        },
+        "unit-41": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-backup, all-features)"
+        },
+        "unit-42": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-backup, feature:http-client)"
+        },
+        "unit-43": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-backup, feature:s3)"
+        },
+        "unit-44": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-backup, no-default)"
+        },
+        "unit-45": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-http, all-features)"
+        },
+        "unit-46": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-http, feature:otlp)"
+        },
+        "unit-47": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-http, no-default)"
+        },
+        "unit-48": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, all-features)"
+        },
+        "unit-49": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, feature:certificate)"
+        },
+        "unit-50": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, feature:controller)"
+        },
+        "unit-51": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, feature:full)"
+        },
+        "unit-52": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, feature:gcp-cas)"
+        },
+        "unit-53": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, feature:gcp-cas-client)"
+        },
+        "unit-54": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, feature:render-only)"
+        },
+        "unit-55": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-k8s, no-default)"
+        },
+        "unit-56": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-observability, all-features)"
+        },
+        "unit-57": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-observability, feature:otlp)"
+        },
+        "unit-58": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (service-observability, no-default)"
+        },
+        "unit-59": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (storage-object, all-features)"
+        },
+        "unit-60": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (storage-object, feature:gcs)"
+        },
+        "unit-61": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (storage-object, feature:s3)"
+        },
+        "unit-62": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (storage-object, no-default)"
+        },
+        "unit-63": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (transport-h2c, all-features)"
+        },
+        "unit-64": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (transport-h2c, feature:server)"
+        },
+        "unit-65": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (transport-h2c, no-default)"
+        },
+        "unit-66": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (ui-runtime, all-features)"
+        },
+        "unit-67": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (ui-runtime, feature:debug)"
+        },
+        "unit-68": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (ui-runtime, feature:serde_json)"
+        },
+        "unit-69": {
+          "kind": "unit",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate unit-static (ui-runtime, no-default)"
+        },
+        "functional-0": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (claim-token, default)"
+        },
+        "functional-1": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (compass, default)"
+        },
+        "functional-2": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (index-text, default)"
+        },
+        "functional-3": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (metrics-remote-write, default)"
+        },
+        "functional-4": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (openapi-codegen, default)"
+        },
+        "functional-5": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (peer-tls, default)"
+        },
+        "functional-6": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (raft-core, default)"
+        },
+        "functional-7": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (raft-runtime, default)"
+        },
+        "functional-8": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (server-http, default)"
+        },
+        "functional-9": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (server-lifecycle, default)"
+        },
+        "functional-10": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (server-tcp, default)"
+        },
+        "functional-11": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-auth, default)"
+        },
+        "functional-12": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-backup, default)"
+        },
+        "functional-13": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-collector, default)"
+        },
+        "functional-14": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-executor, default)"
+        },
+        "functional-15": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-http, default)"
+        },
+        "functional-16": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, default)"
+        },
+        "functional-17": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-mcp, default)"
+        },
+        "functional-18": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-observability, default)"
+        },
+        "functional-19": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-projection, default)"
+        },
+        "functional-20": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (storage-durable, default)"
+        },
+        "functional-21": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (storage-object, default)"
+        },
+        "functional-22": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (storage-segment, default)"
+        },
+        "functional-23": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (surface, default)"
+        },
+        "functional-24": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (transport-h2c, default)"
+        },
+        "functional-25": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (transport-otlp, default)"
+        },
+        "functional-26": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (ui-runtime, default)"
+        },
+        "functional-27": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (index-text, all-features)"
+        },
+        "functional-28": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (index-text, feature:jieba)"
+        },
+        "functional-29": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (index-text, no-default)"
+        },
+        "functional-30": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-auth, all-features)"
+        },
+        "functional-31": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-auth, feature:k8s)"
+        },
+        "functional-32": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-auth, no-default)"
+        },
+        "functional-33": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-backup, all-features)"
+        },
+        "functional-34": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-backup, feature:http-client)"
+        },
+        "functional-35": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-backup, feature:s3)"
+        },
+        "functional-36": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-backup, no-default)"
+        },
+        "functional-37": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-http, all-features)"
+        },
+        "functional-38": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-http, feature:otlp)"
+        },
+        "functional-39": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-http, no-default)"
+        },
+        "functional-40": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, all-features)"
+        },
+        "functional-41": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, feature:certificate)"
+        },
+        "functional-42": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, feature:controller)"
+        },
+        "functional-43": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, feature:full)"
+        },
+        "functional-44": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, feature:gcp-cas)"
+        },
+        "functional-45": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, feature:gcp-cas-client)"
+        },
+        "functional-46": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, feature:render-only)"
+        },
+        "functional-47": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-k8s, no-default)"
+        },
+        "functional-48": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-observability, all-features)"
+        },
+        "functional-49": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-observability, feature:otlp)"
+        },
+        "functional-50": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (service-observability, no-default)"
+        },
+        "functional-51": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (storage-object, all-features)"
+        },
+        "functional-52": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (storage-object, feature:gcs)"
+        },
+        "functional-53": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (storage-object, feature:s3)"
+        },
+        "functional-54": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (storage-object, no-default)"
+        },
+        "functional-55": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (transport-h2c, all-features)"
+        },
+        "functional-56": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (transport-h2c, feature:server)"
+        },
+        "functional-57": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (transport-h2c, no-default)"
+        },
+        "functional-58": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (ui-runtime, all-features)"
+        },
+        "functional-59": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (ui-runtime, feature:debug)"
+        },
+        "functional-60": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (ui-runtime, feature:serde_json)"
+        },
+        "functional-61": {
+          "kind": "functional_e2e",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate contracts (ui-runtime, no-default)"
+        },
+        "measured-performance": {
+          "kind": "performance",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate measured performance"
+        },
+        "policy-7": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate source issue contract inspection"
+        },
+        "policy-8": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate issue 47 (proposal)"
+        },
+        "policy-9": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate issue 47 (raft-full)"
+        },
+        "policy-10": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate issue 47 (clippy)"
+        }
+      },
+      "trusted_workflows": {
+        ".github/workflows/ci.yml": {
+          "id": 384237875,
+          "definition_sha": "7cda2f92b24eaa278789c4a252a55a26df73715e"
+        }
+      },
+      "always": [
+        "policy-0",
+        "policy-1",
+        "policy-2",
+        "policy-3",
+        "policy-4",
+        "policy-5",
+        "policy-6",
+        "policy-7",
+        "policy-8",
+        "policy-9",
+        "policy-10"
+      ],
+      "protected_paths": [
+        ".github/issue-ci-required-gates.json",
+        "scripts/pr-gates/**",
+        "scripts/issue-ci/**",
+        "Cargo.toml",
+        "Cargo.lock",
+        "crates/*/Cargo.toml",
+        ".cargo/**",
+        "rust-toolchain",
+        "rust-toolchain.toml",
+        "crates/raft-runtime/tests/snapshot_peak_memory.rs",
+        "crates/openapi-codegen/src/domain/emit/py/tests/h2c_connection.rs"
+      ],
+      "rules": [
+        {
+          "paths": [
+            "**"
+          ],
+          "require": [
+            "unit-0",
+            "unit-1",
+            "unit-2",
+            "unit-3",
+            "unit-4",
+            "unit-5",
+            "unit-6",
+            "unit-7",
+            "unit-8",
+            "unit-9",
+            "unit-10",
+            "unit-11",
+            "unit-12",
+            "unit-13",
+            "unit-14",
+            "unit-15",
+            "unit-16",
+            "unit-17",
+            "unit-18",
+            "unit-19",
+            "unit-20",
+            "unit-21",
+            "unit-22",
+            "unit-23",
+            "unit-24",
+            "unit-25",
+            "unit-26",
+            "unit-27",
+            "unit-28",
+            "unit-29",
+            "unit-30",
+            "unit-31",
+            "unit-32",
+            "unit-33",
+            "unit-34",
+            "unit-35",
+            "unit-36",
+            "unit-37",
+            "unit-38",
+            "unit-39",
+            "unit-40",
+            "unit-41",
+            "unit-42",
+            "unit-43",
+            "unit-44",
+            "unit-45",
+            "unit-46",
+            "unit-47",
+            "unit-48",
+            "unit-49",
+            "unit-50",
+            "unit-51",
+            "unit-52",
+            "unit-53",
+            "unit-54",
+            "unit-55",
+            "unit-56",
+            "unit-57",
+            "unit-58",
+            "unit-59",
+            "unit-60",
+            "unit-61",
+            "unit-62",
+            "unit-63",
+            "unit-64",
+            "unit-65",
+            "unit-66",
+            "unit-67",
+            "unit-68",
+            "unit-69",
+            "functional-0",
+            "functional-1",
+            "functional-2",
+            "functional-3",
+            "functional-4",
+            "functional-5",
+            "functional-6",
+            "functional-7",
+            "functional-8",
+            "functional-9",
+            "functional-10",
+            "functional-11",
+            "functional-12",
+            "functional-13",
+            "functional-14",
+            "functional-15",
+            "functional-16",
+            "functional-17",
+            "functional-18",
+            "functional-19",
+            "functional-20",
+            "functional-21",
+            "functional-22",
+            "functional-23",
+            "functional-24",
+            "functional-25",
+            "functional-26",
+            "functional-27",
+            "functional-28",
+            "functional-29",
+            "functional-30",
+            "functional-31",
+            "functional-32",
+            "functional-33",
+            "functional-34",
+            "functional-35",
+            "functional-36",
+            "functional-37",
+            "functional-38",
+            "functional-39",
+            "functional-40",
+            "functional-41",
+            "functional-42",
+            "functional-43",
+            "functional-44",
+            "functional-45",
+            "functional-46",
+            "functional-47",
+            "functional-48",
+            "functional-49",
+            "functional-50",
+            "functional-51",
+            "functional-52",
+            "functional-53",
+            "functional-54",
+            "functional-55",
+            "functional-56",
+            "functional-57",
+            "functional-58",
+            "functional-59",
+            "functional-60",
+            "functional-61",
+            "measured-performance"
+          ],
+          "exempt": {}
+        }
+      ],
+      "contracts": {
+        "47": {
+          "title_sha256": "635b773e86a4628d520d1c50c6a5be249a4189719e4897bfbefb27df94b15579",
+          "body_sha256": "6b59ecf3518a16371f1eab24600930edb1af24fe6573a66ac6bd3f9919be5bc1",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "48": {
+          "title_sha256": "6031f8f474316737e23a6afb318f844b2471d531a5fd9dd5d122709e841e156e",
+          "body_sha256": "d89eaa15d1fd5678bfd05dc3829ee2dd6c3d93cfa876c77cbaf78b0f9fe2c669",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "16": {
+          "title_sha256": "650c92999452ee61c3f569d82845a157a875f18c4fac256c4cff014c892a8ae2",
+          "body_sha256": "c49713d34570700901581064272a7d5ee50ab90904b97dabcd9b1aa16f6711d3",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "15": {
+          "title_sha256": "72991f427d12f783645a1cec2fb468ab54b3fe29977d1cc8660bcc38e77c74f1",
+          "body_sha256": "a607e6928546ad3496ba79eaf1a1d25ed6f35fca51eec69bf579acf3b22161c8",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "26": {
+          "title_sha256": "35784c80ea480cdf70aa750bf41e0098947fab0e6aa677958d7b39ec9989c196",
+          "body_sha256": "f8fb8195a2bab3fab8ea96f13636047c494dd538f4f9c421f44273854423700a",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "27": {
+          "title_sha256": "0885cb7b1902c10ff421032ef22152b19c7547661d00e997bcadbc797fe2ab87",
+          "body_sha256": "d60370be1aee2d82eeecd47eb8ae617a2c70b22ca18a4e29a9f7dc4a6b09fd82",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "28": {
+          "title_sha256": "63adf325f19220d1f5cc31b73e4692cb2452c4687a89e964e0c47fb1b7bc119d",
+          "body_sha256": "20b04ab9395cc49c62737e957477ce6bd7a0432e5719f25b3876e617698bedc1",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "29": {
+          "title_sha256": "312fe7c28d725f4401a69c9e62925c1f64cc2e261d2fed536935a69a48310665",
+          "body_sha256": "44e09dd8ddb6b8651aace62c18304e427a6ccca993d6293b22ac7f48ee6fa686",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "33": {
+          "title_sha256": "45d926cca44389caf56cdb695f774f7a0d8d1033ef531fa9edb785beb496bd15",
+          "body_sha256": "806cbcc412da5439eed338d69a3932a7db00a566ae2c0af99364c814e0cdfd94",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "30": {
+          "title_sha256": "77c15f597cd1fdb91a45847c2a446bf2bf85a7d9728fced9659ac5be505fc108",
+          "body_sha256": "b12b99da49d8b6da13fe1a72ee8c020f86500c1542180ab0e17f312b987c9e9c",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "31": {
+          "title_sha256": "68dca1ebf90074e1185bc640872d569c64a7c3679c6d8c414be7b947a19583bb",
+          "body_sha256": "3b58004486419fec6784ae758fbe4c255f8845c8b4e45896d2e7befbfb60e01d",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "32": {
+          "title_sha256": "165ffc520415d4b47487089c3cc64e9ddf3529138b68fba6dd4a6bc84fbb3316",
+          "body_sha256": "13844ded416fadcba1dde8d1f28da526d27d74f32cc2ca327a2aeaf2e33e079a",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "17": {
+          "title_sha256": "dd849e06004b13fbcde778e6476d9cc1a4cfbe10a7e5d361c85b0c634f3931f8",
+          "body_sha256": "240b7924fb4bb189791479969e60b795f35bbcee95fc131731968bab04082d24",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "18": {
+          "title_sha256": "0f117de35369301f70c8c5ac5a212445d02d026dc7524337ee68c4db918408a6",
+          "body_sha256": "8809828ae354557f544783456cbbd3997f78d6109fe06cdbe94cfcce888db19a",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "19": {
+          "title_sha256": "24ca8524ad9b1fe66d25c97179f78478a35fcd07802a4dc8f1d73495b3c1f556",
+          "body_sha256": "cc7aa508994d2ef2309cc8010e1d58d2fd9795ba2f10c7e592d91fa31df05605",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "34": {
+          "title_sha256": "754fd11e84940e92d313e5871ac9f2195b511545d6603956f74b3cc7ce8a7b3f",
+          "body_sha256": "66831469c9d6549a4ef6a481dd02d74830312934f0725874bd8df27a82f8c3c8",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "35": {
+          "title_sha256": "d25ae6c308603b8608f9a2d04ef2c637607c9580e800457543ff4dbf23c63b9d",
+          "body_sha256": "bb0d9446348ca3bb07ea483ab1a140fa8f48614eb1e46522dc6ad58b8a4942a0",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "36": {
+          "title_sha256": "99b30e5178af3228f2d84cf9af8109b90ac984605a2b5cbd987501eaba351694",
+          "body_sha256": "c1bb04fdc332ce027c8b106786e58e55e66338de47cf982ef4d3179dfa1b4434",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "42": {
+          "title_sha256": "4157cbdbdb10bea6ea4b8aaca6f150c9c5d55878263cee14cec1a02dae737616",
+          "body_sha256": "972903a9183f99d5c2721546ed19c8818386c4e6bf990440aa1cad02ce63c562",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "45": {
+          "title_sha256": "016d463cab72502e11442f97e6a03fed70ded37e790e8ba8b87d5e4d6a2e6352",
+          "body_sha256": "1c4e864b4c30e989fb5822c450eb29548dec9b1eab3af0a18c0c8a1c49d7bd71",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "49": {
+          "title_sha256": "ba7758a8ca8ee81cbf76a5c9f8445cabb7e514c85bccf0c57df1ac0e1928798c",
+          "body_sha256": "beb54986f5132357debcbfb7e8e70b73884e2e06245cf08e02e99384d8bfbfb3",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "9": {
+          "title_sha256": "e3c9b553dfc4f1a6c0e53c119a25d6990fd3f0fd064b3ca45130149f73ffde75",
+          "body_sha256": "09f7452853aa46fa8de5871a3cb1d25b4d55ab0891044fffab9e26a34de246a5",
+          "applicability": {
+            "unit": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "functional_e2e": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            },
+            "performance": {
+              "status": "unknown",
+              "checks": [],
+              "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+            }
+          },
+          "additional": [],
+          "unresolved": [
+            "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+          ]
+        },
+        "73": {
+          "title_sha256": "b5b0e04f0bc385e59e31c0e2f04a04e3af11d0c6fd42d3c650cabc941fa66103",
+          "body_sha256": "ec48fa8488759987ddff91ddd3284f9f92ce3934c6dacefcb81ce2d2e09626e6",
+          "applicability": {
+            "unit": {
+              "status": "required",
+              "checks": [
+                "unit-0",
+                "unit-1",
+                "unit-2",
+                "unit-3",
+                "unit-4",
+                "unit-5",
+                "unit-6",
+                "unit-7",
+                "unit-8",
+                "unit-9",
+                "unit-10",
+                "unit-11",
+                "unit-12",
+                "unit-13",
+                "unit-14",
+                "unit-15",
+                "unit-16",
+                "unit-17",
+                "unit-18",
+                "unit-19",
+                "unit-20",
+                "unit-21",
+                "unit-22",
+                "unit-23",
+                "unit-24",
+                "unit-25",
+                "unit-26",
+                "unit-27",
+                "unit-28",
+                "unit-29",
+                "unit-30",
+                "unit-31",
+                "unit-32",
+                "unit-33",
+                "unit-34",
+                "unit-35",
+                "unit-36",
+                "unit-37",
+                "unit-38",
+                "unit-39",
+                "unit-40",
+                "unit-41",
+                "unit-42",
+                "unit-43",
+                "unit-44",
+                "unit-45",
+                "unit-46",
+                "unit-47",
+                "unit-48",
+                "unit-49",
+                "unit-50",
+                "unit-51",
+                "unit-52",
+                "unit-53",
+                "unit-54",
+                "unit-55",
+                "unit-56",
+                "unit-57",
+                "unit-58",
+                "unit-59",
+                "unit-60",
+                "unit-61",
+                "unit-62",
+                "unit-63",
+                "unit-64",
+                "unit-65",
+                "unit-66",
+                "unit-67",
+                "unit-68",
+                "unit-69"
+              ],
+              "reason": "Issue 73 and the human extension require complete workspace evidence and preserved functional, E2E and measured performance gates."
+            },
+            "functional_e2e": {
+              "status": "required",
+              "checks": [
+                "functional-0",
+                "functional-1",
+                "functional-2",
+                "functional-3",
+                "functional-4",
+                "functional-5",
+                "functional-6",
+                "functional-7",
+                "functional-8",
+                "functional-9",
+                "functional-10",
+                "functional-11",
+                "functional-12",
+                "functional-13",
+                "functional-14",
+                "functional-15",
+                "functional-16",
+                "functional-17",
+                "functional-18",
+                "functional-19",
+                "functional-20",
+                "functional-21",
+                "functional-22",
+                "functional-23",
+                "functional-24",
+                "functional-25",
+                "functional-26",
+                "functional-27",
+                "functional-28",
+                "functional-29",
+                "functional-30",
+                "functional-31",
+                "functional-32",
+                "functional-33",
+                "functional-34",
+                "functional-35",
+                "functional-36",
+                "functional-37",
+                "functional-38",
+                "functional-39",
+                "functional-40",
+                "functional-41",
+                "functional-42",
+                "functional-43",
+                "functional-44",
+                "functional-45",
+                "functional-46",
+                "functional-47",
+                "functional-48",
+                "functional-49",
+                "functional-50",
+                "functional-51",
+                "functional-52",
+                "functional-53",
+                "functional-54",
+                "functional-55",
+                "functional-56",
+                "functional-57",
+                "functional-58",
+                "functional-59",
+                "functional-60",
+                "functional-61"
+              ],
+              "reason": "Issue 73 and the human extension require complete workspace evidence and preserved functional, E2E and measured performance gates."
+            },
+            "performance": {
+              "status": "required",
+              "checks": [
+                "measured-performance"
+              ],
+              "reason": "Issue 73 and the human extension require complete workspace evidence and preserved functional, E2E and measured performance gates."
+            }
+          },
+          "additional": [],
+          "unresolved": []
+        }
+      }
+    }
   },
-  "controller_source": "faberline/aw@28637704225692e5a1766b9c6b9778ef2b52e155:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+  "controller_source": "faberline/aw@8e2e93e5ba8feb30b6668de39139980ea3bb085c:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
   "claude_final_review": {
     "version": 1,
     "producer": {
       "path": ".github/workflows/claude-final-review.yml",
       "id": 399789974,
-      "definition_sha": "2c06a1535bd9c88539d78f88504e72d50ea1dd82",
+      "definition_sha": "06b1bd73cec40a25d91bef34564405446b0f72b7",
       "job": "review"
     },
     "gates": {
       ".github/workflows/ci.yml": {
         "id": 384237875,
-        "definition_sha": "649f28253f507dd33757dce41a57e4315f5d0fde"
+        "definition_sha": "7cda2f92b24eaa278789c4a252a55a26df73715e"
       }
     },
     "protected_paths": [
-      "scripts/issue-ci/",
-      "scripts/pr-gates/",
-      "scripts/gke-test/",
-      "acceptance/gcp/",
-      "k8s/",
-      "Cargo.toml",
-      "Cargo.lock",
       ".cargo/",
+      ".cargo/**",
+      ".github/issue-ci-required-gates.json",
+      "Cargo.lock",
+      "Cargo.toml",
+      "Dockerfile.test",
+      "acceptance/gcp/",
+      "crates/*/Cargo.toml",
+      "crates/openapi-codegen/src/domain/emit/py/tests/h2c_connection.rs",
+      "crates/raft-runtime/tests/snapshot_peak_memory.rs",
+      "k8s/",
       "rust-toolchain",
       "rust-toolchain.toml",
-      "Dockerfile.test"
+      "scripts/gke-test/",
+      "scripts/issue-ci/",
+      "scripts/issue-ci/**",
+      "scripts/pr-gates/",
+      "scripts/pr-gates/**"
     ],
     "cli_sha256": "b73676430af12f97316a798b8371f81d640f90a58bdcb8f3ce56a835bb47df56",
     "credential_profile": "personal-claude-max-oauth",
@@ -80,8 +1970,1619 @@
     "producer": {
       "path": ".github/workflows/issue-ci.yml",
       "id": 394215097,
-      "definition_sha": "8098cd828be5bd73ca3bc44419ff702c782529eb",
+      "definition_sha": "0b70fd6bcf11cb0ee16cdab27598834976691167",
       "job": "native-auto-merge"
+    }
+  },
+  "qualification": {
+    "version": 2,
+    "checks": {
+      "policy-0": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate workspace unit inventory"
+      },
+      "policy-1": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate workspace format"
+      },
+      "policy-2": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "service-k8s"
+      },
+      "policy-3": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "storage-durable"
+      },
+      "policy-4": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "service-backup"
+      },
+      "policy-5": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "raft-core"
+      },
+      "policy-6": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "raft-runtime"
+      },
+      "unit-0": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (build-stamp, default)"
+      },
+      "unit-1": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (claim-token, default)"
+      },
+      "unit-2": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (cli-std, default)"
+      },
+      "unit-3": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (compass, default)"
+      },
+      "unit-4": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (index-text, default)"
+      },
+      "unit-5": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (metrics-prometheus, default)"
+      },
+      "unit-6": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (metrics-remote-write, default)"
+      },
+      "unit-7": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (openapi-codegen, default)"
+      },
+      "unit-8": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (peer-tls, default)"
+      },
+      "unit-9": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (raft-core, default)"
+      },
+      "unit-10": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (raft-runtime, default)"
+      },
+      "unit-11": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (server-http, default)"
+      },
+      "unit-12": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (server-lifecycle, default)"
+      },
+      "unit-13": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (server-tcp, default)"
+      },
+      "unit-14": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-auth, default)"
+      },
+      "unit-15": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-backup, default)"
+      },
+      "unit-16": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-collector, default)"
+      },
+      "unit-17": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-executor, default)"
+      },
+      "unit-18": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-http, default)"
+      },
+      "unit-19": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, default)"
+      },
+      "unit-20": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-mcp, default)"
+      },
+      "unit-21": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-observability, default)"
+      },
+      "unit-22": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-projection, default)"
+      },
+      "unit-23": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (storage-durable, default)"
+      },
+      "unit-24": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (storage-object, default)"
+      },
+      "unit-25": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (storage-segment, default)"
+      },
+      "unit-26": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (surface, default)"
+      },
+      "unit-27": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (transport-h2c, default)"
+      },
+      "unit-28": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (transport-otlp, default)"
+      },
+      "unit-29": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (ui-runtime, default)"
+      },
+      "unit-30": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (cli-std, all-features)"
+      },
+      "unit-31": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (cli-std, feature:k8s)"
+      },
+      "unit-32": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (cli-std, feature:online)"
+      },
+      "unit-33": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (cli-std, feature:registry)"
+      },
+      "unit-34": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (cli-std, no-default)"
+      },
+      "unit-35": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (index-text, all-features)"
+      },
+      "unit-36": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (index-text, feature:jieba)"
+      },
+      "unit-37": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (index-text, no-default)"
+      },
+      "unit-38": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-auth, all-features)"
+      },
+      "unit-39": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-auth, feature:k8s)"
+      },
+      "unit-40": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-auth, no-default)"
+      },
+      "unit-41": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-backup, all-features)"
+      },
+      "unit-42": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-backup, feature:http-client)"
+      },
+      "unit-43": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-backup, feature:s3)"
+      },
+      "unit-44": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-backup, no-default)"
+      },
+      "unit-45": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-http, all-features)"
+      },
+      "unit-46": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-http, feature:otlp)"
+      },
+      "unit-47": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-http, no-default)"
+      },
+      "unit-48": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, all-features)"
+      },
+      "unit-49": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, feature:certificate)"
+      },
+      "unit-50": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, feature:controller)"
+      },
+      "unit-51": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, feature:full)"
+      },
+      "unit-52": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, feature:gcp-cas)"
+      },
+      "unit-53": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, feature:gcp-cas-client)"
+      },
+      "unit-54": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, feature:render-only)"
+      },
+      "unit-55": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-k8s, no-default)"
+      },
+      "unit-56": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-observability, all-features)"
+      },
+      "unit-57": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-observability, feature:otlp)"
+      },
+      "unit-58": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (service-observability, no-default)"
+      },
+      "unit-59": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (storage-object, all-features)"
+      },
+      "unit-60": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (storage-object, feature:gcs)"
+      },
+      "unit-61": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (storage-object, feature:s3)"
+      },
+      "unit-62": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (storage-object, no-default)"
+      },
+      "unit-63": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (transport-h2c, all-features)"
+      },
+      "unit-64": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (transport-h2c, feature:server)"
+      },
+      "unit-65": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (transport-h2c, no-default)"
+      },
+      "unit-66": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (ui-runtime, all-features)"
+      },
+      "unit-67": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (ui-runtime, feature:debug)"
+      },
+      "unit-68": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (ui-runtime, feature:serde_json)"
+      },
+      "unit-69": {
+        "kind": "unit",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate unit-static (ui-runtime, no-default)"
+      },
+      "functional-0": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (claim-token, default)"
+      },
+      "functional-1": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (compass, default)"
+      },
+      "functional-2": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (index-text, default)"
+      },
+      "functional-3": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (metrics-remote-write, default)"
+      },
+      "functional-4": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (openapi-codegen, default)"
+      },
+      "functional-5": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (peer-tls, default)"
+      },
+      "functional-6": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (raft-core, default)"
+      },
+      "functional-7": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (raft-runtime, default)"
+      },
+      "functional-8": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (server-http, default)"
+      },
+      "functional-9": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (server-lifecycle, default)"
+      },
+      "functional-10": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (server-tcp, default)"
+      },
+      "functional-11": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-auth, default)"
+      },
+      "functional-12": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-backup, default)"
+      },
+      "functional-13": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-collector, default)"
+      },
+      "functional-14": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-executor, default)"
+      },
+      "functional-15": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-http, default)"
+      },
+      "functional-16": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, default)"
+      },
+      "functional-17": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-mcp, default)"
+      },
+      "functional-18": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-observability, default)"
+      },
+      "functional-19": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-projection, default)"
+      },
+      "functional-20": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (storage-durable, default)"
+      },
+      "functional-21": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (storage-object, default)"
+      },
+      "functional-22": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (storage-segment, default)"
+      },
+      "functional-23": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (surface, default)"
+      },
+      "functional-24": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (transport-h2c, default)"
+      },
+      "functional-25": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (transport-otlp, default)"
+      },
+      "functional-26": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (ui-runtime, default)"
+      },
+      "functional-27": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (index-text, all-features)"
+      },
+      "functional-28": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (index-text, feature:jieba)"
+      },
+      "functional-29": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (index-text, no-default)"
+      },
+      "functional-30": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-auth, all-features)"
+      },
+      "functional-31": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-auth, feature:k8s)"
+      },
+      "functional-32": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-auth, no-default)"
+      },
+      "functional-33": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-backup, all-features)"
+      },
+      "functional-34": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-backup, feature:http-client)"
+      },
+      "functional-35": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-backup, feature:s3)"
+      },
+      "functional-36": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-backup, no-default)"
+      },
+      "functional-37": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-http, all-features)"
+      },
+      "functional-38": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-http, feature:otlp)"
+      },
+      "functional-39": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-http, no-default)"
+      },
+      "functional-40": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, all-features)"
+      },
+      "functional-41": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, feature:certificate)"
+      },
+      "functional-42": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, feature:controller)"
+      },
+      "functional-43": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, feature:full)"
+      },
+      "functional-44": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, feature:gcp-cas)"
+      },
+      "functional-45": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, feature:gcp-cas-client)"
+      },
+      "functional-46": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, feature:render-only)"
+      },
+      "functional-47": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-k8s, no-default)"
+      },
+      "functional-48": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-observability, all-features)"
+      },
+      "functional-49": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-observability, feature:otlp)"
+      },
+      "functional-50": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (service-observability, no-default)"
+      },
+      "functional-51": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (storage-object, all-features)"
+      },
+      "functional-52": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (storage-object, feature:gcs)"
+      },
+      "functional-53": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (storage-object, feature:s3)"
+      },
+      "functional-54": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (storage-object, no-default)"
+      },
+      "functional-55": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (transport-h2c, all-features)"
+      },
+      "functional-56": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (transport-h2c, feature:server)"
+      },
+      "functional-57": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (transport-h2c, no-default)"
+      },
+      "functional-58": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (ui-runtime, all-features)"
+      },
+      "functional-59": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (ui-runtime, feature:debug)"
+      },
+      "functional-60": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (ui-runtime, feature:serde_json)"
+      },
+      "functional-61": {
+        "kind": "functional_e2e",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate contracts (ui-runtime, no-default)"
+      },
+      "measured-performance": {
+        "kind": "performance",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate measured performance"
+      },
+      "policy-7": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate source issue contract inspection"
+      },
+      "policy-8": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate issue 47 (proposal)"
+      },
+      "policy-9": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate issue 47 (raft-full)"
+      },
+      "policy-10": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate issue 47 (clippy)"
+      }
+    },
+    "trusted_workflows": {
+      ".github/workflows/ci.yml": {
+        "id": 384237875,
+        "definition_sha": "7cda2f92b24eaa278789c4a252a55a26df73715e"
+      }
+    },
+    "always": [
+      "policy-0",
+      "policy-1",
+      "policy-2",
+      "policy-3",
+      "policy-4",
+      "policy-5",
+      "policy-6",
+      "policy-7",
+      "policy-8",
+      "policy-9",
+      "policy-10"
+    ],
+    "protected_paths": [
+      ".github/issue-ci-required-gates.json",
+      "scripts/pr-gates/**",
+      "scripts/issue-ci/**",
+      "Cargo.toml",
+      "Cargo.lock",
+      "crates/*/Cargo.toml",
+      ".cargo/**",
+      "rust-toolchain",
+      "rust-toolchain.toml",
+      "crates/raft-runtime/tests/snapshot_peak_memory.rs",
+      "crates/openapi-codegen/src/domain/emit/py/tests/h2c_connection.rs"
+    ],
+    "rules": [
+      {
+        "paths": [
+          "**"
+        ],
+        "require": [
+          "unit-0",
+          "unit-1",
+          "unit-2",
+          "unit-3",
+          "unit-4",
+          "unit-5",
+          "unit-6",
+          "unit-7",
+          "unit-8",
+          "unit-9",
+          "unit-10",
+          "unit-11",
+          "unit-12",
+          "unit-13",
+          "unit-14",
+          "unit-15",
+          "unit-16",
+          "unit-17",
+          "unit-18",
+          "unit-19",
+          "unit-20",
+          "unit-21",
+          "unit-22",
+          "unit-23",
+          "unit-24",
+          "unit-25",
+          "unit-26",
+          "unit-27",
+          "unit-28",
+          "unit-29",
+          "unit-30",
+          "unit-31",
+          "unit-32",
+          "unit-33",
+          "unit-34",
+          "unit-35",
+          "unit-36",
+          "unit-37",
+          "unit-38",
+          "unit-39",
+          "unit-40",
+          "unit-41",
+          "unit-42",
+          "unit-43",
+          "unit-44",
+          "unit-45",
+          "unit-46",
+          "unit-47",
+          "unit-48",
+          "unit-49",
+          "unit-50",
+          "unit-51",
+          "unit-52",
+          "unit-53",
+          "unit-54",
+          "unit-55",
+          "unit-56",
+          "unit-57",
+          "unit-58",
+          "unit-59",
+          "unit-60",
+          "unit-61",
+          "unit-62",
+          "unit-63",
+          "unit-64",
+          "unit-65",
+          "unit-66",
+          "unit-67",
+          "unit-68",
+          "unit-69",
+          "functional-0",
+          "functional-1",
+          "functional-2",
+          "functional-3",
+          "functional-4",
+          "functional-5",
+          "functional-6",
+          "functional-7",
+          "functional-8",
+          "functional-9",
+          "functional-10",
+          "functional-11",
+          "functional-12",
+          "functional-13",
+          "functional-14",
+          "functional-15",
+          "functional-16",
+          "functional-17",
+          "functional-18",
+          "functional-19",
+          "functional-20",
+          "functional-21",
+          "functional-22",
+          "functional-23",
+          "functional-24",
+          "functional-25",
+          "functional-26",
+          "functional-27",
+          "functional-28",
+          "functional-29",
+          "functional-30",
+          "functional-31",
+          "functional-32",
+          "functional-33",
+          "functional-34",
+          "functional-35",
+          "functional-36",
+          "functional-37",
+          "functional-38",
+          "functional-39",
+          "functional-40",
+          "functional-41",
+          "functional-42",
+          "functional-43",
+          "functional-44",
+          "functional-45",
+          "functional-46",
+          "functional-47",
+          "functional-48",
+          "functional-49",
+          "functional-50",
+          "functional-51",
+          "functional-52",
+          "functional-53",
+          "functional-54",
+          "functional-55",
+          "functional-56",
+          "functional-57",
+          "functional-58",
+          "functional-59",
+          "functional-60",
+          "functional-61",
+          "measured-performance"
+        ],
+        "exempt": {}
+      }
+    ],
+    "contracts": {
+      "47": {
+        "title_sha256": "635b773e86a4628d520d1c50c6a5be249a4189719e4897bfbefb27df94b15579",
+        "body_sha256": "6b59ecf3518a16371f1eab24600930edb1af24fe6573a66ac6bd3f9919be5bc1",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "48": {
+        "title_sha256": "6031f8f474316737e23a6afb318f844b2471d531a5fd9dd5d122709e841e156e",
+        "body_sha256": "d89eaa15d1fd5678bfd05dc3829ee2dd6c3d93cfa876c77cbaf78b0f9fe2c669",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "16": {
+        "title_sha256": "650c92999452ee61c3f569d82845a157a875f18c4fac256c4cff014c892a8ae2",
+        "body_sha256": "c49713d34570700901581064272a7d5ee50ab90904b97dabcd9b1aa16f6711d3",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "15": {
+        "title_sha256": "72991f427d12f783645a1cec2fb468ab54b3fe29977d1cc8660bcc38e77c74f1",
+        "body_sha256": "a607e6928546ad3496ba79eaf1a1d25ed6f35fca51eec69bf579acf3b22161c8",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "26": {
+        "title_sha256": "35784c80ea480cdf70aa750bf41e0098947fab0e6aa677958d7b39ec9989c196",
+        "body_sha256": "f8fb8195a2bab3fab8ea96f13636047c494dd538f4f9c421f44273854423700a",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "27": {
+        "title_sha256": "0885cb7b1902c10ff421032ef22152b19c7547661d00e997bcadbc797fe2ab87",
+        "body_sha256": "d60370be1aee2d82eeecd47eb8ae617a2c70b22ca18a4e29a9f7dc4a6b09fd82",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "28": {
+        "title_sha256": "63adf325f19220d1f5cc31b73e4692cb2452c4687a89e964e0c47fb1b7bc119d",
+        "body_sha256": "20b04ab9395cc49c62737e957477ce6bd7a0432e5719f25b3876e617698bedc1",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "29": {
+        "title_sha256": "312fe7c28d725f4401a69c9e62925c1f64cc2e261d2fed536935a69a48310665",
+        "body_sha256": "44e09dd8ddb6b8651aace62c18304e427a6ccca993d6293b22ac7f48ee6fa686",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "33": {
+        "title_sha256": "45d926cca44389caf56cdb695f774f7a0d8d1033ef531fa9edb785beb496bd15",
+        "body_sha256": "806cbcc412da5439eed338d69a3932a7db00a566ae2c0af99364c814e0cdfd94",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "30": {
+        "title_sha256": "77c15f597cd1fdb91a45847c2a446bf2bf85a7d9728fced9659ac5be505fc108",
+        "body_sha256": "b12b99da49d8b6da13fe1a72ee8c020f86500c1542180ab0e17f312b987c9e9c",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "31": {
+        "title_sha256": "68dca1ebf90074e1185bc640872d569c64a7c3679c6d8c414be7b947a19583bb",
+        "body_sha256": "3b58004486419fec6784ae758fbe4c255f8845c8b4e45896d2e7befbfb60e01d",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "32": {
+        "title_sha256": "165ffc520415d4b47487089c3cc64e9ddf3529138b68fba6dd4a6bc84fbb3316",
+        "body_sha256": "13844ded416fadcba1dde8d1f28da526d27d74f32cc2ca327a2aeaf2e33e079a",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "17": {
+        "title_sha256": "dd849e06004b13fbcde778e6476d9cc1a4cfbe10a7e5d361c85b0c634f3931f8",
+        "body_sha256": "240b7924fb4bb189791479969e60b795f35bbcee95fc131731968bab04082d24",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "18": {
+        "title_sha256": "0f117de35369301f70c8c5ac5a212445d02d026dc7524337ee68c4db918408a6",
+        "body_sha256": "8809828ae354557f544783456cbbd3997f78d6109fe06cdbe94cfcce888db19a",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "19": {
+        "title_sha256": "24ca8524ad9b1fe66d25c97179f78478a35fcd07802a4dc8f1d73495b3c1f556",
+        "body_sha256": "cc7aa508994d2ef2309cc8010e1d58d2fd9795ba2f10c7e592d91fa31df05605",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "34": {
+        "title_sha256": "754fd11e84940e92d313e5871ac9f2195b511545d6603956f74b3cc7ce8a7b3f",
+        "body_sha256": "66831469c9d6549a4ef6a481dd02d74830312934f0725874bd8df27a82f8c3c8",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "35": {
+        "title_sha256": "d25ae6c308603b8608f9a2d04ef2c637607c9580e800457543ff4dbf23c63b9d",
+        "body_sha256": "bb0d9446348ca3bb07ea483ab1a140fa8f48614eb1e46522dc6ad58b8a4942a0",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "36": {
+        "title_sha256": "99b30e5178af3228f2d84cf9af8109b90ac984605a2b5cbd987501eaba351694",
+        "body_sha256": "c1bb04fdc332ce027c8b106786e58e55e66338de47cf982ef4d3179dfa1b4434",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "42": {
+        "title_sha256": "4157cbdbdb10bea6ea4b8aaca6f150c9c5d55878263cee14cec1a02dae737616",
+        "body_sha256": "972903a9183f99d5c2721546ed19c8818386c4e6bf990440aa1cad02ce63c562",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "45": {
+        "title_sha256": "016d463cab72502e11442f97e6a03fed70ded37e790e8ba8b87d5e4d6a2e6352",
+        "body_sha256": "1c4e864b4c30e989fb5822c450eb29548dec9b1eab3af0a18c0c8a1c49d7bd71",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "49": {
+        "title_sha256": "ba7758a8ca8ee81cbf76a5c9f8445cabb7e514c85bccf0c57df1ac0e1928798c",
+        "body_sha256": "beb54986f5132357debcbfb7e8e70b73884e2e06245cf08e02e99384d8bfbfb3",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "9": {
+        "title_sha256": "e3c9b553dfc4f1a6c0e53c119a25d6990fd3f0fd064b3ca45130149f73ffde75",
+        "body_sha256": "09f7452853aa46fa8de5871a3cb1d25b4d55ab0891044fffab9e26a34de246a5",
+        "applicability": {
+          "unit": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "functional_e2e": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          },
+          "performance": {
+            "status": "unknown",
+            "checks": [],
+            "reason": "The full source issue and any downstream consumer requirements still need an independently reviewed mapping."
+          }
+        },
+        "additional": [],
+        "unresolved": [
+          "Source issue acceptance and any downstream, cluster, language or performance gates require exact-head evidence and a reviewed mapping."
+        ]
+      },
+      "73": {
+        "title_sha256": "b5b0e04f0bc385e59e31c0e2f04a04e3af11d0c6fd42d3c650cabc941fa66103",
+        "body_sha256": "ec48fa8488759987ddff91ddd3284f9f92ce3934c6dacefcb81ce2d2e09626e6",
+        "applicability": {
+          "unit": {
+            "status": "required",
+            "checks": [
+              "unit-0",
+              "unit-1",
+              "unit-2",
+              "unit-3",
+              "unit-4",
+              "unit-5",
+              "unit-6",
+              "unit-7",
+              "unit-8",
+              "unit-9",
+              "unit-10",
+              "unit-11",
+              "unit-12",
+              "unit-13",
+              "unit-14",
+              "unit-15",
+              "unit-16",
+              "unit-17",
+              "unit-18",
+              "unit-19",
+              "unit-20",
+              "unit-21",
+              "unit-22",
+              "unit-23",
+              "unit-24",
+              "unit-25",
+              "unit-26",
+              "unit-27",
+              "unit-28",
+              "unit-29",
+              "unit-30",
+              "unit-31",
+              "unit-32",
+              "unit-33",
+              "unit-34",
+              "unit-35",
+              "unit-36",
+              "unit-37",
+              "unit-38",
+              "unit-39",
+              "unit-40",
+              "unit-41",
+              "unit-42",
+              "unit-43",
+              "unit-44",
+              "unit-45",
+              "unit-46",
+              "unit-47",
+              "unit-48",
+              "unit-49",
+              "unit-50",
+              "unit-51",
+              "unit-52",
+              "unit-53",
+              "unit-54",
+              "unit-55",
+              "unit-56",
+              "unit-57",
+              "unit-58",
+              "unit-59",
+              "unit-60",
+              "unit-61",
+              "unit-62",
+              "unit-63",
+              "unit-64",
+              "unit-65",
+              "unit-66",
+              "unit-67",
+              "unit-68",
+              "unit-69"
+            ],
+            "reason": "Issue 73 and the human extension require complete workspace evidence and preserved functional, E2E and measured performance gates."
+          },
+          "functional_e2e": {
+            "status": "required",
+            "checks": [
+              "functional-0",
+              "functional-1",
+              "functional-2",
+              "functional-3",
+              "functional-4",
+              "functional-5",
+              "functional-6",
+              "functional-7",
+              "functional-8",
+              "functional-9",
+              "functional-10",
+              "functional-11",
+              "functional-12",
+              "functional-13",
+              "functional-14",
+              "functional-15",
+              "functional-16",
+              "functional-17",
+              "functional-18",
+              "functional-19",
+              "functional-20",
+              "functional-21",
+              "functional-22",
+              "functional-23",
+              "functional-24",
+              "functional-25",
+              "functional-26",
+              "functional-27",
+              "functional-28",
+              "functional-29",
+              "functional-30",
+              "functional-31",
+              "functional-32",
+              "functional-33",
+              "functional-34",
+              "functional-35",
+              "functional-36",
+              "functional-37",
+              "functional-38",
+              "functional-39",
+              "functional-40",
+              "functional-41",
+              "functional-42",
+              "functional-43",
+              "functional-44",
+              "functional-45",
+              "functional-46",
+              "functional-47",
+              "functional-48",
+              "functional-49",
+              "functional-50",
+              "functional-51",
+              "functional-52",
+              "functional-53",
+              "functional-54",
+              "functional-55",
+              "functional-56",
+              "functional-57",
+              "functional-58",
+              "functional-59",
+              "functional-60",
+              "functional-61"
+            ],
+            "reason": "Issue 73 and the human extension require complete workspace evidence and preserved functional, E2E and measured performance gates."
+          },
+          "performance": {
+            "status": "required",
+            "checks": [
+              "measured-performance"
+            ],
+            "reason": "Issue 73 and the human extension require complete workspace evidence and preserved functional, E2E and measured performance gates."
+          }
+        },
+        "additional": [],
+        "unresolved": []
+      }
     }
   }
 }

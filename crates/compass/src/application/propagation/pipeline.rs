@@ -31,8 +31,15 @@ use crate::type_inference::{DeepTypeInferencer, ImportInfo};
 /// Top-level orchestrator for cross-file type propagation.
 ///
 /// Usage:
-/// ```ignore
-/// let result = PropagationPipeline::run(&files, &mut inferencer, &file_import_graph);
+/// ```
+/// use compass::graph::ImportGraph;
+/// use compass::type_inference::{DeepTypeInferencer, PropagationPipeline, PropagationRequest};
+///
+/// let request = PropagationRequest { files: vec![], changed_files: vec![] };
+/// let mut inferencer = DeepTypeInferencer::new();
+/// let graph = ImportGraph::new();
+/// let result = PropagationPipeline::run(&request, &mut inferencer, &graph);
+/// assert_eq!(result.stats.files_analyzed, 0);
 /// ```
 pub struct PropagationPipeline;
 

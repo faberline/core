@@ -3,13 +3,18 @@
 //! Attach with
 //! [`from_fn_with_state`](axum::middleware::from_fn_with_state):
 //!
-//! ```ignore
-//! use axum::middleware::from_fn_with_state;
-//! use service_auth::auth_middleware;
+//! ```
+//! use axum::{http::HeaderMap, middleware::from_fn_with_state, Router};
+//! use service_auth::{auth_middleware, AuthError, Verifier};
 //! use std::sync::Arc;
 //!
-//! let verifier = Arc::new(MyVerifier::from_env()?);
-//! let app = router.layer(from_fn_with_state(verifier, auth_middleware::<MyVerifier>));
+//! struct MyVerifier;
+//! impl Verifier for MyVerifier {
+//!     type Principal = ();
+//!     fn authenticate(&self, _headers: &HeaderMap) -> Result<(), AuthError> { Ok(()) }
+//! }
+//! let verifier = Arc::new(MyVerifier);
+//! let app: Router = Router::new().layer(from_fn_with_state(verifier, auth_middleware::<MyVerifier>));
 //! ```
 //!
 //! On success the concrete `V::Principal` is inserted into the request

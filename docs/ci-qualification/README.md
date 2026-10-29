@@ -1,5 +1,11 @@
 # Core PR unit/static gates and qualification inventory
 
+The preparation record below describes PR #74 and its historical inventory.
+The current formal pipeline candidate is documented in
+[formal-pipeline.md](formal-pipeline.md). Its one authoritative policy is
+`.github/issue-ci-required-gates.json`. Historical green jobs and inventories
+below do not qualify a later head or approve the new policy.
+
 Refs [#73](https://github.com/faberline/core/issues/73). This is a bounded
 unit/static implementation and evidence inventory. It does not clear the
 existing qualification holds, complete any feature issue, or authorize

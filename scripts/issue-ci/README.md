@@ -1,48 +1,30 @@
-# CI lifecycle handoff
+# Core CI and Claude outcome controller
 
-Vendored without modification from `faberline/aw@67af8d020df3ca2ec4b064289408cfb0c2f8b299`
-`plugins/faberline/skills/issue-ci/scripts/handoff.py`. SHA-256:
-`c67533b39d45ad62d407af3748856be396941647c349b63464424fa6aff1c198`.
+The production entrypoint is the one `.github/workflows/issue-ci.yml` writer.
+It calls the reviewed immutable AW native-auto-merge action. It reads GitHub
+metadata and authenticated review logs; it does not checkout or execute PR code
+on its credentialed runner. The separate read-only test jobs execute candidates.
 
-The exact existing required gate is `core ci` (`.github/workflows/ci.yml`):
-`service-k8s`, `storage-durable`, `service-backup`, `raft-core`, `raft-runtime`. This explicit manifest is the reviewed
-policy source; visible green checks and branch protection are not inferred.
+The only operational policy is `.github/issue-ci-required-gates.json`.
+It declares complete workspace checks, exact workflow identities and protected
+paths. Qualification must compute the actual changed paths, current head/base
+and complete required jobs. A raw green job list cannot approve a PR.
 
-## Failure-only rollout
+`handoff.py`, `qualification.py` and `json_data.py` are exact copies from the pinned AW source
+for isolated controls and inspection. They must not drift from that source.
+`check-policy.py` validates the policy without a lifecycle mutation:
 
-The guard imports the pinned shared controller's `load_config` and requires
-its `evaluate_policy` API, explicit `lifecycle_mode: "failure-only"`, and a
-nonempty `qualification_blockers` list. Old controllers, full mode, malformed
-or missing policy, and clearing blockers refuse before the privileged call.
-Confirmed current-head failures can return doing issues to todo with links.
-Success, missing, skipped or pending evidence never writes done; already
-done issues remain untouched. All gates and coverage gaps remain explicit.
-The live gates above alone do not prove the approved MR policy (affected
-unit, functional, e2e, performance).
+```sh
+python3 scripts/issue-ci/check-policy.py .github/issue-ci-required-gates.json
+```
 
-- Existing CI covers only five fixed crates, not an approved affected-crate selection or complete MR unit policy.
-- No approved current-head affected functional/e2e/performance qualification gates.
+Product suites run through the authorized online PR workflow. Local verification
+is limited to isolated controls and static/metadata inspection. The historical
+failure-only policy fixture retains its old negative controls; it is not the
+operational configuration.
 
-Resolve these decisions in a separate reviewed change that supplies real
-qualification and updates the explicit gate contract before clearing blockers
-or enabling full mode. The controller itself suppresses done for any nonempty
-blockers even if a future caller accidentally selects full mode.
-No new cloud jobs, GKE triggers, performance runs, or credentials are added.
-No docs-only exemption or zero-check pass is assumed.
-
-AGY owns only todo → doing. CI aggregates every required workflow and job
-for the current PR head; failure returns todo with run/job links. This
-failure-only rollout never produces done. After separately approved full
-qualification, review independently verifies the same head after success
-and does not merge. Managed PRs must use
-`issue/N` or `agy/issue-N` and include `Closes #N`. Unrelated labels remain.
-
-The serialized controller reconciles all managed PRs on every wake, reads
-only GitHub metadata, and uses latest run attempts. Missing, skipped, stale,
-neutral, cancelled, or pending evidence cannot pass. It checks the head
-before writes and journals handoffs for deduplication and recovery. Checkout
-is the trusted default branch; PR code and artifacts are never executed or
-used as permission evidence. The handoff workflow becomes effective only
-after merge; this PR does not alter automation schedules.
-
-Local validation: `python3 -m unittest discover -s scripts/issue-ci/tests -v`.
+Qualified CI is a prerequisite for independent Claude review. A passing current
+review enables guarded native auto-merge and linked issue closure. A verified
+fail/block returns its managed issue to `todo`. Stale or unknown evidence cannot
+approve a merge. Policy/workflow changes need separately reviewed adoption;
+they cannot use their own proposed policy to approve themselves.

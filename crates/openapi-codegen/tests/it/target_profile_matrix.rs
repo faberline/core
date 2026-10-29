@@ -395,7 +395,7 @@ fn legacy_default_output_contract() {
         output_fingerprint(&python),
         vec![
             ("models.py", 16913750451280483632),
-            ("h2c_runtime.py", 7231267206764527339),
+            ("h2c_runtime.py", 4689983979577879353),
             ("client.py", 10786669601410878341),
             ("__init__.py", 9994428160985782841),
         ]

@@ -9,7 +9,9 @@ use linkme::distributed_slice;
 ///
 /// # Example
 ///
-/// ```ignore
+/// ```
+/// use anyhow::Result;
+/// use clap::{ArgMatches, Command};
 /// use cli_std::registry::{CliModule, CLI_MODULES};
 /// use linkme::distributed_slice;
 ///
@@ -38,9 +40,20 @@ pub trait CliModule: Send + Sync {
 /// Distributed slice collecting all registered CLI modules.
 ///
 /// Modules register themselves at link time using:
-/// ```ignore
+/// ```
+/// use anyhow::Result;
+/// use clap::{ArgMatches, Command};
+/// use cli_std::registry::{CliModule, CLI_MODULES};
+/// use linkme::distributed_slice;
+/// struct MyCli;
+/// impl CliModule for MyCli {
+///     fn name(&self) -> &'static str { "my-cmd" }
+///     fn command(&self) -> Command { Command::new("my-cmd") }
+///     fn execute(&self, _: &ArgMatches) -> Result<()> { Ok(()) }
+/// }
 /// #[distributed_slice(CLI_MODULES)]
 /// static MY_CLI: &dyn CliModule = &MyCli;
+/// assert_eq!(cli_std::registry::find_module("my-cmd").unwrap().name(), "my-cmd");
 /// ```
 #[distributed_slice]
 pub static CLI_MODULES: [&'static dyn CliModule];

@@ -2,12 +2,18 @@
 """Trusted CI controller. Reads GitHub metadata, never executes PR code/artifacts."""
 import argparse
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import re
 import subprocess
 import sys
 from urllib.parse import quote
+
+_json_spec = importlib.util.spec_from_file_location('issue_ci_json_data', Path(__file__).with_name('json_data.py'))
+_json_data = importlib.util.module_from_spec(_json_spec)
+_json_spec.loader.exec_module(_json_data)
+strict_json_loads = _json_data.loads
 
 
 def api(path, method='GET', data=None):
@@ -17,7 +23,7 @@ def api(path, method='GET', data=None):
         command += ['--input', '-']
         kwargs['input'] = json.dumps(data)
     output = subprocess.check_output(command, **kwargs)
-    return json.loads(output) if output.strip() else None
+    return strict_json_loads(output) if output.strip() else None
 
 
 def pages(path, key=None):
@@ -32,9 +38,14 @@ def pages(path, key=None):
 
 
 def load_config(path):
-    config = json.loads(Path(path).read_text())
+    return validate_config(strict_json_loads(Path(path).read_text()))
+
+
+def validate_config(config):
     if not isinstance(config, dict):
         raise RuntimeError('gate config must be an object')
+    if '_qualification_context' in config:
+        raise RuntimeError('computed qualification context cannot be supplied by config')
     mode = config.get('lifecycle_mode', 'full')
     if mode not in ('full', 'failure-only'):
         raise RuntimeError('lifecycle_mode must be full or failure-only')
@@ -57,10 +68,53 @@ def load_config(path):
         paths.append(path)
     if len(set(paths)) != len(paths):
         raise RuntimeError('required workflow paths must be unique')
+    if 'qualification' in config:
+        qualification_module().validate(config)
     return config
 
 
-def evaluate(workflows, snapshots):
+def qualification_module():
+    # Always load the sibling of this pinned controller, never a PR module.
+    path = Path(__file__).with_name('qualification.py')
+    spec = importlib.util.spec_from_file_location('issue_ci_qualification', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def validate_adoption(config):
+    """Shared-action rollout cannot enable legacy full without applicability."""
+    if config.get('lifecycle_mode') not in ('failure-only', 'full'):
+        raise RuntimeError('shared adoption requires an explicit lifecycle_mode')
+    if not isinstance(config.get('qualification_blockers'), list):
+        raise RuntimeError('shared adoption requires explicit qualification_blockers')
+    if config['lifecycle_mode'] == 'full' and 'qualification' not in config:
+        raise RuntimeError('shared full adoption requires qualification contract v1')
+    return config
+
+
+def qualify_config(repo, pr, config, files=None):
+    module = qualification_module()
+    if files is None:
+        files = pages(f'repos/{repo}/pulls/{pr["number"]}/files')
+    issue = None
+    if config['qualification'].get('version') == 2:
+        number = module.linked_issue(pr)
+        if number is not None and str(number) in config['qualification'].get('contracts', {}):
+            if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repo):
+                raise RuntimeError('invalid issue repository')
+            issue = api(f'repos/{repo}/issues/{number}')
+    plan = module.select(config, pr, files, issue)
+    definitions = {}
+    for workflow in plan['workflows']:
+        for ref in (pr['head']['sha'], plan['base']):
+            if isinstance(ref, str) and re.fullmatch('[0-9a-f]{40}', ref):
+                definitions[workflow['path'], ref] = api(
+                    f'repos/{repo}/contents/{workflow["path"]}?ref={ref}')
+    return module.scoped_config(config, pr, files, definitions, issue)
+
+
+def evaluate_evidence(workflows, snapshots):
     """Aggregate latest runs of ALL configured workflows; no vacuous all-green."""
     pending, failures, evidence = [], [], []
     for workflow in workflows:
@@ -90,32 +144,55 @@ def evaluate(workflows, snapshots):
                 elif job.get('conclusion') != 'success':
                     # Skips need a separate future policy; never assume justification.
                     pending.append(f'{path} / {name}: {job.get("conclusion")} {link}')
-    state = 'todo' if failures else 'pending' if pending else 'done'
-    return state, failures + pending, sorted(evidence)
+    return dict(failures=failures, pending=pending, evidence=sorted(evidence))
+
+
+def evaluate(workflows, snapshots):
+    # Legacy lifecycle adapter; evidence collection itself has no label authority.
+    result = evaluate_evidence(workflows, snapshots)
+    state = 'todo' if result['failures'] else 'pending' if result['pending'] else 'done'
+    return state, result['failures'] + result['pending'], result['evidence']
 
 
 def evaluate_policy(config, snapshots):
     """Missing qualification can never produce done, even in full mode."""
     state, reasons, evidence = evaluate(config['workflows'], snapshots)
     if state == 'done':
+        if 'qualification' in config and '_qualification_context' not in config:
+            state = 'pending'
+            reasons.append('qualification applicability has not been computed')
         if config.get('lifecycle_mode', 'full') == 'failure-only':
             state = 'pending'
             reasons.append('failure-only mode does not authorize done')
         if config.get('qualification_blockers', []):
             state = 'pending'
             reasons.extend(f'qualification blocked: {b}' for b in config['qualification_blockers'])
+        issues = config.get('_qualification_context', {}).get('issues', [])
+        if issues:
+            state = 'pending'
+            reasons.extend(issues)
     return state, reasons, evidence
 
 
-def snapshot(repo, sha, config):
+def snapshot(repo, sha, config, diagnostics=None):
     root = f'repos/{repo}'
     snapshots = {}
     for workflow in config['workflows']:
+        if workflow['path'] in config.get('_qualification_context', {}).get('untrusted_workflows', []):
+            if diagnostics is not None:
+                diagnostics[workflow['path']] = 'untrusted_workflow'
+            continue
         runs = pages(f'{root}/actions/workflows/{quote(workflow["path"].split("/")[-1], safe="")}/runs?head_sha={sha}&event=pull_request', 'workflow_runs')
         runs = [r for r in runs if r['head_sha'] == sha and r.get('event') == 'pull_request' and r.get('head_repository', {}).get('full_name') == repo and r.get('path') == workflow['path']]
         if not runs:
             continue
         latest = max(runs, key=lambda r: (r['run_number'], r.get('run_attempt', 1)))
+        if '_qualification_context' in config and not qualification_module().trusted_run(latest, config):
+            if diagnostics is not None:
+                diagnostics[workflow['path']] = 'untrusted_latest_run'
+            # Never fall back to an older green run when the newest identity
+            # or PR/base binding is unknown or untrusted.
+            continue
         # Run-attempt endpoint prevents jobs from a previous attempt filling holes.
         jobs = pages(f'{root}/actions/runs/{latest["id"]}/attempts/{latest.get("run_attempt", 1)}/jobs', 'jobs')
         snapshots[workflow['path']] = latest, jobs
@@ -123,6 +200,7 @@ def snapshot(repo, sha, config):
 
 
 def process_head(args, config, check_event=True):
+    source_config = config
     root = f'repos/{args.repo}'
     pr_path = f'{root}/pulls/{args.pr}'
     pr = api(pr_path)
@@ -134,8 +212,23 @@ def process_head(args, config, check_event=True):
     issue = int(match[1])
     if not re.search(rf'(?im)^Closes #{issue}\s*$', pr.get('body') or ''):
         raise RuntimeError('PR body must explicitly link its branch issue with Closes #N')
+    if 'qualification' in config:
+        config = qualify_config(args.repo, pr, config)
     snapshots = snapshot(args.repo, args.head, config)
     state, reasons, evidence = evaluate_policy(config, snapshots)
+    if not args.apply and state == 'done' and 'qualification' in source_config:
+        if snapshot(args.repo, args.head, config) != snapshots:
+            raise RuntimeError('CI runs changed during read-only qualification')
+        current_pr = api(pr_path)
+        if qualify_config(args.repo, current_pr, source_config) != config:
+            raise RuntimeError('PR applicability changed during read-only qualification')
+        final_pr = api(pr_path)
+        if (final_pr['state'] != 'open' or final_pr['head']['sha'] != args.head
+                or final_pr['head']['repo']['full_name'] != args.repo
+                or final_pr['head']['ref'] != pr['head']['ref']
+                or final_pr.get('base', {}).get('sha') != config['_qualification_context']['base']
+                or not re.search(rf'(?im)^Closes #{issue}\s*$', final_pr.get('body') or '')):
+            raise RuntimeError('PR moved during read-only qualification')
     print(json.dumps(dict(state=state, head=args.head, evidence=evidence, reasons=reasons)))
     if not args.apply:
         return 0 if state == 'done' else 2
@@ -156,7 +249,7 @@ def process_head(args, config, check_event=True):
     if failure_only and 'done' in labels:
         return 0  # This mode has no authority over already done issues.
     comments = pages(f'{issue_path}/comments')
-    policy = hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
+    policy = hashlib.sha256(json.dumps(source_config, sort_keys=True).encode()).hexdigest()
     # A failure hands a head back once per coding epoch, regardless of how
     # many more workflows fail while AGY is fixing it. A successfully APPLIED
     # done receipt begins a new epoch, allowing a later done -> todo regression.
@@ -168,7 +261,11 @@ def process_head(args, config, check_event=True):
                  and f'\nPolicy: {policy}\n' in c['body']]
     epoch = qualified[-1]['id'] if qualified else 0
     receipt_key = evidence if state == 'done' else ['coding-epoch', epoch]
-    digest = hashlib.sha256(json.dumps([args.head, receipt_key, config, state], sort_keys=True).encode()).hexdigest()
+    # A success receipt binds the current base/files/applicability fingerprint.
+    # Failure keeps the stable source policy/coding epoch, so a changed base
+    # cannot undo an AGY claim after an already applied failure handoff.
+    receipt_config = config if state == 'done' else source_config
+    digest = hashlib.sha256(json.dumps([args.head, receipt_key, receipt_config, state], sort_keys=True).encode()).hexdigest()
     prefix = f'<!-- issue-ci:{digest}:'
     journals = [c for c in comments if c['body'].startswith(prefix) and c['user']['login'] == 'github-actions[bot]']
     journal = journals[-1] if journals else None
@@ -188,8 +285,14 @@ def process_head(args, config, check_event=True):
 
     def fresh_labels():
         fresh = api(pr_path)
-        if fresh['state'] != 'open' or fresh['head']['sha'] != args.head:
+        if (fresh['state'] != 'open' or fresh['head']['sha'] != args.head
+                or fresh['head']['repo']['full_name'] != args.repo
+                or fresh['head']['ref'] != pr['head']['ref']
+                or not re.search(rf'(?im)^Closes #{issue}\s*$', fresh.get('body') or '')):
             raise RuntimeError('PR moved during handoff; no further label mutation')
+        context = config.get('_qualification_context')
+        if context and fresh.get('base', {}).get('sha') != context['base']:
+            raise RuntimeError('PR base changed during handoff; no further label mutation')
         current = api(issue_path)
         labels = {l['name'] for l in current['labels']}
         if current['state'] != 'open' or 'blocked' in labels or not labels & {'todo', 'doing', 'done'}:
@@ -207,6 +310,11 @@ def process_head(args, config, check_event=True):
     labels = fresh_labels()
     if snapshot(args.repo, args.head, config) != snapshots:
         raise RuntimeError('CI runs changed during evaluation; pending intent is retryable')
+    if 'qualification' in source_config:
+        current_pr = api(pr_path)
+        if (current_pr['state'] != 'open' or current_pr['head']['sha'] != args.head
+                or qualify_config(args.repo, current_pr, source_config) != config):
+            raise RuntimeError('PR applicability changed during evaluation; no label mutation')
     if phase == 'pending':
         # Snapshot pagination can outlast a lifecycle transition. Recheck after
         # that read, immediately before adding the target label.
