@@ -1,0 +1,32 @@
+name: Read-only reviewed provider policy smoke
+on:
+  push:
+    branches: [codex/core-provider-policy-smoke]
+    paths: [.github/workflows/core-provider-policy-smoke.yml]
+permissions: {contents: read, actions: read, pull-requests: read, issues: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: faberline/aw
+          ref: 9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd
+          persist-credentials: false
+      - name: Check exact provider policy without writes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          path=Path('plugins/faberline/skills/issue-ci/scripts/native_merge.py')
+          spec=importlib.util.spec_from_file_location('trusted_native',path)
+          module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+          context=dict(base_ref='main',base='2708ce21c782d52eae304e142ba5e899d0241c20')
+          policy=dict(ruleset_id=26069017,status_context='claude/verified-merge',status_app_id=15368)
+          module.base_rules(module.review.ci,'faberline/core',context,policy)
+          print('reviewed_provider_policy_visible_and_valid')
+          PY
