@@ -184,7 +184,7 @@ packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
-    qualification='All consumer holds and provider rules remain. Current hosted controls ran 861 isolated tests including source-security controls, with no skips. Production rollout and hosted asynchronous issue closure are not verified.')
+    qualification='All consumer holds and provider rules remain. Current hosted controls ran 864 isolated tests including source-security controls, with no skips. Production rollout and hosted asynchronous issue closure are not verified.')
 packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():

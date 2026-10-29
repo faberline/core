@@ -1,42 +1,42 @@
 {
   "repo": "faberline/aw",
   "pr": 116,
-  "head": "40ddfed819f0afc8630d19ba449b0c50c4f9d6d7",
+  "head": "b72e11b626aeef613e0022809c0d39c782947865",
   "base": "d58bf67c196abb8955bc3b0f509484a5f58315ba",
   "decision": "fail",
-  "summary": "Fail. The new CI-handoff boundary at this head works as described, but issue #115's outcome is still not delivered: no linked issue is automatically closed after an asynchronous native merge.\n\n**What works**\n- `handoff.process_head` now calls `before_mutation` before every provider write.\n- With the guard enabled, `reconcile_ci` reports a RuntimeError raised before any write as `ci_refused_prewrite`. The writer then establishes a blocking status, rechecks policy, issue, request, branch rule and status in `settle`, and releases the guard.\n- A write attempted before an error, any other unknown outcome, and an existing request all keep the guard. Unguarded callers behave as before.\n- The guarded close path checks the exact merge, parent and default-branch ancestry, and allows only one `Closes #N` reference. Before writing it rechecks the issue contract, labels, assignees, timeline seal and guard owner. It never takes over a later claim.\n- Existing CI, performance, review, protected-branch, no-bypass and return-to-todo gates are unchanged. No schedule is deployed.\n\n**What still blocks**\n1. `recovery_entry.verify_rollout` always refuses. Every guarded writer, the adoption publisher, target-review preflight and the recovery wake stop before any issue write, so the linked issue stays open after an asynchronous merge.\n2. Later wakes can permanently block a queued guarded PR. The first run keeps the guard while the merge is queued. On the next wake, `guarded.begin` cannot take that guard, so `reconcile` calls `block_unadmitted`, which posts a pending status over the queued PR's success. Nothing restores the success status, so the native merge cannot complete.\n3. No hosted asynchronous merge has closed its issue automatically. The Core #77 fixture records a manual close.\n4. The controlled hosted comparison of the `issues: write` permission hypothesis is missing.\n5. Adoption by all actors and launchers, request ownership and safe cancellation are unproven. `actor_rollout` is always `unknown`, and any existing request is kept rather than cancelled.\n\nDo not merge or deploy this draft; issue #115 should stay todo.",
+  "summary": "Fail. At this head, no linked issue is closed automatically after a real asynchronous native merge, so issue #115's outcome is not delivered.\n\nWhat is met:\n- Guarded close (`guarded_close`, `post_merge_observation`) closes only the exact merged PR's single linked issue. It checks the merge parent and default-branch ancestry.\n- Before writing, it rechecks the issue contract, labels, assignees, ownership timeline seal and guard owner, and never takes over a later claim. Unknown evidence keeps the issue open.\n- Synthetic controls cover asynchronous merge, already-closed issue, delayed merge, provider failure, stale head or base, changed issue, unrelated PR, duplicate wake and recovery.\n- Existing CI, performance, review, protected-branch, no-bypass and return-to-todo gates are preserved.\n- No schedule is deployed and other sessions' worktrees are untouched.\n- New at this head: the native writer and the adoption publisher bind the mutation's client ID to the guard intent. A missing or mismatched ID blocks the success status.\n\nWhat still blocks:\n1. `recovery_entry.verify_rollout` always refuses, so every guarded path stops before any write.\n2. A later wake can permanently block a queued guarded PR. The first run keeps the guard, `begin` fails on the next wake, and `block_unadmitted` posts a pending status over the queued PR's success. Nothing restores it.\n3. No real hosted asynchronous merge has closed its issue automatically. The Core #77 fixture records a manual close.\n4. The controlled hosted comparison of the `issues: write` permission hypothesis is absent.\n5. Actor and launcher adoption, request ownership and safe cancellation remain unproven.\n\nHosted controls run 40940853574 passed 861 tests with no skips. Do not merge or deploy this draft; issue #115 stays todo.",
   "findings": [
     {
       "title": "Verified post-merge closure remains unreachable",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/recovery_entry.py",
       "line": 118,
-      "detail": "verify_rollout always raises recovery_rollout_not_verified. native_merge.main, adoption_guard.begin, policy_adoption_target_review.preflight and recovery_entry.main all stop before any guarded write, so no issue is ever closed after an asynchronous native merge.",
-      "required_fix": "Implement and review a verifier for rollout evidence bound to the exact policy and runtime. Deploy recovery through reviewed policy adoption, then demonstrate an automatic close."
+      "detail": "`verify_rollout` always raises `recovery_rollout_not_verified`. `native_merge.main`, `adoption_guard.begin`, `policy_adoption_target_review.preflight` and `recovery_entry.main` all stop before any guarded write, so no issue is closed after an asynchronous native merge.",
+      "required_fix": "Implement and review a rollout-evidence verifier bound to the exact policy and runtime. Deploy recovery through the reviewed policy-adoption process and demonstrate an automatic close."
     },
     {
       "title": "Later wake permanently blocks a queued guarded PR",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
-      "line": 722,
-      "detail": "After a guarded enqueue reports queued, the post-loop and settle() keep the merge guard. On the next wake, guarded.begin fails because the guard is held, so reconcile calls block_unadmitted. That posts a pending claude/verified-merge status over the queued PR's success. No path restores success while the original owner holds the guard, so GitHub never completes the native merge.",
-      "required_fix": "Bind the queued request and its success status to the guard owner, and skip re-blocking a PR whose authenticated owner still has a live queued request. Alternatively, implement a safe re-verification or takeover path. Add consecutive-wake controls for a queued PR."
+      "line": 731,
+      "detail": "After a guarded enqueue reports queued, the guard is retained. On the next wake, `guarded.begin` fails because the guard is held, and `reconcile` calls `block_unadmitted`. That posts a pending `claude/verified-merge` status over the queued PR's success. No path restores success, so the native merge never completes. The client-ID acknowledgement added at this head does not change this.",
+      "required_fix": "Bind the queued request and its success status to the guard owner. Skip re-blocking a PR whose authenticated owner holds a live queued request, or implement a safe re-verification path. Add consecutive-wake controls for a queued PR."
     },
     {
       "title": "No hosted asynchronous automatic-close proof or permission comparison",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
       "line": 102,
-      "detail": "All controls are synthetic, and the Core #77 fixture records a manual close. The controlled hosted comparison of the issues: write hypothesis that the issue requires is absent.",
-      "required_fix": "Run hosted positive and negative asynchronous merge controls in which the linked issue is closed. Run the controlled issues: write comparison before changing a production permission."
+      "detail": "All controls are synthetic, and the Core #77 fixture records a manual close. The controlled hosted comparison of the `issues: write` hypothesis that the issue requires is absent.",
+      "required_fix": "Run hosted positive and negative asynchronous merge controls in which the linked issue is closed. Run the controlled `issues: write` comparison before changing any production permission."
     },
     {
       "title": "Actor and launcher adoption and request ownership unproven",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/rollout_inventory.py",
       "line": 69,
-      "detail": "actor_rollout is always 'unknown'. guarded_admission.cancel_blocked keeps every existing request because the shared Actions bot identity cannot prove which run created it, and cancellation and its race with merging are not implemented.",
-      "required_fix": "Provide verified actor and launcher adoption evidence and request provenance bound to the guard, with positive and negative controls."
+      "detail": "`actor_rollout` is always 'unknown'. `cancel_blocked` keeps every existing request because the shared Actions bot identity cannot prove which run created it. Cancellation and its race with merging are not implemented.",
+      "required_fix": "Provide verified actor and launcher adoption evidence and authenticated request provenance bound to the guard, with positive and negative controls."
     }
   ],
   "uncertainties": []
