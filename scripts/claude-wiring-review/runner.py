@@ -75,7 +75,7 @@ def identity():
     assert pull['state'] == 'open' and pull['head']['sha'] == HEAD and pull['base']['sha'] == BASE, 'pr_identity_changed'
     assert pull['head']['repo']['full_name'] == REPO and pull['base']['repo']['full_name'] == REPO and pull['base']['ref'] == 'main', 'pr_repository_changed'
     assert api('commits/main')['sha'] == BASE, 'default_branch_changed'
-    assert re.search(r'(?im)^closes #'+str(ISSUE)+r'\s*$', pull.get('body') or ''), 'issue_link_missing'
+    assert re.search(r'(?im)^refs #'+str(ISSUE)+r'\s*$', pull.get('body') or ''), 'issue_link_missing'
     checks = pages(f'commits/{HEAD}/check-runs?filter=latest')
     assert checks and all(c['status'] == 'completed' and c['conclusion'] == 'success' for c in checks), 'ci_not_all_success'
     statuses = pages(f'commits/{HEAD}/statuses')
@@ -178,13 +178,13 @@ for item in changed:
 diff=''.join(parts)
 assert len(diff.encode())<=4*1024*1024, 'diff_bound'
 human = """The human asks for strict qualification, independent review, and automatic merge after all gates pass. Product acceptance belongs to the source issue and planner. Do not weaken any gate.
-Review AW issue 125 and PR 126. The change must record bounded exact-identity reasons for negative grant reviews without emitting a pass receipt or allowing merge. Recheck unchanged inputs, retain failure, preserve existing gates and peer work. The complete hosted controls must pass without skips. Do not require post-merge closure before this review. This change does not deploy a pinned evaluator or alter schedules.
+Review AW issue 115 and draft PR 116. Evaluate the complete issue contract and exact diff. The recovery and rollout guard remain disabled. Real asynchronous hosted issue-close proof, actor and launcher adoption, request ownership, and recovery before the first status are not established. Do not treat the draft, a generic test pass, or a claimed intent as evidence that these requirements are met. Report real missing work and uncertainty. Preserve all test and performance gates and do not alter schedules.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
-    qualification='All consumer holds and provider rules remain. Shared source has 438 isolated controls including source-security controls, without skips.')
+    qualification='All consumer holds and provider rules remain. Current hosted controls ran 815 isolated tests including source-security controls, with no skips. Production rollout and hosted asynchronous issue closure are not verified.')
 packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():
