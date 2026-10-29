@@ -207,7 +207,7 @@ PLAN['properties']['requirements']['items']['properties']['supporting_paths']['i
 plan = invoke(packet, PLAN, '''PLANNING phase. Extract all original issue acceptance and Never requirements,
 plus the explicit human scope extensions. Request only necessary same-repo source
 files in supporting_paths. Do not make a final verdict or report bugs yet.
-Use exact schema-listed repository paths only. Never use relative segments such as .. or invent paths. At most 64 distinct supporting
+Use exact schema-listed repository paths only. Never use relative segments such as .. or invent paths. At most 80 distinct supporting
 files can be collected. Request necessary source, not speculative file names.
 Each contract_quote must select one exact whole line from the schema enum.
 Use the full issue and human scope to derive requirements, not just that line.
@@ -218,7 +218,7 @@ assert plan['requirements'] and len({r['id'] for r in plan['requirements']}) == 
 assert all(r['contract_quote'] in contract for r in plan['requirements']), 'invented_contract_quote'
 supporting = []
 requested = sorted({p for r in plan['requirements'] for p in r['supporting_paths']})
-assert len(requested) <= 64, 'source_request_bound'
+assert len(requested) <= 80, 'source_request_bound'
 for path in requested:
     assert safe_path(path) and (path in trees[BASE] or path in trees[HEAD]), 'unsafe_or_missing_supporting_path'
     for ref in (BASE,HEAD):
