@@ -1,34 +1,26 @@
 {
   "repo": "faberline/aw",
   "pr": 116,
-  "head": "06d1059042455b44bc564e490b9f361070ca5fb3",
+  "head": "fd2132353430d9885b34ef9872d76d7118c41603",
   "base": "d58bf67c196abb8955bc3b0f509484a5f58315ba",
   "decision": "fail",
-  "summary": "Fail. The issue outcome is still not delivered.\n\nWhat is in place: the guarded close checks the exact merge into the default branch, issue identity and contract, and ownership before it would close an issue. It never takes over another owner's claim, and unknown provider results keep the guard and leave the issue open. Existing CI, performance, review, protected-branch, no-bypass and failure-to-todo gates are preserved. No schedule is deployed, and other sessions' worktrees and leases are preserved.\n\nWhat is still missing:\n- recovery_entry.verify_rollout always refuses. Every guarded writer, adoption publisher and recovery wake stops before it closes anything, so a linked issue stays open after an asynchronous merge.\n- No hosted asynchronous merge has closed its issue automatically.\n- The controlled hosted test of the issues:write permission hypothesis has not been run.\n- Actor and launcher adoption, request ownership and safe cancellation are not established.\n\nWhat this head changes: reconcile now also releases the guard for qualification_not_ready and issue_not_eligible. Both refusals happen before any write, so this is correct.\n\nDefects that remain: other pre-write refusals still keep the guard forever. These include required_gates_not_success (the normal state while CI is pending), review_stale, issue_contract_changed, pr_description_changed and base_changed. Later wakes cannot acquire that guard, so the PR is reported only as guard_unavailable and is never checked again. If CI fails and the issue returns to todo, no worker can reclaim it. Guards for queued or merged requests also have no liveness path.",
+  "summary": "Fail. The issue's outcome is still not delivered.\n\nWhat is done correctly: the guarded close path checks that the PR actually merged into the default branch (head, base, parent and ancestry), and it allows exactly one Closes #N reference. Before writing, it re-checks the issue contract, labels, assignees, the timeline digest and the guard owner. It never takes over a later claim, and any unknown result keeps the guard and leaves the issue open. Existing CI, performance, review, protected-branch, no-bypass and return-to-todo gates are unchanged. No schedule is deployed.\n\nWhat this head adds: a check that releases the guard only after refusals that are known to happen before any write. This repair is correct. It covers pending CI, a stale review and contract changes, and a two-wake control tests it.\n\nWhat still blocks:\n- recovery_entry.verify_rollout always refuses. Every guarded writer, the adoption publisher and the recovery wake stop before any issue write, so after an asynchronous merge the linked issue still stays open.\n- A queued guarded PR keeps its guard. The next wake cannot take that guard, so it calls block_unadmitted, which posts a pending status over the queued PR's success. Nothing restores the success status, so the queued merge is blocked permanently.\n- No hosted asynchronous merge has closed its issue automatically. The Core #77 fixture records a manual close.\n- The controlled hosted comparison of the issues:write permission hypothesis is absent.\n- Adoption by all actors and launchers, request ownership and safe cancellation remain unproven.",
   "findings": [
     {
       "title": "Verified post-merge closure remains unreachable",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/recovery_entry.py",
       "line": 118,
-      "detail": "verify_rollout always raises. Every guarded path, and recovery itself, stops before any issue write, so linked issues stay open after an asynchronous merge.",
+      "detail": "verify_rollout always raises. The guarded writer, the adoption guard, target-review preflight and recovery main all stop before any issue write, so linked issues stay open after an asynchronous merge.",
       "required_fix": "Implement and review a rollout-evidence verifier. Deploy recovery through reviewed policy adoption. Then demonstrate an automatic close."
     },
     {
-      "title": "Guard retained forever for CI-pending and other pre-write holds",
-      "severity": "medium",
+      "title": "Later wakes permanently block a queued guarded PR",
+      "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
-      "line": 776,
-      "detail": "safe_holds now also covers qualification_not_ready and issue_not_eligible. It does not cover other refusals raised by verify before any write: required_gates_not_success (the normal state while CI is pending), review_stale, issue_contract_changed, pr_description_changed and base_changed. Those rows keep the guard forever. Later wakes fail guarded.begin and only report guard_unavailable, so the PR is never re-evaluated and a CI-failed issue cannot be reclaimed by a worker.",
-      "required_fix": "Classify every deterministic refusal raised before enqueue writes as releasable. Release after block_held plus settle. Add controls for CI-pending and CI-failed PRs across consecutive wakes."
-    },
-    {
-      "title": "Queued-request guards have no liveness or ownership path",
-      "severity": "medium",
-      "path": "plugins/faberline/skills/issue-ci/scripts/guarded_admission.py",
-      "line": 170,
-      "detail": "cancel_blocked and settle return 'retained' whenever a request exists or the PR merged without a record. block_unadmitted from a later wake can override a queued PR's success status, and nothing restores it.",
-      "required_fix": "Bind request provenance to the guard. Implement safe takeover or cancellation and recovery for a merge with no record, with controls."
+      "line": 716,
+      "detail": "After enqueue reports 'queued', the writer keeps the merge guard (settle and the reconcile post-loop return 'retained'). On the next wake, guarded.begin fails with merge_guard_held_or_consumed, and reconcile then calls block_unadmitted. That posts a pending claude/verified-merge status over the queued PR's success status. No path restores success, so GitHub's native merge never completes.",
+      "required_fix": "Tie the queued request and success status to the guard owner, and skip re-blocking a PR whose authenticated owner still holds a live queued request. Alternatively, implement a safe path to take over or re-verify it. Add consecutive-wake controls for a queued PR."
     },
     {
       "title": "No hosted asynchronous merge, automatic-close proof or permission comparison",
@@ -39,12 +31,12 @@
       "required_fix": "Run hosted positive and negative asynchronous merge controls that close the linked issue, plus the controlled issues:write comparison."
     },
     {
-      "title": "Actor and launcher adoption unproven",
+      "title": "Actor/launcher adoption and request ownership unproven",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/rollout_inventory.py",
       "line": 69,
-      "detail": "actor_rollout is always 'unknown'. The guard protocol requires every active worker and writer to adopt it.",
-      "required_fix": "Provide verified actor and launcher adoption evidence bound to the exact policy and runtime."
+      "detail": "actor_rollout is always 'unknown'. guarded_admission.cancel_blocked keeps every request because the shared Actions bot identity cannot prove which run created it, and cancellation is not implemented.",
+      "required_fix": "Provide verified actor and launcher adoption evidence and request provenance bound to the exact policy and runtime, with controls."
     }
   ],
   "uncertainties": []
