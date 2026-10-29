@@ -74,7 +74,7 @@ After reviewed adoption, qualified CI plus an authenticated current-head
 Claude PASS can queue GitHub auto-merge and close the one linked issue.
 Review fail/block returns the linked open issue to `todo`, preserves unrelated
 labels, and never merges it. The candidate producer/writer pins the reviewed
-immutable shared controller at AW `fcd1ecf` (PR #102), with 423
+immutable shared controller at AW `8e2e93e` (PR #112), with 438
 complete controls and an independent Claude PASS. It still requires reviewed adoption on
 Core before it can operate there.
 

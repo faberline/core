@@ -1,8 +1,8 @@
 # Formal Claude review and PR completion
 
 The candidate pins shared source
-`faberline/aw@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44` (AW #102).
-Its 423 complete shared/security controls and independent Claude review passed.
+`faberline/aw@8e2e93e5ba8feb30b6668de39139980ea3bb085c` (AW #112).
+Its 438 complete shared/security controls and independent Claude review passed.
 This is not yet a Core adoption receipt.
 
 The candidate's one authoritative policy is

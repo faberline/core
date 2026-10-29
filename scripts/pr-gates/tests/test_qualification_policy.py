@@ -43,12 +43,12 @@ class FullPolicyTests(unittest.TestCase):
         self.assertIn('python3 scripts/pr-gates/proposal_gate.py', workflow)
 
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
-        self.assertEqual(CONFIG['aw_revision'],'fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44')
+        self.assertEqual(CONFIG['aw_revision'],'8e2e93e5ba8feb30b6668de39139980ea3bb085c')
         for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
             raw=(ROOT/producer['path']).read_bytes()
             blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
             self.assertEqual(blob,producer['definition_sha'])
-            self.assertIn(b'@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44',raw)
+            self.assertIn(b'@8e2e93e5ba8feb30b6668de39139980ea3bb085c',raw)
         self.assertEqual(CONFIG['native_auto_merge']['status_context'],'claude/verified-merge')
         self.assertEqual(CONFIG['native_auto_merge']['status_app_id'],15368)
 
@@ -136,7 +136,7 @@ class FullPolicyTests(unittest.TestCase):
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
         raw=(ROOT/WORKFLOW).read_text()
         self.assertIn('name: candidate source issue contract inspection',raw)
-        self.assertIn('faberline/aw/.github/actions/issue-contract@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44',raw)
+        self.assertIn('faberline/aw/.github/actions/issue-contract@8e2e93e5ba8feb30b6668de39139980ea3bb085c',raw)
         self.assertIn('gate infrastructure change requires reviewed policy update',
                       ' '.join(scope(path='.github/workflows/ci.yml')['_qualification_context']['issues']))
 

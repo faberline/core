@@ -87,7 +87,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Inspect exact-head issue contract as untrusted data
-        uses: faberline/aw/.github/actions/issue-contract@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
+        uses: faberline/aw/.github/actions/issue-contract@8e2e93e5ba8feb30b6668de39139980ea3bb085c
 
   # Ordinary read-only PR tests execute candidate code, as the legacy crate
   # jobs do. They do not approve trusted qualification. That independent

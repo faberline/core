@@ -26,12 +26,12 @@ jobs:
       head: ${{ steps.preflight.outputs.head }}
     steps:
       - name: Require complete trusted qualification before paid review
-        uses: faberline/aw/.github/actions/issue-ci@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
+        uses: faberline/aw/.github/actions/issue-ci@8e2e93e5ba8feb30b6668de39139980ea3bb085c
         with:
           operation: qualify
           pr: ${{ github.event.workflow_run.pull_requests[0].number }}
           head: ${{ github.event.workflow_run.head_sha }}
-      - uses: faberline/aw/.github/actions/claude-review@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
+      - uses: faberline/aw/.github/actions/claude-review@8e2e93e5ba8feb30b6668de39139980ea3bb085c
         id: preflight
         with:
           operation: preflight
@@ -61,7 +61,7 @@ jobs:
         run: sudo install -m 0755 -- "$VERIFIED_BINARY" /usr/local/bin/claude
       # Never checkout PR code, restore its caches, install its packages or run
       # its scripts on a credentialed runner. No other step gets this secret.
-      - uses: faberline/aw/.github/actions/claude-review@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
+      - uses: faberline/aw/.github/actions/claude-review@8e2e93e5ba8feb30b6668de39139980ea3bb085c
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         with:
