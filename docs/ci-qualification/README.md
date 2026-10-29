@@ -23,6 +23,9 @@ The workflow checks out the event's exact base and head in separate directories.
 The candidate planner verifies both Git identities and compares fresh Cargo
 inventories. Package, feature or enabled target reductions still fail. Every
 enabled library/binary unit target must report a complete nonempty named roster.
+The planner also rejects tracked and non-ignored untracked changes in either
+checkout before and after metadata and product commands. It cannot prove that
+files were not changed and restored during a run.
 Target failures accumulate so one empty target does not hide later targets.
 Clippy also runs after a unit failure, unless the workflow was cancelled.
 
