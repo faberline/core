@@ -177,23 +177,24 @@ for item in changed:
         inherited.append(dict(path=path,published_parent_blob=old_entry['sha'],candidate_blob=new_entry['sha'],unchanged=old_entry['sha']==new_entry['sha']))
 diff=''.join(parts)
 assert len(diff.encode())<=4*1024*1024, 'diff_bound'
-human = """The human requires Core and five other service pipelines to retain all test,
-functional, E2E and performance thresholds, strict current head/base, independent
-Claude review and native auto-merge only after qualification. Failed review must
-return the linked issue to todo. AW issue 99 fixes a real GitHub Actions metadata
-visibility problem. Review the entire issue and every changed file. Confirm the
-GraphQL fallback verifies the exact repository, current base, enabled auto-merge
-and squash merge, active branch ruleset, strict trusted-app status and zero bypass
-actors. Missing, malformed, stale, contradictory or nonzero evidence must refuse.
-Do not accept a relaxed gate or credential escalation. The hosted probe used a
-read-only Actions token; its observed provider fields are evidence, not authority.
-The change must not claim Core acceptance or alter cloud settings or peer work.
+human = """The human asks for the pipeline framework: enforce exact current head/base,
+complete existing CI, independent review, strict no-bypass protection, and automatic
+merge only after verified approval. A failed or blocked review returns the issue to
+todo. Product issue acceptance content belongs to that repo and the issue planner;
+unknown product requirements stay blocked and must not be fabricated or waived.
+AW issue 103 fixes a circular staged-review prerequisite. Review every changed file
+and full issue. Confirm provider facts are emitted only after actual verification,
+rechecked after review, and match strict rules and zero bypass. Target review is an
+earlier phase, never approval to merge. A later separately reviewed exact-data grant
+and fresh publisher checks remain mandatory. Review whether the code enforces every
+later gate. No source issue requirement or performance threshold may be weakened.
+The change must not execute candidate code with credentials or alter peer work.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
-    qualification='All consumer holds and provider rules remain. Shared source has 418 isolated controls including source-security controls, without skips.')
+    qualification='All consumer holds and provider rules remain. Shared source has 423 isolated controls including source-security controls, without skips.')
 packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():
@@ -211,10 +212,12 @@ if REPO.endswith('/lumen'):
 contract = issue['title'] + '\n' + issue['body'] + '\n' + human
 PLAN['properties']['requirements']['items']['properties']['contract_quote'] = {
     'type': 'string', 'enum': [line for line in contract.splitlines() if line.strip()]}
+PLAN['properties']['requirements']['items']['properties']['supporting_paths']['items'] = {
+    'type': 'string', 'enum': sorted(set(trees[BASE]) | set(trees[HEAD]))}
 plan = invoke(packet, PLAN, '''PLANNING phase. Extract all original issue acceptance and Never requirements,
 plus the explicit human scope extensions. Request only necessary same-repo source
 files in supporting_paths. Do not make a final verdict or report bugs yet.
-Use available_head_paths for exact source names. At most 64 distinct supporting
+Use exact schema-listed repository paths only. Never use relative segments such as .. or invent paths. At most 64 distinct supporting
 files can be collected. Request necessary source, not speculative file names.
 Each contract_quote must select one exact whole line from the schema enum.
 Use the full issue and human scope to derive requirements, not just that line.
