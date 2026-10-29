@@ -45,7 +45,7 @@ jobs:
           path=Path('plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py')
           spec=importlib.util.spec_from_file_location('trusted_target',path)
           module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
-          head='44b3cc54b65fea8e57bbc6352eb8f2e88d85fb3a'
+          head='870c45c7037140a7846842aaeecb2e0e21d47c36'
           packet,_=module.preflight(module.a.ci,'faberline/core',75,head)
           lines=[packet['issue']['title']]+[line for line in packet['issue']['body'].splitlines() if line.strip()]
           plan_schema=module.obj({'requirements':{'type':'array','minItems':1,'items':module.obj({'id':module.STR,'requirement':module.STR,'issue_quote':{'type':'string','enum':lines},'supporting_paths':module.STRINGS})},'uncertainties':module.STRINGS})
