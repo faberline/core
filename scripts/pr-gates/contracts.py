@@ -141,6 +141,7 @@ def main(argv=None):
     compare_inventory(baseline, packages)
     expected = matrix(packages)
     if args.action == 'matrix':
+        unit.verify_identity(args.root, args.expected_head, args.expected_base, args.baseline_root)
         print(json.dumps(expected, separators=(',', ':')))
         return
     if {'package': args.package, 'profile': args.profile} not in expected['include']:
@@ -151,7 +152,10 @@ def main(argv=None):
                     run_attempt=os.environ.get('GITHUB_RUN_ATTEMPT'),
                     driver_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                     unit_driver_sha256=hashlib.sha256(Path(unit.__file__).read_bytes()).hexdigest())
-    run(args.root, package, args.profile, identity)
+    try:
+        run(args.root, package, args.profile, identity)
+    finally:
+        unit.verify_identity(args.root, args.expected_head, args.expected_base, args.baseline_root)
 
 
 if __name__ == '__main__':

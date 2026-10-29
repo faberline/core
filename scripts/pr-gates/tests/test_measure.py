@@ -1,7 +1,11 @@
 """Measured values, unchanged thresholds and complete target roster controls."""
 import importlib.util
+import contextlib
+import io
 from pathlib import Path
+import subprocess
 import unittest
+from unittest.mock import patch
 
 SPEC=importlib.util.spec_from_file_location('measure',Path(__file__).parents[1]/'measure.py')
 m=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(m)
@@ -15,6 +19,24 @@ class MeasurementTests(unittest.TestCase):
     h2=output('emit::py::tests::generated_python_h2c_runtime_reused_connection_perf_guard')
     peak=output('snapshot_peak_memory_grows_sublinearly')
     peak_line='CORE_SNAPSHOT_PEAK small_entries=1000 small_peak_bytes=65536 large_entries=50000 large_peak_bytes=65536 limit_bytes=262144\n'
+
+    def test_changed_checkout_after_measurement_refuses_before_next_workload(self):
+        argv=['--root','/head','--baseline-root','/base','--expected-head','a'*40,'--expected-base','b'*40]
+        result=subprocess.CompletedProcess([],0,stdout='actual output',stderr='')
+        with patch.object(m.c.unit,'verify_identity',side_effect=[{},{},ValueError('checkout changed')]), \
+             patch.object(m.c,'load',return_value=[]),patch.object(m.c,'compare_inventory'), \
+             patch.object(m.subprocess,'run',return_value=result)as run, \
+             contextlib.redirect_stdout(io.StringIO()),contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaisesRegex(ValueError,'checkout changed'):m.main(argv)
+        run.assert_called_once()
+
+    def test_failed_measurement_command_still_rechecks_checkout(self):
+        argv=['--root','/head','--baseline-root','/base','--expected-head','a'*40,'--expected-base','b'*40]
+        with patch.object(m.c.unit,'verify_identity',return_value={})as identity, \
+             patch.object(m.c,'load',return_value=[]),patch.object(m.c,'compare_inventory'), \
+             patch.object(m.subprocess,'run',side_effect=OSError('cannot launch')):
+            with self.assertRaisesRegex(OSError,'cannot launch'):m.main(argv)
+        self.assertEqual(identity.call_count,3)
 
     def test_actual_http2_measurement_and_workload_retained(self):
         result=m.measurements(self.h2,'h2c_generated_sync_reused_connection seconds=1.123456 requests=128\n','http2')
