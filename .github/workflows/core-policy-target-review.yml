@@ -10,7 +10,7 @@ jobs:
     timeout-minutes: 70
     permissions: {actions: read, contents: read, pull-requests: read, issues: read}
     steps:
-      - uses: faberline/aw/.github/actions/policy-adoption-target-review@0de40825936af55686114766635837b123e56c7a
+      - uses: faberline/aw/.github/actions/policy-adoption-target-review@e12edb64d116ef5b73c63e3be98f979628ae6f40
         with:
           target-pr: '75'
           target-head: 870c45c7037140a7846842aaeecb2e0e21d47c36
@@ -22,7 +22,7 @@ jobs:
     concurrency: {group: issue-ci-handoff, cancel-in-progress: false}
     permissions: {actions: read, contents: write, pull-requests: write, statuses: write, issues: write}
     steps:
-      - uses: faberline/aw/.github/actions/policy-adoption-review-outcome@0de40825936af55686114766635837b123e56c7a
+      - uses: faberline/aw/.github/actions/policy-adoption-review-outcome@e12edb64d116ef5b73c63e3be98f979628ae6f40
         with:
           target-pr: '75'
           target-head: 870c45c7037140a7846842aaeecb2e0e21d47c36
