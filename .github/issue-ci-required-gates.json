@@ -1,5 +1,5 @@
 {
-  "aw_revision": "ec57dc5f8606d04f779d11aba9c53f7a7bd9a45d",
+  "aw_revision": "9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd",
   "workflows": [
     {
       "path": ".github/workflows/ci.yml",
@@ -151,7 +151,7 @@
   "qualification_blockers": [],
   "lifecycle_mode": "full",
   "ci_handoff_policy": {
-    "aw_revision": "ec57dc5f8606d04f779d11aba9c53f7a7bd9a45d",
+    "aw_revision": "9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd",
     "workflows": [
       {
         "path": ".github/workflows/ci.yml",
@@ -1014,7 +1014,7 @@
       "trusted_workflows": {
         ".github/workflows/ci.yml": {
           "id": 384237875,
-          "definition_sha": "ec8552b825028519d5baeec766345e7abdd011f5"
+          "definition_sha": "c2235e1823c64d219f1840bcb1d396591a985b3f"
         }
       },
       "always": [
@@ -1896,19 +1896,19 @@
       }
     }
   },
-  "controller_source": "faberline/aw@ec57dc5f8606d04f779d11aba9c53f7a7bd9a45d:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+  "controller_source": "faberline/aw@9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
   "claude_final_review": {
     "version": 1,
     "producer": {
       "path": ".github/workflows/claude-final-review.yml",
       "id": 399789974,
-      "definition_sha": "c8ccbb6758c8c980f52670240263d3946e376ea1",
+      "definition_sha": "11aac6ba493b261edabf383fcf012b6bf0a4db6b",
       "job": "review"
     },
     "gates": {
       ".github/workflows/ci.yml": {
         "id": 384237875,
-        "definition_sha": "ec8552b825028519d5baeec766345e7abdd011f5"
+        "definition_sha": "c2235e1823c64d219f1840bcb1d396591a985b3f"
       }
     },
     "protected_paths": [
@@ -1946,7 +1946,7 @@
     "producer": {
       "path": ".github/workflows/issue-ci.yml",
       "id": 394215097,
-      "definition_sha": "8d11154ae492712146866c3dea35ea7fb3324ecd",
+      "definition_sha": "2cd81b70aacdc63968a50508a1891317bcf04901",
       "job": "native-auto-merge"
     }
   },
@@ -2662,7 +2662,7 @@
     "trusted_workflows": {
       ".github/workflows/ci.yml": {
         "id": 384237875,
-        "definition_sha": "ec8552b825028519d5baeec766345e7abdd011f5"
+        "definition_sha": "c2235e1823c64d219f1840bcb1d396591a985b3f"
       }
     },
     "always": [
