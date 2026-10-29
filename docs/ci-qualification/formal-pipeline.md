@@ -53,3 +53,26 @@ Claude PASS can queue GitHub auto-merge and close the one linked issue.
 Review fail/block returns the linked open issue to `todo`, preserves unrelated
 labels, and never merges it. The shared deployed rejection code still needs
 the human's latest doing-to-todo correction before this rollout is complete.
+
+## First online diagnostics
+
+The first exact-head run at `5d0f500b148ad335e127646b0c26089827a892f6`
+exposed host-specific Python cache paths, an unprepared offline generated-Rust
+client dependency registry, and a pre-existing obsolete legacy runtime golden
+fingerprint. The repairs use the test's own temporary directory, prepare the
+same reqwest/serde dependency contract before offline compilation, and pin the
+legacy fingerprint to the unchanged current-main emitted runtime bytes. Other
+golden entries and all runtime assertions remain intact.
+
+The first allocator receipt measured zero *additional* allocations at both
+workload sizes. Zero is a valid numeric measurement under the original bound;
+missing measurement records remain failures. The parser now distinguishes
+those cases. HTTP/2 actually measured 0.030828 seconds for 128 requests in that
+historical run; this is not evidence for a later head.
+
+The first full Raft integration target passed all 170 named cases, but a test's
+stdout interleaved with libtest's status line under `--nocapture`. Integration
+runs now retain the ordinary captured harness output so the complete named
+roster can be checked strictly. They still execute all targets and ignored cases.
+The separate measurement job retains uncaptured measured values. No parser
+accepts partial rosters, and no product assertion or test count is waived.

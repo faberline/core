@@ -90,7 +90,7 @@ def command(package, profile, target):
         raise ValueError('target outside complete manifest-derived row')
     return ['cargo', 'test', '--release', '--locked', '-p', package['name'],
             '--test', target['name'], *unit.feature_args(profile), '--',
-            '--include-ignored', '--format', 'pretty', '--color', 'never', '--test-threads', '1', '--nocapture']
+            '--include-ignored', '--format', 'pretty', '--color', 'never', '--test-threads', '1']
 
 
 def run(root, package, profile, provenance):

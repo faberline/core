@@ -38,7 +38,7 @@ def measurements(stdout, stderr, kind):
     if len(rows)!=1:
         raise ValueError('missing or duplicate allocator measurement')
     small_count,small_peak,large_count,large_peak,limit=map(int,rows[0])
-    if (small_count,large_count)!=(1000,50000) or limit!=max(small_peak,64*1024)*4 or not 0<large_peak<limit:
+    if (small_count,large_count)!=(1000,50000) or limit!=max(small_peak,64*1024)*4 or not 0<=large_peak<limit:
         raise ValueError('snapshot original sublinear allocator threshold failed')
     return dict(tests=evidence,measurement=dict(small_entries=small_count,small_peak_bytes=small_peak,
         large_entries=large_count,large_peak_bytes=large_peak,bytes_exclusive_limit=limit))

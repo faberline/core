@@ -41,6 +41,13 @@ class MeasurementTests(unittest.TestCase):
         self.assertEqual(result['measurement']['large_entries'],50000)
         self.assertEqual(result['measurement']['bytes_exclusive_limit'],262144)
 
+    def test_measured_zero_extra_allocations_is_valid_not_missing_evidence(self):
+        line=self.peak_line.replace('small_peak_bytes=65536','small_peak_bytes=0').replace('large_peak_bytes=65536','large_peak_bytes=0')
+        result=m.measurements(self.peak,line,'snapshot')
+        self.assertEqual(result['measurement']['small_peak_bytes'],0)
+        self.assertEqual(result['measurement']['large_peak_bytes'],0)
+        self.assertEqual(result['measurement']['bytes_exclusive_limit'],262144)
+
     def test_memory_threshold_and_workloads_cannot_be_relaxed(self):
         for before,after in [('large_entries=50000','large_entries=1000'),('small_entries=1000','small_entries=10'),('limit_bytes=262144','limit_bytes=524288'),('large_peak_bytes=65536','large_peak_bytes=262144')]:
             with self.subTest(after=after),self.assertRaises(ValueError):

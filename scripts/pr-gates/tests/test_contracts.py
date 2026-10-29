@@ -64,7 +64,7 @@ class SelectionTests(unittest.TestCase):
         p=package();argv=c.command(p,'feature:extra',p['integration_targets'][0])
         self.assertEqual(argv[:8],['cargo','test','--release','--locked','-p','leaf','--test','it'])
         self.assertIn('--include-ignored',argv)
-        self.assertEqual(argv[argv.index('--')+1:],['--include-ignored','--format','pretty','--color','never','--test-threads','1','--nocapture'])
+        self.assertEqual(argv[argv.index('--')+1:],['--include-ignored','--format','pretty','--color','never','--test-threads','1'])
         self.assertIn('--no-default-features',argv)
 
     def test_target_removal_refuses(self):

@@ -215,8 +215,8 @@ asyncio.run(async_contract())
             .arg(&script_path)
             .arg(&root)
             .arg(&token_path)
-            .env("UV_CACHE_DIR", "/private/tmp/lumen-0429-uv-cache")
-            .env("PYTHONPYCACHEPREFIX", "/private/tmp/lumen-0429-pycache"),
+            .env("UV_CACHE_DIR", root.join("uv-cache"))
+            .env("PYTHONPYCACHEPREFIX", root.join("pycache")),
         "execute generated Python file bearer client",
     );
     assert_success(run, "execute generated Python file bearer client");

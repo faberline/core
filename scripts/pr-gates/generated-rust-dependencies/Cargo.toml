@@ -1,0 +1,13 @@
+# Registry preparation only. Product tests still compile their generated clients offline.
+[package]
+name = "core-generated-client-dependency-inventory"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
+
+[dependencies]
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
