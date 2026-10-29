@@ -1,0 +1,51 @@
+{
+  "repo": "faberline/aw",
+  "pr": 116,
+  "head": "53f4586df28f6b6c7c94b50e6de5959a2b12819e",
+  "base": "d58bf67c196abb8955bc3b0f509484a5f58315ba",
+  "decision": "fail",
+  "summary": "Fail. The draft adds a carefully guarded post-merge close design, but issue #115 is not met. The guarded close mechanism cannot run: every guarded entry point calls recovery_entry.verify_rollout, which always raises recovery_rollout_not_verified. No recovery workflow is deployed, and nothing consumes the unguarded checkpoint records to close an issue. An issue therefore still stays open after an asynchronous native merge unless a human closes it. The issue also requires a real hosted asynchronous close proof and a controlled hosted issues:write comparison; neither exists. The human-listed gaps also remain open: actor and launcher adoption, request ownership and cancellation, and recovery before the first status. One real bug: in guarded mode, the writer skips approval withdrawal for any PR whose guard it cannot claim. That includes every already-queued PR, whose guard is still held by the earlier writer run, so the existing rule to withdraw old approvals on every wake is weakened. Hosted controls passed 815 isolated tests, but that is not proof of hosted closure.",
+  "findings": [
+    {
+      "title": "Verified issue closure is never reachable",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/scripts/recovery_entry.py",
+      "line": 120,
+      "detail": "verify_rollout unconditionally raises recovery_rollout_not_verified. recovery_entry.main, native_merge.main (guarded path), adoption_guard.begin and the target-review preflight all call it before any guarded write. The unguarded production writer only prints checkpoint records that nothing consumes. The issue's core outcome, a working post-merge close after an asynchronous native merge, is therefore not delivered.",
+      "required_fix": "Implement and review the rollout evidence verification, deploy the recovery path through reviewed policy adoption, and demonstrate automatic closure."
+    },
+    {
+      "title": "Guarded writer skips approval withdrawal for PRs it cannot admit, including queued PRs",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+      "line": 667,
+      "detail": "In reconcile with guarded set, the withdrawal loop skips any PR not in admitted. A queued PR keeps its merge guard owned by the earlier writer run, so later wakes fail guarded.begin with merge_guard_held_or_consumed. That PR's earlier success status and native request are then never withdrawn or rechecked when its review, issue or CI changes before GitHub merges it. This weakens the existing rule that every wake withdraws old approvals across the complete open queue. Worker-held issues are affected in the same way.",
+      "required_fix": "Withdraw prior approvals for every open PR regardless of guard admission. For a PR that cannot be claimed, at least post a blocking pending status and disable the Actions-owned request, without touching issue labels."
+    },
+    {
+      "title": "No real hosted asynchronous merge and automatic close proof",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+      "line": 108,
+      "detail": "The issue requires verifying actual cloud behavior before claiming automatic closure. The only real-provider evidence is the Core #77 fixture, which shows a manual close.",
+      "required_fix": "Run and record a controlled hosted asynchronous native merge in which the mechanism closes the linked issue, plus negative hosted controls."
+    },
+    {
+      "title": "issues:write permission hypothesis not tested",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+      "line": 102,
+      "detail": "The issue requires a controlled hosted comparison of issues:write versus issues:read before changing a production permission or treating native auto-close as reliable. No comparison was performed or recorded.",
+      "required_fix": "Perform and document a controlled hosted comparison of publisher and writer permissions with exact CI, review and ownership gates intact."
+    },
+    {
+      "title": "Actor/launcher adoption, request ownership and pre-status recovery unimplemented",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/scripts/guarded_admission.py",
+      "line": 127,
+      "detail": "cancel_blocked always retains any queued request because request provenance cannot be bound to a run, and cancellation and its race with merging are unimplemented. Recovery for an admission interrupted before the first status has no durable pending write. rollout_inventory cannot prove that launchers stopped.",
+      "required_fix": "Bind native request provenance to the guard, implement safe cancellation and pre-status crash recovery, and provide verified actor and launcher adoption evidence."
+    }
+  ],
+  "uncertainties": []
+}
