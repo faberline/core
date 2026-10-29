@@ -1,7 +1,7 @@
-name: Independent Claude review framework sources
+name: Independent Claude review GraphQL bot identity
 on:
   push:
-    branches: [codex/framework-sources-metadata-review]
+    branches: [codex/graphql-bot-metadata-review]
     paths: [.github/workflows/claude-wiring-review.yml, scripts/claude-wiring-review/**]
 permissions:
   contents: read
@@ -28,15 +28,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           REVIEW_REPO: faberline/aw
-          REVIEW_PR: '108'
-          REVIEW_ISSUE: '107'
-          REVIEW_HEAD: e12edb64d116ef5b73c63e3be98f979628ae6f40
-          REVIEW_BASE: ac300675f719b3d6a62a4b7c202016d4ef57de06
+          REVIEW_PR: '112'
+          REVIEW_ISSUE: '111'
+          REVIEW_HEAD: 8e2e93e5ba8feb30b6668de39139980ea3bb085c
+          REVIEW_BASE: 451eacaadd05cdd3cdc5c99c9edf0ff95e97e390
         run: python3 -I scripts/claude-wiring-review/runner.py
       - name: Keep review evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: claude-framework-sources-metadata-e12edb6
+          name: claude-graphql-bot-metadata-8e2e93e
           path: scripts/claude-wiring-review/evidence/
           if-no-files-found: warn
