@@ -1,0 +1,38 @@
+name: Read-only GitHub CLI log probe
+on:
+  push:
+    branches: [codex/core-gh-escape-probe]
+    paths: [.github/workflows/core-gh-escape-probe.yml]
+permissions: {contents: read, actions: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify real authenticated log capture as data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import json,re,subprocess
+          help_result=subprocess.run(['gh','api','--help'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,check=True)
+          supported=b'--allow-escape-sequences' in help_result.stdout
+          print('allow_escape_option_in_help=',supported,flush=True)
+          if not supported:
+              raise SystemExit('option_missing')
+          result=subprocess.run(['gh','api','--allow-escape-sequences','repos/faberline/core/actions/jobs/123292249647/logs'],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
+          print('authenticated_fetch_exit=',result.returncode,flush=True)
+          if result.returncode:
+              raise SystemExit('authenticated_fetch_failed')
+          raw=result.stdout
+          assert len(raw)<=8*1024*1024 and b'\x1b' in raw
+          marker='AW_POLICY_ADOPTION_REVIEW_V1 '
+          lines=raw.decode('utf-8',errors='strict').splitlines()
+          rows=[]
+          for line in lines:
+              line=re.sub(r'^\d{4}-\d\d-\d\dT\S+\s+','',line)
+              if line.startswith(marker):rows.append(json.loads(line[len(marker):]))
+          assert len(rows)==1 and rows[0]['decision']=='block' and rows[0]['head']=='44b3cc54b65fea8e57bbc6352eb8f2e88d85fb3a'
+          print('escaped_authenticated_log_parsed_exactly_once',flush=True)
+          PY
