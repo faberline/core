@@ -23,3 +23,5 @@ jobs:
           gh api repos/faberline/core/rules/branches/main | jq '[.[]|select(.type=="required_status_checks")|{ruleset_id,parameters}]' || echo REST_BRANCH_RULES_UNAVAILABLE
           echo REST_RULESET
           gh api repos/faberline/core/rulesets/26069017 | jq '{enforcement,target,bypass_actors}' || echo REST_RULESET_UNAVAILABLE
+          echo GRAPHQL_RULESET
+          gh api graphql -f query='query { repository(owner:"faberline",name:"core") { ruleset(databaseId:26069017) { databaseId target enforcement bypassActors(first:1) { totalCount pageInfo { hasNextPage } } } } }' | jq '.data.repository.ruleset' || echo GRAPHQL_RULESET_UNAVAILABLE
