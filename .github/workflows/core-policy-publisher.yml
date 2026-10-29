@@ -1,0 +1,14 @@
+name: Reviewed policy adoption
+on:
+  push:
+    branches: [codex/core76-policy-publisher]
+    paths: [.github/workflows/core-policy-publisher.yml]
+permissions: {}
+concurrency: {group: issue-ci-handoff, cancel-in-progress: false}
+jobs:
+  adopt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions: {actions: read, contents: write, pull-requests: write, statuses: write, issues: read}
+    steps:
+      - uses: faberline/aw/.github/actions/policy-adoption@8e2e93e5ba8feb30b6668de39139980ea3bb085c
