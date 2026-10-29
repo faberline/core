@@ -52,8 +52,11 @@ follower/learner integration are not proven by Core-only results. A passing
 baseline is only a prerequisite for the final independent Claude review.
 Missing issue-specific evidence must block that review and return the issue to
 `todo`; it cannot be converted into an inferred waiver or automatic closure.
-The existing 22 product PR inventories are historical and must be refreshed
-at their own current heads before using their issue evidence.
+The 2026-10-29 inventory records all 23 then-open PRs, their changed paths,
+source issue hashes and observed head/base identities. Each changed path selects
+the full workspace, including all reverse dependents. This snapshot and the
+earlier per-PR inventories are historical observations, not acceptance evidence.
+Recheck current head, base, issue and file list before qualification.
 
 After reviewed adoption, qualified CI plus an authenticated current-head
 Claude PASS can queue GitHub auto-merge and close the one linked issue.
