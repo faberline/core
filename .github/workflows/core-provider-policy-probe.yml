@@ -1,0 +1,25 @@
+name: Read-only provider policy visibility probe
+on:
+  push:
+    branches: [codex/core-provider-policy-probe]
+    paths: [.github/workflows/core-provider-policy-probe.yml]
+permissions: {contents: read, pull-requests: read, issues: read, actions: read}
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect read-only provider fields
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -u -o pipefail
+          echo REST_REPOSITORY
+          gh api repos/faberline/core | jq '{default_branch,allow_auto_merge,allow_squash_merge}' || echo REST_REPOSITORY_UNAVAILABLE
+          echo GRAPHQL_REPOSITORY
+          gh api graphql -f query='query { repository(owner:"faberline",name:"core") { autoMergeAllowed squashMergeAllowed defaultBranchRef { name target { oid } } } }' | jq '.data.repository' || echo GRAPHQL_REPOSITORY_UNAVAILABLE
+          echo REST_BRANCH_RULES
+          gh api repos/faberline/core/rules/branches/main | jq '[.[]|select(.type=="required_status_checks")|{ruleset_id,parameters}]' || echo REST_BRANCH_RULES_UNAVAILABLE
+          echo REST_RULESET
+          gh api repos/faberline/core/rulesets/26069017 | jq '{enforcement,target,bypass_actors}' || echo REST_RULESET_UNAVAILABLE
