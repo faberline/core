@@ -1,0 +1,107 @@
+{
+  "repo": "faberline/aw",
+  "pr": 98,
+  "head": "6a1d67de08344790bf917f25a208061c6cfdd10a",
+  "base": "41260dc33701b79404766c06121731341c609328",
+  "decision": "fail",
+  "summary": "The metadata-only policy-adoption flow mostly fits issue #97 and the human extensions. It has an empty grant registry, strict grant/attestation schemas, and exact checks on head, base, issue, PR, file inventory, latest attempt, job set and success. It also checks strict rulesets with no bypass actors and queues pending-then-success native squash auto-merge with an expected head. Durable todo recovery reuses native_merge.return_todo, and there are synthetic positive, negative, replay and drift controls. Three real defects remain. (1) A model CLI timeout in the target review raises subprocess.TimeoutExpired, which the handler does not catch. The run emits no block receipt, so a failed review does not return the issue to todo. (2) The new tool-free review function drops the existing managed-policy (/etc/claude-code) refusal from claude_review/OAUTH-ISOLATION.md, so managed hooks are not ruled out. (3) The documented second, final-head grant review is never authenticated by the publisher. The merged grant, including its post-review attestation, can authorize a merge without that final review.",
+  "reviewed_files": [
+    ".github/actions/policy-adoption-grant-review/action.yml",
+    ".github/actions/policy-adoption-review-outcome/action.yml",
+    ".github/actions/policy-adoption-target-review/action.yml",
+    ".github/actions/policy-adoption/action.yml",
+    ".github/policy-adoption-grants.json",
+    ".github/workflows/native-auto-merge-controls.yml",
+    "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption.py",
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption_grant_review.py",
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption_provision.py",
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption_review_outcome.py",
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption_supply.json",
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
+    "plugins/faberline/skills/issue-ci/tests/test_policy_adoption.py",
+    "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_grant_review.py",
+    "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_provision.py",
+    "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_review_outcome.py",
+    "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_target_review.py"
+  ],
+  "requirement_results": [
+    {
+      "id": "R1",
+      "status": "met",
+      "evidence": "The policy-adoption and review-outcome actions have no checkout and no model credential. policy_adoption.enqueue refuses CLAUDE_CODE_OAUTH_TOKEN, and main takes only GitHub env identities. Grants are loaded only from faberline/aw default-branch metadata through action.trusted_policy. The review actions read source through the contents API only and never run PR code."
+    },
+    {
+      "id": "R2",
+      "status": "uncertain",
+      "evidence": "grant_spec, choose_grant and verify_grant_attestation bind the PR, issue, head, base, policy blobs, publisher/review workflow identities and runner_blob. They also check merged ancestry and data-only grant PRs. However, the documented final-head grant review is never authenticated: only the earlier attestation is verified, so the merged grant can differ from the last reviewed head (see finding)."
+    },
+    {
+      "id": "R3",
+      "status": "met",
+      "evidence": "candidate_evidence uses snapshot with latest attempt, trusted_run association and pages pagination. It requires an exact job-name set, completed success for every job, a matching run id, attempt and workflow_id, and the jobs digest in the grant. candidate_policy verifies the policy blob bytes at head and base and refuses dropped prior jobs. evaluate requires v2 issue selection to cover all checks, and the only allowed holds are the granted protected paths."
+    },
+    {
+      "id": "R4",
+      "status": "missing",
+      "evidence": "review_provenance authenticates the pinned target-review workflow and runner blob, the completed run/job and a single log receipt bound by receipt_sha256. The receipt binds head, base, PR/issue hashes, the file inventory and met requirements. But invoke_schema omits the existing /etc/claude-code managed-policy refusal, so the tool-free claim is weaker than the existing isolation contract (see finding)."
+    },
+    {
+      "id": "R5",
+      "status": "met",
+      "evidence": "enqueue re-runs evaluate (PR, issue, base, ruleset via base_rules, provider binding, CI, review receipt), grant_loader, verify_grant_attestation and publisher_provenance. It does this before the pending write, the queue and the success write. It writes pending before queueing with expectedHeadOid and the squash 'Merge PR #N'/'Closes #N' message, and holds without writing success on drift. Rules are not modified."
+    },
+    {
+      "id": "R6",
+      "status": "met",
+      "evidence": "Five new test modules cover selection, malformed and broad grants, CI drift (attempt/base/workflow/missing/extra/skipped/failed), publisher provenance, unmerged grants, post-pending drift, attestation history and replay, outcome forgery and duplicates, provisioning tampering and credential refusal. The control workflow paths include the new actions and the grant file. The hosted 'complete isolated native merge controls' job succeeded at head. The grant file is empty."
+    },
+    {
+      "id": "R7",
+      "status": "met",
+      "evidence": ".github/policy-adoption-grants.json is {\"version\":1,\"grants\":[]}. No existing lifecycle, qualification, handoff, journal or schedule source is changed; the only existing-file edits are workflow path filters and documentation."
+    },
+    {
+      "id": "R8",
+      "status": "missing",
+      "evidence": "policy_adoption_review_outcome.apply authenticates the receipt and calls native_merge.return_todo for fail/block, and pass makes no write. But a model timeout in the target review crashes without a block receipt, so that failed review never returns the issue to todo (see finding)."
+    },
+    {
+      "id": "R9",
+      "status": "met",
+      "evidence": "No active grant and no branch-rule writes. The model subprocess gets only the OAuth token, with GH_TOKEN absent from its env. Provisioning runs with all credentials blanked and refuses if any are present. No existing hold is weakened and peer source is unchanged."
+    },
+    {
+      "id": "R10",
+      "status": "met",
+      "evidence": "candidate_policy refuses a candidate that drops any prior workflow job, and requires full mode, no blockers and qualification v2. The native squash auto-merge uses the existing closing-issue body. Exact head and base are rechecked throughout."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Model timeout yields no block receipt, so a failed review never returns the issue to todo",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
+      "line": 177,
+      "detail": "produce() catches only (RuntimeError,KeyError,TypeError,ValueError,OSError). invoke_schema calls subprocess.run(..., timeout=1800), which raises subprocess.TimeoutExpired, a SubprocessError and none of those types. A CLI timeout therefore propagates out of produce and the job fails without printing an AW_POLICY_ADOPTION_REVIEW_V1 receipt. The outcome job is then skipped (needs: review), contradicting the in-code comment that a model error is an authenticated block. The human extension requires a failed or blocked review to return the issue to todo. Two 1800 s calls plus provisioning and three preflights also nearly exhaust the 70-minute job timeout, so a killed job has the same effect.",
+      "required_fix": "Convert subprocess.TimeoutExpired (and other subprocess errors) inside invoke_schema into a Refused code, or catch them in produce's except clause. Keep the total model timeout safely below the review job's timeout-minutes so a block receipt is always emitted after the final preflight. Add a control for the timeout path."
+    },
+    {
+      "title": "Tool-free review drops the existing managed-policy (/etc/claude-code) refusal",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/policy_adoption_grant_review.py",
+      "line": 73,
+      "detail": "invoke_schema (used by both the grant and target reviews) starts the credentialed CLI without the endpoint_policy_preflight check that claude_review.invoke_json performs. That check refuses an existing /etc/claude-code directory, file or symlink, and refuses any unknown lstat error. OAUTH-ISOLATION.md and CLAUDE-FINAL-REVIEW.md say administrator-managed hooks survive --safe-mode and disableAllHooks. Without this check, '--tools \"\"' does not establish the tool-free execution the issue requires, and an existing isolation safeguard is weakened.",
+      "required_fix": "Before reading the token and launching the CLI, reuse the existing claude_review endpoint_policy_preflight (or an equivalent lstat refusal of /etc/claude-code). Add a test that a present or unknown managed policy refuses before execution."
+    },
+    {
+      "title": "Final-head grant review is documented as required but never authenticated by the publisher",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+      "line": 290,
+      "detail": "The docs require running the grant-review action again on the final grant PR head (the head that adds the grant_review attestation). policy_adoption.enqueue and verify_grant_attestation only authenticate the earlier receipt at att['head']. Nothing binds the final grant blob, the merged head or the attestation bytes to any passing grant review. The merged grant therefore differs from what the authenticated review covered and is still accepted, against the issue's 'changed grant ... always refuses' and the boundary that the data-only grant 'has received its own review'.",
+      "required_fix": "Either have the publisher authenticate the final-head grant review receipt (for example by a deterministic lookup of the latest successful grant-review run for the merged grant PR head and blob), or remove the documented second review and state explicitly that the attestation is accepted only as mechanically verified metadata. Add a control in which a grant changed after its authenticated review refuses."
+    }
+  ],
+  "uncertainties": []
+}

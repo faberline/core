@@ -1,4 +1,6 @@
 """One-off, human-authorized exact-head review. No lifecycle or gate writes."""
+import base64
+import difflib
 import hashlib
 import json
 import os
@@ -7,6 +9,7 @@ import re
 import subprocess
 import tempfile
 import urllib.request
+from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'evidence'
@@ -36,18 +39,46 @@ def pages(path):
             return result
     raise RuntimeError('pagination_incomplete')
 
-def git(*args):
-    return subprocess.check_output(['git', '-C', str(ROOT / 'source'), *args], text=True)
+def tree(ref):
+    value=api('git/trees/'+ref+'?recursive=1')
+    assert value.get('truncated') is False and isinstance(value.get('tree'), list), 'tree_incomplete'
+    assert len(value['tree']) <= 10000, 'tree_bound'
+    entries={}
+    for item in value['tree']:
+        if item.get('type')=='blob':
+            path=item.get('path')
+            assert isinstance(path,str) and path not in entries, 'tree_duplicate'
+            entries[path]=item
+    return entries
+
+
+def safe_path(path):
+    return isinstance(path,str) and bool(path) and not path.startswith('/') and '\\' not in path and all(ord(c) >= 32 and ord(c) != 127 for c in path) and all(x not in ('','.','..') for x in path.split('/'))
+
+
+def content(ref,path,entry):
+    assert safe_path(path) and entry.get('type')=='blob' and entry.get('mode') in ('100644','100755'), 'unsupported_source'
+    assert isinstance(entry.get('size'),int) and 0 <= entry['size'] <= 350000, 'source_size'
+    value=api('contents/'+quote(path,safe='/')+'?ref='+ref)
+    assert value.get('type')=='file' and value.get('encoding')=='base64', 'source_encoding'
+    raw=base64.b64decode(''.join(value['content'].split()),validate=True)
+    assert len(raw)==entry['size'] and len(raw)<=350000, 'source_incomplete'
+    digest=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+    assert digest==entry['sha']==value.get('sha'), 'source_blob_changed'
+    return raw.decode('utf-8')
 
 def save(name, value):
     (OUT / name).write_text(json.dumps(value, ensure_ascii=False, indent=2))
 
 def identity():
     pull = api(f'pulls/{PR}')
-    assert pull['head']['sha'] == HEAD and pull['base']['sha'] == BASE, 'pr_identity_changed'
+    assert pull['state'] == 'open' and pull['head']['sha'] == HEAD and pull['base']['sha'] == BASE, 'pr_identity_changed'
+    assert pull['head']['repo']['full_name'] == REPO and pull['base']['repo']['full_name'] == REPO and pull['base']['ref'] == 'main', 'pr_repository_changed'
+    assert api('commits/main')['sha'] == BASE, 'default_branch_changed'
+    assert re.search(r'(?im)^closes #'+str(ISSUE)+r'\s*$', pull.get('body') or ''), 'issue_link_missing'
     checks = pages(f'commits/{HEAD}/check-runs?filter=latest')
     assert checks and all(c['status'] == 'completed' and c['conclusion'] == 'success' for c in checks), 'ci_not_all_success'
-    statuses = api(f'commits/{HEAD}/status')['statuses']
+    statuses = pages(f'commits/{HEAD}/statuses')
     assert all(s['state'] == 'success' for s in statuses), 'classic_status_failed'
     return pull, [{k: c[k] for k in ('id', 'name', 'head_sha', 'status', 'conclusion', 'html_url')} for c in checks]
 
@@ -63,6 +94,14 @@ PLAN = obj({'requirements': {'type': 'array', 'minItems': 1, 'items': obj({
 def invoke(packet, schema, phase):
     raw = json.dumps(packet, ensure_ascii=False, separators=(',', ':'))
     assert len(raw.encode()) <= 4 * 1024 * 1024, 'packet_bound_exceeded'
+    try:
+        os.lstat('/etc/claude-code')
+    except FileNotFoundError:
+        pass
+    except OSError:
+        raise RuntimeError('managed_cli_configuration_unknown') from None
+    else:
+        raise RuntimeError('managed_cli_configuration_refused')
     oauth = os.environ['CLAUDE_CODE_OAUTH_TOKEN']
     supply = json.loads((ROOT / 'supply.json').read_text())
     cli = '/usr/local/bin/claude'
@@ -115,10 +154,29 @@ comments, code changes, merge, release, or lifecycle changes are available.
 
 pull, checks = identity()
 issue = api(f'issues/{ISSUE}')
+assert issue['state'] == 'open', 'issue_not_open'
 issue = {k: issue[k] for k in ('number', 'title', 'body')}
-assert git('rev-parse', 'HEAD').strip() == HEAD
-paths = git('diff', '--name-only', '--no-renames', BASE + '...' + HEAD).splitlines()
-diff = git('diff', '--no-ext-diff', '--no-renames', '--unified=5', BASE + '...' + HEAD)
+comparison=api('compare/'+BASE+'...'+HEAD)
+assert comparison.get('status') in ('ahead','identical'), 'base_not_ancestor'
+trees={ref:tree(ref) for ref in (BASE,HEAD)}
+changed=pages(f'pulls/{PR}/files')
+assert isinstance(pull.get('changed_files'),int) and 0 < len(changed)==pull['changed_files'] <= 80, 'pr_inventory_incomplete'
+paths=[];parts=[];inherited=[];file_metadata=[]
+for item in changed:
+    path=item.get('filename');status=item.get('status');previous=item.get('previous_filename') if status=='renamed' else path
+    assert safe_path(path) and safe_path(previous) and path not in paths and status in ('added','removed','modified','renamed'), 'pr_file_metadata'
+    old_entry=None if status=='added' else trees[BASE].get(previous)
+    new_entry=None if status=='removed' else trees[HEAD].get(path)
+    assert (new_entry or old_entry) and (new_entry or old_entry).get('sha')==item.get('sha'), 'pr_file_blob_changed'
+    before='' if old_entry is None else content(BASE,previous,old_entry)
+    after='' if new_entry is None else content(HEAD,path,new_entry)
+    file_metadata.append(dict(path=path,previous=previous,status=status,base_blob=old_entry and old_entry['sha'],base_mode=old_entry and old_entry['mode'],head_blob=new_entry and new_entry['sha'],head_mode=new_entry and new_entry['mode']))
+    parts.extend(difflib.unified_diff(before.splitlines(keepends=True),after.splitlines(keepends=True),fromfile='a/'+previous,tofile='b/'+path,n=5))
+    paths.append(path)
+    if old_entry and new_entry:
+        inherited.append(dict(path=path,published_parent_blob=old_entry['sha'],candidate_blob=new_entry['sha'],unchanged=old_entry['sha']==new_entry['sha']))
+diff=''.join(parts)
+assert len(diff.encode())<=4*1024*1024, 'diff_bound'
 human = """The human requires Core and five other service pipelines to preserve every existing
 unit, functional, E2E and performance threshold, exact current head and base,
 independent Claude review and native auto-merge with linked issue closure.
@@ -134,23 +192,15 @@ is of shared source only and does not claim Core pipeline delivery.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
-    changed_files=paths, complete_diff=diff, current_head_ci=checks,
-    available_head_paths=git('ls-tree', '-r', '--name-only', HEAD).splitlines(),
-    qualification='All consumer holds and provider rules remain. Shared source has 411 isolated controls including source-security controls, without skips.')
-parent=BASE
-assert subprocess.run(['git','-C',str(ROOT/'source'),'merge-base','--is-ancestor',parent,HEAD]).returncode==0
-inherited=[]
-for path in paths:
-    prior=subprocess.run(['git','-C',str(ROOT/'source'),'rev-parse',parent+':'+path],capture_output=True,text=True)
-    if prior.returncode==0:
-        candidate=git('rev-parse',HEAD+':'+path).strip()
-        inherited.append(dict(path=path,published_parent_blob=prior.stdout.strip(),candidate_blob=candidate,unchanged=prior.stdout.strip()==candidate))
-packet['published_parent_source_identity']=dict(commit=parent,ancestor_of_candidate=True,files=inherited)
+    changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
+    available_head_paths=sorted(trees[HEAD]),
+    qualification='All consumer holds and provider rules remain. Shared source has 414 isolated controls including source-security controls, without skips.')
+packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():
     prior=json.loads(previous.read_text())
     assert prior['repo']==REPO and prior['pr']==PR and re.fullmatch('[0-9a-f]{40}',prior['head'])
-    assert subprocess.run(['git','-C',str(ROOT/'source'),'merge-base','--is-ancestor',prior['head'],HEAD]).returncode==0
+    assert api('compare/'+prior['head']+'...'+HEAD).get('status') in ('ahead','identical'), 'prior_review_not_ancestor'
     packet['previous_review_findings']=prior
 save('identity.json', dict(repo=REPO, pr=PR, head=HEAD, base=BASE, files=paths,
     diff_sha256=hashlib.sha256(diff.encode()).hexdigest(), checks=checks,
@@ -178,23 +228,19 @@ supporting = []
 requested = sorted({p for r in plan['requirements'] for p in r['supporting_paths']})
 assert len(requested) <= 64, 'source_request_bound'
 for path in requested:
-    assert path and not path.startswith('/') and all(p not in ('.', '..', '') for p in path.split('/')) and '\\' not in path
-    for ref in (BASE, HEAD):
-        probe = subprocess.run(['git', '-C', str(ROOT / 'source'), 'cat-file', '-e', ref + ':' + path], capture_output=True)
-        if probe.returncode:
-            supporting.append(dict(path=path, commit=ref, absent=True))
-            continue
-        mode = git('ls-tree', ref, '--', path).split()[0]
-        assert mode in ('100644', '100755'), 'unsupported_source_type'
-        content = git('show', ref + ':' + path)
-        assert len(content.encode()) <= 350000, 'source_file_bound'
-        digest=hashlib.sha256(content.encode()).hexdigest()
+    assert safe_path(path) and (path in trees[BASE] or path in trees[HEAD]), 'unsafe_or_missing_supporting_path'
+    for ref in (BASE,HEAD):
+        entry=trees[ref].get(path)
+        if entry is None:
+            supporting.append(dict(path=path,commit=ref,absent=True));continue
+        text=content(ref,path,entry)
+        digest=hashlib.sha256(text.encode()).hexdigest()
         identical=next((s for s in supporting if s.get('sha256')==digest and 'content' in s),None)
         if identical:
             supporting.append(dict(path=path,commit=ref,sha256=digest,
                 same_content_as={'path':identical['path'],'commit':identical['commit']}))
         else:
-            supporting.append(dict(path=path, commit=ref, content=content,sha256=digest))
+            supporting.append(dict(path=path,commit=ref,content=text,sha256=digest))
 packet.update(requirement_plan=plan, supporting_sources=supporting)
 save('source-manifest.json', [{k:v for k,v in s.items() if k != 'content'} for s in supporting])
 result_schema = obj({'repo': {'const': REPO, 'type': 'string'}, 'pr': {'const': PR, 'type': 'integer'},
@@ -225,8 +271,10 @@ assert len(review['reviewed_files']) == len(paths) and set(review['reviewed_file
 assert len(review['requirement_results']) == len(plan['requirements']) and {r['id'] for r in review['requirement_results']} == {r['id'] for r in plan['requirements']}, 'incomplete_requirement_review'
 if review['decision'] == 'pass':
     assert not review['findings'] and not review['uncertainties'] and all(r['status'] == 'met' for r in review['requirement_results']), 'invalid_pass'
-identity()
-assert api(f'issues/{ISSUE}')['body'] == issue['body'], 'issue_contract_changed'
+final_pull, final_checks = identity()
+assert final_checks == checks and final_pull['title'] == pull['title'] and final_pull['body'] == pull['body'], 'pr_or_ci_changed'
+final_issue = api(f'issues/{ISSUE}')
+assert final_issue['state'] == 'open' and final_issue['title'] == issue['title'] and final_issue['body'] == issue['body'], 'issue_contract_changed'
 save('review.json', review)
 print('CLAUDE_REVIEW_COMPLETED', review['decision'], 'findings', len(review['findings']), flush=True)
 if review['decision'] != 'pass':
