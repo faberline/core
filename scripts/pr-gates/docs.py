@@ -91,7 +91,10 @@ def main(argv=None):
     identity=unit.verify_identity(a.root,a.expected_head,a.expected_base,a.baseline_root)
     identity.update(run_id=os.environ.get('GITHUB_RUN_ID'),run_attempt=os.environ.get('GITHUB_RUN_ATTEMPT'),
                     driver_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest())
-    run(a.root,a.package,a.profile,identity)
+    try:
+        run(a.root,a.package,a.profile,identity)
+    finally:
+        unit.verify_identity(a.root,a.expected_head,a.expected_base,a.baseline_root)
 
 
 if __name__=='__main__':main()

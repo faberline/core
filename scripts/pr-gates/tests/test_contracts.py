@@ -129,7 +129,21 @@ class EvidenceTests(unittest.TestCase):
         argv=['run','--root','/head','--baseline-root','/base','--expected-head','a'*40,'--expected-base','b'*40,'--package','leaf','--profile','default']
         with patch.object(c.unit,'verify_identity',return_value={})as identities,patch.object(c,'load',return_value=[package()]),patch.object(c,'run')as run:
             c.main(argv)
-        self.assertEqual(identities.call_count,2);run.assert_called_once()
+        self.assertEqual(identities.call_count,3);run.assert_called_once()
+
+    def test_changed_checkout_after_contract_refuses_passing_result(self):
+        argv=['run','--root','/head','--baseline-root','/base','--expected-head','a'*40,'--expected-base','b'*40,'--package','leaf','--profile','default']
+        with patch.object(c.unit,'verify_identity',side_effect=[{},{},ValueError('checkout changed')]), \
+             patch.object(c,'load',return_value=[package()]),patch.object(c,'run')as run:
+            with self.assertRaisesRegex(ValueError,'checkout changed'):c.main(argv)
+        run.assert_called_once()
+
+    def test_failed_contract_still_rechecks_checkout(self):
+        argv=['run','--root','/head','--baseline-root','/base','--expected-head','a'*40,'--expected-base','b'*40,'--package','leaf','--profile','default']
+        with patch.object(c.unit,'verify_identity',return_value={})as identities, \
+             patch.object(c,'load',return_value=[package()]),patch.object(c,'run',side_effect=ValueError('product failed')):
+            with self.assertRaisesRegex(ValueError,'product failed'):c.main(argv)
+        self.assertEqual(identities.call_count,3)
 
     def test_invalid_row_refuses_before_product_execution(self):
         argv=['run','--root','/head','--baseline-root','/base','--expected-head','a'*40,'--expected-base','b'*40,'--package','other','--profile','default']

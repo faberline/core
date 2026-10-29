@@ -16,6 +16,19 @@ def output(names=('example',),ignored=()):
 
 
 class DocumentationEvidenceTests(unittest.TestCase):
+    def test_documentation_rechecks_checkout_after_success_and_failure(self):
+        argv=['--root','/head','--baseline-root','/base','--expected-head','a'*40,'--expected-base','b'*40,'--package','leaf','--profile','default']
+        pkg=dict(name='leaf',features={})
+        raw=dict(workspace_members=['leaf-id'],packages=[dict(id='leaf-id',name='leaf',targets=[dict(kind=['lib'],doctest=True)])])
+        for failure in (None,ValueError('doc failed')):
+            with self.subTest(failure=failure),patch.object(d.unit,'verify_identity',return_value={})as identity, \
+                 patch.object(d,'metadata',return_value=(raw,[pkg])),patch.object(d.unit,'compare_inventory'), \
+                 patch.object(d,'run',side_effect=failure):
+                if failure:
+                    with self.assertRaisesRegex(ValueError,'doc failed'):d.main(argv)
+                else:d.main(argv)
+                self.assertEqual(identity.call_count,3)
+
     def test_complete_named_roster_is_retained(self):
         result=d.evidence(output())
         self.assertEqual(result['harnesses'][0]['roster'],['example'])

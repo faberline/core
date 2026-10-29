@@ -57,8 +57,11 @@ def main(argv=None):
         c.unit.verify_identity(a.root,a.expected_head,a.expected_base,a.baseline_root)
         command=['cargo','test','--release','--locked','-p',package,*selector,'--all-features','--',
                  '--include-ignored','--format','pretty','--color','never','--test-threads','1','--nocapture']
-        result=subprocess.run(command,cwd=a.root,capture_output=True,text=True)
-        sys.stdout.write(result.stdout);sys.stdout.flush();sys.stderr.write(result.stderr);sys.stderr.flush()
+        try:
+            result=subprocess.run(command,cwd=a.root,capture_output=True,text=True)
+            sys.stdout.write(result.stdout);sys.stdout.flush();sys.stderr.write(result.stderr);sys.stderr.flush()
+        finally:
+            c.unit.verify_identity(a.root,a.expected_head,a.expected_base,a.baseline_root)
         record=dict(schema='CORE_PERFORMANCE_EVIDENCE_V1',workload=kind,command=command,provenance=identity,
             run_id=os.environ.get('GITHUB_RUN_ID'),run_attempt=os.environ.get('GITHUB_RUN_ATTEMPT'),
             stdout_sha256=hashlib.sha256(result.stdout.encode()).hexdigest(),stderr_sha256=hashlib.sha256(result.stderr.encode()).hexdigest())

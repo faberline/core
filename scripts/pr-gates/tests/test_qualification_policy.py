@@ -42,6 +42,12 @@ class FullPolicyTests(unittest.TestCase):
         self.assertIn('cargo clippy --locked -p raft-runtime --all-targets -- -D warnings', workflow)
         self.assertIn('python3 scripts/pr-gates/proposal_gate.py', workflow)
 
+    def test_registry_prefetch_does_not_write_a_lockfile_into_candidate(self):
+        workflow=(ROOT/WORKFLOW).read_text()
+        self.assertIn('cp -R candidate/scripts/pr-gates/generated-rust-dependencies "$RUNNER_TEMP/generated-rust-dependencies"',workflow)
+        self.assertIn('cargo fetch --manifest-path "$RUNNER_TEMP/generated-rust-dependencies/Cargo.toml"',workflow)
+        self.assertNotIn('cargo fetch --manifest-path candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.toml',workflow)
+
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
         self.assertEqual(CONFIG['aw_revision'],'8e2e93e5ba8feb30b6668de39139980ea3bb085c')
         for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
@@ -132,6 +138,18 @@ class FullPolicyTests(unittest.TestCase):
             self.assertTrue(all(value['status']=='unknown' for value in case['applicability'].values()))
         pull_with_missing=pull();pull_with_missing['body']='Closes #999999'
         self.assertIn('linked issue has no reviewed contract',q.select(CONFIG,pull_with_missing,files())['issues'])
+
+    def test_checkout_issue_keeps_every_existing_framework_gate(self):
+        policy=q.validate(CONFIG)
+        previous=policy['contracts']['76'];current=policy['contracts']['78']
+        self.assertEqual(current['title_sha256'],'3a5136fe711e785f7207b301b354ea5e99c9636df12911b81d993053c7ee1838')
+        self.assertEqual(current['body_sha256'],'f310be79e35a53855ab791d2eda2f16301a2110c746ee5f8e4b16b28c634cf35')
+        for category in q.CATEGORIES:
+            self.assertEqual(current['applicability'][category]['status'],'required')
+            self.assertEqual(current['applicability'][category]['checks'],previous['applicability'][category]['checks'])
+        self.assertEqual(current['additional'],[])
+        self.assertEqual(current['unresolved'],[])
+        self.assertEqual(CONFIG['qualification'],CONFIG['ci_handoff_policy']['qualification'])
 
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
         raw=(ROOT/WORKFLOW).read_text()
