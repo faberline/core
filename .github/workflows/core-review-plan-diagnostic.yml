@@ -1,0 +1,75 @@
+name: Read-only Core review plan diagnostic
+on:
+  push:
+    branches: [codex/core79-review-plan-diagnostic]
+    paths: [.github/workflows/core-review-plan-diagnostic.yml]
+permissions: {contents: read, actions: read, pull-requests: read, issues: read}
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: faberline/aw
+          ref: 8e2e93e5ba8feb30b6668de39139980ea3bb085c
+          persist-credentials: false
+      - name: Prepare hash-locked Python without credentials
+        id: runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="$(mktemp -d "$RUNNER_TEMP/plan-diagnostic-XXXXXX")"
+          python3 -I -m venv "$runtime"
+          "$runtime/bin/python" -I -m pip --isolated install --disable-pip-version-check --no-input --no-deps --only-binary=:all: --require-hashes --index-url https://pypi.org/simple -r plugins/faberline/skills/issue-ci/scripts/readiness-requirements.txt
+          echo "python=$runtime/bin/python" >> "$GITHUB_OUTPUT"
+      - name: Provision signed Claude without credentials
+        id: provision
+        shell: bash
+        run: python3 -I -B plugins/faberline/skills/issue-ci/scripts/policy_adoption_provision.py
+      - name: Install verified binary
+        shell: bash
+        env:
+          VERIFIED_BINARY: ${{ steps.provision.outputs.binary }}
+        run: sudo install -m 0755 -- "$VERIFIED_BINARY" /usr/local/bin/claude
+      - name: Identify planning uncertainty without approval or writes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AW_ACTION_REF: 8e2e93e5ba8feb30b6668de39139980ea3bb085c
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PLAN_PYTHON: ${{ steps.runtime.outputs.python }}
+        run: |
+          "$PLAN_PYTHON" -I -B - <<'PY'
+          import importlib.util,json,os
+          from pathlib import Path
+          path=Path('plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py')
+          spec=importlib.util.spec_from_file_location('trusted_target',path)
+          module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+          head='45e22a31a7cbd541a2e1f3216fe48b33ebe2a719'
+          packet,trees=module.preflight(module.a.ci,'faberline/core',79,head)
+          available=sorted({entry['path'] for tree in trees.values() for entry in tree
+              if isinstance(entry,dict) and entry.get('type')=='blob'
+              and entry.get('mode') in ('100644','100755') and type(entry.get('size')) is int
+              and 0<=entry['size']<=262144 and module.a.valid_path(entry.get('path'))})
+          packet=dict(packet,available_source_paths=available)
+          lines=[packet['issue']['title']]+[line for line in packet['issue']['body'].splitlines() if line.strip()]
+          plan_schema=module.obj({'requirements':{'type':'array','minItems':1,'items':module.obj({'id':module.STR,'requirement':module.STR,'issue_quote':{'type':'string','enum':lines},'supporting_paths':module.STRINGS})},'uncertainties':module.STRINGS})
+          prompt=module.SYSTEM+'\nPlan every issue requirement and request necessary supporting paths. Choose at most 64 distinct exact names from available_source_paths. The pinned shared framework source is already supplied separately. A source request or missing initial context is not a contract uncertainty. Report only material ambiguity that source cannot resolve. Do not make a verdict.'
+          token=os.environ['CLAUDE_CODE_OAUTH_TOKEN']
+          result=module.model.invoke_schema(packet,token,prompt,plan_schema,max_packet=4*1024*1024)
+          assert isinstance(result,dict) and isinstance(result.get('uncertainties'),list) and isinstance(result.get('requirements'),list)
+          uncertainties=result['uncertainties']
+          assert len(uncertainties)<=20 and all(isinstance(x,str) and 0<len(x)<=4000 for x in uncertainties)
+          paths=[p for row in result['requirements'] for p in row.get('supporting_paths',[])]
+          assert all(isinstance(p,str) for p in paths)
+          unique=set(paths)
+          summary=dict(head=head,uncertainties=uncertainties,requirement_count=len(result['requirements']),
+              distinct_paths=len(unique),unsafe_paths=sum(not module.a.valid_path(p) for p in unique),
+              unavailable_paths=sum(p not in available for p in unique),
+              unavailable_names=sorted(p for p in unique if p not in available and module.a.valid_path(p)),
+              supported_path_limit=64)
+          encoded=json.dumps(summary,ensure_ascii=True,separators=(',',':'))
+          assert token not in encoded and len(encoded)<60000
+          print('PLAN_DIAGNOSTIC_V1 '+encoded,flush=True)
+          PY
