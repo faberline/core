@@ -185,7 +185,9 @@ product requirements must stay held; never invent criteria or waive source gates
 AW issue 107 supplies complete bounded source evidence for independent review.
 Review every changed file and the full issue. Confirm requested paths are safe and
 complete with no silent truncation. Verify immutable Git blob identities and distinguish
-the candidate writer revision from the evaluator revision. Check the 64 path, 262144
+the candidate writer revision from the evaluator revision. Check the previous finding:
+all transitive sibling modules and local data are included at both pinned revisions,
+and closure tests detect omitted modules. Check the 64 path, 262144
 byte per file and 4 MiB packet bounds. Missing or invalid evidence must never pass.
 The later independent grant, CI and protected branch checks remain mandatory.
 No candidate code runs with credentials. Do not alter peer work.
@@ -194,7 +196,7 @@ packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
-    qualification='All consumer holds and provider rules remain. Shared source has 432 isolated controls including source-security controls, without skips.')
+    qualification='All consumer holds and provider rules remain. Shared source has 434 isolated controls including source-security controls, without skips.')
 packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():

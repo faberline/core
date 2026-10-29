@@ -1,0 +1,50 @@
+{
+  "repo": "faberline/aw",
+  "pr": 108,
+  "head": "511a1c889c646565045726391bac3d9d2573b1e8",
+  "base": "ac300675f719b3d6a62a4b7c202016d4ef57de06",
+  "decision": "fail",
+  "summary": "Fail: requirement R2 is not fully met. The supporting-path limit is now 64, every requested path is collected or the review stops, and the per-file, blob and 4 MiB packet limits are kept. The rechecks after the model now include the framework sources, and the tests cover 41, 64 and 65 paths, unsafe and absent paths, blob identity and the packet limit. The hosted control job passed. However, the fixed FRAMEWORK_SOURCES list does not supply the complete AW evaluator or candidate lifecycle controller. At the evaluator revision it supplies only the four policy_adoption scripts. The modules they run at that revision (native_merge.py, claude_review.py, handoff.py, qualification.py, readiness.py, action.py) are omitted. At the candidate revision it supplies only native_merge.py and qualification.py, without the controller's other modules.",
+  "reviewed_files": [
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
+    "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_target_review.py"
+  ],
+  "requirement_results": [
+    {
+      "id": "R1",
+      "status": "met",
+      "evidence": "supporting_sources uses MAX_SUPPORTING_PATHS=64 and still requires distinct paths that pass valid_path. Every path must exist at base or head or the review stops with target_supporting_source_missing. source_entry still enforces the 262144-byte limit and the blob, and the size is checked again after reading (target_supporting_truncated). preflight checks the 4 MiB limit and invoke_schema checks it again with max_packet=4 MiB. Nothing is dropped or truncated silently."
+    },
+    {
+      "id": "R2",
+      "status": "missing",
+      "evidence": "framework_sources reads FRAMEWORK_SOURCES as data only, through review.blob, which checks the GitHub sha against the computed Git blob. Each entry records role, repo, ref and blob, and the candidate ref (aw_revision) is kept separate from the evaluator ref (AW_ACTION_REF). But the list is incomplete. policy_adoption.py runs native_merge.py, claude_review.py, handoff.py, readiness.py, action.py and qualification.py at the evaluator revision; none of these is supplied at that revision. The candidate controller (native_merge.py at aw_revision) also runs claude_review.py, handoff.py, native_review_index.py, readiness.py and action.py, which are not supplied."
+    },
+    {
+      "id": "R3",
+      "status": "met",
+      "evidence": "produce runs preflight again before the final review (fresh==initial) and after the model (final==initial). Each run re-reads the PR, issue, CI, provider and source data and now also the framework sources, so any change blocks. A framework read failure in the initial preflight stops the run with no receipt, and in the recheck it produces a block."
+    },
+    {
+      "id": "R4",
+      "status": "met",
+      "evidence": "The planning-question handling, the CI evidence checks (candidate_evidence), base_rules with no bypass actors, and the separate-grant wording in the prompt are unchanged. The only prompt change is that the planner may choose up to 64 paths and that the framework source is supplied separately."
+    },
+    {
+      "id": "R5",
+      "status": "met",
+      "evidence": "New tests cover rosters of 41 and 64 paths (complete, with no truncation), 65 paths and '../unsafe' (both rejected), absent paths (existing test), pinned framework blob identity including a non-hex ref and a corrupted sha, and the 4 MiB packet limit. The hosted control job 'complete isolated native merge controls' passed at this head. This review is the independent exact-head review."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Pinned framework sources do not fully cover the AW evaluator or candidate lifecycle controller",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
+      "line": 22,
+      "detail": "The issue requires complete authenticated source data for the pinned AW target evaluator and candidate lifecycle controller. FRAMEWORK_SOURCES is a fixed list of six files. At the evaluator ref (AW_ACTION_REF) it reads only the four policy_adoption*.py scripts. policy_adoption.py itself runs native_merge.py, claude_review.py, handoff.py, readiness.py, action.py and qualification.py at that ref. Some of these run checks central to verifying the later grant: native.base_rules, binding, writer_contract, handoff_policy, review.blob, pull_identity and linked_issue. None of them is supplied at the evaluator revision. At the candidate ref (aw_revision) only native_merge.py and qualification.py are supplied, although the controller also runs claude_review.py, handoff.py (process_head), native_review_index.py, readiness.py and action.py. The reviewer therefore cannot see the actual evaluator code behind the grant and provider checks, and the candidate controller is incomplete. The new test only checks that the six listed files are fetched and bound; it does not check that the list is complete.",
+      "required_fix": "Supply every AW module the evaluator executes at AW_ACTION_REF and every module the candidate controller executes at aw_revision. Read each file as data and bind it to its repo, revision and verified Git blob, within the 4 MiB packet limit. Add a test that checks each entry module's imports are fully covered at both revisions."
+    }
+  ],
+  "uncertainties": []
+}
