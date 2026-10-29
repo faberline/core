@@ -234,10 +234,12 @@ if REPO.endswith('/lumen'):
 contract = issue['title'] + '\n' + issue['body'] + '\n' + human
 PLAN['properties']['requirements']['items']['properties']['contract_quote'] = {
     'type': 'string', 'enum': [line for line in contract.splitlines() if line.strip()]}
+PLAN['properties']['requirements']['items']['properties']['supporting_paths']['items'] = {
+    'type': 'string', 'enum': sorted(set(trees[BASE]) | set(trees[HEAD]))}
 plan = invoke(packet, PLAN, '''PLANNING phase. Extract all original issue acceptance and Never requirements,
 plus the explicit human scope extensions. Request only necessary same-repo source
 files in supporting_paths. Do not make a final verdict or report bugs yet.
-Use available_head_paths for exact source names. At most 64 distinct supporting
+Use exact schema-listed repository paths only. Never use relative segments such as .. or invent paths. At most 64 distinct supporting
 files can be collected. Request necessary source, not speculative file names.
 Each contract_quote must select one exact whole line from the schema enum.
 Use the full issue and human scope to derive requirements, not just that line.
