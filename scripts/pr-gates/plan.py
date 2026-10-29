@@ -202,7 +202,7 @@ def verify_clean(root):
         ['git', '-C', str(root), 'status', '--porcelain=v1', '--untracked-files=all',
          '--ignore-submodules=none'], text=True)
     if status:
-        raise ValueError(f'checkout contains tracked or untracked changes: {root}')
+        raise ValueError(f'checkout contains tracked or untracked changes: {root}: {status[:2048]!r}')
 
 
 def verify_identity(root, expected_head, expected_base, baseline_root):

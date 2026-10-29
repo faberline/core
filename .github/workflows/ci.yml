@@ -273,8 +273,9 @@ jobs:
           "$RUNNER_TEMP/pr-contracts-python/bin/python" -m pip install 'pydantic>=2,<3'
           "$RUNNER_TEMP/pr-contracts-python/bin/python" -m pip freeze
           echo "$RUNNER_TEMP/pr-contracts-python/bin" >> "$GITHUB_PATH"
-          cargo fetch --manifest-path candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.toml
-          sha256sum candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.lock
+          cp -R candidate/scripts/pr-gates/generated-rust-dependencies "$RUNNER_TEMP/generated-rust-dependencies"
+          cargo fetch --manifest-path "$RUNNER_TEMP/generated-rust-dependencies/Cargo.toml"
+          sha256sum "$RUNNER_TEMP/generated-rust-dependencies/Cargo.lock"
       - name: Create disposable Kind cluster for live certificate assertions
         if: matrix.package == 'service-k8s'
         shell: bash

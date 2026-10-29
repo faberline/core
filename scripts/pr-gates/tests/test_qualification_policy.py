@@ -42,6 +42,12 @@ class FullPolicyTests(unittest.TestCase):
         self.assertIn('cargo clippy --locked -p raft-runtime --all-targets -- -D warnings', workflow)
         self.assertIn('python3 scripts/pr-gates/proposal_gate.py', workflow)
 
+    def test_registry_prefetch_does_not_write_a_lockfile_into_candidate(self):
+        workflow=(ROOT/WORKFLOW).read_text()
+        self.assertIn('cp -R candidate/scripts/pr-gates/generated-rust-dependencies "$RUNNER_TEMP/generated-rust-dependencies"',workflow)
+        self.assertIn('cargo fetch --manifest-path "$RUNNER_TEMP/generated-rust-dependencies/Cargo.toml"',workflow)
+        self.assertNotIn('cargo fetch --manifest-path candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.toml',workflow)
+
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
         self.assertEqual(CONFIG['aw_revision'],'8e2e93e5ba8feb30b6668de39139980ea3bb085c')
         for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:

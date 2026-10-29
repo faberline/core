@@ -146,14 +146,14 @@ class CleanCheckoutTests(unittest.TestCase):
             git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'fixture')
             plan.verify_clean(root)
             (root/'file').write_text('changed\n')
-            with self.assertRaisesRegex(ValueError, 'checkout contains'):
+            with self.assertRaisesRegex(ValueError, 'checkout contains.*file'):
                 plan.verify_clean(root)
             git('add', 'file')
-            with self.assertRaisesRegex(ValueError, 'checkout contains'):
+            with self.assertRaisesRegex(ValueError, 'checkout contains.*file'):
                 plan.verify_clean(root)
             git('-c', 'user.name=Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'updated fixture')
             (root/'untracked').write_text('new\n')
-            with self.assertRaisesRegex(ValueError, 'checkout contains'):
+            with self.assertRaisesRegex(ValueError, 'checkout contains.*untracked'):
                 plan.verify_clean(root)
 
 
