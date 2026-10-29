@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: faberline/aw
-          ref: ae15be60678d27c407c1873866892505bb089e17
+          ref: 0de40825936af55686114766635837b123e56c7a
           persist-credentials: false
       - name: Prepare hash-locked Python without credentials
         id: runtime
@@ -46,16 +46,26 @@ jobs:
           spec=importlib.util.spec_from_file_location('trusted_target',path)
           module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
           head='870c45c7037140a7846842aaeecb2e0e21d47c36'
-          packet,_=module.preflight(module.a.ci,'faberline/core',75,head)
+          packet,trees=module.preflight(module.a.ci,'faberline/core',75,head)
+          available=sorted({entry['path'] for tree in trees.values() for entry in tree
+              if isinstance(entry,dict) and entry.get('type')=='blob'
+              and entry.get('mode') in ('100644','100755') and type(entry.get('size')) is int
+              and 0<=entry['size']<=262144 and module.a.valid_path(entry.get('path'))})
+          packet=dict(packet,available_source_paths=available)
           lines=[packet['issue']['title']]+[line for line in packet['issue']['body'].splitlines() if line.strip()]
           plan_schema=module.obj({'requirements':{'type':'array','minItems':1,'items':module.obj({'id':module.STR,'requirement':module.STR,'issue_quote':{'type':'string','enum':lines},'supporting_paths':module.STRINGS})},'uncertainties':module.STRINGS})
-          prompt=module.SYSTEM+'\nPlan every issue requirement and request necessary supporting paths. A source request or missing initial context is not a contract uncertainty. Report only material ambiguity that source cannot resolve. Do not make a verdict.'
+          prompt=module.SYSTEM+'\nPlan every issue requirement and request necessary supporting paths. Choose only exact names from available_source_paths. A source request or missing initial context is not a contract uncertainty. Report only material ambiguity that source cannot resolve. Do not make a verdict.'
           token=os.environ['CLAUDE_CODE_OAUTH_TOKEN']
           result=module.model.invoke_schema(packet,token,prompt,plan_schema,max_packet=4*1024*1024)
           assert isinstance(result,dict) and isinstance(result.get('uncertainties'),list) and isinstance(result.get('requirements'),list)
           uncertainties=result['uncertainties']
           assert len(uncertainties)<=20 and all(isinstance(x,str) and 0<len(x)<=4000 for x in uncertainties)
-          summary=dict(head=head,uncertainties=uncertainties,requirement_count=len(result['requirements']))
+          paths=[p for row in result['requirements'] for p in row.get('supporting_paths',[])]
+          assert all(isinstance(p,str) for p in paths)
+          unique=set(paths)
+          summary=dict(head=head,uncertainties=uncertainties,requirement_count=len(result['requirements']),
+              distinct_paths=len(unique),unsafe_paths=sum(not module.a.valid_path(p) for p in unique),
+              unavailable_paths=sum(p not in available for p in unique),supported_path_limit=32)
           encoded=json.dumps(summary,ensure_ascii=True,separators=(',',':'))
           assert token not in encoded and len(encoded)<60000
           print('PLAN_DIAGNOSTIC_V1 '+encoded,flush=True)
