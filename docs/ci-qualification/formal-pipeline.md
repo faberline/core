@@ -34,6 +34,12 @@ documentation gate. Any ignored examples require a complete release run with
 doctest collection is recorded as no examples, not as unit evidence. Missing
 harness output fails, and the separate mandatory unit target remains nonzero.
 
+Each library or binary unit execution must match its nonempty libtest discovery
+roster before and after the run. An ignored unit test must also run in release
+mode, whose full roster is checked in the same way. Cargo optional dependency
+features are included when they enable a binary's required features; weak
+dependency features alone do not enable that binary.
+
 The 62 integration rows derive from all 29 current Cargo integration targets
 and every applicable default, no-default, individual-feature and all-features
 profile. Each enabled target runs in release mode with `--include-ignored`.
