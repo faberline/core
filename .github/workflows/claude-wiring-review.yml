@@ -1,7 +1,7 @@
-name: Independent Claude rejected-review todo review
+name: Independent Claude issue contract v2 review
 on:
   push:
-    branches: [codex/claude-reject-todo-review]
+    branches: [codex/issue-contract-v2-review]
     paths: [.github/workflows/claude-wiring-review.yml, scripts/claude-wiring-review/**]
 permissions:
   contents: read
@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: faberline/aw
-          ref: 568c7512c5d4daad65e0430b8b6e623ad8ee4835
+          ref: 8cad912c9e7bf76fe1ca1a7facdb0fecc057166f
           path: scripts/claude-wiring-review/source
           fetch-depth: 0
           persist-credentials: false
@@ -36,15 +36,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           REVIEW_REPO: faberline/aw
-          REVIEW_PR: '94'
-          REVIEW_ISSUE: '93'
-          REVIEW_HEAD: 568c7512c5d4daad65e0430b8b6e623ad8ee4835
-          REVIEW_BASE: 9a513a29bc38fb925e116d8dc36770d397e3a3f1
+          REVIEW_PR: '96'
+          REVIEW_ISSUE: '95'
+          REVIEW_HEAD: 8cad912c9e7bf76fe1ca1a7facdb0fecc057166f
+          REVIEW_BASE: 093c6a693f7577283898fd2d27ab61169f1950c6
         run: python3 -I scripts/claude-wiring-review/runner.py
       - name: Keep review evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: claude-reject-todo-568c751
+          name: claude-issue-contract-v2-8cad912
           path: scripts/claude-wiring-review/evidence/
           if-no-files-found: warn

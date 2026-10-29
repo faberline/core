@@ -119,25 +119,22 @@ issue = {k: issue[k] for k in ('number', 'title', 'body')}
 assert git('rev-parse', 'HEAD').strip() == HEAD
 paths = git('diff', '--name-only', '--no-renames', BASE + '...' + HEAD).splitlines()
 diff = git('diff', '--no-ext-diff', '--no-renames', '--unified=5', BASE + '...' + HEAD)
-human = """The human explicitly corrected the rejected-review outcome to todo on 2026-10-29.
-Implement exactly issue93: authenticated fail/block revokes merge approval and
-returns its one linked open issue to sole todo, while preserving unrelated labels.
-Do not change normal developer todo-to-doing claims or positive merge qualification.
-A durable pending/ready/applied handoff must recover interrupted writes without
-undoing a later agent claim when an old verified negative receipt is replayed.
-Retain current-head/base, issue contract, latest attempt and producer/result checks,
-all CI/coverage holds, source security, native protection and test thresholds.
-This is a shared source prerequisite for Core's pipeline. Consumer rollout and
-Core/Lumen product qualification remain later steps, not already completed here.
-No source adoption bypass, cloud infrastructure changes or peer schedule edits.
-Review all source changes and negative/error/retry paths. The model has no tools,
-execution, credentials, comments, labels, merge or issue-closing authority.
+human = """The user requires all six service pipelines to retain every existing unit,
+functional, E2E, performance and exact-head/base gate. Unknown source issue
+requirements must hold qualification and paid review before merge. The latest
+instruction says failed CI or review returns the issue to todo. Shared source
+issue 95 is an explicit prerequisite for Core's current pipeline. It must keep
+v1 compatibility, all existing holds and protected gate-change restrictions.
+Candidate policy inspection is metadata only and is never policy approval.
+No production consumer activation, bypass, cloud or schedule change is allowed.
+The final decision reviews issue 95 at this exact head and base; it does not
+claim Core or any other consumer pipeline has been delivered.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, complete_diff=diff, current_head_ci=checks,
     available_head_paths=git('ls-tree', '-r', '--name-only', HEAD).splitlines(),
-    qualification='Consumer failure-only and coverage holds remain. Shared source has 354 complete isolated controls, including inherited source-security controls without skips.')
+    qualification='Consumer failure-only and coverage holds remain. Shared source has 366 complete isolated controls, including inherited source-security controls without skips.')
 parent=BASE
 assert subprocess.run(['git','-C',str(ROOT/'source'),'merge-base','--is-ancestor',parent,HEAD]).returncode==0
 inherited=[]
