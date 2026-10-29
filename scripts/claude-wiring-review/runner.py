@@ -119,27 +119,26 @@ issue = {k: issue[k] for k in ('number', 'title', 'body')}
 assert git('rev-parse', 'HEAD').strip() == HEAD
 paths = git('diff', '--name-only', '--no-renames', BASE + '...' + HEAD).splitlines()
 diff = git('diff', '--no-ext-diff', '--no-renames', '--unified=5', BASE + '...' + HEAD)
-human = """The human explicitly requests formal Claude review and automatic completion
-across Core, Lumen, Tape, Keep, Defer and Relay. Review success plus unchanged
-required CI and qualification gates must lead to merge with linked issue closure.
-Review failure returns the linked open issue to agy:doing. Do not weaken any
-threshold, ignore unknown coverage, or modify other sessions' schedules or work.
-This AW PR delivers shared implementation, immutable action and templates.
-Its source includes the previously published c9ec41e final-review dependency.
-Consumer workflow rollout, actual workflow IDs and provider settings are the
-next distinct step after this shared code passes independent review. They do
-not belong as hard-coded identities in this reusable shared source PR.
-Do not treat an honestly retained qualification hold as a reason to bypass it.
-Review correctness of both pass and negative decisions, error/retry paths,
-per-PR attempt freshness, required native status/provider protection, and
-closing-keyword semantics. The model has no tools, writes or execution rights.
+human = """The human explicitly corrected the rejected-review outcome to todo on 2026-10-29.
+Implement exactly issue93: authenticated fail/block revokes merge approval and
+returns its one linked open issue to sole todo, while preserving unrelated labels.
+Do not change normal developer todo-to-doing claims or positive merge qualification.
+A durable pending/ready/applied handoff must recover interrupted writes without
+undoing a later agent claim when an old verified negative receipt is replayed.
+Retain current-head/base, issue contract, latest attempt and producer/result checks,
+all CI/coverage holds, source security, native protection and test thresholds.
+This is a shared source prerequisite for Core's pipeline. Consumer rollout and
+Core/Lumen product qualification remain later steps, not already completed here.
+No source adoption bypass, cloud infrastructure changes or peer schedule edits.
+Review all source changes and negative/error/retry paths. The model has no tools,
+execution, credentials, comments, labels, merge or issue-closing authority.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, complete_diff=diff, current_head_ci=checks,
     available_head_paths=git('ls-tree', '-r', '--name-only', HEAD).splitlines(),
-    qualification='Consumer failure-only and coverage holds remain. Shared source has 344 complete isolated controls, including inherited source-security controls without skips.')
-parent='c9ec41e3e01c2a0c9462e3de5c64ed0a5ea320d5'
+    qualification='Consumer failure-only and coverage holds remain. Shared source has 351 complete isolated controls, including inherited source-security controls without skips.')
+parent=BASE
 assert subprocess.run(['git','-C',str(ROOT/'source'),'merge-base','--is-ancestor',parent,HEAD]).returncode==0
 inherited=[]
 for path in paths:
@@ -148,7 +147,7 @@ for path in paths:
         candidate=git('rev-parse',HEAD+':'+path).strip()
         inherited.append(dict(path=path,published_parent_blob=prior.stdout.strip(),candidate_blob=candidate,unchanged=prior.stdout.strip()==candidate))
 packet['published_parent_source_identity']=dict(commit=parent,ancestor_of_candidate=True,files=inherited)
-previous=ROOT/'prior-findings.json'
+previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():
     prior=json.loads(previous.read_text())
     assert prior['repo']==REPO and prior['pr']==PR and re.fullmatch('[0-9a-f]{40}',prior['head'])
