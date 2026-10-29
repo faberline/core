@@ -1,7 +1,7 @@
-name: Independent Claude protected policy adoption review
+name: Independent Claude provider policy review
 on:
   push:
-    branches: [codex/policy-adoption-metadata-review]
+    branches: [codex/provider-policy-metadata-review]
     paths: [.github/workflows/claude-wiring-review.yml, scripts/claude-wiring-review/**]
 permissions:
   contents: read
@@ -28,15 +28,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           REVIEW_REPO: faberline/aw
-          REVIEW_PR: '98'
-          REVIEW_ISSUE: '97'
-          REVIEW_HEAD: 17bbd9ff1824e9e1e7daf935b9f23d3a397a4aee
-          REVIEW_BASE: 41260dc33701b79404766c06121731341c609328
+          REVIEW_PR: '100'
+          REVIEW_ISSUE: '99'
+          REVIEW_HEAD: 9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd
+          REVIEW_BASE: 6ead8b92652ae29816b634656b57c7af3f1ff596
         run: python3 -I scripts/claude-wiring-review/runner.py
       - name: Keep review evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: claude-policy-adoption-metadata-17bbd9f
+          name: claude-provider-policy-metadata-9ce4b2e
           path: scripts/claude-wiring-review/evidence/
           if-no-files-found: warn
