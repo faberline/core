@@ -1,12 +1,12 @@
 # Formal Claude review and PR completion
 
 The candidate pins shared source
-`faberline/aw@568c7512c5d4daad65e0430b8b6e623ad8ee4835` (AW #94).
-Its 354 complete shared/security controls and independent Claude review passed.
+`faberline/aw@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44` (AW #102).
+Its 423 complete shared/security controls and independent Claude review passed.
 This is not yet a Core adoption receipt.
 
 The candidate's one authoritative policy is
-`.github/issue-ci-required-gates.json`. It requires the complete 140-job
+`.github/issue-ci-required-gates.json`. It requires the complete 144-job
 workspace baseline described in [formal-pipeline.md](formal-pipeline.md).
 Every declared unit/static and integration feature row is required. Missing,
 skipped, cancelled, stale or partial evidence blocks qualification. There are
