@@ -1,0 +1,78 @@
+{
+  "repo": "faberline/aw",
+  "pr": 102,
+  "head": "c6193807870db65afa2cb9c26fd08fd73fc3c758",
+  "base": "fa05d50695ed39636cae9e46f7fe9cc6bd390907",
+  "decision": "block",
+  "summary": "The change keeps reading logs only from the authenticated GitHub job-log endpoint, captures them through a pipe without printing, and leaves the existing identity, size, malformed-record and duplicate-record checks in place. Incomplete reviews now get a fixed diagnostic code, stay blocked, and the path that returns failed or blocked reviews to todo is untouched. Two necessary points cannot be confirmed from the supplied evidence. (1) The log-read repair relies on a `gh api --allow-escape-sequences` flag, found by searching the help text. Nothing shows the hosted CLI has that flag or that it fixes the log read; the only hosted job ran mocked unit tests. If the flag is absent, the code falls back to the exact command that failed. (2) The diagnostic uses a refusal code only when the error message exactly equals an allowed code. The function that raises these refusals is not in the supplied sources, and the new test only raises hand-made errors. Real refusals could therefore all appear as unclassified_error.",
+  "reviewed_files": [
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
+    "plugins/faberline/skills/issue-ci/scripts/readiness.py",
+    "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_target_review.py",
+    "plugins/faberline/skills/issue-ci/tests/test_readiness.py"
+  ],
+  "requirement_results": [
+    {
+      "id": "R1-authenticated-log-endpoint",
+      "status": "uncertain",
+      "evidence": "readiness.py job_log (lines ~45-57) still calls only repos/{repo}/actions/jobs/{job_id}/logs through subprocess.check_output, so nothing goes to a terminal. Escape bytes before a marker are not accepted (records startswith check). But the repair only works if the hosted gh supports '--allow-escape-sequences', detected by searching the `gh api --help` text. No evidence shows the flag exists or that it repairs the log read seen on Core PR #75. Without it, the old failing command runs."
+    },
+    {
+      "id": "R2-fail-closed-identity",
+      "status": "met",
+      "evidence": "The size check (MAX_LOG), strict UTF-8 decoding, records() malformed and duplicate-key refusals, and the identity checks in policy_adoption_review_outcome.py and readiness.verify are unchanged. A new test covers oversized logs, invalid UTF-8 and a failed fetch, and expects an error in each case."
+    },
+    {
+      "id": "R3-bounded-diagnostic",
+      "status": "uncertain",
+      "evidence": "policy_adoption_target_review.py lines ~182-199: the decision stays block and only '{stage}/{code}' appears, chosen from a fixed allowlist, 'model_timeout' or 'unclassified_error'. No exception text is exposed. Whether real need() refusals match the allowlist depends on str(error) being exactly the code, and need()'s source was not supplied. The test raises only hand-made RuntimeError instances."
+    },
+    {
+      "id": "R4-negative-path-todo",
+      "status": "met",
+      "evidence": "policy_adoption_review_outcome.py and native return_todo are unchanged. A block receipt now always has one nonempty diagnostic uncertainty, which satisfies outcome_negative_without_reason."
+    },
+    {
+      "id": "R5-isolated-controls",
+      "status": "uncertain",
+      "evidence": "Tests were added for CLI help with and without the flag, escape handling, an oversized, invalid or failed fetch, and the diagnostic allowlist (test_readiness.py AuthenticatedJobLogTests; test_policy_adoption_target_review.py line 62). The hosted controls job succeeded at the exact head. No control runs a real need() refusal through produce, and no control reads a real job log."
+    },
+    {
+      "id": "R6-gates-unchanged",
+      "status": "met",
+      "evidence": "The workflow, action files and gate configuration are unchanged at head (same sha256 as base). Only the four listed files changed."
+    },
+    {
+      "id": "H1-source-request-not-ambiguity",
+      "status": "met",
+      "evidence": "The planning prompt now says that a source request or missing initial context is not a contract uncertainty. Any nonempty plan uncertainty still raises target_plan_uncertain and blocks."
+    },
+    {
+      "id": "H2-no-candidate-code-with-credentials",
+      "status": "met",
+      "evidence": "The action files are unchanged, the review still reads GitHub source as data only, and no Core acceptance claim or change to peer work appears in the diff."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Escape-sequence log-read repair is not shown to work on the hosted GitHub CLI",
+      "severity": "high",
+      "path": "plugins/faberline/skills/issue-ci/scripts/readiness.py",
+      "line": 50,
+      "detail": "job_log adds '--allow-escape-sequences' only if that exact text appears in `gh api --help` output. Nothing supplied (CI, tests or sources) shows the hosted gh has this flag or that it makes the authenticated log readable. If the flag is missing, the code silently runs the same command that failed on Core PR #75, so the acceptance condition to read logs that contain escape sequences may still be unmet. The only hosted job ran mocked unit tests.",
+      "required_fix": "Provide evidence that the hosted runner's gh version supports the flag and that a real authenticated job log containing escape sequences is read. Alternatively, use a capture method confirmed to work across supported gh versions. Keep the endpoint-only and fail-closed behavior."
+    },
+    {
+      "title": "Diagnostic codes for real refusals are not tested and may all become unclassified_error",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
+      "line": 195,
+      "detail": "A code is reported only when isinstance(error, RuntimeError) and str(error) exactly equals an allowed code. need() comes from native_merge/claude_review, which was not supplied, so it is unknown whether its errors produce exactly the bare code. The new test raises hand-made RuntimeError('target_plan_uncertain') instead of going through need(), so the controls do not show that real refusals produce useful diagnostics.",
+      "required_fix": "Add a control that runs a real refusal through produce (for example a plan with nonempty uncertainties, or a missing supporting source) and asserts the exact 'Independent review blocked: stage/code.' text. Adjust the code extraction if need() errors include extra detail."
+    }
+  ],
+  "uncertainties": [
+    "Whether the hosted GitHub CLI's `gh api` has an '--allow-escape-sequences' option, and whether using it makes the authenticated job log readable, cannot be determined from the supplied evidence.",
+    "The source of need() (claude_review/native_merge) was not supplied, so it is unknown whether str(error) of its refusals exactly equals the bare refusal code that the diagnostic allowlist checks for."
+  ]
+}

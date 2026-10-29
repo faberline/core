@@ -30,13 +30,13 @@ jobs:
           REVIEW_REPO: faberline/aw
           REVIEW_PR: '102'
           REVIEW_ISSUE: '101'
-          REVIEW_HEAD: c6193807870db65afa2cb9c26fd08fd73fc3c758
+          REVIEW_HEAD: fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
           REVIEW_BASE: fa05d50695ed39636cae9e46f7fe9cc6bd390907
         run: python3 -I scripts/claude-wiring-review/runner.py
       - name: Keep review evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: claude-review-log-metadata-c619380
+          name: claude-review-log-metadata-fcd1ecf
           path: scripts/claude-wiring-review/evidence/
           if-no-files-found: warn

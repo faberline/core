@@ -193,7 +193,30 @@ packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
-    qualification='All consumer holds and provider rules remain. Shared source has 421 isolated controls including source-security controls, without skips.')
+    qualification='All consumer holds and provider rules remain. Shared source has 423 isolated controls including source-security controls, without skips.')
+# Authenticate the fixed read-only hosted probe separately. Do not forward
+# the model credential to gh or print raw terminal controls from job logs.
+def core_api(path):
+    request=urllib.request.Request('https://api.github.com/repos/faberline/core/'+path,
+        headers={'Authorization':'Bearer '+TOKEN,'Accept':'application/vnd.github+json'})
+    with urllib.request.urlopen(request,timeout=60) as response:return json.load(response)
+probe_run=core_api('actions/runs/40827865477')
+assert probe_run['head_sha']=='fb6ed45be48f364f30216478546f8fca8be329e5' and probe_run['event']=='push'
+assert probe_run['head_branch']=='codex/core-gh-escape-probe' and probe_run['status']=='completed' and probe_run['conclusion']=='success'
+probe_job=core_api('actions/jobs/123294955244')
+assert probe_job['run_id']==40827865477 and probe_job['status']=='completed' and probe_job['conclusion']=='success'
+probe_source=core_api('contents/.github/workflows/core-gh-escape-probe.yml?ref=fb6ed45be48f364f30216478546f8fca8be329e5')
+probe_raw=base64.b64decode(''.join(probe_source['content'].split()),validate=True)
+assert hashlib.sha1(b'blob '+str(len(probe_raw)).encode()+b'\0'+probe_raw).hexdigest()=='0da83961dac72b376311fe824feba544fa3fd3cc'==probe_source['sha']
+probe_log=subprocess.check_output(['gh','api','--allow-escape-sequences','repos/faberline/core/actions/jobs/123294955244/logs'],
+    env={'PATH':os.environ['PATH'],'HOME':'/tmp','GH_TOKEN':TOKEN},stderr=subprocess.DEVNULL)
+assert len(probe_log)<=8*1024*1024
+probe_lines=[re.sub(r'^\d{4}-\d\d-\d\dT\S+\s+','',line) for line in probe_log.decode('utf-8').splitlines()]
+observations=['allow_escape_option_in_help= True','authenticated_fetch_exit= 0','escaped_authenticated_log_parsed_exactly_once']
+assert all(probe_lines.count(item)==1 for item in observations)
+packet['authenticated_hosted_probe']=dict(repo='faberline/core',run=40827865477,job=123294955244,
+    control_commit='fb6ed45be48f364f30216478546f8fca8be329e5',workflow_blob='0da83961dac72b376311fe824feba544fa3fd3cc',
+    workflow_source=probe_raw.decode('utf-8'),observations=observations)
 packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():
