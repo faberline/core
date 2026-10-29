@@ -177,23 +177,23 @@ for item in changed:
         inherited.append(dict(path=path,published_parent_blob=old_entry['sha'],candidate_blob=new_entry['sha'],unchanged=old_entry['sha']==new_entry['sha']))
 diff=''.join(parts)
 assert len(diff.encode())<=4*1024*1024, 'diff_bound'
-human = """The human requires Core and five other service pipelines to retain all test,
-functional, E2E and performance thresholds, strict current head/base, independent
-Claude review and native auto-merge only after qualification. Failed review must
-return the linked issue to todo. AW issue 99 fixes a real GitHub Actions metadata
-visibility problem. Review the entire issue and every changed file. Confirm the
-GraphQL fallback verifies the exact repository, current base, enabled auto-merge
-and squash merge, active branch ruleset, strict trusted-app status and zero bypass
-actors. Missing, malformed, stale, contradictory or nonzero evidence must refuse.
-Do not accept a relaxed gate or credential escalation. The hosted probe used a
-read-only Actions token; its observed provider fields are evidence, not authority.
-The change must not claim Core acceptance or alter cloud settings or peer work.
+human = """The human requires exact current head/base, every original test and
+performance threshold, independent Claude review, and automatic merge only after
+full qualification. Failed or blocked review must return the issue to todo.
+AW issue 101 repairs actual review failures. Review every changed source and the
+full issue. Confirm only authenticated GitHub job logs can provide evidence, raw
+terminal controls are never printed or executed, exact identity and duplicate,
+malformed and size checks remain fail-closed, and incomplete reviews emit only
+bounded nonsecret diagnostic codes. Make sure a plan's legitimate source request
+is not misclassified as an ambiguity, while genuine uncertainty stays blocked.
+No code from a candidate runs with credentials. Never waive gates or accept an
+unknown decision. The change must not claim Core acceptance or alter peer work.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
-    qualification='All consumer holds and provider rules remain. Shared source has 418 isolated controls including source-security controls, without skips.')
+    qualification='All consumer holds and provider rules remain. Shared source has 421 isolated controls including source-security controls, without skips.')
 packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():
