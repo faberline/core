@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: faberline/aw
-          ref: fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
+          ref: ae15be60678d27c407c1873866892505bb089e17
           persist-credentials: false
       - name: Prepare hash-locked Python without credentials
         id: runtime
