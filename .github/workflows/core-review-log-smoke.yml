@@ -1,0 +1,32 @@
+name: Read-only authenticated review log smoke
+on:
+  push:
+    branches: [codex/core-review-log-smoke]
+    paths: [.github/workflows/core-review-log-smoke.yml]
+permissions: {contents: read, actions: read}
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: faberline/aw
+          ref: fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
+          persist-credentials: false
+      - name: Read exact review record without printing raw logs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 -I -B - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          path=Path('plugins/faberline/skills/issue-ci/scripts/readiness.py')
+          spec=importlib.util.spec_from_file_location('trusted_readiness',path)
+          module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+          rows=module.records(module.job_log('faberline/core',123292249647),'AW_POLICY_ADOPTION_REVIEW_V1 ')
+          assert len(rows)==1 and rows[0]['decision']=='block'
+          assert rows[0]['head']=='44b3cc54b65fea8e57bbc6352eb8f2e88d85fb3a'
+          print('authenticated_review_log_read_once_as_data')
+          PY
