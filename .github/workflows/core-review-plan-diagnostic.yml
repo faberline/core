@@ -1,0 +1,62 @@
+name: Read-only Core review plan diagnostic
+on:
+  push:
+    branches: [codex/core-review-plan-diagnostic]
+    paths: [.github/workflows/core-review-plan-diagnostic.yml]
+permissions: {contents: read, actions: read, pull-requests: read, issues: read}
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          repository: faberline/aw
+          ref: fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
+          persist-credentials: false
+      - name: Prepare hash-locked Python without credentials
+        id: runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="$(mktemp -d "$RUNNER_TEMP/plan-diagnostic-XXXXXX")"
+          python3 -I -m venv "$runtime"
+          "$runtime/bin/python" -I -m pip --isolated install --disable-pip-version-check --no-input --no-deps --only-binary=:all: --require-hashes --index-url https://pypi.org/simple -r plugins/faberline/skills/issue-ci/scripts/readiness-requirements.txt
+          echo "python=$runtime/bin/python" >> "$GITHUB_OUTPUT"
+      - name: Provision signed Claude without credentials
+        id: provision
+        shell: bash
+        run: python3 -I -B plugins/faberline/skills/issue-ci/scripts/policy_adoption_provision.py
+      - name: Install verified binary
+        shell: bash
+        env:
+          VERIFIED_BINARY: ${{ steps.provision.outputs.binary }}
+        run: sudo install -m 0755 -- "$VERIFIED_BINARY" /usr/local/bin/claude
+      - name: Identify planning uncertainty without approval or writes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PLAN_PYTHON: ${{ steps.runtime.outputs.python }}
+        run: |
+          "$PLAN_PYTHON" -I -B - <<'PY'
+          import importlib.util,json,os
+          from pathlib import Path
+          path=Path('plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py')
+          spec=importlib.util.spec_from_file_location('trusted_target',path)
+          module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+          head='44b3cc54b65fea8e57bbc6352eb8f2e88d85fb3a'
+          packet,_=module.preflight(module.a.ci,'faberline/core',75,head)
+          lines=[packet['issue']['title']]+[line for line in packet['issue']['body'].splitlines() if line.strip()]
+          plan_schema=module.obj({'requirements':{'type':'array','minItems':1,'items':module.obj({'id':module.STR,'requirement':module.STR,'issue_quote':{'type':'string','enum':lines},'supporting_paths':module.STRINGS})},'uncertainties':module.STRINGS})
+          prompt=module.SYSTEM+'\nPlan every issue requirement and request necessary supporting paths. A source request or missing initial context is not a contract uncertainty. Report only material ambiguity that source cannot resolve. Do not make a verdict.'
+          token=os.environ['CLAUDE_CODE_OAUTH_TOKEN']
+          result=module.model.invoke_schema(packet,token,prompt,plan_schema,max_packet=4*1024*1024)
+          assert isinstance(result,dict) and isinstance(result.get('uncertainties'),list) and isinstance(result.get('requirements'),list)
+          uncertainties=result['uncertainties']
+          assert len(uncertainties)<=20 and all(isinstance(x,str) and 0<len(x)<=4000 for x in uncertainties)
+          summary=dict(head=head,uncertainties=uncertainties,requirement_count=len(result['requirements']))
+          encoded=json.dumps(summary,ensure_ascii=True,separators=(',',':'))
+          assert token not in encoded and len(encoded)<60000
+          print('PLAN_DIAGNOSTIC_V1 '+encoded,flush=True)
+          PY
