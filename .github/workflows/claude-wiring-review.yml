@@ -1,7 +1,7 @@
-name: Independent Claude review completed grant retirement
+name: Independent Claude review grant nonpass evidence
 on:
   push:
-    branches: [codex/aw121-retirement-review]
+    branches: [codex/aw125-negative-review]
     paths: [.github/workflows/claude-wiring-review.yml, scripts/claude-wiring-review/**]
 permissions:
   contents: read
@@ -23,20 +23,20 @@ jobs:
         env:
           VERIFIED_BINARY: ${{ steps.provision.outputs.binary }}
         run: sudo install -m 0755 -- "$VERIFIED_BINARY" /usr/local/bin/claude
-      - name: Review exact grant retirement and issue without executing target source
+      - name: Review exact nonpass evidence and issue without executing target source
         env:
           GH_TOKEN: ${{ github.token }}
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           REVIEW_REPO: faberline/aw
-          REVIEW_PR: '122'
-          REVIEW_ISSUE: '121'
-          REVIEW_HEAD: 81fcc3830b3f9ca3bdac65c1e79f0a3730b2ffe8
-          REVIEW_BASE: 11d01fa41dddf39958d2faf2d4881daffe9eb9f7
+          REVIEW_PR: '126'
+          REVIEW_ISSUE: '125'
+          REVIEW_HEAD: 0bf3b6c9ae465a149979370ebc609711e53f5f1b
+          REVIEW_BASE: 3a0b108bf2dd22c289c51876f4ce2197c038663e
         run: python3 -I scripts/claude-wiring-review/runner.py
       - name: Keep review evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: claude-aw121-retirement-81fcc38
+          name: claude-aw125-nonpass-0bf3b6c
           path: scripts/claude-wiring-review/evidence/
           if-no-files-found: warn

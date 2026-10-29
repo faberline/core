@@ -178,23 +178,10 @@ for item in changed:
 diff=''.join(parts)
 assert len(diff.encode())<=4*1024*1024, 'diff_bound'
 human = """The human asks for strict qualification, independent review, and automatic merge after all gates pass. Product acceptance belongs to the source issue and planner. Do not weaken any gate.
-Review AW issue 121 and PR 122. The change must remove only the used Core #77 grant for evaluator 8e2e93e5ba8feb30b6668de39139980ea3bb085c after verifying the PR merged and issue closed. Other grants must remain unchanged. Removing this grant does not authorize any new merge. The complete hosted control suite must pass with no skips. The issue closes after merge, so do not require post-merge closure before this review. Preserve all other scope and peer work.
+Review AW issue 125 and PR 126. The change must record bounded exact-identity reasons for negative grant reviews without emitting a pass receipt or allowing merge. Recheck unchanged inputs, retain failure, preserve existing gates and peer work. The complete hosted controls must pass without skips. Do not require post-merge closure before this review. This change does not deploy a pinned evaluator or alter schedules.
 """
-def completed_core_grant_target():
-    def read(path):
-        request = urllib.request.Request('https://api.github.com/repos/faberline/core/' + path,
-            headers={'Authorization': 'Bearer ' + TOKEN, 'Accept': 'application/vnd.github+json'})
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return json.load(response)
-    pull = read('pulls/77')
-    source_issue = read('issues/76')
-    assert pull['state'] == 'closed' and pull.get('merged_at') and pull['head']['sha'] == 'b9d52079b0cc151699f3f5672c5b9ccb4d6033e3', 'core_grant_target_not_merged'
-    assert source_issue['number'] == 76 and source_issue['state'] == 'closed', 'core_grant_issue_not_closed'
-    return dict(pr=77, head=pull['head']['sha'], merged_at=pull['merged_at'], issue=76, issue_state=source_issue['state'], issue_closed_at=source_issue['closed_at'])
-
-completed_target = completed_core_grant_target()
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
-    completed_grant_target=completed_target, human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
+    human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
     qualification='All consumer holds and provider rules remain. Shared source has 438 isolated controls including source-security controls, without skips.')
@@ -278,7 +265,6 @@ if review['decision'] == 'pass':
     assert not review['findings'] and not review['uncertainties'] and all(r['status'] == 'met' for r in review['requirement_results']), 'invalid_pass'
 final_pull, final_checks = identity()
 assert final_checks == checks and final_pull['title'] == pull['title'] and final_pull['body'] == pull['body'], 'pr_or_ci_changed'
-assert completed_core_grant_target() == completed_target, 'completed_core_target_changed'
 final_issue = api(f'issues/{ISSUE}')
 assert final_issue['state'] == 'open' and final_issue['title'] == issue['title'] and final_issue['body'] == issue['body'], 'issue_contract_changed'
 save('review.json', review)
