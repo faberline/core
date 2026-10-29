@@ -7,6 +7,7 @@ mod cache;
 mod delegated_config;
 pub(crate) mod principal;
 mod projected_token;
+mod projected_token_mode;
 mod rejection;
 mod review;
 mod token_digest;
@@ -18,6 +19,7 @@ pub use principal::{
     SERVICE_ACCOUNT_PREFIX,
 };
 pub use projected_token::ProjectedToken;
+pub use projected_token_mode::ProjectedTokenMode;
 pub use rejection::AuthRejection;
 pub use review::{
     AccessReviewOutcome, ExtraFields, ResourceAttributes, ReviewBackend, ReviewError,
