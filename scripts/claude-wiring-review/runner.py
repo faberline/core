@@ -177,24 +177,23 @@ for item in changed:
         inherited.append(dict(path=path,published_parent_blob=old_entry['sha'],candidate_blob=new_entry['sha'],unchanged=old_entry['sha']==new_entry['sha']))
 diff=''.join(parts)
 assert len(diff.encode())<=4*1024*1024, 'diff_bound'
-human = """The human asks for the pipeline framework: enforce exact current head/base,
+human = """The human asks for the qualification framework: enforce exact current head/base,
 complete existing CI, independent review, strict no-bypass protection, and automatic
-merge only after verified approval. A failed or blocked review returns the issue to
-todo. Product issue acceptance content belongs to that repo and the issue planner;
-unknown product requirements stay blocked and must not be fabricated or waived.
-AW issue 103 fixes a circular staged-review prerequisite. Review every changed file
-and full issue. Confirm provider facts are emitted only after actual verification,
-rechecked after review, and match strict rules and zero bypass. Target review is an
-earlier phase, never approval to merge. A later separately reviewed exact-data grant
-and fresh publisher checks remain mandatory. Review whether the code enforces every
-later gate. No source issue requirement or performance threshold may be weakened.
-The change must not execute candidate code with credentials or alter peer work.
+merge only after verified approval. Failed or blocked review returns the issue to todo.
+Product acceptance content belongs to the owning repo and issue planner. Unknown
+product requirements must stay held; never invent criteria or waive source gates.
+AW issue 105 lets the final reviewer inspect evidence before deciding on questions
+raised during planning. Review every changed file and the full issue. Confirm every
+question has a digest-bound identity and a unique final status and specific evidence.
+Missing, duplicate, malformed or unresolved questions must never pass. Source paths
+must be safe and exact. The later independent grant, CI and protected branch checks
+remain mandatory. No candidate code runs with credentials. Do not alter peer work.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
-    qualification='All consumer holds and provider rules remain. Shared source has 425 isolated controls including source-security controls, without skips.')
+    qualification='All consumer holds and provider rules remain. Shared source has 430 isolated controls including source-security controls, without skips.')
 packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():
