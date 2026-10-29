@@ -134,7 +134,7 @@ packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, complete_diff=diff, current_head_ci=checks,
     available_head_paths=git('ls-tree', '-r', '--name-only', HEAD).splitlines(),
-    qualification='Consumer failure-only and coverage holds remain. Shared source has 366 complete isolated controls, including inherited source-security controls without skips.')
+    qualification='Consumer failure-only and coverage holds remain. Shared source has 373 complete isolated controls, including inherited source-security controls without skips.')
 parent=BASE
 assert subprocess.run(['git','-C',str(ROOT/'source'),'merge-base','--is-ancestor',parent,HEAD]).returncode==0
 inherited=[]
