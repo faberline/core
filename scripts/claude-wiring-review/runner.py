@@ -119,22 +119,24 @@ issue = {k: issue[k] for k in ('number', 'title', 'body')}
 assert git('rev-parse', 'HEAD').strip() == HEAD
 paths = git('diff', '--name-only', '--no-renames', BASE + '...' + HEAD).splitlines()
 diff = git('diff', '--no-ext-diff', '--no-renames', '--unified=5', BASE + '...' + HEAD)
-human = """The user requires all six service pipelines to retain every existing unit,
-functional, E2E, performance and exact-head/base gate. Unknown source issue
-requirements must hold qualification and paid review before merge. The latest
-instruction says failed CI or review returns the issue to todo. Shared source
-issue 95 is an explicit prerequisite for Core's current pipeline. It must keep
-v1 compatibility, all existing holds and protected gate-change restrictions.
-Candidate policy inspection is metadata only and is never policy approval.
-No production consumer activation, bypass, cloud or schedule change is allowed.
-The final decision reviews issue 95 at this exact head and base; it does not
-claim Core or any other consumer pipeline has been delivered.
+human = """The human requires Core and five other service pipelines to preserve every existing
+unit, functional, E2E and performance threshold, exact current head and base,
+independent Claude review and native auto-merge with linked issue closure.
+Failed or blocked review must return the issue to todo. AW issue 97 creates a
+separately reviewed narrow policy-adoption prerequisite for protected gates.
+The engine has no active grants and does not change branch rules or activate
+any consumer. It must not trust caller-supplied data as approval, execute PR
+code or artifacts with credentials, weaken existing holds or alter peer work.
+Review all changed source, especially authorization, CI completeness, GitHub
+identity and pagination, race/replay behavior, source provenance, negative
+todo recovery, grant attestation and tool-free Claude execution. This review
+is of shared source only and does not claim Core pipeline delivery.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, complete_diff=diff, current_head_ci=checks,
     available_head_paths=git('ls-tree', '-r', '--name-only', HEAD).splitlines(),
-    qualification='Consumer failure-only and coverage holds remain. Shared source has 376 complete isolated controls, including inherited source-security controls without skips.')
+    qualification='All consumer holds and provider rules remain. Shared source has 411 isolated controls including source-security controls, without skips.')
 parent=BASE
 assert subprocess.run(['git','-C',str(ROOT/'source'),'merge-base','--is-ancestor',parent,HEAD]).returncode==0
 inherited=[]
