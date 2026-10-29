@@ -182,18 +182,19 @@ complete existing CI, independent review, strict no-bypass protection, and autom
 merge only after verified approval. Failed or blocked review returns the issue to todo.
 Product acceptance content belongs to the owning repo and issue planner. Unknown
 product requirements must stay held; never invent criteria or waive source gates.
-AW issue 105 lets the final reviewer inspect evidence before deciding on questions
-raised during planning. Review every changed file and the full issue. Confirm every
-question has a digest-bound identity and a unique final status and specific evidence.
-Missing, duplicate, malformed or unresolved questions must never pass. Source paths
-must be safe and exact. The later independent grant, CI and protected branch checks
-remain mandatory. No candidate code runs with credentials. Do not alter peer work.
+AW issue 107 supplies complete bounded source evidence for independent review.
+Review every changed file and the full issue. Confirm requested paths are safe and
+complete with no silent truncation. Verify immutable Git blob identities and distinguish
+the candidate writer revision from the evaluator revision. Check the 64 path, 262144
+byte per file and 4 MiB packet bounds. Missing or invalid evidence must never pass.
+The later independent grant, CI and protected branch checks remain mandatory.
+No candidate code runs with credentials. Do not alter peer work.
 """
 packet = dict(repo=REPO, pr=PR, head=HEAD, base=BASE, issue=issue,
     human_scope_extensions=human, pr_title=pull['title'], pr_body=pull['body'],
     changed_files=paths, changed_file_metadata=file_metadata, complete_diff=diff, current_head_ci=checks,
     available_head_paths=sorted(trees[HEAD]),
-    qualification='All consumer holds and provider rules remain. Shared source has 430 isolated controls including source-security controls, without skips.')
+    qualification='All consumer holds and provider rules remain. Shared source has 432 isolated controls including source-security controls, without skips.')
 packet['published_parent_source_identity']=dict(commit=BASE,ancestor_of_candidate=True,files=inherited)
 previous=ROOT/('prior-findings-'+str(PR)+'.json')
 if previous.exists():
