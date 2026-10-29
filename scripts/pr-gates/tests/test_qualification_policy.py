@@ -14,28 +14,32 @@ HEAD,BASE='a'*40,'b'*40
 WORKFLOW='.github/workflows/ci.yml'
 
 
-def pull():return dict(number=75,changed_files=1,head=dict(sha=HEAD),base=dict(sha=BASE))
+def pull():return dict(number=75,title='Synthetic',body='Closes #73',changed_files=1,head=dict(sha=HEAD,repo={'full_name':'o/r'}),base=dict(sha=BASE,repo={'full_name':'o/r'}))
 def files(path='crates/raft-runtime/src/application/host.rs'):return [dict(filename=path,status='modified')]
 def scope(config=None,path='crates/raft-runtime/src/application/host.rs'):
     cfg=copy.deepcopy(config or CONFIG)
     blob=cfg['qualification']['trusted_workflows'][WORKFLOW]['definition_sha']
-    return q.scoped_config(cfg,pull(),files(path),{(WORKFLOW,ref):dict(sha=blob)for ref in [HEAD,BASE]})
+    issue=dict(number=73,state='open',title='Synthetic issue',body='Synthetic complete contract',labels=[],url='https://api.github.com/repos/o/r/issues/73',repository_url='https://api.github.com/repos/o/r')
+    case=cfg['qualification']['contracts']['73']
+    for name in ('title','body'):case[name+'_sha256']=hashlib.sha256(issue[name].encode()).hexdigest()
+    return q.scoped_config(cfg,pull(),files(path),{(WORKFLOW,ref):dict(sha=blob)for ref in [HEAD,BASE]},issue)
+
 
 
 class FullPolicyTests(unittest.TestCase):
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
-        self.assertEqual(CONFIG['aw_revision'],'568c7512c5d4daad65e0430b8b6e623ad8ee4835')
+        self.assertEqual(CONFIG['aw_revision'],'ec57dc5f8606d04f779d11aba9c53f7a7bd9a45d')
         for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
             raw=(ROOT/producer['path']).read_bytes()
             blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
             self.assertEqual(blob,producer['definition_sha'])
-            self.assertIn(b'@568c7512c5d4daad65e0430b8b6e623ad8ee4835',raw)
+            self.assertIn(b'@ec57dc5f8606d04f779d11aba9c53f7a7bd9a45d',raw)
         self.assertEqual(CONFIG['native_auto_merge']['status_context'],'claude/verified-merge')
         self.assertEqual(CONFIG['native_auto_merge']['status_app_id'],15368)
 
     def test_copied_inspection_modules_match_published_shared_source(self):
-        expected={'handoff.py':'9a93b84fef81abe6d527c03bd7dcbfa05a6df10e6d21b14bc2686f83f44ed8be',
-                  'qualification.py':'acc235139940b4e5d8ea1e75b4101ac442ee14a1e77ea01207838a55fdc7eaed',
+        expected={'handoff.py':'b69f57781585cd26a5372ab132e4cfe46065ee3a262ef79b25494670e82d4438',
+                  'qualification.py':'f5dbf2f07cd626d449a47938ba045bf61e3197cfa4b18d342e6fc6710e242ceb',
                   'json_data.py':'35dc74be907733cfff108eae9bf217eec5c69a028487919f84c86c06d805facf'}
         for name,digest in expected.items():
             self.assertEqual(hashlib.sha256((ROOT/'scripts/issue-ci'/name).read_bytes()).hexdigest(),digest)
@@ -60,9 +64,9 @@ class FullPolicyTests(unittest.TestCase):
     def test_full_policy_does_not_silently_accept_old_five_jobs(self):
         policy=q.validate(CONFIG)
         counts={kind:sum(c['kind']==kind for c in policy['checks'].values())for kind in ['unit','functional_e2e','performance','policy']}
-        self.assertEqual(counts,dict(unit=70,functional_e2e=62,performance=1,policy=7))
-        self.assertEqual(len(CONFIG['workflows'][0]['jobs']),140)
-        self.assertEqual(len(set(CONFIG['workflows'][0]['jobs'])),140)
+        self.assertEqual(counts,dict(unit=70,functional_e2e=62,performance=1,policy=8))
+        self.assertEqual(len(CONFIG['workflows'][0]['jobs']),141)
+        self.assertEqual(len(set(CONFIG['workflows'][0]['jobs'])),141)
 
     def test_complete_workspace_is_required_even_for_docs_and_unknown_paths(self):
         expected=set(CONFIG['workflows'][0]['jobs'])
@@ -102,6 +106,24 @@ class FullPolicyTests(unittest.TestCase):
     def test_ci_handoff_and_merge_use_the_same_complete_semantics(self):
         for key in ['workflows','lifecycle_mode','qualification_blockers','qualification']:
             self.assertEqual(CONFIG[key],CONFIG['ci_handoff_policy'][key])
+
+    def test_real_issue_registry_keeps_unreviewed_requirements_on_hold(self):
+        policy=q.validate(CONFIG)
+        self.assertEqual(policy['version'],2)
+        self.assertEqual(set(policy['contracts']['73']['applicability']),q.CATEGORIES)
+        for number in ('15','45'):
+            case=policy['contracts'][number]
+            self.assertTrue(case['unresolved'])
+            self.assertTrue(all(value['status']=='unknown' for value in case['applicability'].values()))
+        pull_with_missing=pull();pull_with_missing['body']='Closes #999999'
+        self.assertIn('linked issue has no reviewed contract',q.select(CONFIG,pull_with_missing,files())['issues'])
+
+    def test_candidate_inspection_job_does_not_grant_policy_approval(self):
+        raw=(ROOT/WORKFLOW).read_text()
+        self.assertIn('name: candidate source issue contract inspection',raw)
+        self.assertIn('faberline/aw/.github/actions/issue-contract@ec57dc5f8606d04f779d11aba9c53f7a7bd9a45d',raw)
+        self.assertIn('gate infrastructure change requires reviewed policy update',
+                      ' '.join(scope(path='.github/workflows/ci.yml')['_qualification_context']['issues']))
 
     def test_zero_check_unapproved_or_malformed_exemption_refuses(self):
         cfg=copy.deepcopy(CONFIG);cfg['qualification']['always']=[]

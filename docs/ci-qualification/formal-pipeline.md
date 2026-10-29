@@ -7,12 +7,17 @@ an approval receipt. It does not mark any product issue complete.
 
 The candidate configuration is `.github/issue-ci-required-gates.json`.
 It binds the real Core CI workflow ID and reviewed Git blob. It requires all
-140 jobs: the original five crate jobs, inventory and format, 70 complete
-unit/static rows, 62 integration rows and one measured-performance job.
+141 jobs: the original five crate jobs, inventory and format, 70 complete
+unit/static rows, 62 integration rows, one measured-performance job and one
+read-only source-issue inspection job.
 Every changed path, including documentation and unknown paths, selects the
-whole matrix. There are no category exemptions. The existing shared selector
-rejects incomplete files, unknown rename sources and mismatched head/base
-workflow definitions. Workflow, runner, policy and Cargo manifest changes
+whole matrix. There are no category exemptions. The reviewed shared v2 selector
+binds each linked issue's exact title and body.
+Unmapped or unresolved issue requirements prevent qualification and paid review.
+The candidate inspection job reads PR policy as data and does not approve it.
+The existing shared selector rejects incomplete files, unknown rename sources
+and mismatched head/base workflow definitions. Workflow, runner, policy and
+Cargo manifest changes
 require a separately reviewed policy update. A PR cannot approve its own gates.
 
 Every unit/static row also builds its package documentation and runs the
@@ -62,8 +67,8 @@ After reviewed adoption, qualified CI plus an authenticated current-head
 Claude PASS can queue GitHub auto-merge and close the one linked issue.
 Review fail/block returns the linked open issue to `todo`, preserves unrelated
 labels, and never merges it. The candidate producer/writer pins the reviewed
-immutable todo implementation at AW `568c751` (PR #94), with 354 complete
-controls and independent Claude PASS. It still requires reviewed adoption on
+immutable issue-contract implementation at AW `ec57dc5` (PR #96), with 376
+complete controls and independent Claude PASS. It still requires reviewed adoption on
 Core before it can operate there.
 
 ## First online diagnostics
@@ -88,3 +93,12 @@ runs now retain the ordinary captured harness output so the complete named
 roster can be checked strictly. They still execute all targets and ignored cases.
 The separate measurement job retains uncaptured measured values. No parser
 accepts partial rosters, and no product assertion or test count is waived.
+
+The `f3491c0` full run failed one Raft integration test before its handoff
+measurement: the initial three-voter cluster did not elect a leader within the
+existing setup wait. Its other 139 jobs passed. Four complete unfiltered
+integration-target diagnostic runs passed on fresh hosted runners: two with
+default scheduling and two with two test threads, each with 170 passing tests.
+Those runs do not establish the cause or qualify a later head. The test helper
+now records each node's actual `/raftz` state after an election timeout. It does
+not change the election wait, handoff budget, concurrency or assertions.

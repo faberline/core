@@ -14,6 +14,8 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
+  issues: read
 
 concurrency:
   group: core-ci-${{ github.ref }}-${{ inputs.ref }}
@@ -49,6 +51,15 @@ jobs:
           set -euo pipefail
           cargo test --locked ${{ matrix.args }}
 
+
+  issue-contract-inspection:
+    name: candidate source issue contract inspection
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Inspect exact-head issue contract as untrusted data
+        uses: faberline/aw/.github/actions/issue-contract@ec57dc5f8606d04f779d11aba9c53f7a7bd9a45d
 
   # Ordinary read-only PR tests execute candidate code, as the legacy crate
   # jobs do. They do not approve trusted qualification. That independent

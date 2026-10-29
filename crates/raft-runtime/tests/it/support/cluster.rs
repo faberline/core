@@ -8,7 +8,7 @@ use tokio::net::TcpListener;
 
 use raft_core::ELECTION_TIMEOUT_FLOOR_TICKS;
 use raft_runtime::{
-    FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
+    FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStatus, RaftStore,
     StateMachineError,
 };
 
@@ -211,9 +211,40 @@ pub async fn await_leader_with_tick(nodes: &[Node], tick: Duration) -> Option<us
 
         let elapsed = started.elapsed();
         if elapsed >= timing.wait_budget {
+            report_election_timeout(nodes, timing, elapsed).await;
             return None;
         }
         let remaining = timing.wait_budget.saturating_sub(elapsed);
         tokio::time::sleep(timing.poll_interval.min(remaining)).await;
+    }
+}
+
+/// Capture real node state only after the existing election wait has failed.
+/// These requests cannot turn a timeout into a pass or change the wait budget.
+async fn report_election_timeout(nodes: &[Node], timing: LeaderWaitBudget, elapsed: Duration) {
+    eprintln!(
+        "leader election timed out: elapsed={elapsed:?} budget={:?} nodes={}",
+        timing.wait_budget,
+        nodes.len()
+    );
+    let client = match reqwest::Client::builder()
+        .http2_prior_knowledge()
+        .timeout(Duration::from_millis(500))
+        .build()
+    {
+        Ok(client) => client,
+        Err(error) => {
+            eprintln!("leader election diagnostics client failed: {error}");
+            return;
+        }
+    };
+    for (index, node) in nodes.iter().enumerate() {
+        match client.get(format!("{}/raftz", node.url)).send().await {
+            Ok(response) => match response.json::<RaftStatus>().await {
+                Ok(status) => eprintln!("leader election node {index}: {status:?}"),
+                Err(error) => eprintln!("leader election node {index}: invalid status: {error}"),
+            },
+            Err(error) => eprintln!("leader election node {index}: status unavailable: {error}"),
+        }
     }
 }
