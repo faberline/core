@@ -11,4 +11,4 @@ jobs:
     timeout-minutes: 30
     permissions: {actions: read, contents: write, pull-requests: write, statuses: write, issues: read}
     steps:
-      - uses: faberline/aw/.github/actions/policy-adoption@17bbd9ff1824e9e1e7daf935b9f23d3a397a4aee
+      - uses: faberline/aw/.github/actions/policy-adoption@9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd
