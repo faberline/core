@@ -13,5 +13,5 @@ jobs:
       - uses: faberline/aw/.github/actions/policy-adoption-grant-review@8e2e93e5ba8feb30b6668de39139980ea3bb085c
         with:
           grant-pr: '120'
-          grant-head: '1a281c3d41d9ea1f1c94bab1eed39d63a8dd2837'
+          grant-head: '94696102c12e052712d13c6fc7d3df87e72005cf'
           claude-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
