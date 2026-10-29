@@ -1,0 +1,17 @@
+name: Reviewed policy grant
+on:
+  push:
+    branches: [codex/core77-grant-review]
+    paths: [.github/workflows/core-policy-grant-review.yml]
+permissions: {}
+jobs:
+  grant-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    permissions: {actions: read, contents: read, pull-requests: read, issues: read}
+    steps:
+      - uses: faberline/aw/.github/actions/policy-adoption-grant-review@8e2e93e5ba8feb30b6668de39139980ea3bb085c
+        with:
+          grant-pr: '120'
+          grant-head: '1a281c3d41d9ea1f1c94bab1eed39d63a8dd2837'
+          claude-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
