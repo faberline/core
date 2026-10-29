@@ -1,0 +1,76 @@
+{
+  "repo": "faberline/aw",
+  "pr": 94,
+  "head": "1f91f4b7ea88f940df8b1ac160547ef9b7cad30a",
+  "base": "9a513a29bc38fb925e116d8dc36770d397e3a3f1",
+  "decision": "fail",
+  "summary": "The rejected-review path now returns the linked issue to todo. Unrelated labels stay, the failure status still revokes merge approval, and all existing provenance and qualification checks remain. The PR still fails for two reasons. (1) The new durable journal always starts in 'pending', even when todo is already on the issue. handoff.py starts in 'ready' in that case. If a run stops between posting the journal and marking it ready, an agent can claim the sole todo label. The next wake then re-adds todo and removes the agent's doing, which the issue forbids. (2) NATIVE-AUTO-MERGE.md still says the writer \"never writes issue bodies or comments\", but it now posts and edits journal comments.",
+  "reviewed_files": [
+    ".github/actions/native-auto-merge/action.yml",
+    "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+    "plugins/faberline/skills/issue-ci/SKILL.md",
+    "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+    "plugins/faberline/skills/issue-ci/tests/test_review_lifecycle.py"
+  ],
+  "requirement_results": [
+    {
+      "id": "R1",
+      "status": "met",
+      "evidence": "native_merge.py return_todo posts a claude/verified-merge failure status, adds todo, then removes doing/done and checks that todo is the only lifecycle label. Tests test_fail_and_block_return_only_linked_open_issue_to_todo and test_pass_then_fail_disables_native_request_before_returning_issue_to_todo confirm the result is {todo, bug}."
+    },
+    {
+      "id": "R2",
+      "status": "met",
+      "evidence": "current() still re-verifies the receipt, PR identity, the single linked issue, open state, issue contract digest and blocked labels before every label operation. reconcile still requires a completed latest attempt and a result_verify receipt. The closed/blocked/changed/head/ambiguous-link tests still expect no label writes."
+    },
+    {
+      "id": "R3",
+      "status": "missing",
+      "evidence": "Applied replay and ready recovery are correct (test_applied_rejection_never_undoes_later_worker_claim, test_ready_checkpoint_recovers_after_application_without_undoing_claim). However, a new journal always starts in 'pending' (native_merge.py ~399/410), even when todo is already present, unlike handoff.py. If a run stops before the ready PATCH, an agent can claim the sole todo. Recovery from 'pending' then re-adds todo and deletes the agent's doing."
+    },
+    {
+      "id": "R4",
+      "status": "met",
+      "evidence": "enqueue, policy, writer_contract, withdraw_approval, qualification holds and the template are unchanged. test_a_green_review_with_a_coverage_hold_cannot_queue_merge still passes."
+    },
+    {
+      "id": "R5",
+      "status": "missing",
+      "evidence": "The action description, SKILL.md and the NATIVE-AUTO-MERGE.md lifecycle lines now say todo, and work.py is unchanged. However, NATIVE-AUTO-MERGE.md line 110 still says the writer 'never writes issue bodies or comments', which the new journal comments contradict."
+    },
+    {
+      "id": "R6",
+      "status": "met",
+      "evidence": "The current-head job 'complete isolated native merge controls' succeeded. That workflow refuses skipped tests. This standalone review is the independent exact-head review; closing the issue happens later."
+    },
+    {
+      "id": "R7",
+      "status": "met",
+      "evidence": "No threshold, hold, infrastructure, schedule or branch-bypass changes appear in the diff. Docs do not claim consumer completion."
+    },
+    {
+      "id": "R8",
+      "status": "met",
+      "evidence": "source_preflight.py and the adoption checks are unchanged (same blob)."
+    }
+  ],
+  "findings": [
+    {
+      "title": "Interrupted pending journal can undo a later agent todo->doing claim",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+      "line": 399,
+      "detail": "return_todo always creates its journal in phase 'pending', even when todo is already present (e.g. the issue was already {todo}, or has no lifecycle label and todo has just been added). If the process stops after the comment POST and before the ready PATCH, todo is the sole lifecycle label, so an agent may legitimately claim todo->doing. The next wake sees 'pending', finds todo absent, POSTs todo again, then deletes the agent's doing. That undoes a later retry claim. handoff.py avoids this by starting at 'ready' when the desired label is already present. No test covers this window.",
+      "required_fix": "Create the journal as 'ready' when todo is already present at creation, mirroring handoff.py. Ensure a 'pending' recovery can never re-add todo once a sole-todo state could have been claimed, for example by refusing or requiring a mixed/managed lifecycle before the add. Add tests that stop before the ready checkpoint and then simulate an agent claim."
+    },
+    {
+      "title": "Docs still say the outcome writer never writes comments",
+      "severity": "low",
+      "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+      "line": 110,
+      "detail": "The edited paragraph keeps 'It never writes issue bodies or comments or deletes branches.' The rejected-review writer now posts and PATCHes an authenticated pending/ready/applied journal comment on the linked issue, so the instructions no longer match the writer's behavior.",
+      "required_fix": "Update the sentence to say the writer posts and updates one authenticated journal comment per negative receipt, and still never writes issue bodies or deletes branches."
+    }
+  ],
+  "uncertainties": []
+}

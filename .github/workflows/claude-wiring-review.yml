@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: faberline/aw
-          ref: 1f91f4b7ea88f940df8b1ac160547ef9b7cad30a
+          ref: 568c7512c5d4daad65e0430b8b6e623ad8ee4835
           path: scripts/claude-wiring-review/source
           fetch-depth: 0
           persist-credentials: false
@@ -38,13 +38,13 @@ jobs:
           REVIEW_REPO: faberline/aw
           REVIEW_PR: '94'
           REVIEW_ISSUE: '93'
-          REVIEW_HEAD: 1f91f4b7ea88f940df8b1ac160547ef9b7cad30a
+          REVIEW_HEAD: 568c7512c5d4daad65e0430b8b6e623ad8ee4835
           REVIEW_BASE: 9a513a29bc38fb925e116d8dc36770d397e3a3f1
         run: python3 -I scripts/claude-wiring-review/runner.py
       - name: Keep review evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: claude-reject-todo-1f91f4b
+          name: claude-reject-todo-568c751
           path: scripts/claude-wiring-review/evidence/
           if-no-files-found: warn
