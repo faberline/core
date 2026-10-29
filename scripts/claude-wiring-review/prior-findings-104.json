@@ -1,0 +1,57 @@
+{
+  "repo": "faberline/aw",
+  "pr": 104,
+  "head": "594ec75d6521a4872343e8d9a24196d467e2dd24",
+  "base": "67ed7952ed2260150a9ebb6c2dfaa4bebc28a175",
+  "decision": "fail",
+  "summary": "The provider-evidence part of the change is correct. native_merge.base_rules now returns its fact dict only after every repository, ruleset, strict-status, trusted-app and zero-bypass check passes. Any unknown or failed result still raises first. policy_adoption_target_review.preflight compares the returned facts with what the policy expects (refusing with target_provider_evidence on a mismatch), adds them to the packet as verified_provider_policy, and runs preflight again after the model, comparing final==initial. The SYSTEM prompt now explains the staged boundary. Later gates are still enforced by unchanged code: the grant and attestation in policy_adoption.enqueue, and pass_waiting_for_separate_grant in the review outcome. No thresholds or gates were weakened, and hosted controls passed on this exact head. However, the issue requires added controls for the staged review boundary, and the diff adds none. The new tests cover only the verified provider facts and the absent or failed verification cases.",
+  "reviewed_files": [
+    "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+    "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
+    "plugins/faberline/skills/issue-ci/tests/test_native_merge.py",
+    "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_target_review.py"
+  ],
+  "requirement_results": [
+    {
+      "id": "R1",
+      "status": "met",
+      "evidence": "native_merge.py adds a return dict after base_rules finishes verifying: base_ref and base, auto_merge and squash allowed, ruleset_id, active branch enforcement, strict_required_status, status_context, status_app_id, bypass_actor_count=0. Every value is reached only after all need() checks pass. target_review.py lines ~85-89 check it against the policy's expected values, and line ~97 adds verified_provider_policy to the packet. Base freshness comes from preflight's commits/main check."
+    },
+    {
+      "id": "R2",
+      "status": "met",
+      "evidence": "The SYSTEM prompt in target_review.py (lines ~130-141) says this is a preliminary staged review, that a pass approves no grant, status or merge, and that the later exact-data grant, its independent review and publisher recheck are mandatory. Enforcement is unchanged: policy_adoption.enqueue requires choose_grant, verify_grant_attestation, evaluate (which re-runs base_rules) and publisher_provenance before any success status or queue, and review_outcome.apply returns pass_waiting_for_separate_grant on a pass."
+    },
+    {
+      "id": "R3",
+      "status": "met",
+      "evidence": "No gate, workflow, selection, CI or threshold check was removed or relaxed in preflight, produce or native_merge. The prompt says unknown product acceptance stays held and must not be invented or waived."
+    },
+    {
+      "id": "R4",
+      "status": "met",
+      "evidence": "Preflight still refuses stale head/base (pull_identity, target_base_changed), an invalid issue (target_issue, target_applicability), incomplete CI (target_ci_not_green), and unknown provider data (base_rules raises; target_provider_evidence). produce rejects an incomplete review (target_review_incomplete or false_pass) and refuses changed evidence through the final preflight re-run and comparison (target_changed_during_review). A missing grant is refused by the unchanged publisher (grant_missing_or_ambiguous)."
+    },
+    {
+      "id": "R5",
+      "status": "missing",
+      "evidence": "Added controls: test_native_merge asserts the exact verified fact dict, and the preflight test asserts verified_provider_policy, refuses on None (absent), and propagates provider_refused (failed). Hosted controls passed on this exact head. No added control covers the staged review boundary, for example asserting the prompt's staged-stage text or that a target pass cannot produce a success status or auto-merge without the grant."
+    },
+    {
+      "id": "R6",
+      "status": "met",
+      "evidence": "Action files are unchanged and the changed code only reads GitHub metadata. No checkout or candidate execution was added, and only these four files changed."
+    }
+  ],
+  "findings": [
+    {
+      "title": "No added control for the staged review boundary",
+      "severity": "medium",
+      "path": "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_target_review.py",
+      "line": 128,
+      "detail": "The issue requires adding controls for verified provider facts, absent or failed verification, and the staged review boundary. The diff adds tests only for the first two: the exact fact dict in test_native_merge, and the None and RuntimeError refusals in the preflight test. Nothing new checks that the target review is presented as an earlier stage, or that a passing target receipt cannot by itself lead to a success status or auto-merge request without the separately reviewed grant and fresh publisher verification.",
+      "required_fix": "Add controls for the staged boundary. For example, assert that the target review prompt contains the preliminary-stage and not-merge-approval wording. Also assert that a passing target receipt without a reviewed grant leads to pass_waiting_for_separate_grant or to a publisher refusal, with no success status or queue write."
+    }
+  ],
+  "uncertainties": []
+}
