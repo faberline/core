@@ -1,10 +1,10 @@
 {
   "repo": "faberline/aw",
   "pr": 108,
-  "head": "511a1c889c646565045726391bac3d9d2573b1e8",
+  "head": "25316b8beca09c7a04bb00ca6037299fc026044e",
   "base": "ac300675f719b3d6a62a4b7c202016d4ef57de06",
   "decision": "fail",
-  "summary": "Fail: requirement R2 is not fully met. The supporting-path limit is now 64, every requested path is collected or the review stops, and the per-file, blob and 4 MiB packet limits are kept. The rechecks after the model now include the framework sources, and the tests cover 41, 64 and 65 paths, unsafe and absent paths, blob identity and the packet limit. The hosted control job passed. However, the fixed FRAMEWORK_SOURCES list does not supply the complete AW evaluator or candidate lifecycle controller. At the evaluator revision it supplies only the four policy_adoption scripts. The modules they run at that revision (native_merge.py, claude_review.py, handoff.py, qualification.py, readiness.py, action.py) are omitted. At the candidate revision it supplies only native_merge.py and qualification.py, without the controller's other modules.",
+  "summary": "Fail. Most of the previous finding is fixed. The fixed list now includes every sibling module both controllers load: native_merge.py, claude_review.py, handoff.py, qualification.py, readiness.py, readiness_index.py, action.py, native_review_index.py and json_data.py. These are read at both pinned revisions, and the evaluator revision also gets the policy_adoption scripts and supply JSON. Each file is read as data and bound to its repository, revision and verified Git blob. The candidate revision (aw_revision) is kept separate from the evaluator revision (AW_ACTION_REF). The 64-path limit, the 262144-byte per-file limit, the 4 MiB packet limit and the re-checks after the model all hold, and missing or invalid evidence blocks or stops the run. The hosted control job passed at this head. The remaining gap is local data. claude_review.trusted_skill() reads plugins/faberline/skills/issue-conformance/SKILL.md, and both the candidate controller and the evaluator reach it: native_merge and policy_adoption call review.verify_* → collect → trusted_skill, and invoke_json uses it as the system prompt. That file is not supplied at either revision. The closure check also cannot catch it: it only recognises sibling(), ci_module() and with_name() calls, not Path(__file__).resolve().parents[2] / \"...\". The roster test therefore passes even though local data is missing.",
   "reviewed_files": [
     "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
     "plugins/faberline/skills/issue-ci/tests/test_policy_adoption_target_review.py"
@@ -13,37 +13,42 @@
     {
       "id": "R1",
       "status": "met",
-      "evidence": "supporting_sources uses MAX_SUPPORTING_PATHS=64 and still requires distinct paths that pass valid_path. Every path must exist at base or head or the review stops with target_supporting_source_missing. source_entry still enforces the 262144-byte limit and the blob, and the size is checked again after reading (target_supporting_truncated). preflight checks the 4 MiB limit and invoke_schema checks it again with max_packet=4 MiB. Nothing is dropped or truncated silently."
+      "evidence": "supporting_sources uses MAX_SUPPORTING_PATHS=64 and still requires distinct paths that pass valid_path. Each path must exist at base or head, or the run stops with target_supporting_source_missing. source_entry and review.blob enforce the 262144-byte limit and the blob identity, and the size is checked again after reading (target_supporting_truncated). The packet is checked against 4 MiB in preflight and again by invoke_schema with max_packet=4 MiB, which blocks if exceeded. Nothing is dropped or truncated silently."
     },
     {
       "id": "R2",
       "status": "missing",
-      "evidence": "framework_sources reads FRAMEWORK_SOURCES as data only, through review.blob, which checks the GitHub sha against the computed Git blob. Each entry records role, repo, ref and blob, and the candidate ref (aw_revision) is kept separate from the evaluator ref (AW_ACTION_REF). But the list is incomplete. policy_adoption.py runs native_merge.py, claude_review.py, handoff.py, readiness.py, action.py and qualification.py at the evaluator revision; none of these is supplied at that revision. The candidate controller (native_merge.py at aw_revision) also runs claude_review.py, handoff.py, native_review_index.py, readiness.py and action.py, which are not supplied."
+      "evidence": "framework_sources reads FRAMEWORK_SOURCES from faberline/aw with review.blob, which checks the GitHub sha against the computed Git blob. Each row records role, repo, ref, path, blob and content, and the candidate (aw_revision) and evaluator (AW_ACTION_REF) roles are separate. Nothing is executed. However, local data the controllers actually read is missing. claude_review.trusted_skill reads skills/issue-conformance/SKILL.md, and both native_merge (through verify_result_receipt → collect) and the evaluator (through policy_adoption → native/review) reach it. It is not supplied at either revision."
     },
     {
       "id": "R3",
       "status": "met",
-      "evidence": "produce runs preflight again before the final review (fresh==initial) and after the model (final==initial). Each run re-reads the PR, issue, CI, provider and source data and now also the framework sources, so any change blocks. A framework read failure in the initial preflight stops the run with no receipt, and in the recheck it produces a block."
+      "evidence": "preflight now includes shared_framework_sources. produce re-runs preflight before the final review (fresh==initial) and after the model (final==initial), so any change in source, PR, issue, CI, provider or framework data blocks or stops the run. A failure to read a framework file or verify its identity in preflight raises an error and produces no receipt."
     },
     {
       "id": "R4",
       "status": "met",
-      "evidence": "The planning-question handling, the CI evidence checks (candidate_evidence), base_rules with no bypass actors, and the separate-grant wording in the prompt are unchanged. The only prompt change is that the planner may choose up to 64 paths and that the framework source is supplied separately."
+      "evidence": "The planning-question handling, the candidate_evidence CI checks, base_rules with zero bypass actors, the separate-grant wording in SYSTEM and the held-product-acceptance wording are unchanged. The only prompt change mentions the 64-path limit and the separately supplied framework source. No candidate code runs with credentials."
     },
     {
       "id": "R5",
       "status": "met",
-      "evidence": "New tests cover rosters of 41 and 64 paths (complete, with no truncation), 65 paths and '../unsafe' (both rejected), absent paths (existing test), pinned framework blob identity including a non-hex ref and a corrupted sha, and the 4 MiB packet limit. The hosted control job 'complete isolated native merge controls' passed at this head. This review is the independent exact-head review."
+      "evidence": "New tests cover rosters of 41 and 64 paths (no truncation), 65 paths and '../unsafe' (both rejected), absent paths (existing test), pinned framework blob identity including a non-hex ref and a corrupted sha (source_identity), the 4 MiB packet limit in preflight, and a closure test for sibling, ci_module and with_name. The hosted job 'complete isolated native merge controls' passed at this head."
+    },
+    {
+      "id": "R6",
+      "status": "missing",
+      "evidence": "All transitive sibling modules are present at both revisions, and the closure test detects omitted sibling, ci_module and with_name targets. The issue-conformance/SKILL.md local data, read through parents[2] path joining, is neither included nor detected. test_framework_roster_covers_current_entrypoint_dependency_closure passes only because the check does not detect this pattern."
     }
   ],
   "findings": [
     {
-      "title": "Pinned framework sources do not fully cover the AW evaluator or candidate lifecycle controller",
+      "title": "Local data read by the controller (issue-conformance/SKILL.md) is not supplied, and the closure check cannot detect it",
       "severity": "medium",
       "path": "plugins/faberline/skills/issue-ci/scripts/policy_adoption_target_review.py",
-      "line": 22,
-      "detail": "The issue requires complete authenticated source data for the pinned AW target evaluator and candidate lifecycle controller. FRAMEWORK_SOURCES is a fixed list of six files. At the evaluator ref (AW_ACTION_REF) it reads only the four policy_adoption*.py scripts. policy_adoption.py itself runs native_merge.py, claude_review.py, handoff.py, readiness.py, action.py and qualification.py at that ref. Some of these run checks central to verifying the later grant: native.base_rules, binding, writer_contract, handoff_policy, review.blob, pull_identity and linked_issue. None of them is supplied at the evaluator revision. At the candidate ref (aw_revision) only native_merge.py and qualification.py are supplied, although the controller also runs claude_review.py, handoff.py (process_head), native_review_index.py, readiness.py and action.py. The reviewer therefore cannot see the actual evaluator code behind the grant and provider checks, and the candidate controller is incomplete. The new test only checks that the six listed files are fetched and bound; it does not check that the list is complete.",
-      "required_fix": "Supply every AW module the evaluator executes at AW_ACTION_REF and every module the candidate controller executes at aw_revision. Read each file as data and bind it to its repo, revision and verified Git blob, within the 4 MiB packet limit. Add a test that checks each entry module's imports are fully covered at both revisions."
+      "line": 24,
+      "detail": "claude_review.trusted_skill() reads Path(__file__).resolve().parents[2]/'issue-conformance/SKILL.md' and verifies it against SKILL_SHA256. collect() calls it on every review verification. The candidate controller reaches it (native_merge enqueue/return_todo → verify_result_receipt → collect), and so does the evaluator through the same claude_review module. invoke_json also uses it as the system prompt. FRAMEWORK_SOURCES (COMMON_FRAMEWORK_FILES and EVALUATOR_FRAMEWORK_FILES) only lists files in FRAMEWORK_ROOT (issue-ci/scripts/), so this local data is missing at both pinned revisions. framework_dependency_closure (around line 62) only recognises sibling(), ci_module() and with_name() calls with constant arguments. It cannot detect path joins such as parents[N] / '...' or ROOT / '...', so the omission passes the check and the roster test. The human scope extension explicitly requires all transitive local data at both revisions, plus closure tests that detect omissions.",
+      "required_fix": "Allow framework entries outside scripts/ and add plugins/faberline/skills/issue-conformance/SKILL.md to the files read at both the candidate and evaluator revisions, with the same blob binding. Extend framework_dependency_closure to detect other local file reads, such as Path(__file__).parents[...] / '<const>' and module-root / '<const>' joins, or to refuse any unrecognised local file reference. Add a test where omitting SKILL.md, or another file referenced that way, raises target_framework_dependency_missing."
     }
   ],
   "uncertainties": []
