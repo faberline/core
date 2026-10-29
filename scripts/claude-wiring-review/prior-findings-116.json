@@ -1,33 +1,33 @@
 {
   "repo": "faberline/aw",
   "pr": 116,
-  "head": "9cfe8339823775fcbf38719b342f1407864c03d6",
+  "head": "d3411c2196cbb05666ba805a0fc7706028997b93",
   "base": "d58bf67c196abb8955bc3b0f509484a5f58315ba",
   "decision": "fail",
-  "summary": "Fail. This head adds a careful, fail-closed draft of guarded post-merge issue closure, plus the read-only request_history.py and its controls. It does not deliver the outcome issue #115 asks for. recovery_entry.verify_rollout still always raises recovery_rollout_not_verified, and every guarded path calls it first: the recovery entry, the guarded native writer, adoption_guard.begin and the target-review preflight. No recovery workflow is deployed. The unguarded writer prints AW_POST_MERGE_CHECKPOINT_V1 records, but nothing consumes them. As a result, a linked issue still stays open after an asynchronous native merge unless a human closes it, which is what happened with Core #75, #77 and #79. There is no hosted asynchronous merge-and-close proof; the Core #77 fixture records a manual close. The controlled hosted issues:write comparison was not performed. Several gaps the human listed remain open: actor and launcher adoption, request ownership and cancellation, and recovery before the first status. The queued-PR liveness bug from the previous review is unchanged at this head (native_merge.reconcile, block_unadmitted). request_history is explicitly observation-only and does not fix it. Hosted controls passed 832 synthetic tests (current-head CI succeeded), but that does not substitute for hosted closure proof or for rollout.",
+  "summary": "Fail. Head d3411c2 adds a large, careful, fail-closed draft of guarded post-merge issue closure. It covers per-issue guard refs, merge and worker guard intents, prepared and per-PR status checkpoints, recovery scan, runner and entry, a merged-context re-review, a policy-adoption recovery path, read-only request history, a rollout inventory and a cutover drain. Its synthetic controls pass (hosted job 40933710494 succeeded). It does not deliver the outcome issue #115 requires.\n\nrecovery_entry.verify_rollout still always raises `recovery_rollout_not_verified`. Every guarded path calls it before any write: the native writer main(), adoption_guard.begin, the target-review preflight and recovery_entry.main. No recovery workflow is deployed, and nothing consumes the unguarded AW_POST_MERGE_CHECKPOINT_V1 records. As a result, a linked issue still stays open after an asynchronous native merge, as it did in Core #75, #77 and #79.\n\nRequired work that is still missing:\n- Hosted asynchronous merge-and-close proof.\n- The controlled hosted comparison for the issues:write hypothesis.\n- Verified actor and launcher adoption.\n- Proof of request ownership, plus safe cancellation.\n- Recovery for an admission interrupted before the first status.\n\nThe queued-PR liveness defect from the prior review is unchanged at this head: block_unadmitted can permanently block a queued PR whose guard is still held by the run that queued it.\n\nExisting CI, review, protected-branch and failure-to-todo gates are preserved, and no schedule is deployed.",
   "findings": [
     {
-      "title": "Verified issue closure is never reachable",
+      "title": "Verified post-merge issue closure is still unreachable",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/recovery_entry.py",
-      "line": 120,
-      "detail": "verify_rollout always raises recovery_rollout_not_verified, and every guarded entry point calls it before any write. No recovery workflow is deployed, and nothing consumes the AW_POST_MERGE_CHECKPOINT_V1 records the unguarded writer emits. After an asynchronous native merge, the linked issue still stays open until a human closes it.",
-      "required_fix": "Implement and review a rollout evidence verifier. Deploy the recovery workflow through the reviewed policy-adoption path. Demonstrate automatic closure."
+      "line": 118,
+      "detail": "verify_rollout unconditionally raises `recovery_rollout_not_verified`. Every guarded entry point calls it before any write: native_merge.main, adoption_guard.begin, policy_adoption_target_review.preflight and recovery_entry.main. No recovery workflow is deployed, and the AW_POST_MERGE_CHECKPOINT_V1 records emitted by the unguarded writer are never consumed. After an asynchronous native merge the linked issue therefore still stays open until a human closes it.",
+      "required_fix": "Implement and review a rollout-evidence verifier. Deploy the recovery workflow through the reviewed policy-adoption path. Then demonstrate automatic closure."
     },
     {
-      "title": "Queued PR can be blocked indefinitely by block_unadmitted under its own retained guard",
+      "title": "Queued PR can be blocked indefinitely by block_unadmitted while its own run holds the guard",
       "severity": "medium",
       "path": "plugins/faberline/skills/issue-ci/scripts/native_merge.py",
-      "line": 700,
-      "detail": "After run A queues a PR, settle and cancel_blocked retain A's merge guard while the request exists. On any later wake, guarded.begin fails for that PR. block_unadmitted then sees the newest Actions status is success and posts pending. No later run can acquire the guard to re-verify and publish success, and the request is never cancelled. The strict required status therefore blocks the merge. request_history.py at this head is observation-only and explicitly does not restore the status.",
-      "required_fix": "Let the owner of the queued guard re-verify and re-publish success, or bind request provenance to the guard so a later run can safely take over or cancel. Add a control for a queued PR followed by a later wake."
+      "line": 714,
+      "detail": "Sequence of the defect:\n1. Run A queues a PR, publishes success and keeps the merge guard, because settle and cancel_blocked retain the guard while a request exists.\n2. On any later wake, guarded.begin fails for that PR.\n3. block_unadmitted sees that the newest Actions status is success and posts pending.\n4. No later run can acquire the guard to re-verify and re-publish success, and the request is never cancelled.\n\nThe strict required status therefore blocks the merge indefinitely. request_history only observes and does not restore the status.",
+      "required_fix": "Let the holder of the queued guard re-verify and re-publish success, or bind the request's provenance to the guard so a later run can safely take over or cancel. Add a control for a queued PR followed by a later wake."
     },
     {
-      "title": "No real hosted asynchronous merge and automatic close proof",
+      "title": "No real hosted asynchronous merge and automatic-close proof",
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
       "line": 108,
-      "detail": "The issue requires verifying actual cloud behavior before claiming automatic closure. The only real-provider evidence is the Core #77 fixture, which shows a manual close.",
+      "detail": "The issue requires verifying actual cloud behaviour before claiming automatic closure. The only real-provider evidence is the Core #77 fixture, which records a manual close. All controls are synthetic.",
       "required_fix": "Run and record a controlled hosted asynchronous native merge in which the mechanism closes the linked issue. Include hosted negative controls."
     },
     {
@@ -35,7 +35,7 @@
       "severity": "medium",
       "path": "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
       "line": 102,
-      "detail": "The issue requires a controlled hosted comparison before changing a production permission or treating native auto-close as reliable. No comparison is recorded.",
+      "detail": "The issue requires a controlled hosted comparison before any production permission change or before native auto-close is treated as reliable. No comparison is recorded.",
       "required_fix": "Perform and document the controlled hosted comparison. Keep the exact CI, independent review and ownership gates."
     },
     {
@@ -43,8 +43,8 @@
       "severity": "high",
       "path": "plugins/faberline/skills/issue-ci/scripts/guarded_admission.py",
       "line": 127,
-      "detail": "cancel_blocked always retains a queued request because its provenance cannot be bound to a run. Cancellation and its race with merging are unimplemented. An admission interrupted before the first status has no durable recovery for the pending write. rollout_inventory cannot prove that launchers have stopped, and request_history cannot prove who authored a request.",
-      "required_fix": "Bind native request provenance to the guard. Implement safe cancellation and recovery for crashes before the first status. Provide verified evidence of actor and launcher adoption."
+      "detail": "Remaining gaps:\n- cancel_blocked always retains a queued request, because its provenance cannot be bound to a run.\n- Cancellation, and its race with merging, are unimplemented.\n- An admission interrupted before the first status has no durable, safe recovery for its pending write.\n- rollout_inventory cannot prove that launchers have stopped.\n- request_history cannot prove who authored a request.",
+      "required_fix": "Bind native-request provenance to the guard. Implement safe cancellation and recovery for crashes before the first status. Provide verified evidence of actor and launcher adoption."
     }
   ],
   "uncertainties": []
