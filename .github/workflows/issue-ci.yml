@@ -33,4 +33,4 @@ jobs:
     steps:
       # No checkout, model, Claude credential, PR artifact or PR program.
       # Every wake recomputes all open PRs, including displaced pending wakes.
-      - uses: faberline/aw/.github/actions/native-auto-merge@9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd
+      - uses: faberline/aw/.github/actions/native-auto-merge@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44

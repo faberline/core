@@ -27,13 +27,28 @@ def scope(config=None,path='crates/raft-runtime/src/application/host.rs'):
 
 
 class FullPolicyTests(unittest.TestCase):
+    def test_issue_47_explicit_source_gates_are_always_required(self):
+        expected = {
+            'policy-8': 'candidate issue 47 (proposal)',
+            'policy-9': 'candidate issue 47 (raft-full)',
+            'policy-10': 'candidate issue 47 (clippy)',
+        }
+        for key, job in expected.items():
+            self.assertIn(key, CONFIG['qualification']['always'])
+            self.assertEqual(CONFIG['qualification']['checks'][key]['job'], job)
+            self.assertIn(job, CONFIG['workflows'][0]['jobs'])
+        workflow = (ROOT / WORKFLOW).read_text()
+        self.assertIn('cargo test --locked -p raft-core -p raft-runtime --no-fail-fast', workflow)
+        self.assertIn('cargo clippy --locked -p raft-runtime --all-targets -- -D warnings', workflow)
+        self.assertIn('python3 scripts/pr-gates/proposal_gate.py', workflow)
+
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
-        self.assertEqual(CONFIG['aw_revision'],'9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd')
+        self.assertEqual(CONFIG['aw_revision'],'fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44')
         for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
             raw=(ROOT/producer['path']).read_bytes()
             blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
             self.assertEqual(blob,producer['definition_sha'])
-            self.assertIn(b'@9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd',raw)
+            self.assertIn(b'@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44',raw)
         self.assertEqual(CONFIG['native_auto_merge']['status_context'],'claude/verified-merge')
         self.assertEqual(CONFIG['native_auto_merge']['status_app_id'],15368)
 
@@ -64,9 +79,9 @@ class FullPolicyTests(unittest.TestCase):
     def test_full_policy_does_not_silently_accept_old_five_jobs(self):
         policy=q.validate(CONFIG)
         counts={kind:sum(c['kind']==kind for c in policy['checks'].values())for kind in ['unit','functional_e2e','performance','policy']}
-        self.assertEqual(counts,dict(unit=70,functional_e2e=62,performance=1,policy=8))
-        self.assertEqual(len(CONFIG['workflows'][0]['jobs']),141)
-        self.assertEqual(len(set(CONFIG['workflows'][0]['jobs'])),141)
+        self.assertEqual(counts,dict(unit=70,functional_e2e=62,performance=1,policy=11))
+        self.assertEqual(len(CONFIG['workflows'][0]['jobs']),144)
+        self.assertEqual(len(set(CONFIG['workflows'][0]['jobs'])),144)
 
     def test_complete_workspace_is_required_even_for_docs_and_unknown_paths(self):
         expected=set(CONFIG['workflows'][0]['jobs'])
@@ -121,7 +136,7 @@ class FullPolicyTests(unittest.TestCase):
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
         raw=(ROOT/WORKFLOW).read_text()
         self.assertIn('name: candidate source issue contract inspection',raw)
-        self.assertIn('faberline/aw/.github/actions/issue-contract@9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd',raw)
+        self.assertIn('faberline/aw/.github/actions/issue-contract@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44',raw)
         self.assertIn('gate infrastructure change requires reviewed policy update',
                       ' '.join(scope(path='.github/workflows/ci.yml')['_qualification_context']['issues']))
 

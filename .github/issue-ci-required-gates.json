@@ -1,5 +1,5 @@
 {
-  "aw_revision": "9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd",
+  "aw_revision": "fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44",
   "workflows": [
     {
       "path": ".github/workflows/ci.yml",
@@ -144,14 +144,17 @@
         "candidate contracts (ui-runtime, feature:serde_json)",
         "candidate contracts (ui-runtime, no-default)",
         "candidate measured performance",
-        "candidate source issue contract inspection"
+        "candidate source issue contract inspection",
+        "candidate issue 47 (proposal)",
+        "candidate issue 47 (raft-full)",
+        "candidate issue 47 (clippy)"
       ]
     }
   ],
   "qualification_blockers": [],
   "lifecycle_mode": "full",
   "ci_handoff_policy": {
-    "aw_revision": "9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd",
+    "aw_revision": "fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44",
     "workflows": [
       {
         "path": ".github/workflows/ci.yml",
@@ -296,7 +299,10 @@
           "candidate contracts (ui-runtime, feature:serde_json)",
           "candidate contracts (ui-runtime, no-default)",
           "candidate measured performance",
-          "candidate source issue contract inspection"
+          "candidate source issue contract inspection",
+          "candidate issue 47 (proposal)",
+          "candidate issue 47 (raft-full)",
+          "candidate issue 47 (clippy)"
         ]
       }
     ],
@@ -1009,12 +1015,27 @@
           "kind": "policy",
           "workflow": ".github/workflows/ci.yml",
           "job": "candidate source issue contract inspection"
+        },
+        "policy-8": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate issue 47 (proposal)"
+        },
+        "policy-9": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate issue 47 (raft-full)"
+        },
+        "policy-10": {
+          "kind": "policy",
+          "workflow": ".github/workflows/ci.yml",
+          "job": "candidate issue 47 (clippy)"
         }
       },
       "trusted_workflows": {
         ".github/workflows/ci.yml": {
           "id": 384237875,
-          "definition_sha": "c2235e1823c64d219f1840bcb1d396591a985b3f"
+          "definition_sha": "08ed8903b845f5ba2c0e6292cb3dbe80445744f9"
         }
       },
       "always": [
@@ -1025,7 +1046,10 @@
         "policy-4",
         "policy-5",
         "policy-6",
-        "policy-7"
+        "policy-7",
+        "policy-8",
+        "policy-9",
+        "policy-10"
       ],
       "protected_paths": [
         ".github/issue-ci-required-gates.json",
@@ -1736,7 +1760,7 @@
         },
         "73": {
           "title_sha256": "b5b0e04f0bc385e59e31c0e2f04a04e3af11d0c6fd42d3c650cabc941fa66103",
-          "body_sha256": "0e7428bc695d460fe14b9a7a6cb3167b935ab7718b65acb5dc15218458d501ee",
+          "body_sha256": "ec48fa8488759987ddff91ddd3284f9f92ce3934c6dacefcb81ce2d2e09626e6",
           "applicability": {
             "unit": {
               "status": "required",
@@ -1896,19 +1920,19 @@
       }
     }
   },
-  "controller_source": "faberline/aw@9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+  "controller_source": "faberline/aw@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
   "claude_final_review": {
     "version": 1,
     "producer": {
       "path": ".github/workflows/claude-final-review.yml",
       "id": 399789974,
-      "definition_sha": "11aac6ba493b261edabf383fcf012b6bf0a4db6b",
+      "definition_sha": "66613139a76e8f062a5bd5a12a4c564dfe9a2f90",
       "job": "review"
     },
     "gates": {
       ".github/workflows/ci.yml": {
         "id": 384237875,
-        "definition_sha": "c2235e1823c64d219f1840bcb1d396591a985b3f"
+        "definition_sha": "08ed8903b845f5ba2c0e6292cb3dbe80445744f9"
       }
     },
     "protected_paths": [
@@ -1946,7 +1970,7 @@
     "producer": {
       "path": ".github/workflows/issue-ci.yml",
       "id": 394215097,
-      "definition_sha": "2cd81b70aacdc63968a50508a1891317bcf04901",
+      "definition_sha": "d170807ebaea5ad2aba7164f8eba9accd6450801",
       "job": "native-auto-merge"
     }
   },
@@ -2657,12 +2681,27 @@
         "kind": "policy",
         "workflow": ".github/workflows/ci.yml",
         "job": "candidate source issue contract inspection"
+      },
+      "policy-8": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate issue 47 (proposal)"
+      },
+      "policy-9": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate issue 47 (raft-full)"
+      },
+      "policy-10": {
+        "kind": "policy",
+        "workflow": ".github/workflows/ci.yml",
+        "job": "candidate issue 47 (clippy)"
       }
     },
     "trusted_workflows": {
       ".github/workflows/ci.yml": {
         "id": 384237875,
-        "definition_sha": "c2235e1823c64d219f1840bcb1d396591a985b3f"
+        "definition_sha": "08ed8903b845f5ba2c0e6292cb3dbe80445744f9"
       }
     },
     "always": [
@@ -2673,7 +2712,10 @@
       "policy-4",
       "policy-5",
       "policy-6",
-      "policy-7"
+      "policy-7",
+      "policy-8",
+      "policy-9",
+      "policy-10"
     ],
     "protected_paths": [
       ".github/issue-ci-required-gates.json",
@@ -3384,7 +3426,7 @@
       },
       "73": {
         "title_sha256": "b5b0e04f0bc385e59e31c0e2f04a04e3af11d0c6fd42d3c650cabc941fa66103",
-        "body_sha256": "0e7428bc695d460fe14b9a7a6cb3167b935ab7718b65acb5dc15218458d501ee",
+        "body_sha256": "ec48fa8488759987ddff91ddd3284f9f92ce3934c6dacefcb81ce2d2e09626e6",
         "applicability": {
           "unit": {
             "status": "required",

@@ -7,7 +7,7 @@ an approval receipt. It does not mark any product issue complete.
 
 The candidate configuration is `.github/issue-ci-required-gates.json`.
 It binds the real Core CI workflow ID and reviewed Git blob. It requires all
-141 jobs: the original five crate jobs, inventory and format, 70 complete
+144 jobs: the original five crate jobs, three exact issue 47 gates, inventory and format, 70 complete
 unit/static rows, 62 integration rows, one measured-performance job and one
 read-only source-issue inspection job.
 Every changed path, including documentation and unknown paths, selects the
@@ -15,6 +15,13 @@ whole matrix. There are no category exemptions. The reviewed shared v2 selector
 binds each linked issue's exact title and body.
 Unmapped or unresolved issue requirements prevent qualification and paid review.
 The candidate inspection job reads PR policy as data and does not approve it.
+The three separate issue #47 jobs retain its exact proposal-filter test, the
+combined Raft test command and Raft runtime all-target Clippy. The proposal job
+lists the selected tests, requires a nonzero roster and checks that every listed
+name passes. A filtered count for unrelated tests is expected only in this
+explicit source gate. Other complete-suite rosters still reject filtered tests.
+These jobs do not by themselves prove issue #47's negative control, downstream
+behavior or other source-specific obligations; those remain held until mapped.
 The existing shared selector rejects incomplete files, unknown rename sources
 and mismatched head/base workflow definitions. Workflow, runner, policy and
 Cargo manifest changes
@@ -67,8 +74,8 @@ After reviewed adoption, qualified CI plus an authenticated current-head
 Claude PASS can queue GitHub auto-merge and close the one linked issue.
 Review fail/block returns the linked open issue to `todo`, preserves unrelated
 labels, and never merges it. The candidate producer/writer pins the reviewed
-immutable issue-contract implementation at AW `ec57dc5` (PR #96), with 376
-complete controls and independent Claude PASS. It still requires reviewed adoption on
+immutable shared controller at AW `fcd1ecf` (PR #102), with 423
+complete controls and an independent Claude PASS. It still requires reviewed adoption on
 Core before it can operate there.
 
 ## First online diagnostics

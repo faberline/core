@@ -51,6 +51,34 @@ jobs:
           set -euo pipefail
           cargo test --locked ${{ matrix.args }}
 
+  source-issue-47:
+    name: candidate issue 47 (${{ matrix.gate }})
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        gate: [proposal, raft-full, clippy]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: stable
+          components: clippy
+      - name: Run exact proposal filter and verify its selected roster
+        if: matrix.gate == 'proposal'
+        run: python3 scripts/pr-gates/proposal_gate.py
+      - name: Run both Raft packages without fail-fast
+        if: matrix.gate == 'raft-full'
+        run: cargo test --locked -p raft-core -p raft-runtime --no-fail-fast
+      - name: Run Raft runtime all-target Clippy
+        if: matrix.gate == 'clippy'
+        run: cargo clippy --locked -p raft-runtime --all-targets -- -D warnings
+
 
   issue-contract-inspection:
     name: candidate source issue contract inspection
@@ -59,7 +87,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Inspect exact-head issue contract as untrusted data
-        uses: faberline/aw/.github/actions/issue-contract@9ce4b2ead3a3ee33ec8500e4cf8fbd025b7d85fd
+        uses: faberline/aw/.github/actions/issue-contract@fcd1ecf86b8973f8518b5a9149e0fa05fecf4c44
 
   # Ordinary read-only PR tests execute candidate code, as the legacy crate
   # jobs do. They do not approve trusted qualification. That independent
