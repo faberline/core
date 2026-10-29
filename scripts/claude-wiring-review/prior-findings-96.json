@@ -1,14 +1,15 @@
 {
   "repo": "faberline/aw",
   "pr": 96,
-  "head": "8cad912c9e7bf76fe1ca1a7facdb0fecc057166f",
+  "head": "3fab6ab7ee81e6f12c47a6a65e283ec74b8114fd",
   "base": "093c6a693f7577283898fd2d27ab61169f1950c6",
   "decision": "fail",
-  "summary": "Qualification v2 schema, issue-contract binding, check-selection union, v1 compatibility, contract identity in the computed context, and the read-only candidate inspection action are implemented and largely correct. However, the issue explicitly requires missing/changed/unknown/unresolved issue contracts to block paid final review, and no change enforces that: claude_review.py (the paid review collector/preflight) is unchanged and never evaluates the v2 issue contract, while the docs claim it does. Required isolated controls are also incomplete (no wrong-event identity, v2 protected-change, or additional-check selection controls). Decision: fail for missing work.",
+  "summary": "This revision fixes both earlier failures. claude_review.collect now runs v2 qualification before any paid planning, puts the qualification context into the receipt, and the new controls cover wrong event identity, protected changes and additional-check selection. The schema, selection union, v1 compatibility, metadata-only fetch, drift binding and read-only candidate inspection are correct. However, the new paid-review gate requires evaluate_policy(...) == 'done'. That state also includes global holds: failure-only mode alone makes it pending. So a v2 consumer in failure-only mode (the current state of all six consumers) can never run paid review, even with a clean issue contract. That removes the existing path where a negative review returns the issue to todo, which works under failure-only in v1. It also contradicts the documented rule that failure-only mode does not by itself block review readiness. The issue requires the todo recovery behavior to be preserved, so this regression means the decision is fail.",
   "reviewed_files": [
     ".github/actions/issue-contract/action.yml",
     "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
     "plugins/faberline/skills/issue-ci/SKILL.md",
+    "plugins/faberline/skills/issue-ci/scripts/claude_review.py",
     "plugins/faberline/skills/issue-ci/scripts/handoff.py",
     "plugins/faberline/skills/issue-ci/scripts/proposal_contract.py",
     "plugins/faberline/skills/issue-ci/scripts/qualification.py",
@@ -19,78 +20,169 @@
     {
       "id": "R1-v2-schema-registry",
       "status": "met",
-      "evidence": "qualification.py validate accepts version 1|2 and validate_contracts (lines ~96-117) enforces numeric issue keys, exact fields, 64-hex title/body hashes, all three categories with status/checks/reason, check existence and kind, additional checks and unresolved strings. Docs at NATIVE-AUTO-MERGE.md lines 239-266; negative schema tests in test_issue_contract_v2.py test_bad_schema_is_rejected."
+      "evidence": "qualification.validate accepts version 1|2. validate_contracts enforces numeric issue keys and exact fields, 64-hex title/body hashes, all three categories with status/checks/reason, check existence and kind, additional checks, and unresolved strings. Documented in the NATIVE-AUTO-MERGE.md 'Source issue contract v2' section. Negative schema tests are in test_bad_schema_is_rejected."
     },
     {
       "id": "R2-v1-compat",
       "status": "met",
-      "evidence": "validate still accepts version 1 unchanged; select/scoped_config issue param defaults to None and v2 logic is gated on version==2; handoff.qualify_config fetches issues only for v2; test_original_v1_does_not_request_issue_metadata. Existing test_qualification.py unchanged."
+      "evidence": "v2 logic is gated on version==2 and the new issue parameters default to None. handoff.qualify_config fetches the issue only for v2. test_original_v1_does_not_request_issue_metadata covers this, and existing v1 tests are unchanged."
     },
     {
       "id": "R3-refuse-bad-contracts",
-      "status": "missing",
-      "evidence": "Qualification refuses missing/changed/closed/blocked/foreign/ambiguous/unknown/unresolved contracts via issue_contract -> _qualification_context.issues -> evaluate_policy pending, and native_merge.qualification uses qualify_config. But paid final review is not blocked: claude_review.py collect/gate_evidence/preflight (unchanged) never call qualify_config or issue_contract, so a v2 contract with unknown/unresolved requirements does not stop the paid Claude review."
+      "status": "met",
+      "evidence": "issue_contract adds an issue for a missing link, missing contract, foreign/closed/PR identity, blocked labels, title/body drift, unknown applicability and unresolved gates. evaluate_policy then returns pending. claude_review.collect (lines 395-410) recomputes v2 qualification, rechecks the hashes and refuses before planning. PaidReviewContractTests prove the model is never called."
     },
     {
       "id": "R4-check-selection-union",
       "status": "met",
-      "evidence": "qualification.select lines ~222-227 union issue_contract required+additional checks into path-selected set; not_applicable never removes path checks (test_not_applicable_does_not_remove_required_path_checks); docs-only path union test test_reviewed_issue_adds_its_checks_to_path_selection."
+      "evidence": "select unions the required and additional contract checks into the path selection. test_reviewed_issue_adds_its_checks_to_path_selection, test_additional_check_is_unioned_even_for_docs and test_not_applicable_does_not_remove_required_path_checks cover it."
     },
     {
       "id": "R5-trusted-metadata-fetch",
       "status": "met",
-      "evidence": "handoff.qualify_config fetches repos/{repo}/issues/{number} via trusted api only for a linked number present in the default-branch registry; issue text is only hashed, never executed."
+      "evidence": "handoff.qualify_config fetches repos/{repo}/issues/{n} through the trusted api, and only for a registered linked number. Issue text is only hashed. proposal_contract decodes candidate policy as JSON data and executes nothing from the PR."
     },
     {
       "id": "R6-contract-identity-in-context",
       "status": "met",
-      "evidence": "select returns contract (issue, title_sha256, body_sha256, contract_sha256, applicability, unresolved_count) which scoped_config places in _qualification_context alongside head/base; done receipts hash the scoped config and process_head re-qualifies (refetching the issue) before label writes, so drift invalidates."
+      "evidence": "select returns the contract (issue, title/body hashes, contract_sha256, applicability, unresolved_count) inside _qualification_context. That context feeds the handoff receipt digests and is re-qualified before label writes. claude_review adds context['qualification_v2'], so review drift checks and receipt verification invalidate on drift (test_issue_or_contract_drift_during_review_rejects_receipt)."
     },
     {
       "id": "R7-candidate-inspection-action",
       "status": "met",
-      "evidence": "New .github/actions/issue-contract/action.yml runs proposal_contract.py; inspect validates repo, pull_request event, event/current PR number/head/base/same-repo identity, decodes candidate policy as data with size and blob checks, re-reads PR/issue for drift, and outputs qualification/policy_approval 'not_evaluated'. Protected-path logic in select is untouched."
+      "evidence": "The new action.yml runs proposal_contract.py. inspect validates the repository, the event PR number/head/base/same-repo identity against the current PR, checks the candidate policy size and blob, rereads the PR and issue for drift, and returns qualification/policy_approval='not_evaluated'. The protected-path logic in select is unchanged."
+    },
+    {
+      "id": "R7b-metadata-only-scope",
+      "status": "met",
+      "evidence": "proposal_contract only performs GET reads and returns not_evaluated outputs. SKILL.md states it cannot approve a policy or remove a protected-change hold."
     },
     {
       "id": "R8-preserve-existing",
+      "status": "missing",
+      "evidence": "Pagination, journals, failure-only label handling and v1 behavior are unchanged. However, the new v2 gate in claude_review.collect (line 407) requires the qualification state to be 'done'. Failure-only mode forces that state to pending, so for v2 consumers paid review is refused and an authenticated negative review can never return the issue to todo. That recovery path is preserved for v1 (test_failure_only_qualification_hold_still_handles_rejected_review)."
+    },
+    {
+      "id": "R8b-human-gates-todo",
       "status": "met",
-      "evidence": "evaluate_policy, snapshot, pagination, journal and failure-only logic in handoff.py are unchanged; failures still return todo independent of contract issues; native_merge/claude_review/native_review_index unchanged."
+      "evidence": "Unknown or unresolved issue requirements hold qualification and paid review, and existing gates are retained. Failed CI still returns the issue to todo regardless of contract issues, because evaluate_policy keeps todo on failures. The review-driven todo regression is reported under R8."
     },
     {
       "id": "R9-isolated-controls",
-      "status": "missing",
-      "evidence": "Tests cover issue drift, unknown/unresolved, malformed schema, head/base/fork drift and mid-flight changes. Missing: wrong event identity controls (event repository mismatch, event number mismatch, non-pull_request event), any v2 or inspection control proving protected/gate-infrastructure changes still hold, and selection of 'additional' contract checks. CI job 'complete isolated native merge controls' succeeded at this head."
+      "status": "met",
+      "evidence": "test_issue_contract_v2.py and test_proposal_contract.py cover issue drift, unknown/unresolved contracts, the additional-check union, malformed schema, event repository/number/head/base mismatch, a wrong event name before any network call, mid-flight drift, protected paths under a valid contract, and paid review stopping before the model. The hosted 'complete isolated native merge controls' job succeeded at this head."
     },
     {
       "id": "R10-boundaries",
       "status": "met",
-      "evidence": "Diff contains no consumer policy, ruleset, workflow, schedule, cloud or merge-bypass change; docs state no activation and do not claim consumer delivery."
-    },
-    {
-      "id": "R11-candidate-metadata-only",
-      "status": "met",
-      "evidence": "proposal_contract.inspect returns policy_approval='not_evaluated' and qualification='not_evaluated'; SKILL.md lines 30-34 state it cannot approve policy or remove protected-change holds; it writes nothing."
+      "evidence": "The diff contains no consumer policy, ruleset, workflow schedule, cloud or merge-bypass change. The docs claim no consumer delivery."
     }
   ],
   "findings": [
     {
-      "title": "V2 issue-contract holds do not block paid final review",
-      "severity": "high",
-      "path": "plugins/faberline/skills/issue-ci/SKILL.md",
-      "line": 30,
-      "detail": "Issue #95 requires missing/changed/closed/blocked/foreign/ambiguous/unknown/unresolved issue contracts to 'block qualification and paid final review'. The diff enforces them only in qualification (qualification.select/issue_contract) and therefore in native merge. The paid review path in claude_review.py (collect, gate_evidence, preflight, review) is unchanged and never evaluates the v2 contract or qualification issues, so a contract with unknown applicability or unresolved gates still reaches the paid Claude invocation. SKILL.md lines 30-34 and NATIVE-AUTO-MERGE.md lines 18-22 claim this blocking exists, but no code implements it.",
-      "required_fix": "Make the review preflight/collect path compute v2 qualification for the exact head/base (with the trusted issue metadata) and refuse before any paid planning/review when the issue contract has issues; add positive and negative controls proving unknown, unresolved, changed and missing contracts stop paid review."
-    },
-    {
-      "title": "Required isolated controls for wrong event, protected changes and additional-check selection are absent",
+      "title": "V2 paid-review gate also blocks review under failure-only mode, removing review-driven todo recovery",
       "severity": "medium",
-      "path": "plugins/faberline/skills/issue-ci/tests/test_proposal_contract.py",
-      "line": 48,
-      "detail": "The issue requires controls for wrong event/head/base, read-only boundaries and protected changes, plus complete case check selection. test_moved_pr_and_changed_issue_fail_closed only mutates the API PR response; no test supplies a mismatched event repository, mismatched event number, or non-pull_request GITHUB_EVENT_NAME. No v2 or inspection test shows protected/gate infrastructure changes still hold under a valid contract or that inspection cannot clear that hold. test_issue_contract_v2.py never exercises the 'additional' check list being unioned into selection.",
-      "required_fix": "Add negative controls for event repository/number/event-name mismatch in proposal_contract, a v2 control showing protected path and .github changes remain pending with a fully resolved contract, and a positive control that 'additional' checks are added to the selected workflows/jobs."
+      "path": "plugins/faberline/skills/issue-ci/scripts/claude_review.py",
+      "line": 407,
+      "detail": "collect() requires api.evaluate_policy(scoped, ...) to return 'done' for v2 policies. evaluate_policy returns pending whenever lifecycle_mode is 'failure-only', independent of the issue contract. Under a v2 policy in failure-only mode (the current state of all consumers), preflight and review therefore always refuse with issue_qualification_not_ready, even when the issue contract is clean. Under v1, failure-only consumers can still run review, and native_merge.return_todo moves the issue back to todo on fail/block (test_failure_only_qualification_hold_still_handles_rejected_review). Under v2 that recovery becomes unreachable. This contradicts the issue's requirement to preserve the todo recovery behavior, and the documented rule that failure-only mode does not by itself block review readiness. The issue only requires the issue-contract conditions to block paid review.",
+      "required_fix": "Gate paid review on the v2 issue-contract and selection conditions (no _qualification_context issues or untrusted workflows, and all selected checks complete success, plus real qualification_blockers), not on failure-only lifecycle mode. Add a control showing a valid v2 contract under failure-only mode still reaches review and that a negative result can return the issue to todo."
     }
   ],
-  "uncertainties": [
-    "The consumer review workflow template (templates/claude-final-review.yml.example) was not supplied; it might invoke the qualify operation before the paid review. Even so, the review code in this distribution does not itself enforce the v2 contract gate."
-  ]
+  "uncertainties": [],
+  "earlier_review": {
+    "repo": "faberline/aw",
+    "pr": 96,
+    "head": "8cad912c9e7bf76fe1ca1a7facdb0fecc057166f",
+    "base": "093c6a693f7577283898fd2d27ab61169f1950c6",
+    "decision": "fail",
+    "summary": "Qualification v2 schema, issue-contract binding, check-selection union, v1 compatibility, contract identity in the computed context, and the read-only candidate inspection action are implemented and largely correct. However, the issue explicitly requires missing/changed/unknown/unresolved issue contracts to block paid final review, and no change enforces that: claude_review.py (the paid review collector/preflight) is unchanged and never evaluates the v2 issue contract, while the docs claim it does. Required isolated controls are also incomplete (no wrong-event identity, v2 protected-change, or additional-check selection controls). Decision: fail for missing work.",
+    "reviewed_files": [
+      ".github/actions/issue-contract/action.yml",
+      "plugins/faberline/skills/issue-ci/NATIVE-AUTO-MERGE.md",
+      "plugins/faberline/skills/issue-ci/SKILL.md",
+      "plugins/faberline/skills/issue-ci/scripts/handoff.py",
+      "plugins/faberline/skills/issue-ci/scripts/proposal_contract.py",
+      "plugins/faberline/skills/issue-ci/scripts/qualification.py",
+      "plugins/faberline/skills/issue-ci/tests/test_issue_contract_v2.py",
+      "plugins/faberline/skills/issue-ci/tests/test_proposal_contract.py"
+    ],
+    "requirement_results": [
+      {
+        "id": "R1-v2-schema-registry",
+        "status": "met",
+        "evidence": "qualification.py validate accepts version 1|2 and validate_contracts (lines ~96-117) enforces numeric issue keys, exact fields, 64-hex title/body hashes, all three categories with status/checks/reason, check existence and kind, additional checks and unresolved strings. Docs at NATIVE-AUTO-MERGE.md lines 239-266; negative schema tests in test_issue_contract_v2.py test_bad_schema_is_rejected."
+      },
+      {
+        "id": "R2-v1-compat",
+        "status": "met",
+        "evidence": "validate still accepts version 1 unchanged; select/scoped_config issue param defaults to None and v2 logic is gated on version==2; handoff.qualify_config fetches issues only for v2; test_original_v1_does_not_request_issue_metadata. Existing test_qualification.py unchanged."
+      },
+      {
+        "id": "R3-refuse-bad-contracts",
+        "status": "missing",
+        "evidence": "Qualification refuses missing/changed/closed/blocked/foreign/ambiguous/unknown/unresolved contracts via issue_contract -> _qualification_context.issues -> evaluate_policy pending, and native_merge.qualification uses qualify_config. But paid final review is not blocked: claude_review.py collect/gate_evidence/preflight (unchanged) never call qualify_config or issue_contract, so a v2 contract with unknown/unresolved requirements does not stop the paid Claude review."
+      },
+      {
+        "id": "R4-check-selection-union",
+        "status": "met",
+        "evidence": "qualification.select lines ~222-227 union issue_contract required+additional checks into path-selected set; not_applicable never removes path checks (test_not_applicable_does_not_remove_required_path_checks); docs-only path union test test_reviewed_issue_adds_its_checks_to_path_selection."
+      },
+      {
+        "id": "R5-trusted-metadata-fetch",
+        "status": "met",
+        "evidence": "handoff.qualify_config fetches repos/{repo}/issues/{number} via trusted api only for a linked number present in the default-branch registry; issue text is only hashed, never executed."
+      },
+      {
+        "id": "R6-contract-identity-in-context",
+        "status": "met",
+        "evidence": "select returns contract (issue, title_sha256, body_sha256, contract_sha256, applicability, unresolved_count) which scoped_config places in _qualification_context alongside head/base; done receipts hash the scoped config and process_head re-qualifies (refetching the issue) before label writes, so drift invalidates."
+      },
+      {
+        "id": "R7-candidate-inspection-action",
+        "status": "met",
+        "evidence": "New .github/actions/issue-contract/action.yml runs proposal_contract.py; inspect validates repo, pull_request event, event/current PR number/head/base/same-repo identity, decodes candidate policy as data with size and blob checks, re-reads PR/issue for drift, and outputs qualification/policy_approval 'not_evaluated'. Protected-path logic in select is untouched."
+      },
+      {
+        "id": "R8-preserve-existing",
+        "status": "met",
+        "evidence": "evaluate_policy, snapshot, pagination, journal and failure-only logic in handoff.py are unchanged; failures still return todo independent of contract issues; native_merge/claude_review/native_review_index unchanged."
+      },
+      {
+        "id": "R9-isolated-controls",
+        "status": "missing",
+        "evidence": "Tests cover issue drift, unknown/unresolved, malformed schema, head/base/fork drift and mid-flight changes. Missing: wrong event identity controls (event repository mismatch, event number mismatch, non-pull_request event), any v2 or inspection control proving protected/gate-infrastructure changes still hold, and selection of 'additional' contract checks. CI job 'complete isolated native merge controls' succeeded at this head."
+      },
+      {
+        "id": "R10-boundaries",
+        "status": "met",
+        "evidence": "Diff contains no consumer policy, ruleset, workflow, schedule, cloud or merge-bypass change; docs state no activation and do not claim consumer delivery."
+      },
+      {
+        "id": "R11-candidate-metadata-only",
+        "status": "met",
+        "evidence": "proposal_contract.inspect returns policy_approval='not_evaluated' and qualification='not_evaluated'; SKILL.md lines 30-34 state it cannot approve policy or remove protected-change holds; it writes nothing."
+      }
+    ],
+    "findings": [
+      {
+        "title": "V2 issue-contract holds do not block paid final review",
+        "severity": "high",
+        "path": "plugins/faberline/skills/issue-ci/SKILL.md",
+        "line": 30,
+        "detail": "Issue #95 requires missing/changed/closed/blocked/foreign/ambiguous/unknown/unresolved issue contracts to 'block qualification and paid final review'. The diff enforces them only in qualification (qualification.select/issue_contract) and therefore in native merge. The paid review path in claude_review.py (collect, gate_evidence, preflight, review) is unchanged and never evaluates the v2 contract or qualification issues, so a contract with unknown applicability or unresolved gates still reaches the paid Claude invocation. SKILL.md lines 30-34 and NATIVE-AUTO-MERGE.md lines 18-22 claim this blocking exists, but no code implements it.",
+        "required_fix": "Make the review preflight/collect path compute v2 qualification for the exact head/base (with the trusted issue metadata) and refuse before any paid planning/review when the issue contract has issues; add positive and negative controls proving unknown, unresolved, changed and missing contracts stop paid review."
+      },
+      {
+        "title": "Required isolated controls for wrong event, protected changes and additional-check selection are absent",
+        "severity": "medium",
+        "path": "plugins/faberline/skills/issue-ci/tests/test_proposal_contract.py",
+        "line": 48,
+        "detail": "The issue requires controls for wrong event/head/base, read-only boundaries and protected changes, plus complete case check selection. test_moved_pr_and_changed_issue_fail_closed only mutates the API PR response; no test supplies a mismatched event repository, mismatched event number, or non-pull_request GITHUB_EVENT_NAME. No v2 or inspection test shows protected/gate infrastructure changes still hold under a valid contract or that inspection cannot clear that hold. test_issue_contract_v2.py never exercises the 'additional' check list being unioned into selection.",
+        "required_fix": "Add negative controls for event repository/number/event-name mismatch in proposal_contract, a v2 control showing protected path and .github changes remain pending with a fully resolved contract, and a positive control that 'additional' checks are added to the selected workflows/jobs."
+      }
+    ],
+    "uncertainties": [
+      "The consumer review workflow template (templates/claude-final-review.yml.example) was not supplied; it might invoke the qualify operation before the paid review. Even so, the review code in this distribution does not itself enforce the v2 contract gate."
+    ]
+  }
 }
