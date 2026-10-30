@@ -1,0 +1,13 @@
+name: Verified issue recovery
+on:
+  push:
+    branches: [codex/86-register-recovery]
+    paths: [.github/workflows/issue-recovery.yml]
+permissions: {}
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Register workflow identity without provider access
+        run: echo 'Registration only. No recovery or test evidence.'
