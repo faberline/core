@@ -10,7 +10,7 @@ jobs:
   diagnostic:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions: {contents: read}
+    permissions: {contents: read, actions: read, pull-requests: read, issues: read}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -42,9 +42,11 @@ jobs:
         env:
           VERIFIED_BINARY: ${{ steps.provision.outputs.binary }}
         run: sudo install -m 0755 -- "$VERIFIED_BINARY" /usr/local/bin/claude
-      - name: Probe exact tool-free model transport with fixed safe output
+      - name: Diagnose exact planning packet with fixed safe output
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
+          AW_ACTION_REF: 8eba33a85152d7056a8b75a5998684f66e0bd8d5
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           PROBE_PYTHON: ${{ steps.runtime.outputs.python }}
         run: exec "$PROBE_PYTHON" -I -B diagnostic-source/.github/diagnostics/core87_claude_probe.py

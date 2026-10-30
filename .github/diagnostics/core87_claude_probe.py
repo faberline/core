@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import re
 
 ROOT = Path(os.environ['GITHUB_WORKSPACE']) / 'approved-aw/plugins/faberline/skills/issue-ci/scripts'
 spec = importlib.util.spec_from_file_location('fixed_grant_review_probe', ROOT / 'policy_adoption_grant_review.py')
@@ -38,6 +39,9 @@ def execute(args, **kwargs):
         'rate_limit': ('rate_limit_error', 'rate limit', 'usage limit', 'hit your limit'),
         'model_unavailable': ('model_not_found', 'model is not available', 'does not support model'),
         'context_limit': ('prompt is too long', 'context window', 'context limit', 'too many tokens'),
+        'input_limit': ('input too long', 'input is too long', 'request too large', 'payload too large', 'input exceeds'),
+        'long_context_access': ('extra usage', 'long context', '1m context', '1 million', 'more usage'),
+        'billing': ('credit balance', 'billing', 'subscription', 'payment required'),
         'schema_rejected': ('invalid schema', 'invalid json schema', 'schema validation'),
         'transport': ('econnreset', 'enotfound', 'fetch failed', 'connection error'),
     }
@@ -55,17 +59,34 @@ def execute(args, **kwargs):
         envelope['json'] = False
     print('CORE_CLAUDE_TRANSPORT_DIAGNOSTIC_V1 ' + json.dumps(dict(
         returncode=result.returncode, stdout_bytes=len(result.stdout.encode()),
-        stderr_bytes=len(result.stderr.encode()), codes=codes, envelope=envelope)), flush=True)
+        stderr_bytes=len(result.stderr.encode()), codes=codes, envelope=envelope,
+        http_status=sorted(set(re.findall(r'(?:api error:|status(?: code)?[: =]+|http[/0-9. ]+)\s*([45][0-9]{2})\b', combined))),
+        api_error_types=[v for v in ('invalid_request_error', 'authentication_error', 'permission_error',
+            'not_found_error', 'request_too_large', 'rate_limit_error', 'api_error', 'overloaded_error') if v in combined])), flush=True)
     return result
 
-schema = {'type': 'object', 'additionalProperties': False, 'required': ['ack'],
-          'properties': {'ack': {'type': 'string', 'enum': ['diagnostic-only']}}}
+spec = importlib.util.spec_from_file_location('fixed_target_review_probe', ROOT / 'policy_adoption_target_review.py')
+t = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(t)
+packet, trees = t.preflight(t.a.ci, 'faberline/core', 87, '57add95b4952381ad440ce4bfad826f87b307a90')
+lines = [packet['issue']['title']] + [line for line in packet['issue']['body'].splitlines() if line.strip()]
+schema = t.obj({'requirements': {'type': 'array', 'minItems': 1, 'items': t.obj({
+    'id': t.STR, 'requirement': t.STR, 'issue_quote': {'type': 'string', 'enum': lines},
+    'supporting_paths': t.STRINGS})}, 'uncertainties': t.STRINGS})
+available = sorted({entry['path'] for tree in trees.values() for entry in tree
+    if isinstance(entry, dict) and entry.get('type') == 'blob'
+    and entry.get('mode') in ('100644', '100755') and type(entry.get('size')) is int
+    and 0 <= entry['size'] <= 262144 and t.a.valid_path(entry.get('path'))})
+packet = dict(packet, available_source_paths=available)
+print('CORE_CLAUDE_PLANNING_PACKET_V1 ' + json.dumps(dict(
+    packet_bytes=len(t.a.r.canonical(packet).encode()), schema_bytes=len(t.a.r.canonical(schema).encode()),
+    source_paths=len(available), review_authority=False)), flush=True)
 try:
-    result = m.invoke_schema({'diagnostic': 'Transport probe only. No code review or authorization.'},
+    result = m.invoke_schema(packet,
         os.environ.get('CLAUDE_CODE_OAUTH_TOKEN'),
-        'This is a transport diagnostic. Return the requested acknowledgement schema. No tools or code review.',
-        schema, execute=execute)
+        t.SYSTEM + '\nPlan every issue requirement and request necessary supporting paths. Choose at most 64 distinct exact names from available_source_paths. The pinned shared framework source is already supplied separately. A source request or missing initial context is not a contract uncertainty. Report only material ambiguity that source cannot resolve. Do not make a verdict.',
+        schema, execute=execute, max_packet=4*1024*1024)
     print('CORE_CLAUDE_PROBE_RESULT_V1 ' + json.dumps(dict(
-        acknowledged=result == {'ack': 'diagnostic-only'}, review_authority=False)), flush=True)
+        planning_returned=isinstance(result,dict), review_authority=False)), flush=True)
 except RuntimeError:
     print('CORE_CLAUDE_PROBE_RESULT_V1 {"acknowledged":false,"review_authority":false}', flush=True)
