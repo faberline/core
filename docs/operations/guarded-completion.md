@@ -1,6 +1,6 @@
 # Guarded completion preparation
 
-Core consumes the [AW activation contract](https://github.com/faberline/aw/blob/8eba33a85152d7056a8b75a5998684f66e0bd8d5/docs/standards/issue-guard-activation.md).
+Core consumes the [AW activation contract](https://github.com/faberline/aw/blob/c929e87e50cd2c5e7d578c4b44e002182291031a/docs/standards/issue-guard-activation.md).
 Issue #86 prepares the inactive deployment. Issues #83 and #84 remain open
 until their full deployed acceptance is proved. AW #115 also remains open.
 

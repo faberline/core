@@ -1,5 +1,5 @@
 {
-  "aw_revision": "8eba33a85152d7056a8b75a5998684f66e0bd8d5",
+  "aw_revision": "c929e87e50cd2c5e7d578c4b44e002182291031a",
   "workflows": [
     {
       "path": ".github/workflows/development-ci.yml",
@@ -1076,7 +1076,7 @@
       "trusted_workflows": {
         ".github/workflows/development-ci.yml": {
           "id": 402004875,
-          "definition_sha": "e1b5a307c9e4302c1ce1016747d2b9cb5ebcbbb0"
+          "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
         }
       },
       "always": [
@@ -2769,19 +2769,19 @@
       ]
     }
   },
-  "controller_source": "faberline/aw@8eba33a85152d7056a8b75a5998684f66e0bd8d5:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+  "controller_source": "faberline/aw@c929e87e50cd2c5e7d578c4b44e002182291031a:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
   "claude_final_review": {
     "version": 1,
     "producer": {
       "path": ".github/workflows/claude-final-review.yml",
       "id": 399789974,
-      "definition_sha": "63bcf7bfa1bbfc0878d8d16bfaaa67af77afaf78",
+      "definition_sha": "fda854a944ab4f72323aeb5def91152dd714196f",
       "job": "review"
     },
     "gates": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "e1b5a307c9e4302c1ce1016747d2b9cb5ebcbbb0"
+        "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
       }
     },
     "protected_paths": [
@@ -2819,7 +2819,7 @@
     "producer": {
       "path": ".github/workflows/issue-ci.yml",
       "id": 394215097,
-      "definition_sha": "cd419a93dedeaa2e154f405c94b890ee77a2462c",
+      "definition_sha": "c421498e667dcb1be47d590098978af4db155f1b",
       "job": "native-auto-merge"
     }
   },
@@ -3839,7 +3839,7 @@
     "trusted_workflows": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "e1b5a307c9e4302c1ce1016747d2b9cb5ebcbbb0"
+        "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
       }
     },
     "always": [
@@ -5542,7 +5542,7 @@
     "producer": {
       "path": ".github/workflows/issue-recovery.yml",
       "id": 402173927,
-      "definition_sha": "8f168daaa1453bc4a065752e861525c029833083",
+      "definition_sha": "d0726c4e8bb9a7013e12aad3d9d23eecc620b236",
       "job": "recovery"
     }
   }
