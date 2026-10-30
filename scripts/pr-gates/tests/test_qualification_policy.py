@@ -85,9 +85,11 @@ class FullPolicyTests(unittest.TestCase):
     def test_full_policy_does_not_silently_accept_old_five_jobs(self):
         policy=q.validate(CONFIG)
         counts={kind:sum(c['kind']==kind for c in policy['checks'].values())for kind in ['unit','functional_e2e','performance','policy']}
-        self.assertEqual(counts,dict(unit=70,functional_e2e=62,performance=1,policy=11))
-        self.assertEqual(len(CONFIG['workflows'][0]['jobs']),144)
-        self.assertEqual(len(set(CONFIG['workflows'][0]['jobs'])),144)
+        self.assertEqual(counts,dict(unit=70,functional_e2e=62,performance=1,policy=12))
+        self.assertEqual(len(CONFIG['workflows'][0]['jobs']),145)
+        self.assertEqual(len(set(CONFIG['workflows'][0]['jobs'])),145)
+        self.assertIn('unit-stage',policy['always'])
+        self.assertEqual(policy['checks']['unit-stage']['job'],'candidate unit/static complete')
 
     def test_complete_workspace_is_required_even_for_docs_and_unknown_paths(self):
         expected=set(CONFIG['workflows'][0]['jobs'])
@@ -149,6 +151,17 @@ class FullPolicyTests(unittest.TestCase):
             self.assertEqual(current['applicability'][category]['checks'],previous['applicability'][category]['checks'])
         self.assertEqual(current['additional'],[])
         self.assertEqual(current['unresolved'],[])
+        self.assertEqual(CONFIG['qualification'],CONFIG['ci_handoff_policy']['qualification'])
+
+    def test_sequence_issue_requires_existing_product_coverage(self):
+        policy=q.validate(CONFIG)
+        previous=policy['contracts']['78'];current=policy['contracts']['80']
+        for category in q.CATEGORIES:
+            self.assertEqual(current['applicability'][category]['status'],'required')
+            self.assertEqual(current['applicability'][category]['checks'],
+                             previous['applicability'][category]['checks'])
+        self.assertEqual(current['unresolved'],[])
+        self.assertEqual(current['additional'],[])
         self.assertEqual(CONFIG['qualification'],CONFIG['ci_handoff_policy']['qualification'])
 
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
