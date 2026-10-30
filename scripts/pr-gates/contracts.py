@@ -93,6 +93,17 @@ def command(package, profile, target):
             '--include-ignored', '--format', 'pretty', '--color', 'never', '--test-threads', '1']
 
 
+def discover(root, package, profile, target):
+    """Independently list the complete release harness, including ignored tests."""
+    argv = command(package, profile, target)
+    argv[argv.index('--') + 1:] = ['--list', '--format', 'pretty', '--color', 'never']
+    print(json.dumps({'command': argv, 'phase': 'integration-list'}), flush=True)
+    result = unit._run_product(argv, root)
+    if result.returncode:
+        raise ValueError('integration discovery failed with exit ' + str(result.returncode))
+    return unit.listed_unit_tests(result.stdout)
+
+
 def run(root, package, profile, provenance):
     targets = active_targets(package, profile)
     if not targets:
@@ -100,6 +111,15 @@ def run(root, package, profile, provenance):
     errors = []
     for target in targets:
         argv = command(package, profile, target)
+        try:
+            before = discover(root, package, profile, target)
+        except ValueError as error:
+            errors.append(target['name'] + ': ' + str(error))
+            print('CORE_CONTRACT_EVIDENCE_V1 ' + json.dumps(
+                {'schema': 'CORE_CONTRACT_EVIDENCE_V1', 'provenance': provenance,
+                 'package': package['name'], 'profile': profile, 'target': target['name'],
+                 'command': argv, 'result': 'fail', 'error': str(error)}, sort_keys=True), flush=True)
+            continue
         started = time.monotonic()
         result = subprocess.run(argv, cwd=root, capture_output=True, text=True)
         elapsed = time.monotonic() - started
@@ -116,6 +136,11 @@ def run(root, package, profile, provenance):
             if result.returncode:
                 raise ValueError('product command failed with exit ' + str(result.returncode))
             record['tests'] = unit.libtest_evidence(result.stdout, 1)
+            after = discover(root, package, profile, target)
+            executed = {name for block in record['tests'] for name in block['roster']}
+            if before != after or after != executed:
+                raise ValueError('integration execution differs from discovered roster')
+            record['discovered_roster'] = sorted(after)
             record['result'] = 'pass'
         except ValueError as error:
             errors.append(target['name'] + ': ' + str(error))

@@ -87,9 +87,16 @@ class SelectionTests(unittest.TestCase):
 
 
 class EvidenceTests(unittest.TestCase):
-    def run_fixture(self, stdout=output(), code=0, package_value=None):
+    def run_fixture(self, stdout=output(), code=0, package_value=None, listings=None):
         log=io.StringIO();error=io.StringIO()
-        with patch.object(c.subprocess,'run',return_value=subprocess.CompletedProcess([],code,stdout=stdout,stderr='raw error evidence')) as invoke:
+        if listings is None:
+            listings = ['alpha: test\n\n1 test, 0 benchmarks\n'] * 10
+        listings = iter(listings)
+        def result(argv, **kwargs):
+            if '--list' in argv:
+                return subprocess.CompletedProcess(argv, 0, stdout=next(listings), stderr='')
+            return subprocess.CompletedProcess(argv,code,stdout=stdout,stderr='raw error evidence')
+        with patch.object(c.subprocess,'run',side_effect=result) as invoke:
             with contextlib.redirect_stdout(log),contextlib.redirect_stderr(error):
                 try:c.run('/candidate',package_value or package(),'default',{'actual_head':'a'*40,'actual_base':'b'*40})
                 except ValueError as exc:return log.getvalue(),error.getvalue(),invoke,exc
@@ -101,6 +108,7 @@ class EvidenceTests(unittest.TestCase):
         self.assertIn(output(),stdout);self.assertIn('raw error evidence',stderr)
         record=json.loads(next(line.split(' ',1)[1] for line in stdout.splitlines()if line.startswith('CORE_CONTRACT_EVIDENCE_V1 ')))
         self.assertEqual(record['tests'][0]['roster'],['alpha'])
+        self.assertEqual(record['discovered_roster'],['alpha'])
         self.assertEqual(len(record['stdout_sha256']),64)
         self.assertEqual(record['provenance']['actual_head'],'a'*40)
         self.assertNotIn('shell',invoke.call_args.kwargs)
@@ -117,7 +125,22 @@ class EvidenceTests(unittest.TestCase):
     def test_failure_does_not_hide_later_targets(self):
         p=package();p['integration_targets'].append(dict(p['integration_targets'][0],name='second'))
         _,_,invoke,error=self.run_fixture(code=1,package_value=p)
-        self.assertIsNotNone(error);self.assertEqual(invoke.call_count,2)
+        self.assertIsNotNone(error);self.assertEqual(invoke.call_count,4)
+
+    def test_omitted_or_changed_discovered_tests_do_not_pass(self):
+        alpha='alpha: test\n\n1 test, 0 benchmarks\n'
+        two='alpha: test\nbeta: test\n\n2 tests, 0 benchmarks\n'
+        for listings in ([two,two], [alpha,two], [alpha,'']):
+            with self.subTest(listings=listings):
+                self.assertIsNotNone(self.run_fixture(listings=listings)[3])
+
+    def test_discovery_failure_does_not_hide_later_targets(self):
+        p=package();p['integration_targets'].append(dict(p['integration_targets'][0],name='second'))
+        alpha='alpha: test\n\n1 test, 0 benchmarks\n'
+        stdout,_,invoke,error=self.run_fixture(package_value=p,listings=['',alpha,alpha])
+        self.assertIsNotNone(error)
+        self.assertIn('"target": "second"', stdout)
+        self.assertEqual(invoke.call_count,4)
 
     def test_no_targets_refuses_before_execution(self):
         p=package();p['integration_targets']=[]
