@@ -2,6 +2,7 @@
 """Manifest-derived unit/static plans. Does not grant PR qualification."""
 import argparse
 import glob
+import hashlib
 import json
 import re
 import sys
@@ -150,6 +151,54 @@ def affected(packages, paths):
         if expanded == changed:
             return sorted(changed)
         changed = expanded
+
+
+def parse_changes(raw):
+    """Retain both sides of renames and deleted paths, without shell parsing."""
+    fields = raw.split('\0')
+    if not fields or fields[-1] != '':
+        raise ValueError('incomplete NUL-delimited changed-path inventory')
+    fields.pop()
+    rows, index = [], 0
+    def path(value):
+        if (not value or value.startswith('/') or '\\' in value
+                or any(part in ('', '.', '..') for part in value.split('/'))):
+            raise ValueError('unsafe changed path')
+        return value
+    while index < len(fields):
+        status = fields[index];index += 1
+        if not re.fullmatch(r'(?:[AMDT]|[RC][0-9]{1,3})', status):
+            raise ValueError('unknown changed-path status')
+        count = 2 if status[0] in ('R', 'C') else 1
+        if len(fields) - index < count:
+            raise ValueError('truncated renamed or changed path')
+        names = [path(value) for value in fields[index:index+count]];index += count
+        row = dict(status=status, filename=names[-1])
+        if count == 2:
+            row['previous_filename'] = names[0]
+        rows.append(row)
+    names = [row['filename'] for row in rows]
+    if len(names) != len(set(names)):
+        raise ValueError('duplicate changed path')
+    return rows
+
+
+def impact_plan(root, packages, head, base):
+    if not all(re.fullmatch(r'[0-9a-f]{40}', value or '') for value in (head, base)):
+        raise ValueError('impact requires exact immutable commits')
+    raw = subprocess.check_output(['git', '-C', str(root), 'diff', '--no-ext-diff', '--no-textconv',
+        '--name-status', '-z', '--find-renames', base+'...'+head, '--'], text=True)
+    changes = parse_changes(raw)
+    paths = sorted({value for row in changes for key,value in row.items()
+                    if key in ('filename', 'previous_filename')})
+    result = dict(version=1, head=head, base=base, changes=changes, paths=paths,
+                  affected_packages=affected(packages, paths),
+                  execution_packages=sorted(p['name'] for p in packages),
+                  execution_selection='complete workspace',
+                  reason='Retain every existing required target and feature row; impact is advisory.',
+                  qualification='not evaluated')
+    result['sha256'] = hashlib.sha256(json.dumps(result,sort_keys=True,separators=(',', ':')).encode()).hexdigest()
+    return result
 
 
 def load(root, metadata_json=None):
@@ -400,7 +449,7 @@ def execute(root, package, profile, kind, provenance):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', choices=['matrix', 'inventory', 'run'])
+    parser.add_argument('action', choices=['matrix', 'inventory', 'impact', 'run'])
     parser.add_argument('--root', type=Path, default=Path.cwd())
     parser.add_argument('--metadata-json', type=Path, help='Offline inspection only; never execution evidence')
     parser.add_argument('--expected-head')
@@ -413,8 +462,8 @@ def main(argv=None):
     provided = (args.expected_head, args.expected_base, args.baseline_root)
     if any(provided) and not all(provided):
         parser.error('identity triple must be complete: --expected-head --expected-base --baseline-root')
-    if args.action == 'run' and (args.metadata_json is not None or not all(provided)):
-        parser.error('run requires fresh metadata and --expected-head --expected-base --baseline-root')
+    if args.action in ('run', 'impact') and (args.metadata_json is not None or not all(provided)):
+        parser.error(args.action + ' requires fresh metadata and --expected-head --expected-base --baseline-root')
     if not any(provided) and args.metadata_json is None:
         parser.error('inventory/matrix without identities require offline --metadata-json inspection')
     if args.metadata_json is not None and any(provided):
@@ -427,7 +476,11 @@ def main(argv=None):
         comparison = compare_inventory(load(args.baseline_root), packages)
         # Metadata generation must not silently change the evidence inputs.
         provenance = verify_identity(args.root, *provided)
-    if args.action == 'inventory':
+    if args.action == 'impact':
+        result = impact_plan(args.root, packages, args.expected_head, args.expected_base)
+        verify_identity(args.root, *provided)
+        print(json.dumps(result, sort_keys=True, separators=(',', ':')))
+    elif args.action == 'inventory':
         print(json.dumps({'packages': packages, 'provenance': provenance,
                           'baseline_comparison': comparison, 'execution_selection': 'complete workspace',
                           'qualification': 'not evaluated'}, sort_keys=True, indent=2))
