@@ -61,6 +61,8 @@ def execute(args, **kwargs):
         returncode=result.returncode, stdout_bytes=len(result.stdout.encode()),
         stderr_bytes=len(result.stderr.encode()), codes=codes, envelope=envelope,
         http_status=sorted(set(re.findall(r'(?:api error:|status(?: code)?[: =]+|http[/0-9. ]+)\s*([45][0-9]{2})\b', combined))),
+        token_comparisons=re.findall(r'\b([0-9]+)\s*(?:tokens?\s*)?>\s*([0-9]+)', combined),
+        token_counts=re.findall(r'\b([0-9]+)\s*(?:input |output |context )?tokens?\b', combined),
         api_error_types=[v for v in ('invalid_request_error', 'authentication_error', 'permission_error',
             'not_found_error', 'request_too_large', 'rate_limit_error', 'api_error', 'overloaded_error') if v in combined])), flush=True)
     return result
@@ -80,7 +82,11 @@ available = sorted({entry['path'] for tree in trees.values() for entry in tree
 packet = dict(packet, available_source_paths=available)
 print('CORE_CLAUDE_PLANNING_PACKET_V1 ' + json.dumps(dict(
     packet_bytes=len(t.a.r.canonical(packet).encode()), schema_bytes=len(t.a.r.canonical(schema).encode()),
-    source_paths=len(available), review_authority=False)), flush=True)
+    source_paths=len(available), review_authority=False,
+    field_bytes={key: len(t.a.r.canonical(value).encode()) for key,value in packet.items()},
+    framework_rows=len(packet['shared_framework_sources']),
+    framework_unique_texts=len({row['content'] for row in packet['shared_framework_sources']}),
+    framework_unique_text_bytes=sum(len(v.encode()) for v in {row['content'] for row in packet['shared_framework_sources']}))), flush=True)
 try:
     result = m.invoke_schema(packet,
         os.environ.get('CLAUDE_CODE_OAUTH_TOKEN'),
