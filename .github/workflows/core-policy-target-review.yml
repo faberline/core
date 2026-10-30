@@ -1,0 +1,29 @@
+name: Reviewed policy target
+on:
+  push:
+    branches: [codex/core82-policy-target-review]
+    paths: [.github/workflows/core-policy-target-review.yml]
+permissions: {}
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    permissions: {actions: read, contents: read, pull-requests: read, issues: read}
+    steps:
+      - uses: faberline/aw/.github/actions/policy-adoption-target-review@8e2e93e5ba8feb30b6668de39139980ea3bb085c
+        with:
+          target-pr: '82'
+          target-head: b0c0a8db5fbe18183379785a6680c2ea24ec1914
+          claude-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+  outcome:
+    needs: review
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency: {group: issue-ci-handoff, cancel-in-progress: false}
+    permissions: {actions: read, contents: write, pull-requests: write, statuses: write, issues: write}
+    steps:
+      - uses: faberline/aw/.github/actions/policy-adoption-review-outcome@8e2e93e5ba8feb30b6668de39139980ea3bb085c
+        with:
+          target-pr: '82'
+          target-head: b0c0a8db5fbe18183379785a6680c2ea24ec1914
+          review-run: ${{ github.run_id }}
