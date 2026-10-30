@@ -34,11 +34,17 @@ class CISequenceTests(unittest.TestCase):
         self.assertTrue({'unit-stage', 'unit-plan'} <= dependencies('workspace-contracts'))
         self.assertTrue({'unit-stage', 'crate-gates', 'source-issue-47-integration', 'workspace-contracts'}
                         <= dependencies('measured-performance'))
-        self.assertIn('gate: [proposal, clippy]', job('source-issue-47-unit'))
-        self.assertIn('cargo clippy --locked -p raft-runtime --all-targets -- -D warnings',
-                      job('source-issue-47-unit'))
-        self.assertIn('cargo test --locked -p raft-core -p raft-runtime --no-fail-fast',
-                      job('source-issue-47-integration'))
+        unit = job('source-issue-47-unit')
+        integration = job('source-issue-47-integration')
+        self.assertIn('name: candidate issue 47 (clippy)', unit)
+        self.assertIn('cargo clippy --locked -p raft-runtime --all-targets -- -D warnings', unit)
+        self.assertNotIn('proposal_gate.py', unit)
+        self.assertNotIn('cargo test', unit)
+        self.assertIn('gate: [proposal, raft-full]', integration)
+        self.assertIn("if: matrix.gate == 'proposal'", integration)
+        self.assertIn('python3 scripts/pr-gates/proposal_gate.py', integration)
+        self.assertIn("if: matrix.gate == 'raft-full'", integration)
+        self.assertIn('cargo test --locked -p raft-core -p raft-runtime --no-fail-fast', integration)
 
     def test_pr_requires_every_unit_job_to_succeed(self):
         body = job('unit-stage')
