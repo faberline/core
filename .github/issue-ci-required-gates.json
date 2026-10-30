@@ -30,7 +30,7 @@
   "qualification_blockers": [],
   "lifecycle_mode": "full",
   "ci_handoff_policy": {
-    "aw_revision": "8b8a5284ef928190c0d21718331de4b1732334c9",
+    "aw_revision": "c929e87e50cd2c5e7d578c4b44e002182291031a",
     "workflows": [
       {
         "path": ".github/workflows/development-ci.yml",

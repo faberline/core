@@ -10,6 +10,19 @@ withdraws native merge requests during drain. Guard-capable workers refuse new
 claims. Old launcher fencing and in-flight work still require an actual audit.
 An old session status or an absent local lock is not proof that work stopped.
 
+The journal policy pins the same reviewed AW runtime as this deployment.
+The six-stage test plan changes the deployed CI semantics, so its journal
+policy has a new identity. The earlier `8b8a5284` value was an undeployed
+intermediate revision, not the existing main journal identity. It cannot
+stand in for either the deployed base or the reviewed current runtime.
+
+This preparation does not rewrite, delete or replay any existing journal.
+During drain, the trusted writer returns through `drain_queue` before it can
+call the ordinary CI handoff. Existing issue comments and leases stay intact.
+The later activation must settle old work and leases before enabling the
+guarded writer. If a later change adds review metadata without changing CI
+semantics, the verified deployed journal policy can retain its old identity.
+
 The recovery workflow ID is **402173927**. GitHub registered this real ID from
 the isolated `codex/86-register-recovery` branch. That registration has no
 provider permission, product checkout, tests or recovery operation. Its result

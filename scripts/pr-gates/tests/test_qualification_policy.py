@@ -3,7 +3,9 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
+import subprocess
 import unittest
 
 ROOT=Path(__file__).resolve().parents[3]
@@ -132,6 +134,27 @@ class FullPolicyTests(unittest.TestCase):
     def test_ci_handoff_and_merge_use_the_same_complete_semantics(self):
         for key in ['workflows','lifecycle_mode','qualification_blockers','qualification']:
             self.assertEqual(CONFIG[key],CONFIG['ci_handoff_policy'][key])
+
+    def test_journal_runtime_has_current_or_unchanged_deployed_provenance(self):
+        # Read the actual frozen PR base in CI, and the local main tracking
+        # ref for offline controls. Never fetch or execute baseline code.
+        baseline='origin/main'
+        event_path=os.environ.get('GITHUB_EVENT_PATH')
+        if event_path:
+            event=json.loads(Path(event_path).read_text())
+            if isinstance(event.get('pull_request'),dict):
+                baseline=event['pull_request']['base']['sha']
+                self.assertRegex(baseline,r'^[0-9a-f]{40}$')
+            else:
+                self.assertNotEqual(os.environ.get('GITHUB_EVENT_NAME'),'pull_request')
+        prior=json.loads(subprocess.check_output([
+            'git','-c','core.fsmonitor=false','-C',str(ROOT),'show',
+            baseline+':.github/issue-ci-required-gates.json'],text=True))
+        fields=('workflows','lifecycle_mode','qualification_blockers','qualification','development_pipeline')
+        allowed={CONFIG['aw_revision']}
+        if all(CONFIG.get(key)==prior.get(key) for key in fields):
+            allowed.add(prior.get('ci_handoff_policy',prior)['aw_revision'])
+        self.assertIn(CONFIG['ci_handoff_policy']['aw_revision'],allowed)
 
     def test_real_issue_registry_keeps_unreviewed_requirements_on_hold(self):
         policy=q.validate(CONFIG)
