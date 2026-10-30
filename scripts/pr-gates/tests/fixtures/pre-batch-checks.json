@@ -1,0 +1,722 @@
+{
+  "policy-0": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate workspace unit inventory"
+  },
+  "policy-1": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate workspace format"
+  },
+  "policy-2": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "service-k8s"
+  },
+  "policy-3": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "storage-durable"
+  },
+  "policy-4": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "service-backup"
+  },
+  "policy-5": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "raft-core"
+  },
+  "policy-6": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "raft-runtime"
+  },
+  "unit-0": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (build-stamp, default)"
+  },
+  "unit-1": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (claim-token, default)"
+  },
+  "unit-2": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (cli-std, default)"
+  },
+  "unit-3": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (compass, default)"
+  },
+  "unit-4": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (index-text, default)"
+  },
+  "unit-5": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (metrics-prometheus, default)"
+  },
+  "unit-6": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (metrics-remote-write, default)"
+  },
+  "unit-7": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (openapi-codegen, default)"
+  },
+  "unit-8": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (peer-tls, default)"
+  },
+  "unit-9": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (raft-core, default)"
+  },
+  "unit-10": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (raft-runtime, default)"
+  },
+  "unit-11": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (server-http, default)"
+  },
+  "unit-12": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (server-lifecycle, default)"
+  },
+  "unit-13": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (server-tcp, default)"
+  },
+  "unit-14": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-auth, default)"
+  },
+  "unit-15": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-backup, default)"
+  },
+  "unit-16": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-collector, default)"
+  },
+  "unit-17": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-executor, default)"
+  },
+  "unit-18": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-http, default)"
+  },
+  "unit-19": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, default)"
+  },
+  "unit-20": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-mcp, default)"
+  },
+  "unit-21": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-observability, default)"
+  },
+  "unit-22": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-projection, default)"
+  },
+  "unit-23": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (storage-durable, default)"
+  },
+  "unit-24": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (storage-object, default)"
+  },
+  "unit-25": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (storage-segment, default)"
+  },
+  "unit-26": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (surface, default)"
+  },
+  "unit-27": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (transport-h2c, default)"
+  },
+  "unit-28": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (transport-otlp, default)"
+  },
+  "unit-29": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (ui-runtime, default)"
+  },
+  "unit-30": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (cli-std, all-features)"
+  },
+  "unit-31": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (cli-std, feature:k8s)"
+  },
+  "unit-32": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (cli-std, feature:online)"
+  },
+  "unit-33": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (cli-std, feature:registry)"
+  },
+  "unit-34": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (cli-std, no-default)"
+  },
+  "unit-35": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (index-text, all-features)"
+  },
+  "unit-36": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (index-text, feature:jieba)"
+  },
+  "unit-37": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (index-text, no-default)"
+  },
+  "unit-38": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-auth, all-features)"
+  },
+  "unit-39": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-auth, feature:k8s)"
+  },
+  "unit-40": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-auth, no-default)"
+  },
+  "unit-41": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-backup, all-features)"
+  },
+  "unit-42": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-backup, feature:http-client)"
+  },
+  "unit-43": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-backup, feature:s3)"
+  },
+  "unit-44": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-backup, no-default)"
+  },
+  "unit-45": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-http, all-features)"
+  },
+  "unit-46": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-http, feature:otlp)"
+  },
+  "unit-47": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-http, no-default)"
+  },
+  "unit-48": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, all-features)"
+  },
+  "unit-49": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, feature:certificate)"
+  },
+  "unit-50": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, feature:controller)"
+  },
+  "unit-51": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, feature:full)"
+  },
+  "unit-52": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, feature:gcp-cas)"
+  },
+  "unit-53": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, feature:gcp-cas-client)"
+  },
+  "unit-54": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, feature:render-only)"
+  },
+  "unit-55": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-k8s, no-default)"
+  },
+  "unit-56": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-observability, all-features)"
+  },
+  "unit-57": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-observability, feature:otlp)"
+  },
+  "unit-58": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (service-observability, no-default)"
+  },
+  "unit-59": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (storage-object, all-features)"
+  },
+  "unit-60": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (storage-object, feature:gcs)"
+  },
+  "unit-61": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (storage-object, feature:s3)"
+  },
+  "unit-62": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (storage-object, no-default)"
+  },
+  "unit-63": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (transport-h2c, all-features)"
+  },
+  "unit-64": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (transport-h2c, feature:server)"
+  },
+  "unit-65": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (transport-h2c, no-default)"
+  },
+  "unit-66": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (ui-runtime, all-features)"
+  },
+  "unit-67": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (ui-runtime, feature:debug)"
+  },
+  "unit-68": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (ui-runtime, feature:serde_json)"
+  },
+  "unit-69": {
+    "kind": "unit",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate unit-static (ui-runtime, no-default)"
+  },
+  "functional-0": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (claim-token, default)"
+  },
+  "functional-1": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (compass, default)"
+  },
+  "functional-2": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (index-text, default)"
+  },
+  "functional-3": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (metrics-remote-write, default)"
+  },
+  "functional-4": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (openapi-codegen, default)"
+  },
+  "functional-5": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (peer-tls, default)"
+  },
+  "functional-6": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (raft-core, default)"
+  },
+  "functional-7": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (raft-runtime, default)"
+  },
+  "functional-8": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (server-http, default)"
+  },
+  "functional-9": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (server-lifecycle, default)"
+  },
+  "functional-10": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (server-tcp, default)"
+  },
+  "functional-11": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-auth, default)"
+  },
+  "functional-12": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-backup, default)"
+  },
+  "functional-13": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-collector, default)"
+  },
+  "functional-14": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-executor, default)"
+  },
+  "functional-15": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-http, default)"
+  },
+  "functional-16": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, default)"
+  },
+  "functional-17": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-mcp, default)"
+  },
+  "functional-18": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-observability, default)"
+  },
+  "functional-19": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-projection, default)"
+  },
+  "functional-20": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (storage-durable, default)"
+  },
+  "functional-21": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (storage-object, default)"
+  },
+  "functional-22": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (storage-segment, default)"
+  },
+  "functional-23": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (surface, default)"
+  },
+  "functional-24": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (transport-h2c, default)"
+  },
+  "functional-25": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (transport-otlp, default)"
+  },
+  "functional-26": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (ui-runtime, default)"
+  },
+  "functional-27": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (index-text, all-features)"
+  },
+  "functional-28": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (index-text, feature:jieba)"
+  },
+  "functional-29": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (index-text, no-default)"
+  },
+  "functional-30": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-auth, all-features)"
+  },
+  "functional-31": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-auth, feature:k8s)"
+  },
+  "functional-32": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-auth, no-default)"
+  },
+  "functional-33": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-backup, all-features)"
+  },
+  "functional-34": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-backup, feature:http-client)"
+  },
+  "functional-35": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-backup, feature:s3)"
+  },
+  "functional-36": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-backup, no-default)"
+  },
+  "functional-37": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-http, all-features)"
+  },
+  "functional-38": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-http, feature:otlp)"
+  },
+  "functional-39": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-http, no-default)"
+  },
+  "functional-40": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, all-features)"
+  },
+  "functional-41": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, feature:certificate)"
+  },
+  "functional-42": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, feature:controller)"
+  },
+  "functional-43": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, feature:full)"
+  },
+  "functional-44": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, feature:gcp-cas)"
+  },
+  "functional-45": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, feature:gcp-cas-client)"
+  },
+  "functional-46": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, feature:render-only)"
+  },
+  "functional-47": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-k8s, no-default)"
+  },
+  "functional-48": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-observability, all-features)"
+  },
+  "functional-49": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-observability, feature:otlp)"
+  },
+  "functional-50": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (service-observability, no-default)"
+  },
+  "functional-51": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (storage-object, all-features)"
+  },
+  "functional-52": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (storage-object, feature:gcs)"
+  },
+  "functional-53": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (storage-object, feature:s3)"
+  },
+  "functional-54": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (storage-object, no-default)"
+  },
+  "functional-55": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (transport-h2c, all-features)"
+  },
+  "functional-56": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (transport-h2c, feature:server)"
+  },
+  "functional-57": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (transport-h2c, no-default)"
+  },
+  "functional-58": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (ui-runtime, all-features)"
+  },
+  "functional-59": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (ui-runtime, feature:debug)"
+  },
+  "functional-60": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (ui-runtime, feature:serde_json)"
+  },
+  "functional-61": {
+    "kind": "functional_e2e",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate contracts (ui-runtime, no-default)"
+  },
+  "measured-performance": {
+    "kind": "performance",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate measured performance"
+  },
+  "policy-7": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate source issue contract inspection"
+  },
+  "policy-8": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate issue 47 (proposal)"
+  },
+  "policy-9": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate issue 47 (raft-full)"
+  },
+  "policy-10": {
+    "kind": "policy",
+    "workflow": ".github/workflows/ci.yml",
+    "job": "candidate issue 47 (clippy)"
+  }
+}

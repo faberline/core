@@ -7,7 +7,7 @@ from pathlib import Path
 import unittest
 
 ROOT=Path(__file__).resolve().parents[3]
-REF='8b8a5284ef928190c0d21718331de4b1732334c9'
+REF='0f6269bee616ede74c4061afd6ef8b81217d818d'
 SPEC=importlib.util.spec_from_file_location('development_contract',ROOT/'scripts/issue-ci/development_pipeline.py')
 d=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(d)
 CONFIG=json.loads((ROOT/'.github/issue-ci-required-gates.json').read_text())
@@ -23,7 +23,7 @@ class DevelopmentContractTests(unittest.TestCase):
     def test_functional_and_performance_cannot_start_after_only_inventory(self):
         import yaml
         original=d.yaml_document((ROOT/PATH).read_text())
-        for job in ('crate-gates','source-issue-47','workspace-contracts','measured-performance'):
+        for job in ('workspace-contracts','measured-performance'):
             candidate=copy.deepcopy(original);candidate['jobs'][job]['needs']='unit-plan'
             with self.subTest(job=job),self.assertRaisesRegex(RuntimeError,'earlier stage'):
                 d.workflow_contract(yaml.safe_dump(candidate),CONFIG)
@@ -39,21 +39,33 @@ class DevelopmentContractTests(unittest.TestCase):
 
     def test_every_old_required_gate_is_kept_and_preflight_is_added(self):
         jobs=CONFIG['workflows'][0]['jobs']
-        self.assertEqual(len(jobs),145)
+        self.assertEqual(len(jobs),20)
+        self.assertEqual(len(CONFIG['qualification']['checks']),145)
         self.assertIn('development preflight',jobs)
         self.assertEqual(sum(c['kind']=='unit' for c in CONFIG['qualification']['checks'].values()),70)
         self.assertEqual(sum(c['kind']=='functional_e2e' for c in CONFIG['qualification']['checks'].values()),62)
         self.assertEqual(sum(c['kind']=='performance' for c in CONFIG['qualification']['checks'].values()),1)
         legacy=json.loads((ROOT/'scripts/issue-ci/tests/fixtures/legacy-policy.json').read_text())
-        self.assertTrue(set(legacy['workflows'][0]['jobs']) <= set(jobs))
+        labels={check.get('case_label',check['job']) for check in CONFIG['qualification']['checks'].values()}
+        self.assertTrue(set(legacy['workflows'][0]['jobs']) <= labels)
+        prior_checks=json.loads((ROOT/'scripts/pr-gates/tests/fixtures/pre-batch-checks.json').read_text())
+        prior=dict(workflows=[dict(path='.github/workflows/ci.yml',jobs=[c['job']for c in prior_checks.values()])],
+                   qualification=dict(checks=prior_checks))
+        self.assertTrue(d.retains_workflows(prior,CONFIG))
+        bad=copy.deepcopy(CONFIG);name=next(n for n,c in bad['qualification']['checks'].items()if c['kind']=='unit')
+        del bad['qualification']['checks'][name]
+        bad['development_pipeline']['grouped_checks'].remove(name)
+        self.assertFalse(d.retains_workflows(prior,bad))
 
     def test_metadata_runtime_is_hash_locked_and_does_not_replace_product_commands(self):
         workflow=(ROOT/PATH).read_text()
         self.assertIn('--no-deps --only-binary=:all: --require-hashes',workflow)
         self.assertIn('python3 candidate/scripts/pr-gates/plan.py impact',workflow)
-        self.assertIn('python3 candidate/scripts/pr-gates/contracts.py run',workflow)
+        self.assertIn('python3 candidate/scripts/pr-gates/batches.py run --group functional',workflow)
         self.assertIn('python3 candidate/scripts/pr-gates/measure.py',workflow)
-        self.assertIn('cargo test --locked -p raft-core -p raft-runtime --no-fail-fast',workflow)
+        spec=importlib.util.spec_from_file_location('batch_commands',ROOT/'scripts/pr-gates/batches.py')
+        batches=importlib.util.module_from_spec(spec);spec.loader.exec_module(batches)
+        self.assertEqual(batches.RAFT['raft-full'],['cargo','test','--locked','-p','raft-core','-p','raft-runtime','--no-fail-fast'])
         self.assertIn('fetch-depth: 0',workflow)
 
     def test_each_producer_uses_the_same_reviewed_runtime_and_main_wake(self):

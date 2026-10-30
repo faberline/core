@@ -1,7 +1,7 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/68b2d295ee9bf874d560f6054fa993e164464d3e/docs/standards/development-pipeline.md)
-with shared runtime `8b8a5284ef928190c0d21718331de4b1732334c9`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/0f6269bee616ede74c4061afd6ef8b81217d818d/docs/standards/development-pipeline.md)
+with shared runtime `0f6269bee616ede74c4061afd6ef8b81217d818d`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
 
@@ -12,16 +12,26 @@ Ordinary PRs use `.github/workflows/development-ci.yml`:
 2. `unit-plan` records changed, deleted and renamed paths and reverse
    dependency impact. It still selects the complete current workspace and
    feature matrix. The impact report cannot remove a required test.
-3. Formatting, unit/static and issue-contract inspection complete first.
-4. Every original package/Raft/contract check and the measured-performance
-   job wait for all stage 3 jobs. Each job keeps its own cloud runner.
+3. One static job runs formatting and issue-contract inspection. Eight unit
+   batches run all 70 package/feature rows, each with its original unit,
+   all-target Clippy, and documentation commands.
+4. Eight functional batches retain all 62 contract rows, five original crate
+   checks, and three issue 47 checks. They and the isolated performance job
+   wait for every stage 3 job. Each live Kubernetes contract case gets a new
+   disposable Kind cluster, even when several cases share a batch.
 5. The pinned read-only Claude producer runs only after complete required
    qualified CI. It must bind the same source issue and exact commits.
 6. The trusted result writer rechecks all required evidence and provider
    rules before merge. The actual merge must be verified before issue closure.
 
 The reviewed policy retains all 144 existing expanded checks and adds the
-preflight check, for **145 required checks**. No performance workload or
+preflight check, for **145 required checks in 20 physical test jobs**.
+Core owns the batch counts in `.github/development-test-batches.json`. AW
+defines stages and success barriers and sets no common job or batch count.
+The runner derives the complete case roster from fresh Cargo metadata. It
+checks that roster against the reviewed policy, logs each case result and
+the complete batch receipt, and fails on any missing, duplicate or failed
+case. Each feature row keeps its own original command. No performance workload or
 threshold is changed. The old `.github/workflows/ci.yml` retains its existing
 main/tag/manual execution; it no longer duplicates ordinary PR tests.
 Release pipeline design remains outside this change.

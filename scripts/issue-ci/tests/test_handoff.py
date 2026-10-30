@@ -68,7 +68,7 @@ class PolicyTests(unittest.TestCase):
         self.assertEqual(re.findall(r"^          - crate: (.+)$", source, re.M), expected[0]["jobs"])
         workflow = (ROOT / ".github/workflows/issue-ci.yml").read_text()
         self.assertIn('workflows: ["Core development CI", "Claude final review"]', workflow)
-        self.assertIn('faberline/aw/.github/actions/native-auto-merge@8b8a5284ef928190c0d21718331de4b1732334c9',workflow)
+        self.assertIn('faberline/aw/.github/actions/native-auto-merge@0f6269bee616ede74c4061afd6ef8b81217d818d',workflow)
         self.assertIn('group: issue-ci-handoff',workflow)
         self.assertIn('pull_request_target:',workflow)
         self.assertNotIn('uses: actions/checkout',workflow)
