@@ -70,6 +70,7 @@ def validate_config(config):
         raise RuntimeError('required workflow paths must be unique')
     if 'qualification' in config:
         qualification_module().validate(config)
+    development_module().validate(config)
     return config
 
 
@@ -77,6 +78,14 @@ def qualification_module():
     # Always load the sibling of this pinned controller, never a PR module.
     path = Path(__file__).with_name('qualification.py')
     spec = importlib.util.spec_from_file_location('issue_ci_qualification', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def development_module():
+    spec = importlib.util.spec_from_file_location('issue_ci_development',
+            Path(__file__).with_name('development_pipeline.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -94,6 +103,39 @@ def validate_adoption(config):
 
 
 def qualify_config(repo, pr, config, files=None):
+    return _qualify_config(repo, pr, config, files)
+
+
+def _merged_pull(repo, number, head, base):
+    """Authenticate a cleared CI association, not permission to close an issue.
+
+    The close layer must still prove merge ancestry and unchanged ownership.
+    This read-only path cannot qualify an open, unmerged or foreign PR.
+    """
+    if (not isinstance(repo,str) or not re.fullmatch(r'[\w.-]+/[\w.-]+',repo)
+            or type(number) is not int or number<=0
+            or any(not isinstance(x,str) or not re.fullmatch('[0-9a-f]{40}',x) for x in (head,base))):
+        raise RuntimeError('merged CI target identity')
+    pull=api(f'repos/{repo}/pulls/{number}')
+    meta=api(f'repos/{repo}')
+    if not (pull.get('number')==number and pull.get('state')=='closed' and pull.get('merged') is True
+            and pull.get('draft') is False and isinstance(pull.get('merged_at'),str)
+            and isinstance(pull.get('merge_commit_sha'),str) and re.fullmatch('[0-9a-f]{40}',pull['merge_commit_sha'])
+            and pull.get('head',{}).get('sha')==head and pull.get('base',{}).get('sha')==base
+            and pull.get('head',{}).get('repo',{}).get('full_name')==repo
+            and pull.get('base',{}).get('repo',{}).get('full_name')==repo
+            and meta.get('full_name')==repo and isinstance(meta.get('default_branch'),str)
+            and pull['base'].get('ref')==meta['default_branch']):
+        raise RuntimeError('merged CI target identity')
+    return {k:pull[k] for k in ('number','state','merged','merge_commit_sha','head','base')}
+
+
+def qualify_merged_config(repo, pr, config, files=None):
+    _merged_pull(repo,pr['number'],pr['head']['sha'],pr['base']['sha'])
+    return _qualify_config(repo,pr,config,files,merged=True)
+
+
+def _qualify_config(repo, pr, config, files=None, merged=False):
     module = qualification_module()
     if files is None:
         files = pages(f'repos/{repo}/pulls/{pr["number"]}/files')
@@ -104,6 +146,10 @@ def qualify_config(repo, pr, config, files=None):
             if not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repo):
                 raise RuntimeError('invalid issue repository')
             issue = api(f'repos/{repo}/issues/{number}')
+            if merged and issue.get('state')=='closed':
+                # Reconstruct historical applicability only after actual
+                # merged-PR authentication. Never change the provider issue.
+                issue=dict(issue,state='open')
     plan = module.select(config, pr, files, issue)
     definitions = {}
     for workflow in plan['workflows']:
@@ -111,7 +157,19 @@ def qualify_config(repo, pr, config, files=None):
             if isinstance(ref, str) and re.fullmatch('[0-9a-f]{40}', ref):
                 definitions[workflow['path'], ref] = api(
                     f'repos/{repo}/contents/{workflow["path"]}?ref={ref}')
-    return module.scoped_config(config, pr, files, definitions, issue)
+    scoped = module.scoped_config(config, pr, files, definitions, issue)
+    development = development_module()
+    policy = development.validate(config)
+    if policy is not None:
+        data = definitions.get((policy['workflow'], pr['head']['sha']))
+        trusted = config['qualification']['trusted_workflows'][policy['workflow']]['definition_sha']
+        if data is not None and data.get('sha') == trusted:
+            import base64
+            raw = base64.b64decode(''.join(data['content'].split()), validate=True)
+            if (len(raw) > 262144 or hashlib.sha1(b'blob ' + str(len(raw)).encode() + b'\0' + raw).hexdigest() != trusted):
+                raise RuntimeError('development workflow content identity mismatch')
+            development.workflow_contract(raw.decode('utf-8'), config)
+    return scoped
 
 
 def evaluate_evidence(workflows, snapshots):
@@ -175,6 +233,21 @@ def evaluate_policy(config, snapshots):
 
 
 def snapshot(repo, sha, config, diagnostics=None):
+    return _snapshot(repo,sha,config,diagnostics)
+
+
+def merged_snapshot(repo, sha, config, number, base, diagnostics=None):
+    before=_merged_pull(repo,number,sha,base)
+    context=config.get('_qualification_context')
+    if context is not None and (context.get('pr'),context.get('head'),context.get('base'))!=(number,sha,base):
+        raise RuntimeError('merged CI qualification context')
+    result=_snapshot(repo,sha,config,diagnostics,allow_cleared=True)
+    if _merged_pull(repo,number,sha,base)!=before:
+        raise RuntimeError('merged CI target changed')
+    return result
+
+
+def _snapshot(repo, sha, config, diagnostics=None, allow_cleared=False):
     root = f'repos/{repo}'
     snapshots = {}
     for workflow in config['workflows']:
@@ -187,7 +260,15 @@ def snapshot(repo, sha, config, diagnostics=None):
         if not runs:
             continue
         latest = max(runs, key=lambda r: (r['run_number'], r.get('run_attempt', 1)))
-        if '_qualification_context' in config and not qualification_module().trusted_run(latest, config):
+        trusted=True
+        if '_qualification_context' in config:
+            trusted=qualification_module().trusted_run(latest,config)
+            if not trusted and allow_cleared and latest.get('pull_requests')==[]:
+                identity=config['qualification']['trusted_workflows'][workflow['path']]
+                trusted=(latest.get('workflow_id')==identity['id']
+                         and type(latest.get('run_attempt')) is int and latest['run_attempt']>0
+                         and latest.get('repository',{}).get('full_name')==repo)
+        if not trusted:
             if diagnostics is not None:
                 diagnostics[workflow['path']] = 'untrusted_latest_run'
             # Never fall back to an older green run when the newest identity
@@ -199,23 +280,99 @@ def snapshot(repo, sha, config, diagnostics=None):
     return snapshots
 
 
-def process_head(args, config, check_event=True):
+def untrusted_failure_snapshots(repo, sha, config):
+    """Collect exact-run failures without authorizing changed CI as a pass.
+
+    A protected workflow edit needs reviewed adoption for positive evidence.
+    Its real failed jobs can still return the associated issue to todo. A
+    missing, skipped, cancelled, successful or unbound run is never a failure.
+    """
+    context = config.get('_qualification_context', {})
+    paths = context.get('untrusted_workflows', [])
+    if not paths:
+        return {}
+    root = f'repos/{repo}'
+    results = {}
+    for workflow in config['workflows']:
+        path = workflow['path']
+        if path not in paths:
+            continue
+        runs = pages(f'{root}/actions/workflows/{quote(path.split("/")[-1], safe="")}/runs?head_sha={sha}&event=pull_request', 'workflow_runs')
+        runs = [r for r in runs if r.get('head_sha') == sha and r.get('event') == 'pull_request'
+                and r.get('head_repository', {}).get('full_name') == repo and r.get('path') == path]
+        if not runs:
+            continue
+        if not all(type(r.get('id')) is int and r['id'] > 0
+                   and type(r.get('run_number')) is int and r['run_number'] > 0
+                   and type(r.get('run_attempt')) is int and r['run_attempt'] > 0 for r in runs):
+            continue  # An unknown latest attempt must not revive older evidence.
+        latest = max(runs, key=lambda r: (r['run_number'], r['run_attempt']))
+        associations = latest.get('pull_requests')
+        if not isinstance(associations, list) or len(associations) != 1 \
+                or not qualification_module().trusted_run(latest, config):
+            continue
+        jobs = pages(f'{root}/actions/runs/{latest["id"]}/attempts/{latest["run_attempt"]}/jobs', 'jobs')
+        evidence = evaluate_evidence([workflow], {path: (latest, jobs)})
+        if evidence['failures']:
+            results[path] = (latest, jobs)
+    return results
+
+
+def process_head(args, config, check_event=True, before_mutation=None, development_config=None):
     source_config = config
+    review_config = development_config if development_config is not None else config
+    if development_config is not None:
+        validate_config(development_config)
+        if any(development_config.get(key) != config.get(key) for key in
+               ('workflows', 'qualification', 'lifecycle_mode', 'qualification_blockers', 'development_pipeline')):
+            raise RuntimeError('development handoff semantics differ from trusted CI policy')
     root = f'repos/{args.repo}'
     pr_path = f'{root}/pulls/{args.pr}'
+    def write(path, method, data=None):
+        # Call before the provider request: a lost response is still a write.
+        if before_mutation is not None:
+            before_mutation()
+        return api(path, method, data)
     pr = api(pr_path)
     if pr['state'] != 'open' or pr['head']['sha'] != args.head or pr['head']['repo']['full_name'] != args.repo:
         raise RuntimeError('closed, foreign, or stale PR head; no mutation')
+    development = development_module()
+    development_policy = development.validate(source_config)
     match = re.fullmatch(r'(?:issue/|agy/issue-)([0-9]+)', pr['head']['ref'])
-    if not match:
-        raise RuntimeError('PR branch has no supported issue association')
-    issue = int(match[1])
+    if development_policy is not None:
+        issue = qualification_module().linked_issue(pr)
+        if issue is None:
+            raise RuntimeError('PR requires exactly one canonical issue association')
+    else:
+        if not match:
+            raise RuntimeError('PR branch has no supported issue association')
+        issue = int(match[1])
     if not re.search(rf'(?im)^Closes #{issue}\s*$', pr.get('body') or ''):
         raise RuntimeError('PR body must explicitly link its branch issue with Closes #N')
     if 'qualification' in config:
         config = qualify_config(args.repo, pr, config)
     snapshots = snapshot(args.repo, args.head, config)
     state, reasons, evidence = evaluate_policy(config, snapshots)
+    negative_snapshots = untrusted_failure_snapshots(args.repo, args.head, config)
+    if negative_snapshots:
+        negative = evaluate_evidence(config['workflows'], negative_snapshots)
+        if negative['failures']:
+            state = 'todo'
+            reasons = negative['failures'] + reasons
+            evidence = sorted(set(evidence + negative['evidence']))
+    development_snapshots, failed_jobs, preflight = {}, [], None
+    if development_policy is not None:
+        from types import SimpleNamespace
+        adapter = SimpleNamespace(api=api, pages=pages)
+        preflight = development.preflight(adapter, args.repo, args.pr, args.head)
+        development_snapshots = development.review_failure_snapshot(adapter, args.repo, args.pr, args.head, review_config)
+        failed_jobs = development.failure_records(args.repo, args.pr, args.head, preflight['base'],
+            {**snapshots, **negative_snapshots, **development_snapshots}, config.get('_qualification_context'))
+        decisive_preflight = (not preflight['checks'][0]['passed']
+                             or preflight['checks'][1]['reason'] == 'PR has merge conflicts') if preflight['checks'] else False
+        if failed_jobs or decisive_preflight:
+            state = 'todo'
+            reasons = preflight['reasons'] + [f'{r["name"]}: {r["conclusion"]} {r["job_url"]}' for r in failed_jobs] + reasons
     if not args.apply and state == 'done' and 'qualification' in source_config:
         if snapshot(args.repo, args.head, config) != snapshots:
             raise RuntimeError('CI runs changed during read-only qualification')
@@ -272,10 +429,7 @@ def process_head(args, config, check_event=True):
     phase = journal['body'].split(prefix, 1)[1].split(' -->', 1)[0] if journal else 'pending'
     if failure_only and journal is None and labels & {'todo', 'doing', 'done'} != {'doing'}:
         return 0  # Only doing -> todo; existing journals may finish recovery.
-    if phase == 'applied':
-        print('duplicate applied head/run handoff; no mutation')
-        return 0
-    if phase not in ('pending', 'ready'):
+    if phase not in ('pending', 'ready', 'applied'):
         raise RuntimeError('invalid handoff journal phase')
     detail = '\n'.join(reasons) if reasons else 'All explicitly required workflow/job gates passed.'
     urls = '\n'.join(s[0]['html_url'] for s in snapshots.values())
@@ -301,15 +455,30 @@ def process_head(args, config, check_event=True):
             raise RuntimeError('failure-only mode cannot touch a done issue')
         return labels
 
+    if failed_jobs:
+        # Per-job diagnostics must precede the epoch dedupe. A later failed
+        # matrix row still gets its own comment, but cannot reset a new owner.
+        development.report_failures(args.repo, issue, failed_jobs, comments, write, fresh_labels)
+    if phase == 'applied':
+        print('duplicate applied head/run handoff; no lifecycle mutation')
+        return 0
     labels = fresh_labels()
     if journal is None:
         phase = 'ready' if state in labels else 'pending'
-        journal = api(f'{issue_path}/comments', 'POST', {'body': body(phase)})
+        journal = write(f'{issue_path}/comments', 'POST', {'body': body(phase)})
     comment_path = f'{root}/issues/comments/{journal["id"]}'
     # A pending intent never suppresses a retry after head/snapshot/API failures.
     labels = fresh_labels()
     if snapshot(args.repo, args.head, config) != snapshots:
         raise RuntimeError('CI runs changed during evaluation; pending intent is retryable')
+    if untrusted_failure_snapshots(args.repo, args.head, config) != negative_snapshots:
+        raise RuntimeError('untrusted CI failure changed during evaluation; no label mutation')
+    if development_policy is not None:
+        from types import SimpleNamespace
+        adapter = SimpleNamespace(api=api, pages=pages)
+        if (development.preflight(adapter, args.repo, args.pr, args.head) != preflight
+                or development.review_failure_snapshot(adapter, args.repo, args.pr, args.head, review_config) != development_snapshots):
+            raise RuntimeError('development input or failed review attempt changed; no label mutation')
     if 'qualification' in source_config:
         current_pr = api(pr_path)
         if (current_pr['state'] != 'open' or current_pr['head']['sha'] != args.head
@@ -320,11 +489,11 @@ def process_head(args, config, check_event=True):
         # that read, immediately before adding the target label.
         labels = fresh_labels()
         if state not in labels:
-            api(f'{issue_path}/labels', 'POST', {'labels': [state]})
+            write(f'{issue_path}/labels', 'POST', {'labels': [state]})
         # Durable proof that the desired label was added BEFORE deleting old
         # labels. Workers refuse mixed states, so they cannot claim between
         # the add and this checkpoint, even if the controller crashes.
-        api(comment_path, 'PATCH', {'body': body('ready')})
+        write(comment_path, 'PATCH', {'body': body('ready')})
     labels = fresh_labels()
     if state in labels:
         for old in sorted((labels & {'todo', 'doing', 'done'}) - {state}):
@@ -332,10 +501,10 @@ def process_head(args, config, check_event=True):
             if state not in live:
                 break
             if old in live:
-                api(f'{issue_path}/labels/{old}', 'DELETE')
+                write(f'{issue_path}/labels/{old}', 'DELETE')
     # ready + desired label absent means a later actor already consumed it
     # (e.g. AGY claimed todo -> doing). Never add it again or undo that claim.
-    api(comment_path, 'PATCH', {'body': body('applied')})
+    write(comment_path, 'PATCH', {'body': body('applied')})
     return 0
 
 
@@ -350,8 +519,9 @@ def reconcile(args, config):
     errors = []
     for pr in pages(f'{root}/pulls?state=open'):
         match = re.fullmatch(r'(?:issue/|agy/issue-)([0-9]+)', pr['head']['ref'])
-        if (not match or (pr['head'].get('repo') or {}).get('full_name') != args.repo
-                or not re.search(rf'(?im)^Closes #{int(match[1])}\s*$', pr.get('body') or '')):
+        issue = qualification_module().linked_issue(pr) if development_module().validate(config) else (int(match[1]) if match else None)
+        if (issue is None or (pr['head'].get('repo') or {}).get('full_name') != args.repo
+                or not re.search(rf'(?im)^Closes #{issue}\s*$', pr.get('body') or '')):
             continue
         current = argparse.Namespace(**vars(args))
         current.pr, current.head, current.apply = pr['number'], pr['head']['sha'], True

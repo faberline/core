@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "actors": [
+    {
+      "id": "claude-core-project-issue-work",
+      "role": "worker"
+    },
+    {
+      "id": "agy-core-issue-work",
+      "role": "worker"
+    },
+    {
+      "id": "core-issue-ci-writer",
+      "role": "writer"
+    },
+    {
+      "id": "core-issue-recovery",
+      "role": "recovery"
+    },
+    {
+      "id": "codex-pipeline-controller",
+      "role": "controller"
+    }
+  ]
+}
