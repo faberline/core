@@ -27,6 +27,7 @@ The actor manifest declares these required deployment audit targets:
 | `core-issue-ci-writer` | Default-branch writer ID, source, mutex and runtime |
 | `core-issue-recovery` | Default-branch recovery ID, source, mutex and runtime |
 | `codex-pipeline-controller` | Current controller, manual claims and supported entry paths |
+| `core-issue-plan-controller` | Existing planner issue/label writes and their actual launchers |
 
 The manifest is a list of audit targets. It is not an actor audit or a claim
 that these entries are fenced or idle. Resolve unknown launchers before the

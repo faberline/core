@@ -20,6 +20,10 @@
     {
       "id": "codex-pipeline-controller",
       "role": "controller"
+    },
+    {
+      "id": "core-issue-plan-controller",
+      "role": "controller"
     }
   ]
 }
