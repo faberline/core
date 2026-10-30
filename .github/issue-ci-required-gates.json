@@ -2245,7 +2245,7 @@
         },
         "80": {
           "title_sha256": "b6a4ee50e99716ef0cc3c281c607ef70640449c78b4082a00585c22200a460e6",
-          "body_sha256": "b19c2d7622f1b9b27982dcc81e25ac8d80f3c090bfce126741dc545b38b89ca1",
+          "body_sha256": "b63d1959fb3cd2216b96c830ed2c318ae6f675f9d225d5b9fa20a7a45c4a4783",
           "applicability": {
             "unit": {
               "status": "required",
@@ -4394,7 +4394,7 @@
       },
       "80": {
         "title_sha256": "b6a4ee50e99716ef0cc3c281c607ef70640449c78b4082a00585c22200a460e6",
-        "body_sha256": "b19c2d7622f1b9b27982dcc81e25ac8d80f3c090bfce126741dc545b38b89ca1",
+        "body_sha256": "b63d1959fb3cd2216b96c830ed2c318ae6f675f9d225d5b9fa20a7a45c4a4783",
         "applicability": {
           "unit": {
             "status": "required",
