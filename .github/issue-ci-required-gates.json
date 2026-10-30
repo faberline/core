@@ -1042,7 +1042,7 @@
       "trusted_workflows": {
         ".github/workflows/ci.yml": {
           "id": 384237875,
-          "definition_sha": "6a1bc645f0610789ab055293b28efbdf1f14debd"
+          "definition_sha": "0ec542af1de0d5b0fce0c23d283caaaae3421387"
         }
       },
       "always": [
@@ -2417,7 +2417,7 @@
     "gates": {
       ".github/workflows/ci.yml": {
         "id": 384237875,
-        "definition_sha": "6a1bc645f0610789ab055293b28efbdf1f14debd"
+        "definition_sha": "0ec542af1de0d5b0fce0c23d283caaaae3421387"
       }
     },
     "protected_paths": [
@@ -3191,7 +3191,7 @@
     "trusted_workflows": {
       ".github/workflows/ci.yml": {
         "id": 384237875,
-        "definition_sha": "6a1bc645f0610789ab055293b28efbdf1f14debd"
+        "definition_sha": "0ec542af1de0d5b0fce0c23d283caaaae3421387"
       }
     },
     "always": [
