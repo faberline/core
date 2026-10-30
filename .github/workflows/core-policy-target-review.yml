@@ -13,7 +13,7 @@ jobs:
       - uses: faberline/aw/.github/actions/policy-adoption-target-review@8e2e93e5ba8feb30b6668de39139980ea3bb085c
         with:
           target-pr: '82'
-          target-head: dcbc88e2f4ccfcef3c759bb56e5f9c7da9d7ab31
+          target-head: 10abd3fb1563bfc34d331d00246ef14a7cd59f06
           claude-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
   outcome:
     needs: review
@@ -25,5 +25,5 @@ jobs:
       - uses: faberline/aw/.github/actions/policy-adoption-review-outcome@8e2e93e5ba8feb30b6668de39139980ea3bb085c
         with:
           target-pr: '82'
-          target-head: dcbc88e2f4ccfcef3c759bb56e5f9c7da9d7ab31
+          target-head: 10abd3fb1563bfc34d331d00246ef14a7cd59f06
           review-run: ${{ github.run_id }}
