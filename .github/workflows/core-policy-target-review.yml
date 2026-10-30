@@ -10,10 +10,10 @@ jobs:
     timeout-minutes: 70
     permissions: {actions: read, contents: read, pull-requests: read, issues: read}
     steps:
-      - uses: faberline/aw/.github/actions/policy-adoption-target-review@8eba33a85152d7056a8b75a5998684f66e0bd8d5
+      - uses: faberline/aw/.github/actions/policy-adoption-target-review@c929e87e50cd2c5e7d578c4b44e002182291031a
         with:
           target-pr: '87'
-          target-head: 57add95b4952381ad440ce4bfad826f87b307a90
+          target-head: 54c45152ef6681c43cb67e03e3535b0b8635fddf
           claude-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
   outcome:
     needs: review
@@ -22,8 +22,8 @@ jobs:
     concurrency: {group: issue-ci-handoff, cancel-in-progress: false}
     permissions: {actions: read, contents: write, pull-requests: write, statuses: write, issues: write}
     steps:
-      - uses: faberline/aw/.github/actions/policy-adoption-review-outcome@8eba33a85152d7056a8b75a5998684f66e0bd8d5
+      - uses: faberline/aw/.github/actions/policy-adoption-review-outcome@c929e87e50cd2c5e7d578c4b44e002182291031a
         with:
           target-pr: '87'
-          target-head: 57add95b4952381ad440ce4bfad826f87b307a90
+          target-head: 54c45152ef6681c43cb67e03e3535b0b8635fddf
           review-run: ${{ github.run_id }}
