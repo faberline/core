@@ -1,0 +1,50 @@
+name: Core Claude transport diagnostic
+on:
+  push:
+    branches: [codex/core87-claude-transport-diagnostic]
+    paths:
+      - .github/workflows/core87-claude-transport-diagnostic.yml
+      - .github/diagnostics/core87_claude_probe.py
+permissions: {}
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          path: diagnostic-source
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: faberline/aw
+          ref: 8eba33a85152d7056a8b75a5998684f66e0bd8d5
+          persist-credentials: false
+          path: approved-aw
+      - name: Prepare fixed metadata parser without credentials
+        id: runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime="$(mktemp -d "$RUNNER_TEMP/core-cli-probe-python-XXXXXX")"
+          python3 -I -m venv "$runtime"
+          "$runtime/bin/python" -I -m pip --isolated install --disable-pip-version-check --no-input \
+            --no-deps --only-binary=:all: --require-hashes --index-url https://pypi.org/simple \
+            -r approved-aw/plugins/faberline/skills/issue-ci/scripts/readiness-requirements.txt
+          echo "python=$runtime/bin/python" >> "$GITHUB_OUTPUT"
+      - name: Verify pinned signed binary without credentials
+        id: provision
+        shell: bash
+        run: python3 -I -B approved-aw/plugins/faberline/skills/issue-ci/scripts/policy_adoption_provision.py
+      - name: Install verified binary
+        shell: bash
+        env:
+          VERIFIED_BINARY: ${{ steps.provision.outputs.binary }}
+        run: sudo install -m 0755 -- "$VERIFIED_BINARY" /usr/local/bin/claude
+      - name: Probe exact tool-free model transport with fixed safe output
+        shell: bash
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          PROBE_PYTHON: ${{ steps.runtime.outputs.python }}
+        run: exec "$PROBE_PYTHON" -I -B diagnostic-source/.github/diagnostics/core87_claude_probe.py
