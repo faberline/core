@@ -4,8 +4,12 @@
 # ruleset. Qualification holds prohibit merge but permit verified rejection.
 name: Issue CI and Claude outcome
 on:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [aw-verified-merge-reconcile]
   workflow_run:
-    workflows: ["core ci", "Claude final review"]
+    workflows: ["Core development CI", "Claude final review"]
     types: [requested, in_progress, completed]
   issues:
     types: [edited, reopened, closed, labeled, unlabeled]
@@ -33,4 +37,4 @@ jobs:
     steps:
       # No checkout, model, Claude credential, PR artifact or PR program.
       # Every wake recomputes all open PRs, including displaced pending wakes.
-      - uses: faberline/aw/.github/actions/native-auto-merge@8e2e93e5ba8feb30b6668de39139980ea3bb085c
+      - uses: faberline/aw/.github/actions/native-auto-merge@8b8a5284ef928190c0d21718331de4b1732334c9

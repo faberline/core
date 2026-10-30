@@ -11,7 +11,7 @@ SPEC=importlib.util.spec_from_file_location('qualification_policy',ROOT/'scripts
 q=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(q)
 CONFIG=json.loads((ROOT/'.github/issue-ci-required-gates.json').read_text())
 HEAD,BASE='a'*40,'b'*40
-WORKFLOW='.github/workflows/ci.yml'
+WORKFLOW='.github/workflows/development-ci.yml'
 
 
 def pull():return dict(number=75,title='Synthetic',body='Closes #73',changed_files=1,head=dict(sha=HEAD,repo={'full_name':'o/r'}),base=dict(sha=BASE,repo={'full_name':'o/r'}))
@@ -49,19 +49,21 @@ class FullPolicyTests(unittest.TestCase):
         self.assertNotIn('cargo fetch --manifest-path candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.toml',workflow)
 
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
-        self.assertEqual(CONFIG['aw_revision'],'8e2e93e5ba8feb30b6668de39139980ea3bb085c')
+        self.assertEqual(CONFIG['aw_revision'],'8b8a5284ef928190c0d21718331de4b1732334c9')
         for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
             raw=(ROOT/producer['path']).read_bytes()
             blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
             self.assertEqual(blob,producer['definition_sha'])
-            self.assertIn(b'@8e2e93e5ba8feb30b6668de39139980ea3bb085c',raw)
+            self.assertIn(b'@8b8a5284ef928190c0d21718331de4b1732334c9',raw)
         self.assertEqual(CONFIG['native_auto_merge']['status_context'],'claude/verified-merge')
         self.assertEqual(CONFIG['native_auto_merge']['status_app_id'],15368)
 
     def test_copied_inspection_modules_match_published_shared_source(self):
-        expected={'handoff.py':'b69f57781585cd26a5372ab132e4cfe46065ee3a262ef79b25494670e82d4438',
+        expected={'handoff.py':'d12ceb49fac8cac95cc3ea11be9cd86f4da0287f01dae97cbcad8b6fa1f28dfc',
                   'qualification.py':'f5dbf2f07cd626d449a47938ba045bf61e3197cfa4b18d342e6fc6710e242ceb',
                   'json_data.py':'35dc74be907733cfff108eae9bf217eec5c69a028487919f84c86c06d805facf'}
+        expected['development_pipeline.py']='042229ea63e995d4d7b10a5fe48df30dfaed7eadb3983a26bdb5566437a77e94'
+        expected['readiness-requirements.txt']='eef6794465b73b5dc4ef909500bf5bcc56761b93bb1521a05a97746d1f7f298d'
         for name,digest in expected.items():
             self.assertEqual(hashlib.sha256((ROOT/'scripts/issue-ci'/name).read_bytes()).hexdigest(),digest)
 
@@ -85,9 +87,9 @@ class FullPolicyTests(unittest.TestCase):
     def test_full_policy_does_not_silently_accept_old_five_jobs(self):
         policy=q.validate(CONFIG)
         counts={kind:sum(c['kind']==kind for c in policy['checks'].values())for kind in ['unit','functional_e2e','performance','policy']}
-        self.assertEqual(counts,dict(unit=70,functional_e2e=62,performance=1,policy=11))
-        self.assertEqual(len(CONFIG['workflows'][0]['jobs']),144)
-        self.assertEqual(len(set(CONFIG['workflows'][0]['jobs'])),144)
+        self.assertEqual(counts,dict(unit=70,functional_e2e=62,performance=1,policy=12))
+        self.assertEqual(len(CONFIG['workflows'][0]['jobs']),145)
+        self.assertEqual(len(set(CONFIG['workflows'][0]['jobs'])),145)
 
     def test_complete_workspace_is_required_even_for_docs_and_unknown_paths(self):
         expected=set(CONFIG['workflows'][0]['jobs'])
@@ -99,7 +101,7 @@ class FullPolicyTests(unittest.TestCase):
                 self.assertTrue(all(not value for value in scoped['_qualification_context']['exemptions'].values()))
 
     def test_workflow_driver_policy_or_manifest_change_cannot_self_approve(self):
-        for path in ['.github/workflows/ci.yml','.github/issue-ci-required-gates.json','scripts/pr-gates/plan.py','Cargo.toml','crates/raft-runtime/Cargo.toml']:
+        for path in ['.github/workflows/development-ci.yml','.github/issue-ci-required-gates.json','scripts/pr-gates/plan.py','Cargo.toml','crates/raft-runtime/Cargo.toml']:
             with self.subTest(path=path):self.assertTrue(scope(path=path)['_qualification_context']['issues'])
 
     def test_missing_base_or_capped_or_partial_files_refuse(self):
@@ -119,7 +121,7 @@ class FullPolicyTests(unittest.TestCase):
             self.assertEqual(selected['_qualification_context']['untrusted_workflows'],[WORKFLOW])
 
     def test_run_requires_exact_pr_head_base_id_and_attempt(self):
-        cfg=scope();run=dict(path=WORKFLOW,workflow_id=384237875,run_attempt=1,pull_requests=[dict(number=75,head=dict(sha=HEAD),base=dict(sha=BASE))])
+        cfg=scope();run=dict(path=WORKFLOW,workflow_id=402004875,run_attempt=1,pull_requests=[dict(number=75,head=dict(sha=HEAD),base=dict(sha=BASE))])
         self.assertTrue(q.trusted_run(run,cfg))
         for change in [dict(workflow_id=7),dict(run_attempt=0),dict(pull_requests=[]),dict(pull_requests=[dict(number=75,head=dict(sha='0'*40),base=dict(sha=BASE))]),dict(pull_requests=[dict(number=75,head=dict(sha=HEAD),base=dict(sha='0'*40))])]:
             self.assertFalse(q.trusted_run(dict(run,**change),cfg))
@@ -154,9 +156,9 @@ class FullPolicyTests(unittest.TestCase):
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
         raw=(ROOT/WORKFLOW).read_text()
         self.assertIn('name: candidate source issue contract inspection',raw)
-        self.assertIn('faberline/aw/.github/actions/issue-contract@8e2e93e5ba8feb30b6668de39139980ea3bb085c',raw)
+        self.assertIn('faberline/aw/.github/actions/issue-contract@8b8a5284ef928190c0d21718331de4b1732334c9',raw)
         self.assertIn('gate infrastructure change requires reviewed policy update',
-                      ' '.join(scope(path='.github/workflows/ci.yml')['_qualification_context']['issues']))
+                      ' '.join(scope(path='.github/workflows/development-ci.yml')['_qualification_context']['issues']))
 
     def test_zero_check_unapproved_or_malformed_exemption_refuses(self):
         cfg=copy.deepcopy(CONFIG);cfg['qualification']['always']=[]
