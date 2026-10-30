@@ -80,7 +80,8 @@ jobs:
           set -euo pipefail
           python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else "Python 3.11+ required")'
           python3 candidate/scripts/pr-gates/plan.py inventory --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE"
-          echo "matrix=$(python3 candidate/scripts/pr-gates/batches.py matrix --group unit --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE")" >> "$GITHUB_OUTPUT"
+          matrix=$(python3 candidate/scripts/pr-gates/batches.py matrix --group unit --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE")
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
 
       - name: Record changed paths and reverse dependency impact
         id: impact
@@ -90,7 +91,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "result=$(python3 candidate/scripts/pr-gates/plan.py impact --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE")" >> "$GITHUB_OUTPUT"
+          impact=$(python3 candidate/scripts/pr-gates/plan.py impact --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE")
+          printf 'result=%s\n' "$impact" >> "$GITHUB_OUTPUT"
 
       - name: Derive every enabled integration target and feature row
         id: contracts
@@ -100,7 +102,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "matrix=$(python3 candidate/scripts/pr-gates/batches.py matrix --group functional --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE")" >> "$GITHUB_OUTPUT"
+          matrix=$(python3 candidate/scripts/pr-gates/batches.py matrix --group functional --root candidate --baseline-root trusted --expected-head "$EXPECTED_HEAD" --expected-base "$EXPECTED_BASE")
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
 
   workspace-static:
     needs: unit-plan

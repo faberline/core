@@ -81,5 +81,13 @@ class DevelopmentContractTests(unittest.TestCase):
         self.assertIn('development_pipeline',CONFIG['ci_handoff_policy'])
         self.assertEqual(CONFIG['development_pipeline'],CONFIG['ci_handoff_policy']['development_pipeline'])
 
+    def test_planner_failure_is_not_hidden_by_echo_and_matrix_has_direct_dependency(self):
+        workflow=d.yaml_document((ROOT/PATH).read_text())
+        for step in workflow['jobs']['unit-plan']['steps']:
+            self.assertNotIn('echo "matrix=$(',step.get('run',''))
+            self.assertNotIn('echo "result=$(',step.get('run',''))
+        self.assertIn('unit-plan',workflow['jobs']['workspace-contracts']['needs'])
+        self.assertEqual(CONFIG['controller_source'],f'faberline/aw@{REF}:plugins/faberline/skills/issue-ci/scripts/native_merge.py')
+
 
 if __name__=='__main__':unittest.main()

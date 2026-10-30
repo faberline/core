@@ -1076,7 +1076,7 @@
       "trusted_workflows": {
         ".github/workflows/development-ci.yml": {
           "id": 402004875,
-          "definition_sha": "ab03aadd01079827f3b655aee6b0e587a98648bd"
+          "definition_sha": "7bcc96bd4bf49b8d70c7950b0ff3b51757bdd22b"
         }
       },
       "always": [
@@ -2610,7 +2610,7 @@
       ]
     }
   },
-  "controller_source": "faberline/aw@8b8a5284ef928190c0d21718331de4b1732334c9:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+  "controller_source": "faberline/aw@0f6269bee616ede74c4061afd6ef8b81217d818d:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
   "claude_final_review": {
     "version": 1,
     "producer": {
@@ -2622,7 +2622,7 @@
     "gates": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "ab03aadd01079827f3b655aee6b0e587a98648bd"
+        "definition_sha": "7bcc96bd4bf49b8d70c7950b0ff3b51757bdd22b"
       }
     },
     "protected_paths": [
@@ -3680,7 +3680,7 @@
     "trusted_workflows": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "ab03aadd01079827f3b655aee6b0e587a98648bd"
+        "definition_sha": "7bcc96bd4bf49b8d70c7950b0ff3b51757bdd22b"
       }
     },
     "always": [
