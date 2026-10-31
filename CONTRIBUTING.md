@@ -306,38 +306,26 @@ A section with no refusal condition is decoration and MUST NOT be added.
 
 ### The layering GHAN sits in
 
-GHAN is the **authored** layer only. Phase progress — which behavior or
-maintenance phase has landed, and what it was measured against — is the
-**machine** layer and lives in commit trailers, never in authored prose:
+GHAN is the **authored** layer. It states the requirement and refusal
+conditions. CI and independent review supply measured evidence for that
+contract; authored prose alone does not prove completion.
 
-- *landed?* → the phase's `Refs #<iid>` commit exists in the tree, which is what
-  the next phase's predecessor check looks for.
-- *against which red?* → `E2E-Red:` and `Impl-Red:` name the cases and tests
-  observed failing immediately before, so the following phase's green is
-  attributable to something rather than merely asserted. Impl has no predecessor
-  commit to parse a trailer back out of — it is the ladder's last phase, and
-  there is no earlier `impl` commit — so the evidence moves to a mid-phase
-  record instead: `red` writes it to `.aw/impl-red/<iid>.json`, and
-  `apps/aw/src/aw/scripts/impl.py:581-645` (`C2`) reads that record back and
-  refuses a run with no record on file, a record naming no failing test, a HEAD
-  that has moved since the record was measured, or a test file whose bytes have
-  changed since then.
-- *reviewed against which bytes?* → `E2E-Change-Digest:`, which carries
-  `leg.change_digest` — one sha256 over the work-item body **and** every path
-  under review (`apps/aw/src/aw/scripts/leg.py:331`).
-- *which maintenance evidence?* → `Maint-Contract:` and
-  `Maint-Change-Digest:` name the maintenance contract and its measured bytes.
+The shared issue workflow uses the linked issue, the PR's exact head and base,
+and the configured CI workflow/run/attempt evidence. Read the latest planned
+spec comment when present, otherwise the issue body. Keep the declared gate
+commands and their applicable checks. Missing, skipped, cancelled or stale
+checks do not prove acceptance.
 
-Two properties of that layer are load-bearing. The digest covers the work item
-as well as the code because the question a reviewer answers is "does this change
-satisfy this work item", so an edit to either side can flip the answer: edit the
-body and the recorded verdict stops matching, and an approval cannot outlive the
-requirement it approved. And the record lives on the commit rather than in a
-state file, so a phase rebased away takes its record with it — a state file
-would go on asserting a red for history that no longer exists.
+A change to the issue contract or the reviewed bytes requires fresh
+qualification. Preserve failing-test and negative-control evidence required
+by the acceptance contract. Do not reuse an old verdict for changed inputs.
+The former phase CLI, phase-specific trailers and local phase-state files are
+not current delivery entrypoints.
 
-The two layers meet at exactly one point: **the gate command named in
-`## Acceptance` is the command the phase runs.** Everything else is independent.
+The layers meet at the declared acceptance gates: CI measures the applicable
+checks, and independent review reads the contract, diff and current results.
+A successful CI processing job is not proof of product acceptance, and a review
+receipt is not merge or issue-close authority.
 
 ### The four sections
 
