@@ -19,6 +19,7 @@ agent can navigate cheaply and act on correctly:
 
 ## Contents
 
+- [Shared delivery entrypoints](#shared-delivery-entrypoints)
 - [Authoring principle: right-sized files, semantic paths, explicit names](#authoring-principle-right-sized-files-semantic-paths-explicit-names)
   - [The three rules](#the-three-rules)
   - [Balanced splitting](#balanced-splitting)
@@ -63,6 +64,24 @@ agent can navigate cheaply and act on correctly:
 - [Project build and release contract](#project-build-and-release-contract)
   - [Debug builds](#debug-builds)
   - [Release builds](#release-builds)
+
+## Shared delivery entrypoints
+
+Use the shared Faberline `issue-plan`, `issue-work`, and `issue-review` skills
+from [AW](https://github.com/faberline/aw/tree/main/plugins/faberline/skills).
+Each skill runs one pass. Its `-loop` companion adds a user-requested interval.
+Installing or updating a skill does not start a loop.
+
+Planning writes the issue contract. Work submits one issue's PR and runs
+affected unit/static checks. CI owns functional, integration and performance
+validation and sets `done` only after every required current-input gate passes.
+The issue stays open for independent local review. Failed required CI reports
+its evidence and returns the issue to `todo`. Review runs no tests and does
+not merge, close the issue, or change lifecycle labels.
+
+Keep all existing acceptance rules and test gates. The authoring conventions
+below still apply; they do not require the retired tracker-writing AW engine.
+The README and project-document validators remain shared tools in AW.
 
 ## Authoring principle: right-sized files, semantic paths, explicit names
 
@@ -275,11 +294,11 @@ anti-boilerplate check rejected only seven literals (`(fill)`,
 `(replace-this)`, `tbd`, `todo`, `maybe`, `unclear`, `uncertain`). A title echo
 was accepted by construction.
 
-That generator is deleted with the crate that held it. `aw change skeleton`
-(`uv run --project apps/aw aw ...`) emits the empty GHAN template in its
-place and `aw change validate` is what refuses a body now. The numbers above still describe the tracker,
-though — those bodies were written under the old generator and nothing has
-rewritten them.
+That generator is deleted with the crate that held it. The shared planning
+skill now writes each bounded issue contract, and independent review checks
+the authored requirements. The numbers above still describe the historical
+tracker population; those bodies have not been rewritten. No retired workflow
+CLI is an active authoring entrypoint.
 
 So the rule that generates GHAN's shape is: **every section MUST name the
 consumer that reads it and the condition under which that consumer refuses it.**
@@ -287,38 +306,26 @@ A section with no refusal condition is decoration and MUST NOT be added.
 
 ### The layering GHAN sits in
 
-GHAN is the **authored** layer only. Phase progress — which behavior or
-maintenance phase has landed, and what it was measured against — is the
-**machine** layer and lives in commit trailers, never in authored prose:
+GHAN is the **authored** layer. It states the requirement and refusal
+conditions. CI and independent review supply measured evidence for that
+contract; authored prose alone does not prove completion.
 
-- *landed?* → the phase's `Refs #<iid>` commit exists in the tree, which is what
-  the next phase's predecessor check looks for.
-- *against which red?* → `E2E-Red:` and `Impl-Red:` name the cases and tests
-  observed failing immediately before, so the following phase's green is
-  attributable to something rather than merely asserted. Impl has no predecessor
-  commit to parse a trailer back out of — it is the ladder's last phase, and
-  there is no earlier `impl` commit — so the evidence moves to a mid-phase
-  record instead: `red` writes it to `.aw/impl-red/<iid>.json`, and
-  `apps/aw/src/aw/scripts/impl.py:581-645` (`C2`) reads that record back and
-  refuses a run with no record on file, a record naming no failing test, a HEAD
-  that has moved since the record was measured, or a test file whose bytes have
-  changed since then.
-- *reviewed against which bytes?* → `E2E-Change-Digest:`, which carries
-  `leg.change_digest` — one sha256 over the work-item body **and** every path
-  under review (`apps/aw/src/aw/scripts/leg.py:331`).
-- *which maintenance evidence?* → `Maint-Contract:` and
-  `Maint-Change-Digest:` name the maintenance contract and its measured bytes.
+The shared issue workflow uses the linked issue, the PR's exact head and base,
+and the configured CI workflow/run/attempt evidence. Read the latest planned
+spec comment when present, otherwise the issue body. Keep the declared gate
+commands and their applicable checks. Missing, skipped, cancelled or stale
+checks do not prove acceptance.
 
-Two properties of that layer are load-bearing. The digest covers the work item
-as well as the code because the question a reviewer answers is "does this change
-satisfy this work item", so an edit to either side can flip the answer: edit the
-body and the recorded verdict stops matching, and an approval cannot outlive the
-requirement it approved. And the record lives on the commit rather than in a
-state file, so a phase rebased away takes its record with it — a state file
-would go on asserting a red for history that no longer exists.
+A change to the issue contract or the reviewed bytes requires fresh
+qualification. Preserve failing-test and negative-control evidence required
+by the acceptance contract. Do not reuse an old verdict for changed inputs.
+The former phase CLI, phase-specific trailers and local phase-state files are
+not current delivery entrypoints.
 
-The two layers meet at exactly one point: **the gate command named in
-`## Acceptance` is the command the phase runs.** Everything else is independent.
+The layers meet at the declared acceptance gates: CI measures the applicable
+checks, and independent review reads the contract, diff and current results.
+A successful CI processing job is not proof of product acceptance, and a review
+receipt is not merge or issue-close authority.
 
 ### The four sections
 
@@ -336,20 +343,20 @@ Each is specified as *required content · machine consumer · refusal conditions
 Not "improve X", not "support Y", not "make Z better". If there is no value to
 name on either side, the work is not yet bounded.
 
-**Consumer.** `aw change validate` (`apps/aw/src/aw/scripts/change.py:289-294`).
+**Consumer.** The shared planning and independent review skills read this
+authored requirement. It is an authoring rule, not a claim that the retired
+workflow CLI still validates current issues.
 
 **Refused when** the section still carries the skeleton placeholder, is written
-as a list, or runs to more than one paragraph. That is the whole of what a
-script can see. The rest of the shape — an observation point, a current value,
-a target value, and exactly one of each — is what `product-plan` asks to make
-explicit; nothing measures it, so a one-paragraph sentence naming nothing
-passes `validate` and is still an unbounded goal.
+as a list, or runs to more than one paragraph. Planning and review also require
+the observation point, current value and target value stated above. A
+one-paragraph sentence that names none of them is still an unbounded goal;
+its shape alone is not acceptance evidence.
 
 The boundedness heuristic that used to back this section — `looks_too_large_for_atomic_wi`,
 a phrase set matched against `title + goal` — is gone rather than ported. It
 lived in the deleted crate's planner instead of in the section schema, and it is
-the single rule the plugin's validator deliberately does not reproduce
-(`change.py:31`).
+not an active validator in the shared issue skills.
 
 ---
 
@@ -1614,8 +1621,8 @@ trait does not imply Kubernetes, HA, backup, or performance traits.
 
 Meta docs split by *layer*, not by topic. A fact belongs to exactly one layer.
 There used to be a machine-readable source for the matrix below — `meta_docs.rs`
-drove placement and section validation, and `aw meta init` / `sync` / `check`
-were the sole writer and checker. Both are deleted. The matrix is hand-maintained
+drove placement and section validation, and the legacy META CLI was the sole
+writer and checker. Both are deleted. The matrix is hand-maintained
 now, and there is no single checker for every row. Project product-document rows
 are the exception: `scripts/meta/readme_contract.py` validates a README, and
 `scripts/meta/project_docs_contract.py` validates an adopted README, STATUS,
