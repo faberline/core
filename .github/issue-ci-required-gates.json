@@ -1,5 +1,5 @@
 {
-  "aw_revision": "0f6269bee616ede74c4061afd6ef8b81217d818d",
+  "aw_revision": "c929e87e50cd2c5e7d578c4b44e002182291031a",
   "workflows": [
     {
       "path": ".github/workflows/development-ci.yml",
@@ -30,7 +30,7 @@
   "qualification_blockers": [],
   "lifecycle_mode": "full",
   "ci_handoff_policy": {
-    "aw_revision": "8b8a5284ef928190c0d21718331de4b1732334c9",
+    "aw_revision": "c929e87e50cd2c5e7d578c4b44e002182291031a",
     "workflows": [
       {
         "path": ".github/workflows/development-ci.yml",
@@ -1076,7 +1076,7 @@
       "trusted_workflows": {
         ".github/workflows/development-ci.yml": {
           "id": 402004875,
-          "definition_sha": "7bcc96bd4bf49b8d70c7950b0ff3b51757bdd22b"
+          "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
         }
       },
       "always": [
@@ -2437,6 +2437,165 @@
           },
           "additional": [],
           "unresolved": []
+        },
+        "86": {
+          "title_sha256": "c21aa8537d439e246ebe88e260d2a1b1d3041e70b1d2e5cb3a337d2eb0c1869a",
+          "body_sha256": "3097ebe82445079fb6911ca224dc84b2a0356d96c898d89101e01c9ff306408d",
+          "applicability": {
+            "unit": {
+              "status": "required",
+              "checks": [
+                "unit-0",
+                "unit-1",
+                "unit-2",
+                "unit-3",
+                "unit-4",
+                "unit-5",
+                "unit-6",
+                "unit-7",
+                "unit-8",
+                "unit-9",
+                "unit-10",
+                "unit-11",
+                "unit-12",
+                "unit-13",
+                "unit-14",
+                "unit-15",
+                "unit-16",
+                "unit-17",
+                "unit-18",
+                "unit-19",
+                "unit-20",
+                "unit-21",
+                "unit-22",
+                "unit-23",
+                "unit-24",
+                "unit-25",
+                "unit-26",
+                "unit-27",
+                "unit-28",
+                "unit-29",
+                "unit-30",
+                "unit-31",
+                "unit-32",
+                "unit-33",
+                "unit-34",
+                "unit-35",
+                "unit-36",
+                "unit-37",
+                "unit-38",
+                "unit-39",
+                "unit-40",
+                "unit-41",
+                "unit-42",
+                "unit-43",
+                "unit-44",
+                "unit-45",
+                "unit-46",
+                "unit-47",
+                "unit-48",
+                "unit-49",
+                "unit-50",
+                "unit-51",
+                "unit-52",
+                "unit-53",
+                "unit-54",
+                "unit-55",
+                "unit-56",
+                "unit-57",
+                "unit-58",
+                "unit-59",
+                "unit-60",
+                "unit-61",
+                "unit-62",
+                "unit-63",
+                "unit-64",
+                "unit-65",
+                "unit-66",
+                "unit-67",
+                "unit-68",
+                "unit-69"
+              ],
+              "reason": "Retain complete existing unit qualification for DEV-PIPELINE-1 adoption."
+            },
+            "functional_e2e": {
+              "status": "required",
+              "checks": [
+                "functional-0",
+                "functional-1",
+                "functional-2",
+                "functional-3",
+                "functional-4",
+                "functional-5",
+                "functional-6",
+                "functional-7",
+                "functional-8",
+                "functional-9",
+                "functional-10",
+                "functional-11",
+                "functional-12",
+                "functional-13",
+                "functional-14",
+                "functional-15",
+                "functional-16",
+                "functional-17",
+                "functional-18",
+                "functional-19",
+                "functional-20",
+                "functional-21",
+                "functional-22",
+                "functional-23",
+                "functional-24",
+                "functional-25",
+                "functional-26",
+                "functional-27",
+                "functional-28",
+                "functional-29",
+                "functional-30",
+                "functional-31",
+                "functional-32",
+                "functional-33",
+                "functional-34",
+                "functional-35",
+                "functional-36",
+                "functional-37",
+                "functional-38",
+                "functional-39",
+                "functional-40",
+                "functional-41",
+                "functional-42",
+                "functional-43",
+                "functional-44",
+                "functional-45",
+                "functional-46",
+                "functional-47",
+                "functional-48",
+                "functional-49",
+                "functional-50",
+                "functional-51",
+                "functional-52",
+                "functional-53",
+                "functional-54",
+                "functional-55",
+                "functional-56",
+                "functional-57",
+                "functional-58",
+                "functional-59",
+                "functional-60",
+                "functional-61"
+              ],
+              "reason": "Retain complete existing functional_e2e qualification for DEV-PIPELINE-1 adoption."
+            },
+            "performance": {
+              "status": "required",
+              "checks": [
+                "measured-performance"
+              ],
+              "reason": "Retain complete existing performance qualification for DEV-PIPELINE-1 adoption."
+            }
+          },
+          "additional": [],
+          "unresolved": []
         }
       }
     },
@@ -2610,19 +2769,19 @@
       ]
     }
   },
-  "controller_source": "faberline/aw@0f6269bee616ede74c4061afd6ef8b81217d818d:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+  "controller_source": "faberline/aw@c929e87e50cd2c5e7d578c4b44e002182291031a:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
   "claude_final_review": {
     "version": 1,
     "producer": {
       "path": ".github/workflows/claude-final-review.yml",
       "id": 399789974,
-      "definition_sha": "039690d52989e04dbc66f9b3a0e134fe9b6bf211",
+      "definition_sha": "fda854a944ab4f72323aeb5def91152dd714196f",
       "job": "review"
     },
     "gates": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "7bcc96bd4bf49b8d70c7950b0ff3b51757bdd22b"
+        "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
       }
     },
     "protected_paths": [
@@ -2660,7 +2819,7 @@
     "producer": {
       "path": ".github/workflows/issue-ci.yml",
       "id": 394215097,
-      "definition_sha": "f332cd4c7b00edb9a1bc870b6849870910ea0de0",
+      "definition_sha": "c421498e667dcb1be47d590098978af4db155f1b",
       "job": "native-auto-merge"
     }
   },
@@ -3680,7 +3839,7 @@
     "trusted_workflows": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "7bcc96bd4bf49b8d70c7950b0ff3b51757bdd22b"
+        "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
       }
     },
     "always": [
@@ -5041,6 +5200,165 @@
         },
         "additional": [],
         "unresolved": []
+      },
+      "86": {
+        "title_sha256": "c21aa8537d439e246ebe88e260d2a1b1d3041e70b1d2e5cb3a337d2eb0c1869a",
+        "body_sha256": "3097ebe82445079fb6911ca224dc84b2a0356d96c898d89101e01c9ff306408d",
+        "applicability": {
+          "unit": {
+            "status": "required",
+            "checks": [
+              "unit-0",
+              "unit-1",
+              "unit-2",
+              "unit-3",
+              "unit-4",
+              "unit-5",
+              "unit-6",
+              "unit-7",
+              "unit-8",
+              "unit-9",
+              "unit-10",
+              "unit-11",
+              "unit-12",
+              "unit-13",
+              "unit-14",
+              "unit-15",
+              "unit-16",
+              "unit-17",
+              "unit-18",
+              "unit-19",
+              "unit-20",
+              "unit-21",
+              "unit-22",
+              "unit-23",
+              "unit-24",
+              "unit-25",
+              "unit-26",
+              "unit-27",
+              "unit-28",
+              "unit-29",
+              "unit-30",
+              "unit-31",
+              "unit-32",
+              "unit-33",
+              "unit-34",
+              "unit-35",
+              "unit-36",
+              "unit-37",
+              "unit-38",
+              "unit-39",
+              "unit-40",
+              "unit-41",
+              "unit-42",
+              "unit-43",
+              "unit-44",
+              "unit-45",
+              "unit-46",
+              "unit-47",
+              "unit-48",
+              "unit-49",
+              "unit-50",
+              "unit-51",
+              "unit-52",
+              "unit-53",
+              "unit-54",
+              "unit-55",
+              "unit-56",
+              "unit-57",
+              "unit-58",
+              "unit-59",
+              "unit-60",
+              "unit-61",
+              "unit-62",
+              "unit-63",
+              "unit-64",
+              "unit-65",
+              "unit-66",
+              "unit-67",
+              "unit-68",
+              "unit-69"
+            ],
+            "reason": "Retain complete existing unit qualification for DEV-PIPELINE-1 adoption."
+          },
+          "functional_e2e": {
+            "status": "required",
+            "checks": [
+              "functional-0",
+              "functional-1",
+              "functional-2",
+              "functional-3",
+              "functional-4",
+              "functional-5",
+              "functional-6",
+              "functional-7",
+              "functional-8",
+              "functional-9",
+              "functional-10",
+              "functional-11",
+              "functional-12",
+              "functional-13",
+              "functional-14",
+              "functional-15",
+              "functional-16",
+              "functional-17",
+              "functional-18",
+              "functional-19",
+              "functional-20",
+              "functional-21",
+              "functional-22",
+              "functional-23",
+              "functional-24",
+              "functional-25",
+              "functional-26",
+              "functional-27",
+              "functional-28",
+              "functional-29",
+              "functional-30",
+              "functional-31",
+              "functional-32",
+              "functional-33",
+              "functional-34",
+              "functional-35",
+              "functional-36",
+              "functional-37",
+              "functional-38",
+              "functional-39",
+              "functional-40",
+              "functional-41",
+              "functional-42",
+              "functional-43",
+              "functional-44",
+              "functional-45",
+              "functional-46",
+              "functional-47",
+              "functional-48",
+              "functional-49",
+              "functional-50",
+              "functional-51",
+              "functional-52",
+              "functional-53",
+              "functional-54",
+              "functional-55",
+              "functional-56",
+              "functional-57",
+              "functional-58",
+              "functional-59",
+              "functional-60",
+              "functional-61"
+            ],
+            "reason": "Retain complete existing functional_e2e qualification for DEV-PIPELINE-1 adoption."
+          },
+          "performance": {
+            "status": "required",
+            "checks": [
+              "measured-performance"
+            ],
+            "reason": "Retain complete existing performance qualification for DEV-PIPELINE-1 adoption."
+          }
+        },
+        "additional": [],
+        "unresolved": []
       }
     }
   },
@@ -5212,5 +5530,20 @@
       "unit-8",
       "unit-9"
     ]
+  },
+  "issue_guard_cutover": {
+    "version": 1,
+    "phase": "drain",
+    "nonce": "a71c3222c511ae6a080bac5bc82169d5"
+  },
+  "issue_recovery": {
+    "version": 2,
+    "enabled": false,
+    "producer": {
+      "path": ".github/workflows/issue-recovery.yml",
+      "id": 402173927,
+      "definition_sha": "d0726c4e8bb9a7013e12aad3d9d23eecc620b236",
+      "job": "recovery"
+    }
   }
 }

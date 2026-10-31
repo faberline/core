@@ -1,9 +1,13 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/0f6269bee616ede74c4061afd6ef8b81217d818d/docs/standards/development-pipeline.md)
-with shared runtime `0f6269bee616ede74c4061afd6ef8b81217d818d`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/c929e87e50cd2c5e7d578c4b44e002182291031a/docs/standards/development-pipeline.md)
+with shared runtime `c929e87e50cd2c5e7d578c4b44e002182291031a`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
+The inactive completion preparation is tracked separately by
+[#86](https://github.com/faberline/core/issues/86). Its drain blocks normal
+merge requests. It does not complete #83, #84, or automatic issue closure.
+See [guarded completion](guarded-completion.md) before enabling the guard.
 
 Ordinary PRs use `.github/workflows/development-ci.yml`:
 

@@ -3,7 +3,9 @@ import copy
 import hashlib
 import importlib.util
 import json
+import os
 from pathlib import Path
+import subprocess
 import unittest
 
 ROOT=Path(__file__).resolve().parents[3]
@@ -52,18 +54,18 @@ class FullPolicyTests(unittest.TestCase):
         self.assertNotIn('cargo fetch --manifest-path candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.toml',workflow)
 
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
-        self.assertEqual(CONFIG['aw_revision'],'0f6269bee616ede74c4061afd6ef8b81217d818d')
+        self.assertEqual(CONFIG['aw_revision'],'c929e87e50cd2c5e7d578c4b44e002182291031a')
         for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
             raw=(ROOT/producer['path']).read_bytes()
             blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
             self.assertEqual(blob,producer['definition_sha'])
-            self.assertIn(b'@0f6269bee616ede74c4061afd6ef8b81217d818d',raw)
+            self.assertIn(b'@c929e87e50cd2c5e7d578c4b44e002182291031a',raw)
         self.assertEqual(CONFIG['native_auto_merge']['status_context'],'claude/verified-merge')
         self.assertEqual(CONFIG['native_auto_merge']['status_app_id'],15368)
 
     def test_copied_inspection_modules_match_published_shared_source(self):
-        expected={'handoff.py':'d12ceb49fac8cac95cc3ea11be9cd86f4da0287f01dae97cbcad8b6fa1f28dfc',
-                  'qualification.py':'f5dbf2f07cd626d449a47938ba045bf61e3197cfa4b18d342e6fc6710e242ceb',
+        expected={'handoff.py':'cdd8e048330d3570420b5105d6e9c9b3f4ca82f7afaba392c957ad02de722273',
+                  'qualification.py':'67412fbcd054c6a14efe1c196059933a6309d657fe8b3e07eeccc6ffb208401d',
                   'json_data.py':'35dc74be907733cfff108eae9bf217eec5c69a028487919f84c86c06d805facf'}
         expected['development_pipeline.py']='a12c3b662bfa9dd44abd360efab24f67cbdf59b58ba1118a1b417e2102850769'
         expected['readiness-requirements.txt']='eef6794465b73b5dc4ef909500bf5bcc56761b93bb1521a05a97746d1f7f298d'
@@ -133,6 +135,27 @@ class FullPolicyTests(unittest.TestCase):
         for key in ['workflows','lifecycle_mode','qualification_blockers','qualification']:
             self.assertEqual(CONFIG[key],CONFIG['ci_handoff_policy'][key])
 
+    def test_journal_runtime_has_current_or_unchanged_deployed_provenance(self):
+        # Read the actual frozen PR base in CI, and the local main tracking
+        # ref for offline controls. Never fetch or execute baseline code.
+        baseline='origin/main'
+        event_path=os.environ.get('GITHUB_EVENT_PATH')
+        if event_path:
+            event=json.loads(Path(event_path).read_text())
+            if isinstance(event.get('pull_request'),dict):
+                baseline=event['pull_request']['base']['sha']
+                self.assertRegex(baseline,r'^[0-9a-f]{40}$')
+            else:
+                self.assertNotEqual(os.environ.get('GITHUB_EVENT_NAME'),'pull_request')
+        prior=json.loads(subprocess.check_output([
+            'git','-c','core.fsmonitor=false','-C',str(ROOT),'show',
+            baseline+':.github/issue-ci-required-gates.json'],text=True))
+        fields=('workflows','lifecycle_mode','qualification_blockers','qualification','development_pipeline')
+        allowed={CONFIG['aw_revision']}
+        if all(CONFIG.get(key)==prior.get(key) for key in fields):
+            allowed.add(prior.get('ci_handoff_policy',prior)['aw_revision'])
+        self.assertIn(CONFIG['ci_handoff_policy']['aw_revision'],allowed)
+
     def test_real_issue_registry_keeps_unreviewed_requirements_on_hold(self):
         policy=q.validate(CONFIG)
         self.assertEqual(policy['version'],2)
@@ -159,7 +182,7 @@ class FullPolicyTests(unittest.TestCase):
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
         raw=(ROOT/WORKFLOW).read_text()
         self.assertIn('name: Inspect exact-head issue contract as untrusted data',raw)
-        self.assertIn('faberline/aw/.github/actions/issue-contract@0f6269bee616ede74c4061afd6ef8b81217d818d',raw)
+        self.assertIn('faberline/aw/.github/actions/issue-contract@c929e87e50cd2c5e7d578c4b44e002182291031a',raw)
         self.assertIn('gate infrastructure change requires reviewed policy update',
                       ' '.join(scope(path='.github/workflows/development-ci.yml')['_qualification_context']['issues']))
 
