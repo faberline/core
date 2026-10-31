@@ -1,10 +1,10 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/94c33a871afed538f0f4a12c49825abb0b442978/docs/standards/development-pipeline.md)
-with shared runtime `94c33a871afed538f0f4a12c49825abb0b442978`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/a3b07dc3cff8437d7332623b158536e05f64d823/docs/standards/development-pipeline.md)
+with shared runtime `a3b07dc3cff8437d7332623b158536e05f64d823`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
-AW's exact shared source passed all 1,124 controls with zero skips. Core
+AW's exact shared source passed all 1,136 controls with zero skips. Core
 adoption still needs current-head product CI, independent local review and
 actual merge evidence. The actor inventory and ledger/history remain
 preserved. Historical [guarded completion](guarded-completion.md) is retired
@@ -71,3 +71,9 @@ and milestone. Core does not invent a separate product roadmap. The existing
 core@0.5.0 milestone is explicitly a work batch and Cargo still says 0.4.14.
 The empty release mapping deliberately holds tagging until a reviewed goal,
 version and acceptance mapping exists. Do not guess or bump package versions.
+
+Shared AW #148 fixes same-head CI reruns. After local review returns a head,
+its reruns do not restore done or reset a new doing owner. Later failed jobs
+still get diagnostics. A new submitted head, unclaimed infrastructure retry
+and unfinished journal retain the normal guarded path. Old policy receipts
+prove a handoff only; they do not qualify current tests.
