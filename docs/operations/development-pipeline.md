@@ -1,7 +1,7 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/c929e87e50cd2c5e7d578c4b44e002182291031a/docs/standards/development-pipeline.md)
-with shared runtime `c929e87e50cd2c5e7d578c4b44e002182291031a`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/ea56cc7d9da733ca5f8a98e97451a3f6f1e7151e/docs/standards/development-pipeline.md)
+with shared runtime `ea56cc7d9da733ca5f8a98e97451a3f6f1e7151e`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
 The inactive completion preparation is tracked separately by

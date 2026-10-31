@@ -26,7 +26,7 @@ jobs:
       issue: ${{ steps.preflight.outputs.issue }}
     steps:
       - name: Check main freshness, conflicts and canonical issue
-        uses: faberline/aw/.github/actions/issue-ci@c929e87e50cd2c5e7d578c4b44e002182291031a
+        uses: faberline/aw/.github/actions/issue-ci@ea56cc7d9da733ca5f8a98e97451a3f6f1e7151e
         id: preflight
         with:
           operation: development-preflight
@@ -123,7 +123,7 @@ jobs:
       - name: Check complete workspace formatting
         run: cargo fmt --all -- --check
       - name: Inspect exact-head issue contract as untrusted data
-        uses: faberline/aw/.github/actions/issue-contract@c929e87e50cd2c5e7d578c4b44e002182291031a
+        uses: faberline/aw/.github/actions/issue-contract@ea56cc7d9da733ca5f8a98e97451a3f6f1e7151e
 
   workspace-unit-static:
     name: candidate unit batch (${{ matrix.batch }})

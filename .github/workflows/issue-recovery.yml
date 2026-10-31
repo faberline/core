@@ -21,4 +21,4 @@ jobs:
       pull-requests: read
       statuses: write
     steps:
-      - uses: faberline/aw/.github/actions/verified-issue-recovery@c929e87e50cd2c5e7d578c4b44e002182291031a
+      - uses: faberline/aw/.github/actions/verified-issue-recovery@ea56cc7d9da733ca5f8a98e97451a3f6f1e7151e
