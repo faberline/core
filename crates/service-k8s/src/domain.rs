@@ -7,3 +7,4 @@ pub(crate) mod condition;
 #[cfg(feature = "controller")]
 pub(crate) mod leadership;
 pub(crate) mod lifecycle;
+pub mod trust_bundle;
