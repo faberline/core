@@ -1,16 +1,22 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/d66014a9a8e3decbe3f534c43ab83bba305edbc4/docs/standards/development-pipeline.md)
-with shared runtime `d66014a9a8e3decbe3f534c43ab83bba305edbc4`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/4223a4534f0197e1ea23004b9388ffd1eea34639/docs/standards/development-pipeline.md)
+with shared runtime `4223a4534f0197e1ea23004b9388ffd1eea34639`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
-AW's exact shared source passed all 1,168 controls with zero skips. Core's
+AW's exact shared source passed all 1,175 controls with zero skips. Core's
 policy bootstrap merged in [#85](https://github.com/faberline/core/pull/85) at
 `952c6f7d3fb8ce1be92b50214241ff9d6882bfba`. Its exact candidate
 `96a4d8a262ac1e13808a7aaa7522bc99a4035c5f` passed all 20 necessary jobs in
 [run 41209924160, attempt 1](https://github.com/faberline/core/actions/runs/41209924160)
+and independent local Codex review. The scoped reporting-permission fix
+merged in [#94](https://github.com/faberline/core/pull/94) at
+`7181f73a7fa41182d09651f7bbdda2cfc56679aa`. Its exact candidate
+`ac4893481900ea49a1d400f958e90e8ccc979b04` passed all 20 necessary jobs in
+[run 41215794891, attempt 1](https://github.com/faberline/core/actions/runs/41215794891)
 and independent local Codex review. The deployed branch rule requires all
-20 test checks with strict base and no bypass. The actor inventory and ledger/history remain
+20 test checks with strict base and no bypass. The actor inventory and
+ledger/history remain
 preserved. Historical [guarded completion](guarded-completion.md) is retired
 as an activation prerequisite for normal local completion.
 
@@ -113,3 +119,11 @@ held. Final writer checks reject changed links or newly valid targets.
 This adoption uses the user-authorized independent Codex review in
 place of the older Claude tool requirement; all independence and
 current-input gates remain.
+
+AW #153 separates source-PR comments from the single issue-label writer.
+The source-pr-links helper has pull-requests write, issues read and
+contents read. It can only comment on the exact source PR. The report
+job keeps issues write, pull-requests read and contents read. It runs
+after the helper with always(), under the same workflow mutex. Both
+roles bind GITHUB_JOB and reject review, merge, close, status and
+unrelated writes. No product test or numeric limit changes.
