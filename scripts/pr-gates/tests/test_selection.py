@@ -52,6 +52,18 @@ class SelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'PR moved'):
             selection.build(shared,policy,'diff','faberline/core',HEAD,BASE,pull,[dict(filename='.github/workflows/development-ci.yml',status='modified')],issue)
 
+    def test_changed_contract_can_only_plan_full_execution_pending_independent_review(self):
+        policy,issue,pull=issue_and_policy();proposed=copy.deepcopy(policy)
+        issue['body']='Updated user-approved acceptance'
+        proposed['qualification']['contracts']['84']['body_sha256']=hashlib.sha256(issue['body'].encode()).hexdigest()
+        result=selection.build(shared,policy,'diff','faberline/core',HEAD,BASE,pull,[dict(filename='.github/issue-ci-required-gates.json',status='modified')],issue,proposed)
+        self.assertEqual(result['qualification'],'not_evaluated')
+        self.assertEqual(result['test_plan']['selected'],sorted(policy['qualification']['checks']))
+        self.assertTrue(any('contract proposal' in reason for reason in result['pending_protected_review']))
+        proposed['qualification']['contracts']['84']['applicability']['unit'].update(status='not_applicable',checks=[])
+        with self.assertRaises(ValueError):
+            selection.build(shared,policy,'diff','faberline/core',HEAD,BASE,pull,[dict(filename='.github/issue-ci-required-gates.json',status='modified')],issue,proposed)
+
     def test_legacy_gate_commands_and_each_case_definition_are_retained(self):
         prior=json.loads((ROOT/'scripts/pr-gates/tests/fixtures/pre-local-checks.json').read_text())
         self.assertEqual(CONFIG['qualification']['checks'],prior)

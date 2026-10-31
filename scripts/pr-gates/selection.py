@@ -35,7 +35,28 @@ def pull_identity(pull):
                             repo=pull.get(side,{}).get('repo',{}).get('full_name')) for side in ('head','base')})
 
 
-def build(shared, policy, mode, repo, head, base, pull=None, changed=None, issue=None):
+def contract_proposal(shared, policy, proposed, pull, issue):
+    if not isinstance(proposed,dict):raise ValueError('current issue contract needs a protected proposal')
+    q=shared.qualification();candidate=q.validate(proposed);prior=q.validate(policy)
+    if (candidate['checks']!=prior['checks'] or candidate['always']!=prior['always']
+            or candidate['rules']!=prior['rules']):
+        raise ValueError('contract proposal cannot change existing gate selection or case definitions')
+    _,issues,_=q.issue_contract(candidate,pull,issue)
+    if issues:raise ValueError('; '.join(issues))
+    number=str(q.linked_issue(pull));case=candidate['contracts'][number];old=prior['contracts'].get(number)
+    if old is not None:
+        semantics=lambda value:{k:v for k,v in value.items() if k not in ('title_sha256','body_sha256')}
+        if semantics(case)!=semantics(old):raise ValueError('contract rebind cannot remove unresolved or required gates')
+    else:
+        for kind in q.CATEGORIES:
+            decision=case['applicability'][kind]
+            expected={name for name,check in prior['checks'].items() if check['kind']==kind}
+            if decision['status']!='required' or set(decision['checks'])!=expected:
+                raise ValueError('new contract proposal must retain every existing test category and case')
+    return 'source issue contract proposal requires independent protected review'
+
+
+def build(shared, policy, mode, repo, head, base, pull=None, changed=None, issue=None, proposed=None):
     pending=[]
     if mode=='diff':
         if (not isinstance(pull,dict) or pull.get('state')!='open' or pull.get('draft') is not False
@@ -47,6 +68,11 @@ def build(shared, policy, mode, repo, head, base, pull=None, changed=None, issue
         # review. This receipt only plans execution and cannot approve adoption.
         pending=[reason for reason in scope['issues'] if reason.startswith('gate infrastructure change requires reviewed policy update:')]
         other=[reason for reason in scope['issues'] if reason not in pending]
+        rebinding={'linked issue title differs from reviewed contract','linked issue body differs from reviewed contract',
+                   'linked issue has no reviewed contract'}
+        if other and set(other)<=rebinding:
+            pending.append(contract_proposal(shared,policy,proposed,pull,issue))
+            other=[]
         if other:raise ValueError('; '.join(other))
         if pending:
             result=shared.select(policy,'all',repo,head,base)
@@ -93,7 +119,8 @@ def main(argv=None):
         mode='all'
     else:
         raise ValueError('only a PR or verified release-tag push can plan tests')
-    result=build(shared,policy,mode,repo,args.expected_head,args.expected_base,pull,changed,issue)
+    proposed=json.loads((args.root/'.github/issue-ci-required-gates.json').read_text())
+    result=build(shared,policy,mode,repo,args.expected_head,args.expected_base,pull,changed,issue,proposed)
     if pull is not None:
         fresh=api(f'repos/{repo}/pulls/{pull["number"]}')
         if pull_identity(fresh)!=pull_identity(pull):
