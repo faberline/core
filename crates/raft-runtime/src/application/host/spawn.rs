@@ -108,6 +108,7 @@ impl RaftHost {
             store_path,
             sm,
             pending_admission: StdMutex::new(BTreeMap::new()),
+            proposal_committed_terms: StdMutex::new(BTreeMap::new()),
             delivery: Arc::clone(&peer_client) as Arc<dyn RaftDelivery>,
             peer_client,
             peer_lanes: StdRwLock::new(peer_lanes),

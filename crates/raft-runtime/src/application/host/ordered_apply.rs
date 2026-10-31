@@ -69,6 +69,16 @@ impl Shared {
                     self.apply_running.store(false, Ordering::Release);
                     return Ok(());
                 };
+                // Retain the irreversible committed identity for active waiters
+                // before application or compaction can discard the log entry.
+                for (_, committed_term) in self
+                    .proposal_committed_terms
+                    .lock()
+                    .unwrap()
+                    .range_mut((index, 0)..=(index, u64::MAX))
+                {
+                    *committed_term = Some(term);
+                }
                 if kind == EntryKind::Config {
                     if !node.finish_committed_identity(index, term) {
                         anyhow::bail!("committed configuration identity changed at {index}");

@@ -26,6 +26,11 @@ impl RaftHost {
     pub async fn is_leader(&self) -> bool {
         self.shared.node.lock().await.is_leader()
     }
+
+    /// Read the public [`RaftStatus`] view of this host.
+    pub async fn status(&self) -> RaftStatus {
+        crate::interfaces::peer_http::host_status(&self.shared).await
+    }
     pub async fn leader(&self) -> Option<NodeId> {
         self.shared.node.lock().await.leader()
     }
@@ -135,5 +140,21 @@ impl RaftHost {
     /// Watch the state machine's applied head (followers await an index here).
     pub fn applied_watch(&self) -> watch::Receiver<Index> {
         self.shared.applied_tx.subscribe()
+    }
+
+    /// Step an inbound `AppendEntries` message into this host (#47).
+    pub async fn step_append_entries(
+        &self,
+        from: NodeId,
+        req: raft_core::AppendReq,
+    ) -> raft_core::AppendResp {
+        self.shared.step_append_entries(from, req).await
+    }
+
+    /// Step an inbound `VoteResp` message into this host (#47).
+    pub async fn step_vote_response(&self, from: NodeId, resp: raft_core::VoteResp) {
+        let mut n = self.shared.node.lock().await;
+        n.handle(from, raft_core::RaftMsg::VoteResp(resp));
+        let _ = self.shared.persist(&n);
     }
 }

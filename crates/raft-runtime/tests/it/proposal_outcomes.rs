@@ -26,6 +26,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use axum::{http::StatusCode, routing::post, Json, Router};
+use raft_core::{AppendReq, EntryKind, RaftEntry, Term};
 use raft_runtime::{
     FsyncPolicy, HostConfig, Index, Membership, ProposalOutcome, RaftHost, RaftStateMachine,
     RaftStore,
@@ -433,6 +434,117 @@ async fn follower_forwarding_malformed_admission_body_remains_ambiguous() {
     }
 }
 
+/// Truncating a proposal's uncommitted entry through a leader change must not report Completed.
+///
+/// In a multi-voter cluster, a proposal on node 0 is appended at (index, term 1) but
+/// remains uncommitted without peer quorum. When node 1 takes over as leader in term 2
+/// and replicates a conflicting entry that commits at that same index, node 0 truncates
+/// its uncommitted entry and applies the replacing entry. The proposer must receive
+/// Ambiguous naming replacing term 2, not Completed.
+#[tokio::test]
+async fn uncommitted_proposal_superseded_by_leader_change_returns_ambiguous() {
+    use raft_core::VoteResp;
+
+    let sm = TestSm::new();
+    let dir = TempDir::new().unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
+    let cfg = HostConfig::default().with_propose_timeout(Duration::from_secs(2));
+    let host = Arc::new(RaftHost::spawn(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
+        HashMap::new(),
+        store,
+        sm.clone() as Arc<dyn RaftStateMachine>,
+        cfg,
+    ));
+
+    // Wait until node 0 campaigns, then grant voter 1's vote so node 0 becomes leader.
+    let start = std::time::Instant::now();
+    loop {
+        let st = host.status().await;
+        host.step_vote_response(
+            NodeId::new(1),
+            VoteResp {
+                term: Term::new(st.term),
+                granted: true,
+            },
+        )
+        .await;
+        if host.is_leader().await {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        if start.elapsed() > Duration::from_secs(2) {
+            panic!("node 0 did not become leader within deadline");
+        }
+    }
+
+    // Propose on leader node 0. Because voter 1 has not acknowledged it,
+    // the proposal is appended at index 1 (term 1) but cannot commit.
+    let host_clone = Arc::clone(&host);
+    let propose_task = tokio::spawn(async move {
+        host_clone
+            .propose_outcome(b"superseded-command".to_vec())
+            .await
+    });
+
+    // Give the proposal a moment to be appended and enter the apply-wait loop.
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Leader change: node 1 takes over in term 2 and replicates a conflicting entry
+    // that commits at index 1, truncating node 0's uncommitted proposal.
+    let supersede_req = AppendReq {
+        term: Term::new(2),
+        leader: NodeId::new(1),
+        prev_log_index: Index::new(0),
+        prev_log_term: Term::new(0),
+        entries: vec![RaftEntry {
+            term: Term::new(2),
+            index: Index::new(1),
+            command: vec![42],
+            kind: EntryKind::Command,
+        }],
+        leader_commit: Index::new(1),
+    };
+
+    let resp = host.step_append_entries(NodeId::new(1), supersede_req).await;
+    assert!(resp.success, "append entries must succeed");
+
+    // The proposer must receive Ambiguous (not Completed) stating the entry was superseded
+    // and naming the replacing term (2), without waiting for the propose timeout.
+    let outcome = tokio::time::timeout(Duration::from_secs(1), propose_task)
+        .await
+        .expect("proposer must receive outcome promptly without waiting for propose_timeout")
+        .expect("propose task did not panic");
+
+    match outcome {
+        ProposalOutcome::Ambiguous { index, reason } => {
+            assert_eq!(
+                index,
+                Some(Index::new(1)),
+                "ambiguous outcome must identify the proposal index"
+            );
+            assert!(
+                reason.contains("superseded"),
+                "reason must indicate entry was superseded, got: {reason}"
+            );
+            assert!(
+                reason.contains("2"),
+                "reason must name replacing term (2), got: {reason}"
+            );
+        }
+        ProposalOutcome::Completed { index } => {
+            panic!("proposer must NOT receive Completed for superseded entry at index {index}");
+        }
+        other => panic!("expected Ambiguous outcome for superseded proposal, got: {other:?}"),
+    }
+}
+
 /// Negative control: sequential successful proposals on a healthy host strictly increase
 /// indices and never return Ambiguous, RejectedBeforeAdmission, or DurabilityFailure.
 #[tokio::test]
@@ -468,5 +580,130 @@ async fn sequential_successful_proposals_increase_indices() {
                 panic!("proposal {i} must not return DurabilityFailure");
             }
         }
+    }
+}
+
+/// Keep the proposal future unpolled while a newer leader commits two entries
+/// and the ordered applier compacts them. No scheduler timing determines whether
+/// the waiter observes the resident log or the compacted prefix.
+async fn proposal_outcome_after_compaction(replaced: bool) -> ProposalOutcome {
+    use raft_core::VoteResp;
+    use raft_runtime::SnapshotPolicy;
+    use std::future::{poll_fn, Future};
+    use std::task::Poll;
+
+    let sm = TestSm::new();
+    let dir = TempDir::new().unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
+    let host = RaftHost::spawn(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1)], vec![]),
+        HashMap::new(),
+        store,
+        sm.clone() as Arc<dyn RaftStateMachine>,
+        HostConfig::default()
+            .with_propose_timeout(Duration::from_secs(10))
+            .with_snapshot(SnapshotPolicy::EveryEntries(2)),
+    );
+    tokio::time::timeout(Duration::from_secs(3), async {
+        loop {
+            let status = host.status().await;
+            host.step_vote_response(
+                NodeId::new(1),
+                VoteResp {
+                    term: Term::new(status.term),
+                    granted: true,
+                },
+            )
+            .await;
+            if host.is_leader().await {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("host elects a leader");
+    let original_term = host.status().await.term;
+    let command = b"proposal-before-compaction".to_vec();
+    let mut proposal = Box::pin(host.propose_outcome(command.clone()));
+    poll_fn(|cx| {
+        assert!(proposal.as_mut().poll(cx).is_pending());
+        Poll::Ready(())
+    })
+    .await;
+    assert_eq!(host.status().await.last_index, 1, "proposal was appended");
+
+    let applied_term = original_term + u64::from(replaced);
+    let boundary_term = applied_term + 1;
+    let response = host
+        .step_append_entries(
+            NodeId::new(1),
+            AppendReq {
+                term: Term::new(boundary_term),
+                leader: NodeId::new(1),
+                prev_log_index: Index::new(0),
+                prev_log_term: Term::new(0),
+                entries: vec![
+                    RaftEntry {
+                        index: Index::new(1),
+                        term: Term::new(applied_term),
+                        command: if replaced {
+                            b"replacement".to_vec()
+                        } else {
+                            command.clone()
+                        },
+                        kind: EntryKind::Command,
+                    },
+                    RaftEntry {
+                        index: Index::new(2),
+                        term: Term::new(boundary_term),
+                        command: b"later-term-command".to_vec(),
+                        kind: EntryKind::Command,
+                    },
+                ],
+                leader_commit: Index::new(2),
+            },
+        )
+        .await;
+    assert!(response.success);
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while host.snapshot_index().await < Index::new(2) {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("applier compacts both entries before proposal resumes");
+    assert_eq!(sm.applied_index(), Index::new(2));
+    let persisted = host.store().load().unwrap().unwrap();
+    assert_eq!(persisted.snapshot_term, Term::new(boundary_term));
+    assert!(persisted.log.is_empty());
+    tokio::time::timeout(Duration::from_secs(1), proposal)
+        .await
+        .expect("proposal resolves promptly after compaction")
+}
+
+#[tokio::test]
+async fn applied_proposal_remains_completed_after_later_term_compaction() {
+    let outcome = proposal_outcome_after_compaction(false).await;
+    assert!(
+        matches!(outcome, ProposalOutcome::Completed { index } if index == Index::new(1)),
+        "expected original proposal to remain completed, got {outcome:?}"
+    );
+}
+
+#[tokio::test]
+async fn compacted_superseded_proposal_names_actual_replacing_term() {
+    match proposal_outcome_after_compaction(true).await {
+        ProposalOutcome::Ambiguous { index, reason } => {
+            assert_eq!(index, Some(Index::new(1)));
+            assert!(reason.contains("superseded by entry of term 2"), "{reason}");
+        }
+        other => panic!("expected superseded outcome, got {other:?}"),
     }
 }
