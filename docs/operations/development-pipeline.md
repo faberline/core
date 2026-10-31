@@ -1,10 +1,10 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/db5824e708833c128c10c6b83eb22585ba073949/docs/standards/development-pipeline.md)
-with shared runtime `db5824e708833c128c10c6b83eb22585ba073949`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/d66014a9a8e3decbe3f534c43ab83bba305edbc4/docs/standards/development-pipeline.md)
+with shared runtime `d66014a9a8e3decbe3f534c43ab83bba305edbc4`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
-AW's exact shared source passed all 1,160 controls with zero skips. Core
+AW's exact shared source passed all 1,168 controls with zero skips. Core
 adoption still needs current-head product CI, independent local review and
 actual merge evidence. The actor inventory and ledger/history remain
 preserved. Historical [guarded completion](guarded-completion.md) is retired
@@ -28,7 +28,7 @@ Ordinary PRs use `.github/workflows/development-ci.yml`:
    current failed attempt to todo, or labels the open issue done only after
    complete qualified CI. It has issue-write permission and read-only access
    elsewhere; it cannot review, merge or close an issue.
-6. Independent Claude review runs locally after required current-head CI.
+6. Independent local review runs after required current-head CI.
    The authorized local controller verifies the exact merge before closing
    the canonical issue. Keep strict base and every required test check.
 
@@ -86,3 +86,10 @@ AW #151 binds diagnostics and labels to the verified real canonical issue.
 A Closes link to another PR, a closed issue or a foreign item cannot receive
 issue handoff writes. Invalid links are diagnosed only on the source PR.
 Recheck target identity before each write, including issue-to-PR conversion.
+
+AW #152 reports confirmed missing target 404 responses on the source PR.
+Authorization, rate-limit, server, network and unknown responses remain
+held. Final writer checks reject changed links or newly valid targets.
+This adoption uses the user-authorized independent Codex review in
+place of the older Claude tool requirement; all independence and
+current-input gates remain.

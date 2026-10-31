@@ -1,5 +1,5 @@
 {
-  "aw_revision": "db5824e708833c128c10c6b83eb22585ba073949",
+  "aw_revision": "d66014a9a8e3decbe3f534c43ab83bba305edbc4",
   "workflows": [
     {
       "path": ".github/workflows/development-ci.yml",
@@ -30,7 +30,7 @@
   "qualification_blockers": [],
   "lifecycle_mode": "full",
   "ci_handoff_policy": {
-    "aw_revision": "db5824e708833c128c10c6b83eb22585ba073949",
+    "aw_revision": "d66014a9a8e3decbe3f534c43ab83bba305edbc4",
     "workflows": [
       {
         "path": ".github/workflows/development-ci.yml",
@@ -1076,7 +1076,7 @@
       "trusted_workflows": {
         ".github/workflows/development-ci.yml": {
           "id": 402004875,
-          "definition_sha": "9fb8f903228b1b563036541ddda6f1b6d523f370"
+          "definition_sha": "46f141103e0d6c02cdb9638fc28f0e2862ee612b"
         }
       },
       "always": [
@@ -3788,7 +3788,7 @@
     "trusted_workflows": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "9fb8f903228b1b563036541ddda6f1b6d523f370"
+        "definition_sha": "46f141103e0d6c02cdb9638fc28f0e2862ee612b"
       }
     },
     "always": [
@@ -5486,7 +5486,7 @@
   "development_reporter": {
     "path": ".github/workflows/issue-ci.yml",
     "id": 394215097,
-    "definition_sha": "e6b48c11be6820cddd547dc7bc4e6a9a0294908c",
+    "definition_sha": "9335c9caf9f8d9004f4fa653242adea74c2442c0",
     "job": "report"
   }
 }
