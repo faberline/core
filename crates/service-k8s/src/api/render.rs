@@ -25,15 +25,20 @@ pub use crate::infrastructure::manifest::{
     restricted_pod_security_context, service_account, service_statefulset,
     service_statefulset_with_service_links, sharded_statefulset, token_registry_mount,
     token_registry_volume, ClusterRoleBindingPlan, ContainerPlan, CronJob, CronJobPlan,
-    DaemonSetPlan, DeploymentPlan, FqdnMatchPlan, FqdnNetworkPolicyPlan, HorizontalPodAutoscaler,
-    LabelSet, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
-    PersistentVolumeClaimPlan, PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy, RbacRulePlan,
-    RenderCtx, RoleBindingPlan, RolePlan, ServiceAccountPlan, ServiceAccountSubjectPlan,
-    ServicePlan, ServicePortPlan, ServiceStatefulSet, ShardedStatefulSet, StatefulSetPlan,
-    TokenRegistryProjection, TokenRegistrySource, WorkloadPlan, WorkloadPlanError,
-    WorkloadVolumeClaim, DEFAULT_TOKEN_REGISTRY_CSI_DRIVER, ENV_POD_NAME, ENV_POD_NAMESPACE,
+    DaemonSetPlan, DeploymentPlan, FailureDomainPlacement, FqdnMatchPlan, FqdnNetworkPolicyPlan,
+    HorizontalPodAutoscaler, HostSeparation, LabelSet, NetworkPeerPlan, NetworkPolicyPlan,
+    NetworkPortPlan, NetworkRulePlan, PersistentVolumeClaimPlan, PlacementError, PlacementPlan,
+    PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy, RbacRulePlan, RenderCtx, RoleBindingPlan,
+    RolePlan, ServiceAccountPlan, ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan,
+    ServiceStatefulSet, ShardedStatefulSet, StatefulSetPlan, TokenRegistryProjection,
+    TokenRegistrySource, Toleration, WorkloadPlan, WorkloadPlanError, WorkloadVolumeClaim,
+    ZoneSpread, DEFAULT_TOKEN_REGISTRY_CSI_DRIVER, ENV_POD_NAME, ENV_POD_NAMESPACE,
     ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_VOTER_COUNT,
 };
+
+pub mod placement {
+    pub use crate::infrastructure::manifest::placement::*;
+}
 
 pub mod common {
     pub use crate::infrastructure::manifest::common::{
