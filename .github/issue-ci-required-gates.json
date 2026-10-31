@@ -1,5 +1,5 @@
 {
-  "aw_revision": "fb002d9198967313a4641f129a9c9648890a7555",
+  "aw_revision": "ea56cc7d9da733ca5f8a98e97451a3f6f1e7151e",
   "workflows": [
     {
       "path": ".github/workflows/development-ci.yml",
@@ -30,7 +30,7 @@
   "qualification_blockers": [],
   "lifecycle_mode": "full",
   "ci_handoff_policy": {
-    "aw_revision": "fb002d9198967313a4641f129a9c9648890a7555",
+    "aw_revision": "ea56cc7d9da733ca5f8a98e97451a3f6f1e7151e",
     "workflows": [
       {
         "path": ".github/workflows/development-ci.yml",
@@ -1076,7 +1076,7 @@
       "trusted_workflows": {
         ".github/workflows/development-ci.yml": {
           "id": 402004875,
-          "definition_sha": "4cca43598be67911094d96051112462758caf27f"
+          "definition_sha": "102c4136b17ff13c90af8e6155e3078ec0c4bb93"
         }
       },
       "always": [
@@ -2599,7 +2599,7 @@
         },
         "88": {
           "title_sha256": "b39a13058643f764e0e538a1fd1476d247c2417a59105ab7c271cc5ab310550a",
-          "body_sha256": "887ebf4e66d62569b28b04b0c9f1da97ac446f92cfc678bd7f32ab901097ec0f",
+          "body_sha256": "395289159d0bc68b065526d9fffebf35aeb61f18315b155fe24222b4455cc5fd",
           "applicability": {
             "unit": {
               "status": "required",
@@ -2928,19 +2928,19 @@
       ]
     }
   },
-  "controller_source": "faberline/aw@fb002d9198967313a4641f129a9c9648890a7555:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
+  "controller_source": "faberline/aw@ea56cc7d9da733ca5f8a98e97451a3f6f1e7151e:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
   "claude_final_review": {
     "version": 1,
     "producer": {
       "path": ".github/workflows/claude-final-review.yml",
       "id": 399789974,
-      "definition_sha": "0e18f7612c5dd075582fe39c313c0a618e5c0509",
+      "definition_sha": "cbb1a4968c7dce2f90c050849cdb191beca129b7",
       "job": "review"
     },
     "gates": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "4cca43598be67911094d96051112462758caf27f"
+        "definition_sha": "102c4136b17ff13c90af8e6155e3078ec0c4bb93"
       }
     },
     "protected_paths": [
@@ -2978,7 +2978,7 @@
     "producer": {
       "path": ".github/workflows/issue-ci.yml",
       "id": 394215097,
-      "definition_sha": "6648c5afef5578d4b4cceb497139e10cfea52738",
+      "definition_sha": "6bae4fae41a719484eae43094d8650b46fd664d9",
       "job": "native-auto-merge"
     }
   },
@@ -3998,7 +3998,7 @@
     "trusted_workflows": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "4cca43598be67911094d96051112462758caf27f"
+        "definition_sha": "102c4136b17ff13c90af8e6155e3078ec0c4bb93"
       }
     },
     "always": [
@@ -5521,7 +5521,7 @@
       },
       "88": {
         "title_sha256": "b39a13058643f764e0e538a1fd1476d247c2417a59105ab7c271cc5ab310550a",
-        "body_sha256": "887ebf4e66d62569b28b04b0c9f1da97ac446f92cfc678bd7f32ab901097ec0f",
+        "body_sha256": "395289159d0bc68b065526d9fffebf35aeb61f18315b155fe24222b4455cc5fd",
         "applicability": {
           "unit": {
             "status": "required",
@@ -5860,7 +5860,7 @@
     "producer": {
       "path": ".github/workflows/issue-recovery.yml",
       "id": 402173927,
-      "definition_sha": "b68c85747122715da454ae7c029d2ca9486800f2",
+      "definition_sha": "3e43968f6d33864be5d818be37e9e22e4107609c",
       "job": "recovery"
     }
   }
