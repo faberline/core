@@ -160,3 +160,71 @@ fn golden_sectioned_topic_output_bytes() {
         "{\n  \"project\": \"lumen\",\n  \"topic\": \"workflow\",\n  \"summary\": \"how it works\",\n  \"body\": \"# intro prose\\n\\nthe sky is blue\",\n  \"sections\": [\n    {\n      \"id\": \"prose-0\",\n      \"kind\": \"prose\",\n      \"content\": \"# intro prose\"\n    },\n    {\n      \"id\": \"fact\",\n      \"kind\": \"generated\",\n      \"content\": \"the sky is blue\"\n    }\n  ]\n}"
     );
 }
+
+// --- assert_snapshot_matches (#9) ---
+
+#[test]
+fn snapshot_matches_equal_strings_pass() {
+    assert_snapshot_matches("alpha\nbeta\n", "alpha\nbeta\n", "regen-cmd");
+}
+
+#[test]
+fn snapshot_matches_line_endings_and_single_trailing_newline_pass() {
+    // Differing only in \r\n vs \n
+    assert_snapshot_matches("alpha\r\nbeta\r\n", "alpha\nbeta\n", "regen-cmd");
+    // Differing only in presence of a single trailing newline
+    assert_snapshot_matches("alpha\nbeta", "alpha\nbeta\n", "regen-cmd");
+    assert_snapshot_matches("alpha\nbeta\n", "alpha\nbeta", "regen-cmd");
+    // Both line endings and trailing newline differences
+    assert_snapshot_matches("alpha\r\nbeta", "alpha\nbeta\n", "regen-cmd");
+}
+
+#[test]
+fn snapshot_matches_differing_line_panics_with_line_number_and_hint() {
+    let result = std::panic::catch_unwind(|| {
+        assert_snapshot_matches(
+            "line 1\nline 2\nline 3\n",
+            "line 1\nline 2 differing\nline 3\n",
+            "cargo run -- regen",
+        );
+    });
+    assert!(result.is_err(), "differing line must panic");
+    let err = result.unwrap_err();
+    let msg = err
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| err.downcast_ref::<&'static str>().copied())
+        .expect("panic message is string");
+    assert!(
+        msg.contains("2"),
+        "message must mention line number 2: {msg}"
+    );
+    assert!(
+        msg.contains("cargo run -- regen"),
+        "message must mention regen hint: {msg}"
+    );
+
+    // Mismatch when one string has an extra line
+    let result_extra = std::panic::catch_unwind(|| {
+        assert_snapshot_matches(
+            "line 1\nline 2\n",
+            "line 1\nline 2\nline 3\n",
+            "my-tool regen",
+        );
+    });
+    assert!(result_extra.is_err(), "extra line must panic");
+    let err_extra = result_extra.unwrap_err();
+    let msg_extra = err_extra
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| err_extra.downcast_ref::<&'static str>().copied())
+        .expect("panic message is string");
+    assert!(
+        msg_extra.contains("3"),
+        "message must mention line number 3: {msg_extra}"
+    );
+    assert!(
+        msg_extra.contains("my-tool regen"),
+        "message must mention regen hint: {msg_extra}"
+    );
+}

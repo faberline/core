@@ -200,6 +200,44 @@ pub fn assert_topics_render<T: RenderableTopic>(topics: &[T]) {
     }
 }
 
+/// Assert that a committed snapshot (such as a committed `llms.txt`) matches
+/// generated output.
+///
+/// Normalizes line endings (`\r\n` -> `\n`) and a single trailing newline
+/// before comparing. On a mismatch, panics naming the first differing line
+/// number and including `regen_hint`.
+pub fn assert_snapshot_matches(committed: &str, generated: &str, regen_hint: &str) {
+    let norm_committed = normalize_snapshot(committed);
+    let norm_generated = normalize_snapshot(generated);
+
+    if norm_committed == norm_generated {
+        return;
+    }
+
+    let committed_lines: Vec<&str> = norm_committed.lines().collect();
+    let generated_lines: Vec<&str> = norm_generated.lines().collect();
+    let max_len = committed_lines.len().max(generated_lines.len());
+    let mut diff_line = 1;
+    for i in 0..max_len {
+        let c = committed_lines.get(i);
+        let g = generated_lines.get(i);
+        if c != g {
+            diff_line = i + 1;
+            break;
+        }
+    }
+
+    panic!(
+        "snapshot mismatch at line {diff_line}: committed and generated content differ. Regenerate with: {regen_hint}"
+    );
+}
+
+fn normalize_snapshot(s: &str) -> String {
+    let s = s.replace("\r\n", "\n");
+    let s = s.strip_suffix('\n').unwrap_or(&s);
+    format!("{s}\n")
+}
+
 pub(crate) mod v2;
 
 /// Output format for `llm`.
