@@ -13,6 +13,8 @@ mod destination;
 mod destination_error;
 mod policy;
 mod policy_error;
+mod retention_plan;
+mod set_key_layout;
 #[cfg(feature = "http-client")]
 mod snapshot_source;
 #[cfg(feature = "http-client")]
@@ -28,6 +30,8 @@ pub use destination::{BackupDestination, SchemeInfo, SUPPORTED_SCHEMES};
 pub use destination_error::DestinationError;
 pub use policy::{BackupPolicy, RetentionPolicy, ScheduledBackupPolicy};
 pub use policy_error::PolicyError;
+pub use retention_plan::{plan_retention, RetentionPlan, SetInventory, SetState};
+pub use set_key_layout::{SetKeyError, SetKeyLayout};
 #[cfg(feature = "http-client")]
 pub use snapshot_source::SnapshotSource;
 #[cfg(feature = "http-client")]
