@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Check main freshness, conflicts and canonical issue
         if: github.event_name == 'pull_request'
-        uses: faberline/aw/.github/actions/issue-ci@d66014a9a8e3decbe3f534c43ab83bba305edbc4
+        uses: faberline/aw/.github/actions/issue-ci@4223a4534f0197e1ea23004b9388ffd1eea34639
         id: preflight
         with:
           operation: development-preflight
@@ -39,7 +39,7 @@ jobs:
 
       - name: Check immutable release tag and existing milestone
         if: github.event_name == 'push'
-        uses: faberline/aw/.github/actions/issue-ci@d66014a9a8e3decbe3f534c43ab83bba305edbc4
+        uses: faberline/aw/.github/actions/issue-ci@4223a4534f0197e1ea23004b9388ffd1eea34639
         id: release
         with:
           operation: release-preflight
@@ -83,7 +83,7 @@ jobs:
           python3 -c 'import sys,unittest; suite=unittest.TestSuite([unittest.defaultTestLoader.discover("scripts/pr-gates/tests"),unittest.defaultTestLoader.discover("scripts/issue-ci/tests",top_level_dir="scripts/issue-ci/tests")]); count=suite.countTestCases(); print("fixture_count="+str(count)); result=unittest.TextTestRunner(verbosity=2).run(suite); sys.exit(0 if count > 0 and result.wasSuccessful() and not result.skipped else 1)'
       - name: Locate pinned shared test planner
         id: shared-library
-        uses: faberline/aw/.github/actions/issue-ci@d66014a9a8e3decbe3f534c43ab83bba305edbc4
+        uses: faberline/aw/.github/actions/issue-ci@4223a4534f0197e1ea23004b9388ffd1eea34639
         with:
           operation: assertion-library
       - name: Record reviewed diff or full selection without changing any gate
@@ -147,11 +147,11 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Inspect exact-head issue contract as untrusted data
         if: github.event_name == 'pull_request'
-        uses: faberline/aw/.github/actions/issue-contract@d66014a9a8e3decbe3f534c43ab83bba305edbc4
+        uses: faberline/aw/.github/actions/issue-contract@4223a4534f0197e1ea23004b9388ffd1eea34639
 
       - name: Check immutable release tag and existing milestone
         if: github.event_name == 'push'
-        uses: faberline/aw/.github/actions/issue-ci@d66014a9a8e3decbe3f534c43ab83bba305edbc4
+        uses: faberline/aw/.github/actions/issue-ci@4223a4534f0197e1ea23004b9388ffd1eea34639
         id: release-contract
         with:
           operation: release-preflight

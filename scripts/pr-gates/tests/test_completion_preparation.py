@@ -28,11 +28,19 @@ class CompletionBoundaryTests(unittest.TestCase):
         self.assertEqual(writer['permissions'],{})
         self.assertNotIn('schedule',writer['on'])
         self.assertEqual(writer['concurrency'],{'group':'issue-ci-handoff','cancel-in-progress':'false'})
-        self.assertEqual(set(writer['jobs']),{'report'})
+        self.assertEqual(spec['link_job'],'source-pr-links')
+        self.assertEqual(set(writer['jobs']),{'report',spec['link_job']})
         job=writer['jobs']['report']
         self.assertEqual(job['steps'],[{'uses':'faberline/aw/.github/actions/issue-ci@'+CONFIG['aw_revision'],
                                        'with':{'operation':'development-report'}}])
         self.assertEqual(job['permissions'],dict(actions='read',contents='read',issues='write',**{'pull-requests':'read'}))
+        helper=writer['jobs'][spec['link_job']]
+        self.assertEqual(helper['steps'],job['steps'])
+        self.assertEqual(helper['permissions'],dict(actions='read',contents='read',issues='read',**{'pull-requests':'write'}))
+        self.assertEqual(job['needs'],spec['link_job'])
+        self.assertEqual(job['if'],'${{ always() }}')
+        self.assertEqual(sum(node['permissions']['issues']=='write'for node in writer['jobs'].values()),1)
+        self.assertTrue(all(node['permissions']['contents']=='read'for node in writer['jobs'].values()))
 
     def test_manifest_keeps_worker_families_and_each_single_writer_audit_target(self):
         manifest=json.loads((ROOT/'.github/issue-guard-actors.json').read_text())

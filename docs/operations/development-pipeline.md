@@ -1,10 +1,10 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/d66014a9a8e3decbe3f534c43ab83bba305edbc4/docs/standards/development-pipeline.md)
-with shared runtime `d66014a9a8e3decbe3f534c43ab83bba305edbc4`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/4223a4534f0197e1ea23004b9388ffd1eea34639/docs/standards/development-pipeline.md)
+with shared runtime `4223a4534f0197e1ea23004b9388ffd1eea34639`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
-AW's exact shared source passed all 1,168 controls with zero skips. Core
+AW's exact shared source passed all 1,175 controls with zero skips. Core
 adoption still needs current-head product CI, independent local review and
 actual merge evidence. The actor inventory and ledger/history remain
 preserved. Historical [guarded completion](guarded-completion.md) is retired
@@ -93,3 +93,11 @@ held. Final writer checks reject changed links or newly valid targets.
 This adoption uses the user-authorized independent Codex review in
 place of the older Claude tool requirement; all independence and
 current-input gates remain.
+
+AW #153 separates source-PR comments from the single issue-label writer.
+The source-pr-links helper has pull-requests write, issues read and
+contents read. It can only comment on the exact source PR. The report
+job keeps issues write, pull-requests read and contents read. It runs
+after the helper with always(), under the same workflow mutex. Both
+roles bind GITHUB_JOB and reject review, merge, close, status and
+unrelated writes. No product test or numeric limit changes.

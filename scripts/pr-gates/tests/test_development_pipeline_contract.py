@@ -7,7 +7,7 @@ from pathlib import Path
 import unittest
 
 ROOT=Path(__file__).resolve().parents[3]
-REF='d66014a9a8e3decbe3f534c43ab83bba305edbc4'
+REF='4223a4534f0197e1ea23004b9388ffd1eea34639'
 SPEC=importlib.util.spec_from_file_location('development_contract',ROOT/'scripts/issue-ci/development_pipeline.py')
 d=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(d)
 CONFIG=json.loads((ROOT/'.github/issue-ci-required-gates.json').read_text())
@@ -75,6 +75,13 @@ class DevelopmentContractTests(unittest.TestCase):
         self.assertEqual(writer['on']['repository_dispatch'],{'types':['aw-development-reconcile']})
         self.assertEqual(writer['concurrency'],{'group':'issue-ci-handoff','cancel-in-progress':'false'})
         producer=CONFIG['development_reporter']
+        self.assertEqual(set(writer['jobs']),{producer['job'],producer['link_job']})
+        label_job=writer['jobs'][producer['job']]
+        link_job=writer['jobs'][producer['link_job']]
+        self.assertEqual(label_job['permissions'],{'actions':'read','contents':'read','pull-requests':'read','issues':'write'})
+        self.assertEqual(link_job['permissions'],{'actions':'read','contents':'read','pull-requests':'write','issues':'read'})
+        self.assertEqual(label_job['needs'],producer['link_job'])
+        self.assertEqual(label_job['if'],'${{ always() }}')
         raw=(ROOT/producer['path']).read_bytes()
         self.assertEqual(hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest(),producer['definition_sha'])
         self.assertIn(('@'+REF).encode(),raw)
