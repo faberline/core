@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "role": "shared",
+  "tasks": [
+    "triage",
+    "queue",
+    "release"
+  ],
+  "milestone": 8
+}

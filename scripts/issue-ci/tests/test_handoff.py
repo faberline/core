@@ -31,7 +31,7 @@ def evidence():
 
 class PolicyTests(unittest.TestCase):
     def test_pinned_controller(self):
-        self.assertEqual(hashlib.sha256((ROOT / "scripts/issue-ci/handoff.py").read_bytes()).hexdigest(), "cdd8e048330d3570420b5105d6e9c9b3f4ca82f7afaba392c957ad02de722273")
+        self.assertEqual(hashlib.sha256((ROOT / "scripts/issue-ci/handoff.py").read_bytes()).hexdigest(), "d2675d527494e18494f4ad57e2b1c94da2f29297cbe5746a1205218c60fb343c")
         self.assertEqual(CONFIG["aw_revision"], "67af8d020df3ca2ec4b064289408cfb0c2f8b299")
 
     def test_failure_only_policy_never_done_even_if_existing_gates_green(self):
@@ -67,10 +67,13 @@ class PolicyTests(unittest.TestCase):
         source = (ROOT / expected[0]["path"]).read_text()
         self.assertEqual(re.findall(r"^          - crate: (.+)$", source, re.M), expected[0]["jobs"])
         workflow = (ROOT / ".github/workflows/issue-ci.yml").read_text()
-        self.assertIn('workflows: ["Core development CI", "Claude final review"]', workflow)
-        self.assertIn('faberline/aw/.github/actions/native-auto-merge@c929e87e50cd2c5e7d578c4b44e002182291031a',workflow)
+        self.assertIn('workflows: ["Core development CI"]', workflow)
+        self.assertIn('faberline/aw/.github/actions/issue-ci@94c33a871afed538f0f4a12c49825abb0b442978',workflow)
+        self.assertIn('operation: development-report',workflow)
+        self.assertNotIn('native-auto-merge',workflow)
         self.assertIn('group: issue-ci-handoff',workflow)
-        self.assertIn('pull_request_target:',workflow)
+        self.assertIn('issues:',workflow)
+        self.assertNotIn('pull_request_target:',workflow)
         self.assertNotIn('uses: actions/checkout',workflow)
         self.assertNotIn('download-artifact',workflow)
         self.assertNotRegex(workflow,r'(?m)^\s+run:')
