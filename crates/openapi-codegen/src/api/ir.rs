@@ -21,7 +21,7 @@ pub mod openapi {
 }
 
 pub mod operations {
-    pub use crate::domain::ir::operations::{build, BodyIR, OperationIR, ParamIR};
+    pub use crate::domain::ir::operations::{build, BodyIR, ErrorResponseIR, OperationIR, ParamIR};
 }
 
 pub mod typemap {
