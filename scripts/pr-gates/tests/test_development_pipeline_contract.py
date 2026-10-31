@@ -7,7 +7,7 @@ from pathlib import Path
 import unittest
 
 ROOT=Path(__file__).resolve().parents[3]
-REF='c929e87e50cd2c5e7d578c4b44e002182291031a'
+REF='d66014a9a8e3decbe3f534c43ab83bba305edbc4'
 SPEC=importlib.util.spec_from_file_location('development_contract',ROOT/'scripts/issue-ci/development_pipeline.py')
 d=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(d)
 CONFIG=json.loads((ROOT/'.github/issue-ci-required-gates.json').read_text())
@@ -35,7 +35,7 @@ class DevelopmentContractTests(unittest.TestCase):
         self.assertNotIn('pull_request',legacy['on'])
         self.assertNotIn('needs',legacy['jobs']['crate-gates'])
         development=d.yaml_document((ROOT/PATH).read_text())
-        self.assertEqual(development['on'],{'pull_request':{'branches':['main'],'types':['opened','reopened','synchronize','ready_for_review','edited']}})
+        self.assertEqual(development['on'],{'pull_request':{'branches':['main'],'types':['opened','reopened','synchronize','ready_for_review','edited']},'push':{'tags':['v*']}})
 
     def test_every_old_required_gate_is_kept_and_preflight_is_added(self):
         jobs=CONFIG['workflows'][0]['jobs']
@@ -72,12 +72,15 @@ class DevelopmentContractTests(unittest.TestCase):
         self.assertEqual(CONFIG['aw_revision'],REF)
         writer=d.yaml_document((ROOT/'.github/workflows/issue-ci.yml').read_text())
         self.assertEqual(writer['on']['push'],{'branches':['main']})
-        self.assertEqual(writer['on']['repository_dispatch'],{'types':['aw-verified-merge-reconcile']})
+        self.assertEqual(writer['on']['repository_dispatch'],{'types':['aw-development-reconcile']})
         self.assertEqual(writer['concurrency'],{'group':'issue-ci-handoff','cancel-in-progress':'false'})
-        for producer in (CONFIG['native_auto_merge']['producer'],CONFIG['claude_final_review']['producer']):
-            raw=(ROOT/producer['path']).read_bytes()
-            self.assertEqual(hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest(),producer['definition_sha'])
-            self.assertIn(('@'+REF).encode(),raw)
+        producer=CONFIG['development_reporter']
+        raw=(ROOT/producer['path']).read_bytes()
+        self.assertEqual(hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest(),producer['definition_sha'])
+        self.assertIn(('@'+REF).encode(),raw)
+        self.assertEqual(CONFIG['completion_owner'],'local')
+        self.assertNotIn('native_auto_merge',CONFIG)
+        self.assertNotIn('claude_final_review',CONFIG)
         self.assertIn('development_pipeline',CONFIG['ci_handoff_policy'])
         self.assertEqual(CONFIG['development_pipeline'],CONFIG['ci_handoff_policy']['development_pipeline'])
 
@@ -87,7 +90,7 @@ class DevelopmentContractTests(unittest.TestCase):
             self.assertNotIn('echo "matrix=$(',step.get('run',''))
             self.assertNotIn('echo "result=$(',step.get('run',''))
         self.assertIn('unit-plan',workflow['jobs']['workspace-contracts']['needs'])
-        self.assertEqual(CONFIG['controller_source'],f'faberline/aw@{REF}:plugins/faberline/skills/issue-ci/scripts/native_merge.py')
+        self.assertNotIn('controller_source',CONFIG)
 
 
 if __name__=='__main__':unittest.main()

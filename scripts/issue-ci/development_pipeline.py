@@ -4,6 +4,7 @@ import importlib.util
 import json
 from pathlib import Path
 import re
+import subprocess
 from urllib.parse import quote
 
 STAGES = ('preflight', 'impact', 'unit', 'functional', 'performance')
@@ -214,6 +215,35 @@ def workflow_contract(raw, config):
     return dict(version=1, workflow=policy['workflow'], stages=groups, sha256=digest(workflow))
 
 
+def canonical_issue_target(repo, number, source):
+    """A GitHub issues endpoint can also return a PR. Verify the real target."""
+    return (integer(number) and isinstance(source, dict) and integer(source.get('number'))
+            and source['number'] == number
+            and source.get('state') == 'open' and 'pull_request' not in source
+            and source.get('repository_url') == f'https://api.github.com/repos/{repo}'
+            and source.get('url') == f'https://api.github.com/repos/{repo}/issues/{number}')
+
+
+def read_issue_target(api, repo, number):
+    """Only an exact gh GET 404 proves the linked target is unavailable."""
+    need(isinstance(repo, str) and re.fullmatch(r'[\w.-]+/[\w.-]+', repo)
+         and integer(number), 'invalid linked issue identity')
+    path = f'repos/{repo}/issues/{number}'
+    try:
+        return api.api(path)
+    except subprocess.CalledProcessError as error:
+        if (error.returncode == 1 and error.cmd == ['gh', 'api', '--method', 'GET', path]
+                and isinstance(error.output, str)):
+            try:
+                response = sibling('json_data').loads(error.output)
+            except (ValueError, TypeError):
+                response = None
+            if (isinstance(response, dict) and response.get('status') == '404'
+                    and response.get('message') == 'Not Found'):
+                return None
+        raise
+
+
 def preflight(api, repo, number, head, expected_base=None):
     """Read one explicit comparison; a query error never becomes a pass."""
     need(isinstance(repo, str) and re.fullmatch(r'[\w.-]+/[\w.-]+', repo)
@@ -244,11 +274,8 @@ def preflight(api, repo, number, head, expected_base=None):
     issue = sibling('qualification').linked_issue(pull)
     source = None
     if issue is not None:
-        source = api.api(f'{root}/issues/{issue}')
-    valid = (isinstance(source, dict) and source.get('number') == issue
-             and source.get('state') == 'open' and 'pull_request' not in source
-             and source.get('repository_url') == f'https://api.github.com/repos/{repo}'
-             and source.get('url') == f'https://api.github.com/repos/{repo}/issues/{issue}')
+        source = read_issue_target(api, repo, issue)
+    valid = canonical_issue_target(repo, issue, source)
     checks.append(dict(check='one_canonical_issue', passed=valid,
                        reason='One canonical open issue is linked' if valid else
                        'PR requires exactly one canonical open issue'))
@@ -312,7 +339,8 @@ def report_failures(repo, issue, records, comments, write, revalidate):
                 f'- Failed step: {reason}\n- Head: `{record["head"]}`; base: `{record["base"]}`.\n'
                 f'- Workflow: {text(record["workflow"])}; run {record["run"]}, attempt {record["attempt"]}, job {record["job"]}.\n'
                 f'- Evidence: [job]({record["job_url"]}), [run]({record["run_url"]}).\n\n'
-                'Repair this failure in the existing PR. The lifecycle handoff returns the current work attempt to todo once; '
+                'Repair this failure in the existing PR. The lifecycle handoff returns eligible current work to todo once. '
+                'It must verify ownership and lifecycle state first; otherwise that handoff remains incomplete. '
                 'later failures do not reset an agent that already claimed it. This is an observed job failure, not a verified root-cause claim.')
         response = write(f'repos/{repo}/issues/{issue}/comments', 'POST', {'body':body})
         need(isinstance(response, dict) and integer(response.get('id')), 'failure comment write outcome unknown')
@@ -330,9 +358,11 @@ def report_missing_issue(api, repo, pull, before_mutation=None):
         current = api.api(f'{root}/pulls/{number}')
         need(current.get('state') == 'open' and current.get('head', {}).get('sha') == head
              and (current.get('head', {}).get('repo') or {}).get('full_name') == repo
-             and current.get('base', {}).get('ref') == api.api(root)['default_branch']
-             and sibling('qualification').linked_issue(current) is None,
+             and current.get('base', {}).get('ref') == api.api(root)['default_branch'],
              'unlinked PR changed before diagnostic')
+        issue = sibling('qualification').linked_issue(current)
+        target = read_issue_target(api, repo, issue) if issue is not None else None
+        need(not canonical_issue_target(repo, issue, target), 'PR now has a canonical open issue')
         return current
     current = fresh()
     key = digest([repo, number, head, current.get('title'), current.get('body')])

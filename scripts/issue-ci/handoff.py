@@ -46,6 +46,13 @@ def validate_config(config):
         raise RuntimeError('gate config must be an object')
     if '_qualification_context' in config:
         raise RuntimeError('computed qualification context cannot be supplied by config')
+    if 'completion_owner' in config:
+        if config['completion_owner'] != 'local':
+            raise RuntimeError('completion_owner must be local when explicitly configured')
+        retired = {'claude_final_review', 'native_auto_merge', 'issue_recovery',
+                   'issue_guard_rollout', 'issue_guard_cutover'}
+        if retired.intersection(config):
+            raise RuntimeError('local completion cannot retain cloud review or completion producers')
     mode = config.get('lifecycle_mode', 'full')
     if mode not in ('full', 'failure-only'):
         raise RuntimeError('lifecycle_mode must be full or failure-only')
@@ -365,6 +372,8 @@ def process_head(args, config, check_event=True, before_mutation=None, developme
         from types import SimpleNamespace
         adapter = SimpleNamespace(api=api, pages=pages)
         preflight = development.preflight(adapter, args.repo, args.pr, args.head)
+        if preflight.get('issue') != issue:
+            raise RuntimeError('PR has no verified canonical open issue; no issue mutation')
         development_snapshots = development.review_failure_snapshot(adapter, args.repo, args.pr, args.head, review_config)
         failed_jobs = development.failure_records(args.repo, args.pr, args.head, preflight['base'],
             {**snapshots, **negative_snapshots, **development_snapshots}, config.get('_qualification_context'))
@@ -400,22 +409,73 @@ def process_head(args, config, check_event=True, before_mutation=None, developme
     issue_path = f'{root}/issues/{issue}'
     current = api(issue_path)
     labels = {l['name'] for l in current['labels']}
-    if current['state'] != 'open' or not labels & {'todo', 'doing', 'done'} or 'blocked' in labels:
-        raise RuntimeError('issue is closed, blocked, or unmanaged; no mutation')
+    if ('pull_request' in current or (development_policy is not None
+            and not development.canonical_issue_target(args.repo, issue, current))):
+        raise RuntimeError('target is not a verified canonical open issue; no mutation')
+    if current['state'] != 'open' or 'blocked' in labels:
+        raise RuntimeError('issue is closed or blocked; no mutation')
     failure_only = config.get('lifecycle_mode', 'full') == 'failure-only'
     if failure_only and 'done' in labels:
         return 0  # This mode has no authority over already done issues.
     comments = pages(f'{issue_path}/comments')
+
+    def fresh_labels(require_managed=True):
+        fresh = api(pr_path)
+        if (fresh['state'] != 'open' or fresh['head']['sha'] != args.head
+                or fresh['head']['repo']['full_name'] != args.repo
+                or fresh['head']['ref'] != pr['head']['ref']
+                or not re.search(rf'(?im)^Closes #{issue}\s*$', fresh.get('body') or '')):
+            raise RuntimeError('PR moved during handoff; no further mutation')
+        context = config.get('_qualification_context')
+        expected_base = context['base'] if context else preflight['base'] if preflight else None
+        if expected_base is not None and fresh.get('base', {}).get('sha') != expected_base:
+            raise RuntimeError('PR base changed during handoff; no further mutation')
+        current = api(issue_path)
+        labels = {l['name'] for l in current['labels']}
+        if ('pull_request' in current or (development_policy is not None
+                and not development.canonical_issue_target(args.repo, issue, current))):
+            raise RuntimeError('issue is no longer the verified canonical target; no further mutation')
+        if current['state'] != 'open' or 'blocked' in labels:
+            raise RuntimeError('issue lifecycle changed during handoff')
+        if require_managed and not labels & {'todo', 'doing', 'done'}:
+            raise RuntimeError('issue is unmanaged; diagnostics recorded; lifecycle handoff remains incomplete')
+        if failure_only and 'done' in labels:
+            raise RuntimeError('failure-only mode cannot touch a done issue')
+        return labels
+
+    if failed_jobs:
+        # Diagnostics have no ownership authority. An open canonical issue
+        # can receive them even when its lifecycle labels need reconciliation.
+        development.report_failures(args.repo, issue, failed_jobs, comments, write,
+                                    lambda: fresh_labels(require_managed=False))
+    if not labels & {'todo', 'doing', 'done'}:
+        raise RuntimeError('issue is unmanaged; diagnostics recorded; lifecycle handoff remains incomplete')
     policy = hashlib.sha256(json.dumps(source_config, sort_keys=True).encode()).hexdigest()
     # A failure hands a head back once per coding epoch, regardless of how
     # many more workflows fail while AGY is fixing it. A successfully APPLIED
     # done receipt begins a new epoch, allowing a later done -> todo regression.
-    qualified = [c for c in comments
-                 if c['user']['login'] == 'github-actions[bot]'
-                 and c['body'].startswith('<!-- issue-ci:')
-                 and c['body'].splitlines()[0].endswith(':applied -->')
-                 and f'\nCI: done for PR #{args.pr} head `{args.head}`.\n' in c['body']
-                 and f'\nPolicy: {policy}\n' in c['body']]
+    def applied(outcome, current_policy=True):
+        return [c for c in comments
+                if c['user']['login'] == 'github-actions[bot]'
+                and c['body'].startswith('<!-- issue-ci:')
+                and c['body'].splitlines()[0].endswith(':applied -->')
+                and f'\nCI: {outcome} for PR #{args.pr} head `{args.head}`.\n' in c['body']
+                and (f'\nPolicy: {policy}\n' in c['body'] if current_policy
+                     else re.search(r'(?m)^Policy: [0-9a-f]{64}$', c['body']))]
+    qualified = applied('done')
+    # Old policy receipts establish a handoff, never current qualification.
+    # An upgraded runtime cannot grant itself a worker's existing ownership.
+    local_qualified, local_returned = applied('done', False), applied('todo', False)
+
+    def local_hold(labels):
+        if source_config.get('completion_owner') != 'local':
+            return None
+        lifecycle = labels & {'todo', 'doing', 'done'}
+        if state == 'done' and 'done' not in lifecycle and local_qualified:
+            return 'local completion hold: this head was already handed to local review; preserve its returned state'
+        if lifecycle == {'doing'} and (local_qualified or local_returned):
+            return 'local completion hold: returned work was claimed; a CI rerun cannot replace that owner'
+        return None
     epoch = qualified[-1]['id'] if qualified else 0
     receipt_key = evidence if state == 'done' else ['coding-epoch', epoch]
     # A success receipt binds the current base/files/applicability fingerprint.
@@ -437,38 +497,30 @@ def process_head(args, config, check_event=True, before_mutation=None, developme
     def body(phase):
         return f'{prefix}{phase} -->\nCI: {state} for PR #{args.pr} head `{args.head}`.\nPolicy: {policy}\n{detail}\n{urls}'
 
-    def fresh_labels():
-        fresh = api(pr_path)
-        if (fresh['state'] != 'open' or fresh['head']['sha'] != args.head
-                or fresh['head']['repo']['full_name'] != args.repo
-                or fresh['head']['ref'] != pr['head']['ref']
-                or not re.search(rf'(?im)^Closes #{issue}\s*$', fresh.get('body') or '')):
-            raise RuntimeError('PR moved during handoff; no further label mutation')
-        context = config.get('_qualification_context')
-        if context and fresh.get('base', {}).get('sha') != context['base']:
-            raise RuntimeError('PR base changed during handoff; no further label mutation')
-        current = api(issue_path)
-        labels = {l['name'] for l in current['labels']}
-        if current['state'] != 'open' or 'blocked' in labels or not labels & {'todo', 'doing', 'done'}:
-            raise RuntimeError('issue lifecycle changed during handoff')
-        if failure_only and 'done' in labels:
-            raise RuntimeError('failure-only mode cannot touch a done issue')
+    def writable_labels():
+        labels = fresh_labels()
+        hold = local_hold(labels)
+        if hold:
+            raise RuntimeError(hold)
         return labels
 
-    if failed_jobs:
-        # Per-job diagnostics must precede the epoch dedupe. A later failed
-        # matrix row still gets its own comment, but cannot reset a new owner.
-        development.report_failures(args.repo, issue, failed_jobs, comments, write, fresh_labels)
+    # Diagnostics still reach the issue. Only the lifecycle handoff is held.
+    # Pending/ready journals are not completed receipts and retain recovery.
+    if source_config.get('completion_owner') == 'local':
+        hold = local_hold(fresh_labels())
+        if hold:
+            print(hold)
+            return 0
     if phase == 'applied':
         print('duplicate applied head/run handoff; no lifecycle mutation')
         return 0
-    labels = fresh_labels()
+    labels = writable_labels()
     if journal is None:
         phase = 'ready' if state in labels else 'pending'
         journal = write(f'{issue_path}/comments', 'POST', {'body': body(phase)})
     comment_path = f'{root}/issues/comments/{journal["id"]}'
     # A pending intent never suppresses a retry after head/snapshot/API failures.
-    labels = fresh_labels()
+    labels = writable_labels()
     if snapshot(args.repo, args.head, config) != snapshots:
         raise RuntimeError('CI runs changed during evaluation; pending intent is retryable')
     if untrusted_failure_snapshots(args.repo, args.head, config) != negative_snapshots:
@@ -487,17 +539,17 @@ def process_head(args, config, check_event=True, before_mutation=None, developme
     if phase == 'pending':
         # Snapshot pagination can outlast a lifecycle transition. Recheck after
         # that read, immediately before adding the target label.
-        labels = fresh_labels()
+        labels = writable_labels()
         if state not in labels:
             write(f'{issue_path}/labels', 'POST', {'labels': [state]})
         # Durable proof that the desired label was added BEFORE deleting old
         # labels. Workers refuse mixed states, so they cannot claim between
         # the add and this checkpoint, even if the controller crashes.
         write(comment_path, 'PATCH', {'body': body('ready')})
-    labels = fresh_labels()
+    labels = writable_labels()
     if state in labels:
         for old in sorted((labels & {'todo', 'doing', 'done'}) - {state}):
-            live = fresh_labels()
+            live = writable_labels()
             if state not in live:
                 break
             if old in live:
@@ -534,6 +586,127 @@ def reconcile(args, config):
     if errors:
         raise RuntimeError('; '.join(errors))
     return 0
+
+
+def development_report(repo, document, evaluator, run_id):
+    """Default-branch CI label writer. Has no review, merge or close operation."""
+    from types import SimpleNamespace
+    import base64
+    import os
+    if (not isinstance(repo,str) or not re.fullmatch(r'[\w.-]+/[\w.-]+',repo)
+            or type(run_id)is not int or run_id<=0
+            or not isinstance(evaluator,str) or not re.fullmatch('[0-9a-f]{40}',evaluator)):
+        raise RuntimeError('invalid development reporter input')
+    config=validate_adoption(validate_config(document['config']))
+    if config.get('completion_owner')!='local':
+        raise RuntimeError('development reporter requires explicit local completion')
+    source=document['source_commit'];spec=config.get('development_reporter',{})
+    if (not isinstance(spec,dict) or set(spec)!= {'path','id','definition_sha','job'}
+            or type(spec['id'])is not int or spec['id']<=0
+            or not isinstance(spec['path'],str) or not re.fullmatch(r'\.github/workflows/[\w.-]+\.ya?ml',spec['path'])
+            or not isinstance(spec['definition_sha'],str) or not re.fullmatch('[0-9a-f]{40}',spec['definition_sha'])
+            or not isinstance(spec['job'],str) or not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_-]*',spec['job'])):
+        raise RuntimeError('development reporter identity is missing or invalid')
+    event=os.environ.get('GITHUB_EVENT_NAME')
+    if (event not in ('workflow_run','push','issues','repository_dispatch')
+            or os.environ.get('GITHUB_ACTIONS')!='true'
+            or os.environ.get('GITHUB_REPOSITORY')!=repo
+            or os.environ.get('GITHUB_WORKFLOW_SHA')!=source
+            or os.environ.get('AW_ACTION_REF')!=evaluator):
+        raise RuntimeError('development reporter must use its current trusted default source')
+    root=f'repos/{repo}';default=api(root)['default_branch']
+    run=api(f'{root}/actions/runs/{run_id}')
+    if (run.get('id')!=run_id or run.get('workflow_id')!=spec['id'] or run.get('path')!=spec['path']
+            or run.get('event')!=event or run.get('head_sha')!=source
+            or run.get('head_branch')!=default or run.get('head_repository',{}).get('full_name')!=repo
+            or str(run.get('run_attempt'))!=os.environ.get('GITHUB_RUN_ATTEMPT')):
+        raise RuntimeError('development reporter run does not match its deployed identity')
+    data=api(f'{root}/contents/{spec["path"]}?ref={source}')
+    if data.get('type')!='file' or data.get('encoding')!='base64':
+        raise RuntimeError('development reporter source is not a file')
+    raw=base64.b64decode(''.join(data['content'].split()),validate=True)
+    if (len(raw)>262144 or data.get('sha')!=spec['definition_sha']
+            or hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()!=spec['definition_sha']):
+        raise RuntimeError('development reporter source changed')
+    workflow=development_module().yaml_document(raw.decode())
+    permissions={'actions':'read','contents':'read','pull-requests':'read','issues':'write'}
+    job=workflow.get('jobs',{}).get(spec['job'],{})
+    expected={'uses':f'faberline/aw/.github/actions/issue-ci@{evaluator}',
+              'with':{'operation':'development-report'}}
+    if (workflow.get('permissions')!={} or set(workflow.get('jobs',{}))!={spec['job']}
+            or set(job)!={'runs-on','timeout-minutes','permissions','steps'}
+            or job.get('permissions')!=permissions or job.get('steps')!=[expected]):
+        raise RuntimeError('development reporter may only report CI labels with issue permission')
+    if workflow.get('concurrency')!={'group':'issue-ci-handoff','cancel-in-progress':'false'}:
+        raise RuntimeError('development reporter must retain the single-writer mutex')
+    results=[];original_api=globals()['api']
+    def current_source():
+        if original_api(f'{root}/commits/{quote(default,safe="")}').get('sha')!=source:
+            raise RuntimeError('default source moved before failure reporting')
+    current_source()
+    pulls=pages(f'{root}/pulls?state=open')
+    for pull in pulls:
+        if ((pull.get('head',{}).get('repo')or{}).get('full_name')!=repo
+                or pull.get('base',{}).get('ref')!=default):
+            continue
+        number,head=pull['number'],pull['head']['sha']
+        linking_metadata=(pull.get('title'),pull.get('body'))
+        issue=qualification_module().linked_issue(pull)
+        def failure_api(path,method='GET',data=None):
+            if method!='GET':
+                allowed=(method=='POST' and path in (f'{root}/issues/{issue}/comments',f'{root}/issues/{number}/comments')
+                         and isinstance(data,dict) and set(data)=={'body'})
+                allowed|=(method=='PATCH' and bool(re.fullmatch(re.escape(root)+r'/issues/comments/[1-9][0-9]*',path))
+                          and isinstance(data,dict) and set(data)=={'body'})
+                allowed|=(method=='POST' and path==f'{root}/issues/{issue}/labels' and data=={'labels':['todo']})
+                if method=='POST' and path==f'{root}/issues/{issue}/labels' and data=={'labels':['done']}:
+                    # done is only a review-ready label. Recheck all necessary
+                    # current-input CI before allowing even this label write.
+                    current=original_api(f'{root}/pulls/{number}')
+                    if (current.get('state')!='open' or current.get('head',{}).get('sha')!=head
+                            or qualification_module().linked_issue(current)!=issue):
+                        raise RuntimeError('PR moved before the done label handoff')
+                    scoped=qualify_config(repo,current,config)
+                    if evaluate_policy(scoped,snapshot(repo,head,scoped))[0]!='done':
+                        raise RuntimeError('all necessary current-input CI must pass before the done label')
+                    allowed=True
+                allowed|=(method=='DELETE' and path in tuple(f'{root}/issues/{issue}/labels/{label}'for label in ('todo','doing','done')) and data is None)
+                if not allowed:raise RuntimeError('development CI writer cannot merge, close or write unrelated state')
+                current=original_api(f'{root}/pulls/{number}')
+                if (current.get('state')!='open' or current.get('head',{}).get('sha')!=head
+                        or (current.get('head',{}).get('repo')or{}).get('full_name')!=repo
+                        or current.get('base',{}).get('ref')!=default):
+                    raise RuntimeError('source PR moved before development handoff')
+                source_diagnostic=(method=='POST' and path==f'{root}/issues/{number}/comments')
+                if source_diagnostic:
+                    if (current.get('title'),current.get('body'))!=linking_metadata:
+                        raise RuntimeError('source PR linking metadata changed before diagnostic')
+                    target=qualification_module().linked_issue(current)
+                    if target is not None and development_module().canonical_issue_target(repo,target,
+                            development_module().read_issue_target(SimpleNamespace(api=original_api),repo,target)):
+                        raise RuntimeError('source PR now has a canonical open issue; no diagnostic')
+                else:
+                    if (qualification_module().linked_issue(current)!=issue
+                            or not development_module().canonical_issue_target(repo,issue,
+                                development_module().read_issue_target(SimpleNamespace(api=original_api),repo,issue))):
+                        raise RuntimeError('canonical issue changed before development handoff')
+                current_source()
+            return original_api(path,method,data)
+        try:
+            globals()['api']=failure_api
+            if issue is None or not development_module().canonical_issue_target(repo,issue,
+                    development_module().read_issue_target(SimpleNamespace(api=original_api),repo,issue)):
+                development_module().report_missing_issue(SimpleNamespace(api=failure_api,pages=pages),repo,pull,current_source)
+            else:
+                args=argparse.Namespace(repo=repo,pr=number,head=head,apply=True,run_id=None)
+                process_head(args,config,check_event=False,before_mutation=current_source)
+            results.append(dict(pr=number,head=head,state='processed'))
+        except (RuntimeError,subprocess.CalledProcessError,OSError,ValueError,KeyError,TypeError)as error:
+            results.append(dict(pr=number,head=head,state='held',reason=str(error)))
+        finally:
+            globals()['api']=original_api
+    print('AW_DEVELOPMENT_FAILURE_REPORT_V1 '+json.dumps(dict(repo=repo,source=source,run=run_id,results=results),sort_keys=True))
+    return 2 if any(row['state']=='held'for row in results)else 0
 
 
 def main():

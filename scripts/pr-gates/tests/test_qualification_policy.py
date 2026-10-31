@@ -54,21 +54,18 @@ class FullPolicyTests(unittest.TestCase):
         self.assertNotIn('cargo fetch --manifest-path candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.toml',workflow)
 
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
-        self.assertEqual(CONFIG['aw_revision'],'c929e87e50cd2c5e7d578c4b44e002182291031a')
-        for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
-            raw=(ROOT/producer['path']).read_bytes()
-            blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
-            self.assertEqual(blob,producer['definition_sha'])
-            self.assertIn(b'@c929e87e50cd2c5e7d578c4b44e002182291031a',raw)
-        self.assertEqual(CONFIG['native_auto_merge']['status_context'],'claude/verified-merge')
-        self.assertEqual(CONFIG['native_auto_merge']['status_app_id'],15368)
+        self.assertEqual(CONFIG['aw_revision'],'d66014a9a8e3decbe3f534c43ab83bba305edbc4')
+        producer=CONFIG['development_reporter']
+        raw=(ROOT/producer['path']).read_bytes()
+        blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
+        self.assertEqual(blob,producer['definition_sha'])
+        self.assertIn(('@'+CONFIG['aw_revision']).encode(),raw)
+        self.assertEqual(CONFIG['completion_owner'],'local')
+        for retired in ('claude_final_review','native_auto_merge','issue_recovery','issue_guard_cutover'):
+            self.assertNotIn(retired,CONFIG)
 
     def test_copied_inspection_modules_match_published_shared_source(self):
-        expected={'handoff.py':'cdd8e048330d3570420b5105d6e9c9b3f4ca82f7afaba392c957ad02de722273',
-                  'qualification.py':'67412fbcd054c6a14efe1c196059933a6309d657fe8b3e07eeccc6ffb208401d',
-                  'json_data.py':'35dc74be907733cfff108eae9bf217eec5c69a028487919f84c86c06d805facf'}
-        expected['development_pipeline.py']='a12c3b662bfa9dd44abd360efab24f67cbdf59b58ba1118a1b417e2102850769'
-        expected['readiness-requirements.txt']='eef6794465b73b5dc4ef909500bf5bcc56761b93bb1521a05a97746d1f7f298d'
+        expected={'handoff.py': '37f1d01b438a465401e5e1509ab9bd225e9e218205e948d26c1bce4bde5b80b0', 'qualification.py': '67412fbcd054c6a14efe1c196059933a6309d657fe8b3e07eeccc6ffb208401d', 'json_data.py': '35dc74be907733cfff108eae9bf217eec5c69a028487919f84c86c06d805facf', 'development_pipeline.py': '59261343f6e76744d9f8e13b8dccd09136ba054838fe9560239eebe37bbcb337', 'readiness-requirements.txt': 'eef6794465b73b5dc4ef909500bf5bcc56761b93bb1521a05a97746d1f7f298d', 'test_plan.py': 'a86a4163f72aee3c2bb42924fecfb2e602dea09f6da6c45da3605b8093004fe4'}
         for name,digest in expected.items():
             self.assertEqual(hashlib.sha256((ROOT/'scripts/issue-ci'/name).read_bytes()).hexdigest(),digest)
 
@@ -87,7 +84,7 @@ class FullPolicyTests(unittest.TestCase):
         raw=(ROOT/WORKFLOW).read_bytes()
         blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
         self.assertEqual(blob,CONFIG['qualification']['trusted_workflows'][WORKFLOW]['definition_sha'])
-        self.assertEqual(blob,CONFIG['claude_final_review']['gates'][WORKFLOW]['definition_sha'])
+        self.assertEqual(blob,CONFIG['ci_handoff_policy']['qualification']['trusted_workflows'][WORKFLOW]['definition_sha'])
 
     def test_full_policy_does_not_silently_accept_old_five_jobs(self):
         policy=q.validate(CONFIG)
@@ -182,7 +179,7 @@ class FullPolicyTests(unittest.TestCase):
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
         raw=(ROOT/WORKFLOW).read_text()
         self.assertIn('name: Inspect exact-head issue contract as untrusted data',raw)
-        self.assertIn('faberline/aw/.github/actions/issue-contract@c929e87e50cd2c5e7d578c4b44e002182291031a',raw)
+        self.assertIn('faberline/aw/.github/actions/issue-contract@'+CONFIG['aw_revision'],raw)
         self.assertIn('gate infrastructure change requires reviewed policy update',
                       ' '.join(scope(path='.github/workflows/development-ci.yml')['_qualification_context']['issues']))
 

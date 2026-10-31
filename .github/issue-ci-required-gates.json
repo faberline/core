@@ -1,5 +1,5 @@
 {
-  "aw_revision": "c929e87e50cd2c5e7d578c4b44e002182291031a",
+  "aw_revision": "d66014a9a8e3decbe3f534c43ab83bba305edbc4",
   "workflows": [
     {
       "path": ".github/workflows/development-ci.yml",
@@ -30,7 +30,7 @@
   "qualification_blockers": [],
   "lifecycle_mode": "full",
   "ci_handoff_policy": {
-    "aw_revision": "c929e87e50cd2c5e7d578c4b44e002182291031a",
+    "aw_revision": "d66014a9a8e3decbe3f534c43ab83bba305edbc4",
     "workflows": [
       {
         "path": ".github/workflows/development-ci.yml",
@@ -1076,7 +1076,7 @@
       "trusted_workflows": {
         ".github/workflows/development-ci.yml": {
           "id": 402004875,
-          "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
+          "definition_sha": "46f141103e0d6c02cdb9638fc28f0e2862ee612b"
         }
       },
       "always": [
@@ -1105,7 +1105,9 @@
         "rust-toolchain.toml",
         "crates/raft-runtime/tests/snapshot_peak_memory.rs",
         "crates/openapi-codegen/src/domain/emit/py/tests/h2c_connection.rs",
-        ".github/development-test-batches.json"
+        ".github/development-test-batches.json",
+        ".github/aw-release.json",
+        ".github/issue-plan.json"
       ],
       "rules": [
         {
@@ -2281,7 +2283,7 @@
         },
         "84": {
           "title_sha256": "ed3b0edde9e91a2fa2124dd495d3ff07fe601d7fda58e4237901f992cbc6dafe",
-          "body_sha256": "4d27dcf94423bd7a04cf4799c369225cd24f16aa45e5500d801e819dec5b3c27",
+          "body_sha256": "c80d1318456b1f6a443f26526363222e1e33d41178350c31c38f927d70648276",
           "applicability": {
             "unit": {
               "status": "required",
@@ -2767,61 +2769,8 @@
         "unit-8",
         "unit-9"
       ]
-    }
-  },
-  "controller_source": "faberline/aw@c929e87e50cd2c5e7d578c4b44e002182291031a:plugins/faberline/skills/issue-ci/scripts/native_merge.py",
-  "claude_final_review": {
-    "version": 1,
-    "producer": {
-      "path": ".github/workflows/claude-final-review.yml",
-      "id": 399789974,
-      "definition_sha": "fda854a944ab4f72323aeb5def91152dd714196f",
-      "job": "review"
     },
-    "gates": {
-      ".github/workflows/development-ci.yml": {
-        "id": 402004875,
-        "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
-      }
-    },
-    "protected_paths": [
-      ".cargo/",
-      ".cargo/**",
-      ".github/issue-ci-required-gates.json",
-      "Cargo.lock",
-      "Cargo.toml",
-      "Dockerfile.test",
-      "acceptance/gcp/",
-      "crates/*/Cargo.toml",
-      "crates/openapi-codegen/src/domain/emit/py/tests/h2c_connection.rs",
-      "crates/raft-runtime/tests/snapshot_peak_memory.rs",
-      "k8s/",
-      "rust-toolchain",
-      "rust-toolchain.toml",
-      "scripts/gke-test/",
-      "scripts/issue-ci/",
-      "scripts/issue-ci/**",
-      "scripts/pr-gates/",
-      "scripts/pr-gates/**"
-    ],
-    "cli_sha256": "b73676430af12f97316a798b8371f81d640f90a58bdcb8f3ce56a835bb47df56",
-    "credential_profile": "personal-claude-max-oauth",
-    "merge_producer": null,
-    "merge_method": null
-  },
-  "native_auto_merge": {
-    "version": 1,
-    "enabled": true,
-    "status_context": "claude/verified-merge",
-    "status_app_id": 15368,
-    "merge_method": "SQUASH",
-    "ruleset_id": 26069017,
-    "producer": {
-      "path": ".github/workflows/issue-ci.yml",
-      "id": 394215097,
-      "definition_sha": "c421498e667dcb1be47d590098978af4db155f1b",
-      "job": "native-auto-merge"
-    }
+    "completion_owner": "local"
   },
   "qualification": {
     "version": 2,
@@ -3839,7 +3788,7 @@
     "trusted_workflows": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "0de16bfbe12fe3477bbc63e4ce867816189cb62c"
+        "definition_sha": "46f141103e0d6c02cdb9638fc28f0e2862ee612b"
       }
     },
     "always": [
@@ -3868,7 +3817,9 @@
       "rust-toolchain.toml",
       "crates/raft-runtime/tests/snapshot_peak_memory.rs",
       "crates/openapi-codegen/src/domain/emit/py/tests/h2c_connection.rs",
-      ".github/development-test-batches.json"
+      ".github/development-test-batches.json",
+      ".github/aw-release.json",
+      ".github/issue-plan.json"
     ],
     "rules": [
       {
@@ -5044,7 +4995,7 @@
       },
       "84": {
         "title_sha256": "ed3b0edde9e91a2fa2124dd495d3ff07fe601d7fda58e4237901f992cbc6dafe",
-        "body_sha256": "4d27dcf94423bd7a04cf4799c369225cd24f16aa45e5500d801e819dec5b3c27",
+        "body_sha256": "c80d1318456b1f6a443f26526363222e1e33d41178350c31c38f927d70648276",
         "applicability": {
           "unit": {
             "status": "required",
@@ -5531,19 +5482,11 @@
       "unit-9"
     ]
   },
-  "issue_guard_cutover": {
-    "version": 1,
-    "phase": "drain",
-    "nonce": "a71c3222c511ae6a080bac5bc82169d5"
-  },
-  "issue_recovery": {
-    "version": 2,
-    "enabled": false,
-    "producer": {
-      "path": ".github/workflows/issue-recovery.yml",
-      "id": 402173927,
-      "definition_sha": "d0726c4e8bb9a7013e12aad3d9d23eecc620b236",
-      "job": "recovery"
-    }
+  "completion_owner": "local",
+  "development_reporter": {
+    "path": ".github/workflows/issue-ci.yml",
+    "id": 394215097,
+    "definition_sha": "9335c9caf9f8d9004f4fa653242adea74c2442c0",
+    "job": "report"
   }
 }
