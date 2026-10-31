@@ -1,10 +1,14 @@
 # Guarded completion preparation
 
-Core consumes the [AW activation contract](https://github.com/faberline/aw/blob/c929e87e50cd2c5e7d578c4b44e002182291031a/docs/standards/issue-guard-activation.md).
-Issue #86 prepares the inactive deployment. Issues #83 and #84 remain open
+Core consumes the [AW activation contract](https://github.com/faberline/aw/blob/fb002d9198967313a4641f129a9c9648890a7555/docs/standards/issue-guard-activation.md).
+Issue #86 prepares the inactive deployment. Issue #88 stages the reviewed
+failure-reason runtime before the final activation. Issues #83 and #84 remain open
 until their full deployed acceptance is proved. AW #115 also remains open.
 
 The policy contains a stable drain nonce and disabled version 2 recovery.
+The new runtime keeps the existing product commands and thresholds. It adds
+readable authenticated rejection reasons from AW #138. Core must authenticate
+a new deployed drain and inactive recovery at this source before activation.
 It contains neither `issue_guard` nor `issue_guard_rollout`. The trusted writer
 withdraws native merge requests during drain. Guard-capable workers refuse new
 claims. Old launcher fencing and in-flight work still require an actual audit.

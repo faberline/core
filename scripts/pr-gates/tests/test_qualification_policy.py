@@ -54,12 +54,12 @@ class FullPolicyTests(unittest.TestCase):
         self.assertNotIn('cargo fetch --manifest-path candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.toml',workflow)
 
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
-        self.assertEqual(CONFIG['aw_revision'],'c929e87e50cd2c5e7d578c4b44e002182291031a')
+        self.assertEqual(CONFIG['aw_revision'],'fb002d9198967313a4641f129a9c9648890a7555')
         for producer in [CONFIG['claude_final_review']['producer'],CONFIG['native_auto_merge']['producer']]:
             raw=(ROOT/producer['path']).read_bytes()
             blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
             self.assertEqual(blob,producer['definition_sha'])
-            self.assertIn(b'@c929e87e50cd2c5e7d578c4b44e002182291031a',raw)
+            self.assertIn(b'@fb002d9198967313a4641f129a9c9648890a7555',raw)
         self.assertEqual(CONFIG['native_auto_merge']['status_context'],'claude/verified-merge')
         self.assertEqual(CONFIG['native_auto_merge']['status_app_id'],15368)
 
@@ -182,7 +182,7 @@ class FullPolicyTests(unittest.TestCase):
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
         raw=(ROOT/WORKFLOW).read_text()
         self.assertIn('name: Inspect exact-head issue contract as untrusted data',raw)
-        self.assertIn('faberline/aw/.github/actions/issue-contract@c929e87e50cd2c5e7d578c4b44e002182291031a',raw)
+        self.assertIn('faberline/aw/.github/actions/issue-contract@fb002d9198967313a4641f129a9c9648890a7555',raw)
         self.assertIn('gate infrastructure change requires reviewed policy update',
                       ' '.join(scope(path='.github/workflows/development-ci.yml')['_qualification_context']['issues']))
 
