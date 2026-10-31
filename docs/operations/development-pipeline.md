@@ -4,11 +4,37 @@ Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/4223a4534f0
 with shared runtime `4223a4534f0197e1ea23004b9388ffd1eea34639`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
-AW's exact shared source passed all 1,175 controls with zero skips. Core
-adoption still needs current-head product CI, independent local review and
-actual merge evidence. The actor inventory and ledger/history remain
+AW's exact shared source passed all 1,175 controls with zero skips. Core's
+policy bootstrap merged in [#85](https://github.com/faberline/core/pull/85) at
+`952c6f7d3fb8ce1be92b50214241ff9d6882bfba`. Its exact candidate
+`96a4d8a262ac1e13808a7aaa7522bc99a4035c5f` passed all 20 necessary jobs in
+[run 41209924160, attempt 1](https://github.com/faberline/core/actions/runs/41209924160)
+and independent local Codex review. The scoped reporting-permission fix
+merged in [#94](https://github.com/faberline/core/pull/94) at
+`7181f73a7fa41182d09651f7bbdda2cfc56679aa`. Its exact candidate
+`ac4893481900ea49a1d400f958e90e8ccc979b04` passed all 20 necessary jobs in
+[run 41215794891, attempt 1](https://github.com/faberline/core/actions/runs/41215794891)
+and independent local Codex review. The deployed branch rule requires all
+20 test checks with strict base and no bypass. The actor inventory and
+ledger/history remain
 preserved. Historical [guarded completion](guarded-completion.md) is retired
 as an activation prerequisite for normal local completion.
+
+## Verify the deployed handoff
+
+The protected bootstrap is source approval, not a CI-owned `done` receipt.
+Keep adoption issue #84 open until an ordinary PR proves the deployed path.
+Use its approved issue contract and the unchanged trusted policy/workflow.
+An invalid issue link must produce a source-PR diagnostic without an issue
+label write. After the canonical link is correct, require complete current
+head/base CI, named nonzero test rosters and the actual writer receipt.
+Read back the issue while it is still open with the literal `done` label.
+Do not set `done` by hand or count a green writer job as this evidence.
+Independent local review follows that handoff. The authorized controller
+then verifies the exact merge before closing the canonical issue. Read back
+closure. An unknown result requires reconciliation; a confirmed merge permits
+only a close retry. Reopen an adoption issue auto-closed by its bootstrap
+while this acceptance evidence is still missing. Preserve owners and labels.
 
 Ordinary PRs use `.github/workflows/development-ci.yml`:
 
