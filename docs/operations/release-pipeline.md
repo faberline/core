@@ -5,7 +5,7 @@ Every `v*` RC or formal tag must pass AW's immutable tag/milestone preflight
 and select `all`. It executes every Core-owned required test and original
 numeric threshold. Independent legacy main/tag/manual gates remain intact.
 
-The shared [release contract](https://github.com/faberline/aw/blob/a3b07dc3cff8437d7332623b158536e05f64d823/docs/standards/release-pipeline.md)
+The shared [release contract](https://github.com/faberline/aw/blob/2cb6aa72d82fb6387de6bf775a707e930224cf99/docs/standards/release-pipeline.md)
 defines the lifecycle. Issue-plan checks the user-defined milestone, closed
 issues, landed PRs and actual goal evidence. It fills real gaps before an RC.
 Full-test failure creates a same-milestone backlog repair with evidence. The
@@ -27,3 +27,9 @@ Use the installed shared skill's absolute `scripts/plan.sh` path for
 `release-status --milestone 8`. Only a fresh matching assessment permits its
 guarded `release-advance` operation. Reconcile unknown provider responses
 before retry. A tag alone is not proof that full tests ran.
+
+A frozen passing RC can proceed after unrelated main work advances. Its exact
+commit must still be in main ancestry and include every related milestone PR
+and the current reviewed version/goal contract. Tag preflight uses that tagged
+source and plan. A child PR counts only once its merge commit actually lands
+in main through its parent. This does not remove the empty-mapping hold.

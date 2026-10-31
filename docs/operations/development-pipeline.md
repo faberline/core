@@ -1,10 +1,10 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/a3b07dc3cff8437d7332623b158536e05f64d823/docs/standards/development-pipeline.md)
-with shared runtime `a3b07dc3cff8437d7332623b158536e05f64d823`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/2cb6aa72d82fb6387de6bf775a707e930224cf99/docs/standards/development-pipeline.md)
+with shared runtime `2cb6aa72d82fb6387de6bf775a707e930224cf99`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
-AW's exact shared source passed all 1,136 controls with zero skips. Core
+AW's exact shared source passed all 1,154 controls with zero skips. Core
 adoption still needs current-head product CI, independent local review and
 actual merge evidence. The actor inventory and ledger/history remain
 preserved. Historical [guarded completion](guarded-completion.md) is retired
@@ -77,3 +77,7 @@ its reruns do not restore done or reset a new doing owner. Later failed jobs
 still get diagnostics. A new submitted head, unclaimed infrastructure retry
 and unfinished journal retain the normal guarded path. Old policy receipts
 prove a handoff only; they do not qualify current tests.
+
+Shared AW #150 also records failed-job diagnostics for a valid open canonical
+issue without lifecycle labels. Unsafe lifecycle handoff remains incomplete;
+stale inputs, duplicate events and later owners retain their protections.

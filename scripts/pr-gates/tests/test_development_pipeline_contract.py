@@ -7,7 +7,7 @@ from pathlib import Path
 import unittest
 
 ROOT=Path(__file__).resolve().parents[3]
-REF='a3b07dc3cff8437d7332623b158536e05f64d823'
+REF='2cb6aa72d82fb6387de6bf775a707e930224cf99'
 SPEC=importlib.util.spec_from_file_location('development_contract',ROOT/'scripts/issue-ci/development_pipeline.py')
 d=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(d)
 CONFIG=json.loads((ROOT/'.github/issue-ci-required-gates.json').read_text())
