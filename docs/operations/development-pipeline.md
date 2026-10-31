@@ -1,10 +1,10 @@
 # Normal development pipeline
 
-Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/2cb6aa72d82fb6387de6bf775a707e930224cf99/docs/standards/development-pipeline.md)
-with shared runtime `2cb6aa72d82fb6387de6bf775a707e930224cf99`.
+Core adopts [AW DEV-PIPELINE-1](https://github.com/faberline/aw/blob/db5824e708833c128c10c6b83eb22585ba073949/docs/standards/development-pipeline.md)
+with shared runtime `db5824e708833c128c10c6b83eb22585ba073949`.
 The repository adoption issue is [#84](https://github.com/faberline/core/issues/84).
 Workflow publication alone does not complete protected policy adoption.
-AW's exact shared source passed all 1,154 controls with zero skips. Core
+AW's exact shared source passed all 1,160 controls with zero skips. Core
 adoption still needs current-head product CI, independent local review and
 actual merge evidence. The actor inventory and ledger/history remain
 preserved. Historical [guarded completion](guarded-completion.md) is retired
@@ -81,3 +81,8 @@ prove a handoff only; they do not qualify current tests.
 Shared AW #150 also records failed-job diagnostics for a valid open canonical
 issue without lifecycle labels. Unsafe lifecycle handoff remains incomplete;
 stale inputs, duplicate events and later owners retain their protections.
+
+AW #151 binds diagnostics and labels to the verified real canonical issue.
+A Closes link to another PR, a closed issue or a foreign item cannot receive
+issue handoff writes. Invalid links are diagnosed only on the source PR.
+Recheck target identity before each write, including issue-to-PR conversion.

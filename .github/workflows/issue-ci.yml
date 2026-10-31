@@ -25,6 +25,6 @@ jobs:
       pull-requests: read
       issues: write
     steps:
-      - uses: faberline/aw/.github/actions/issue-ci@2cb6aa72d82fb6387de6bf775a707e930224cf99
+      - uses: faberline/aw/.github/actions/issue-ci@db5824e708833c128c10c6b83eb22585ba073949
         with:
           operation: development-report

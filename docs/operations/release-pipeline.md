@@ -5,7 +5,7 @@ Every `v*` RC or formal tag must pass AW's immutable tag/milestone preflight
 and select `all`. It executes every Core-owned required test and original
 numeric threshold. Independent legacy main/tag/manual gates remain intact.
 
-The shared [release contract](https://github.com/faberline/aw/blob/2cb6aa72d82fb6387de6bf775a707e930224cf99/docs/standards/release-pipeline.md)
+The shared [release contract](https://github.com/faberline/aw/blob/db5824e708833c128c10c6b83eb22585ba073949/docs/standards/release-pipeline.md)
 defines the lifecycle. Issue-plan checks the user-defined milestone, closed
 issues, landed PRs and actual goal evidence. It fills real gaps before an RC.
 Full-test failure creates a same-milestone backlog repair with evidence. The

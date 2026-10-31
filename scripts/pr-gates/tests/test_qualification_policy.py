@@ -54,7 +54,7 @@ class FullPolicyTests(unittest.TestCase):
         self.assertNotIn('cargo fetch --manifest-path candidate/scripts/pr-gates/generated-rust-dependencies/Cargo.toml',workflow)
 
     def test_review_and_writer_are_bound_to_reviewed_todo_source(self):
-        self.assertEqual(CONFIG['aw_revision'],'2cb6aa72d82fb6387de6bf775a707e930224cf99')
+        self.assertEqual(CONFIG['aw_revision'],'db5824e708833c128c10c6b83eb22585ba073949')
         producer=CONFIG['development_reporter']
         raw=(ROOT/producer['path']).read_bytes()
         blob=hashlib.sha1(b'blob '+str(len(raw)).encode()+b'\0'+raw).hexdigest()
@@ -65,7 +65,7 @@ class FullPolicyTests(unittest.TestCase):
             self.assertNotIn(retired,CONFIG)
 
     def test_copied_inspection_modules_match_published_shared_source(self):
-        expected={'handoff.py': 'ee33a0cc276c1d080ee2c1b552023b475706029d9fdb5cc246b306bdad004907', 'qualification.py': '67412fbcd054c6a14efe1c196059933a6309d657fe8b3e07eeccc6ffb208401d', 'json_data.py': '35dc74be907733cfff108eae9bf217eec5c69a028487919f84c86c06d805facf', 'development_pipeline.py': '1749522d70c8c413dc5e9519e52eb433eb367974a4b7bb49ffd1cffbf087f997', 'readiness-requirements.txt': 'eef6794465b73b5dc4ef909500bf5bcc56761b93bb1521a05a97746d1f7f298d', 'test_plan.py': 'a86a4163f72aee3c2bb42924fecfb2e602dea09f6da6c45da3605b8093004fe4'}
+        expected={'handoff.py': 'a4808f8548cc71f7e226ac7dbb110307181be5a9a2df50acf785641fceeb6ca2', 'qualification.py': '67412fbcd054c6a14efe1c196059933a6309d657fe8b3e07eeccc6ffb208401d', 'json_data.py': '35dc74be907733cfff108eae9bf217eec5c69a028487919f84c86c06d805facf', 'development_pipeline.py': '5d6cdb1e695d9a3704b8457b43ed5707c0366703c62b2c26f0ce635994c177f2', 'readiness-requirements.txt': 'eef6794465b73b5dc4ef909500bf5bcc56761b93bb1521a05a97746d1f7f298d', 'test_plan.py': 'a86a4163f72aee3c2bb42924fecfb2e602dea09f6da6c45da3605b8093004fe4'}
         for name,digest in expected.items():
             self.assertEqual(hashlib.sha256((ROOT/'scripts/issue-ci'/name).read_bytes()).hexdigest(),digest)
 
