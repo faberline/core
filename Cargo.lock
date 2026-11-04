@@ -133,6 +133,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.7.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
+
+[[package]]
 name = "asn1-rs"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2057,6 +2063,12 @@ name = "glob"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
+name = "grid"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "36119f3a540b086b4e436bb2b588cf98a68863470e0e880f4d0842f112a3183a"
 
 [[package]]
 name = "group"
@@ -5177,6 +5189,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
+name = "slotmap"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bdd58c3c93c3d278ca835519292445cb4b0d4dc59ccfdf7ceadaab3f8aeb4038"
+dependencies = [
+ "version_check",
+]
+
+[[package]]
 name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5311,10 +5332,20 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "surface"
-version = "0.4.14"
+version = "0.1.0"
+source = "git+https://github.com/faberline/surface?rev=1754a2e96e487ea693be558041abdf21ffc63d27#1754a2e96e487ea693be558041abdf21ffc63d27"
 dependencies = [
  "serde",
+ "taffy",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "surface"
+version = "0.4.14"
+dependencies = [
  "serde_json",
+ "surface 0.1.0",
 ]
 
 [[package]]
@@ -5395,6 +5426,18 @@ checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
  "core-foundation-sys",
  "libc",
+]
+
+[[package]]
+name = "taffy"
+version = "0.7.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab4f4d046dd956a47a7e1a2947083d7ac3e6aa3cfaaead36173ceaa5ab11878c"
+dependencies = [
+ "arrayvec",
+ "grid",
+ "serde",
+ "slotmap",
 ]
 
 [[package]]
@@ -6178,10 +6221,20 @@ checksum = "2896d95c02a80c6d6a5d6e953d479f5ddf2dfdb6a244441010e373ac0fb88971"
 
 [[package]]
 name = "ui-runtime"
-version = "0.4.14"
+version = "0.1.0"
+source = "git+https://github.com/faberline/surface?rev=1754a2e96e487ea693be558041abdf21ffc63d27#1754a2e96e487ea693be558041abdf21ffc63d27"
 dependencies = [
  "serde_json",
- "surface",
+ "surface 0.1.0",
+]
+
+[[package]]
+name = "ui-runtime"
+version = "0.4.14"
+dependencies = [
+ "surface 0.1.0",
+ "surface 0.4.14",
+ "ui-runtime 0.1.0",
 ]
 
 [[package]]

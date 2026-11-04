@@ -1,4 +1,4 @@
-//! Renderer-neutral component runtime: fiber tree + hooks + mount/flush loop.
+//! Compatibility facade for the standalone Surface component runtime.
 //!
 //! The runtime owns React-like authoring semantics without depending on React
 //! DOM, a browser, WASM, AppKit, or any concrete renderer. Components render
@@ -11,12 +11,5 @@
 //! Component/hooks -> Element tree -> layout/paint/backend
 //! ```
 
-mod domain;
-
-pub use domain::{
-    hash_dep, mount, set_update_scheduler, use_callback, use_effect_once, use_memo, use_reducer,
-    use_ref, use_state, DispatchHandle, FiberId, MemoDepHash, MountHandle, RefHandle, StateSetter,
-};
-
-#[cfg(feature = "debug")]
-pub use domain::{debug_snapshot_fibers, debug_snapshot_hooks, DebugFiberMeta, DebugHookSummary};
+// Re-exporting shares upstream type identity, hook storage and scheduling.
+pub use ui_runtime_upstream::*;

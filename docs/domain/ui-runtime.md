@@ -1,5 +1,10 @@
 # ui-runtime
 
+Core now re-exports the standalone implementation. The runtime model below
+describes that public API. Its code and hook storage belong to
+[`faberline/surface`](https://github.com/faberline/surface).
+See [migration](../surface-migration.md) for its exact pin and access gate.
+
 ui-runtime is the renderer-neutral component runtime on top of the surface
 element tree: React-style hooks, per-component fiber storage, mounting, and
 the flush and update-scheduling loop. Components render `surface::Element`
@@ -8,7 +13,7 @@ renderer, a native desktop backend or a test recorder. Its user is jet, whose
 WASM runtime re-exports the whole crate (`pub use ui_runtime::*`) and whose
 TSX-to-Rust transpiler emits calls to its hooks.
 
-**Form:** domain only · **Depends on:** surface (kernel) · **Crate:** [`crates/ui-runtime`](../../crates/ui-runtime)
+**Form:** interfaces facade · **Depends on:** standalone ui-runtime · **Crate:** [`crates/ui-runtime`](../../crates/ui-runtime)
 
 ## Model
 

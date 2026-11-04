@@ -5,7 +5,7 @@
 // @contract renderer-neutral-component-runtime-contract
 // @category behavior
 // @required_for_production true
-// @command cargo test -p ui-runtime
+// @command cargo test -p ui-runtime@0.4.14
 // AW-EC-END
 
 // Contract: Renderer-Neutral Component Runtime public Rust API behavior remains covered by the configured library test suite.
@@ -13,7 +13,7 @@
 #[test]
 #[ignore = "AW EC gate: run via `aw health --verify-ec` or `cargo test -- --ignored`"]
 fn renderer_neutral_component_runtime_contract() {
-    let command = "cargo test -p ui-runtime";
+    let command = "cargo test -p ui-runtime@0.4.14";
     let id = "renderer-neutral-component-runtime-contract";
     let mut root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     while !root.join(".aw").is_dir() {

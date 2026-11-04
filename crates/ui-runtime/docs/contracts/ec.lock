@@ -19,8 +19,8 @@ claim_id = "renderer-neutral-component-runtime-contract"
 contract_id = "renderer-neutral-component-runtime-contract"
 dimension = "behavior"
 source_ref = "crates/ui-runtime/docs/contracts/behavior/renderer-neutral-component-runtime-contract.md#renderer-neutral-component-runtime-contract"
-test_path = "crates/ui-runtime/tests/behavior_renderer_neutral_component_runtime_contract.rs"
-command = "cargo test -p ui-runtime"
+test_path = "crates/ui-runtime/tests/it/contract.rs"
+command = "cargo test -p ui-runtime@0.4.14"
 required_for_production = true
 assertions = [
     "Renderer-Neutral Component Runtime public Rust API behavior remains covered by the configured library test suite.",
