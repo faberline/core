@@ -14,4 +14,4 @@ rather than driven through `e2e -> impl`.
 
 | Gate | Command |
 |---|---|
-| unit + colocated tests | `cargo test -p surface` |
+| unit + colocated tests | `cargo test -p surface@0.4.14` |

@@ -14,4 +14,4 @@ rather than driven through `e2e -> impl`.
 
 | Gate | Command |
 |---|---|
-| unit + colocated tests | `cargo test -p ui-runtime` |
+| unit + colocated tests | `cargo test -p ui-runtime@0.4.14` |

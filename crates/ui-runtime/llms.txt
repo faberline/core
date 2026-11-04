@@ -16,7 +16,7 @@
 
 ## Commands
 
-- Test: `cargo test -p ui-runtime`.
+- Test: `cargo test -p ui-runtime@0.4.14`.
 
 ## Root Artifacts
 

@@ -116,9 +116,7 @@ shared_kernel_crate = "{repo}-shared-kernel"
 [policy.lints.clippy]
 mod_module_files = "deny"
 
-# surface depends on no other crate; ui-runtime builds on it.
-[shared_kernel]
-path = "crates/surface/src"
+# UI primitives now belong to standalone Surface. Core keeps public facades.
 
 # src/api preserves public module paths. src/app is the composition root
 # that builds adapters and passes them to application code through ports.
@@ -344,7 +342,13 @@ interfaces = "crates/transport-otlp/src"
 name = "ui-runtime"
 depends_on = []
 [contexts.layers]
-domain = "crates/ui-runtime/src/domain"
+interfaces = "crates/ui-runtime/src"
+
+[[contexts]]
+name = "surface"
+depends_on = []
+[contexts.layers]
+interfaces = "crates/surface/src"
 
 [[exceptions]]
 rule = "B2"

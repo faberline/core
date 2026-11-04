@@ -35,10 +35,10 @@ and the CLI standard commands. Split out of
 | [storage-durable](crates/storage-durable) | Shared durable local-storage primitives: fsync policy, atomic replacement, CRC-framed logs, and sequence-named snapshot file stores. |
 | [storage-object](crates/storage-object) | Shared local and cloud object-store boundary with conditional writes and versioned metadata. |
 | [storage-segment](crates/storage-segment) | Immutable segment and manifest-last archive coordination. |
-| [surface](crates/surface) | Renderer-neutral UI element model shared by Jet WASM, native desktop readers, renderers, and parity tools |
+| [surface](crates/surface) | Compatibility facade for the standalone Surface UI model |
 | [transport-h2c](crates/transport-h2c) | Shared HTTP/2 cleartext transport: client helpers, connection management, pooling, sizing, and optional per-connection HTTP/1.1 plus h2c protocol support. |
 | [transport-otlp](crates/transport-otlp) | Official OTLP HTTP and gRPC transport shell. |
-| [ui-runtime](crates/ui-runtime) | Renderer-neutral component runtime: hooks, fiber storage, mount, flush, and update scheduling over surface elements |
+| [ui-runtime](crates/ui-runtime) | Compatibility facade for the standalone Surface component runtime |
 
 ## Using a crate
 

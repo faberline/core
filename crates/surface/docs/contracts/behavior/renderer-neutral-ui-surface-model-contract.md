@@ -16,7 +16,7 @@ e2e_tests:
     claim_id: renderer-neutral-ui-surface-model-contract
     contract_id: renderer-neutral-ui-surface-model-contract
     category: behavior
-    command: "cargo test -p surface"
+    command: "cargo test -p surface@0.4.14"
     assertions:
       - "Renderer-Neutral UI Surface Model public Rust API behavior remains covered by the configured library test suite."
       - "The library contract stays usable through its documented README capability surface."

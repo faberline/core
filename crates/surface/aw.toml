@@ -8,7 +8,7 @@ label = "lib:surface"
 name = "surface"
 paths = ["**"]
 target = "rust"
-test_cmd = "cargo test -p surface"
+test_cmd = "cargo test -p surface@0.4.14"
 verify_cold = true
 
 # AW-EC-BEGIN
@@ -24,8 +24,8 @@ claim_id = "renderer-neutral-ui-surface-model-contract"
 contract_id = "renderer-neutral-ui-surface-model-contract"
 category = "behavior"
 td_ref = "crates/surface/docs/contracts/behavior/renderer-neutral-ui-surface-model-contract.md#renderer-neutral-ui-surface-model-contract"
-test_path = "crates/surface/tests/behavior_renderer_neutral_ui_surface_model_contract.rs"
-command = "cargo test -p surface"
+test_path = "crates/surface/tests/it/behavior_renderer_neutral_ui_surface_model_contract.rs"
+command = "cargo test -p surface@0.4.14"
 required_for_production = true
 assertions = [
     "Renderer-Neutral UI Surface Model public Rust API behavior remains covered by the configured library test suite.",
