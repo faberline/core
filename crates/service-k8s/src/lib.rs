@@ -34,6 +34,7 @@ pub use api::metrics;
 pub use api::render;
 #[cfg(feature = "controller")]
 pub use api::resize;
+pub use api::rollout;
 pub use api::service;
 pub use api::stateful;
 
