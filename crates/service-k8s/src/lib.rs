@@ -62,6 +62,13 @@ pub use domain::certificate::status::CertificateFacts;
 #[cfg(feature = "controller")]
 pub use domain::condition::{Condition, ConditionFact, ConditionStatus};
 #[cfg(feature = "controller")]
+pub use domain::fleet;
+#[cfg(feature = "controller")]
+pub use domain::fleet::{
+    canonicalize_json, desired_hash, plan_fleet, AdoptionPolicy, ChildKey, DesiredChild,
+    FleetAction, FleetPlan, FleetPlanError, ObservedChild, Ownership, PrunePolicy,
+};
+#[cfg(feature = "controller")]
 pub use domain::leadership::Election;
 pub use domain::lifecycle::{
     LifecyclePolicy, LifecyclePolicyError, ProbeTiming, TerminationBudget,
