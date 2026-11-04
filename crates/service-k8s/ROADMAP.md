@@ -61,7 +61,7 @@ Stable IDs here let current limits point to one destination.
   shared desired objects, exact owner identity, adoption refusal, old-and-new
   root overlap, stale owned-object prune, foreign-object retention, per-object
   failure isolation, status facts, public-data-only validation, and leader
-  failover.
+  failover (`tests/it/trust_bundle_convergence.rs`).
 - Tracking: [#3800](https://github.com/faberline/axiom/issues/3800) (`lumen@0.4.37`).
 
 ### Failure-domain placement primitives

@@ -18,3 +18,4 @@ pub mod render;
 pub mod resize;
 pub mod service;
 pub mod stateful;
+pub mod trust_bundle;

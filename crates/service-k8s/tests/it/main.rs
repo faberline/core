@@ -15,3 +15,4 @@ mod status_conditions_survive_the_recovery_pass;
 mod status_patch_golden;
 mod wire_golden;
 mod workload_plan;
+mod trust_bundle_convergence;
