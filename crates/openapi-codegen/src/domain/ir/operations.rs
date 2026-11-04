@@ -23,6 +23,16 @@ pub struct BodyIR {
     pub required: bool,
 }
 
+/// Service-supplied retry classification carried via the `x-retry-class` vendor extension.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum RetryClassIR {
+    SafeRead,
+    IdempotencyKey,
+    NonRetryable,
+    #[default]
+    Unclassified,
+}
+
 /// One HTTP operation, fully structural (no language-specific names or types).
 #[derive(Debug, Clone)]
 pub struct OperationIR {
@@ -53,6 +63,8 @@ pub struct OperationIR {
     /// operation on this same path item (i.e. the same path template).
     /// `None` for every other method.
     pub post_twin_path: Option<String>,
+    /// Service-supplied retry classification from `x-retry-class`.
+    pub retry_class: RetryClassIR,
 }
 
 impl OperationIR {
@@ -154,6 +166,13 @@ fn build_one(
             .unwrap_or_else(|| path.to_string())
     });
 
+    let retry_class = match op.extensions.get("x-retry-class").and_then(|v| v.as_str()) {
+        Some("safe-read") => RetryClassIR::SafeRead,
+        Some("idempotency-key") => RetryClassIR::IdempotencyKey,
+        Some("non-retryable") => RetryClassIR::NonRetryable,
+        _ => RetryClassIR::Unclassified,
+    };
+
     OperationIR {
         operation_id: op.operation_id.clone(),
         method: method.to_string(),
@@ -166,6 +185,7 @@ fn build_one(
         body,
         response,
         post_twin_path,
+        retry_class,
     }
 }
 
@@ -260,5 +280,101 @@ mod tests {
         assert_eq!(purge.http_method, "PURGE");
         assert_eq!(purge.operation_id.as_deref(), Some("purgePets"));
         assert_eq!(purge.post_twin_path, None);
+    }
+
+    #[test]
+    fn retry_class_maps_known_extension_values() {
+        let s = spec(
+            r##"{"paths":{
+              "/read":{"get":{"operationId":"readOp","x-retry-class":"safe-read","responses":{"200":{"description":"ok"}}}},
+              "/write":{"post":{"operationId":"writeOp","x-retry-class":"idempotency-key","responses":{"200":{"description":"ok"}}}},
+              "/mutate":{"delete":{"operationId":"mutateOp","x-retry-class":"non-retryable","responses":{"200":{"description":"ok"}}}}
+            }}"##,
+        );
+        let ops = build(&s);
+        let read = ops
+            .iter()
+            .find(|o| o.operation_id.as_deref() == Some("readOp"))
+            .unwrap();
+        assert_eq!(read.retry_class, RetryClassIR::SafeRead);
+
+        let write = ops
+            .iter()
+            .find(|o| o.operation_id.as_deref() == Some("writeOp"))
+            .unwrap();
+        assert_eq!(write.retry_class, RetryClassIR::IdempotencyKey);
+
+        let mutate = ops
+            .iter()
+            .find(|o| o.operation_id.as_deref() == Some("mutateOp"))
+            .unwrap();
+        assert_eq!(mutate.retry_class, RetryClassIR::NonRetryable);
+    }
+
+    #[test]
+    fn retry_class_defaults_to_unclassified_when_missing() {
+        let s = spec(
+            r##"{"paths":{"/items":{
+              "get":{"operationId":"getItems","responses":{"200":{"description":"ok"}}},
+              "post":{"operationId":"createItem","responses":{"201":{"description":"ok"}}},
+              "delete":{"operationId":"deleteItem","responses":{"204":{"description":"ok"}}},
+              "query":{"operationId":"queryItems","responses":{"200":{"description":"ok"}}}
+            }}}"##,
+        );
+        let ops = build(&s);
+        let get_op = ops.iter().find(|o| o.method == "get").unwrap();
+        assert_eq!(get_op.retry_class, RetryClassIR::Unclassified);
+
+        let post_op = ops.iter().find(|o| o.method == "post").unwrap();
+        assert_eq!(post_op.retry_class, RetryClassIR::Unclassified);
+
+        let delete_op = ops.iter().find(|o| o.method == "delete").unwrap();
+        assert_eq!(delete_op.retry_class, RetryClassIR::Unclassified);
+
+        let query_op = ops.iter().find(|o| o.method == "query").unwrap();
+        assert_eq!(query_op.retry_class, RetryClassIR::Unclassified);
+    }
+
+    #[test]
+    fn retry_class_defaults_to_unclassified_for_unknown_or_non_string_values() {
+        let s = spec(
+            r##"{"paths":{"/items":{
+              "get":{"operationId":"unknownVal","x-retry-class":"yes","responses":{"200":{"description":"ok"}}},
+              "post":{"operationId":"boolVal","x-retry-class":true,"responses":{"200":{"description":"ok"}}},
+              "put":{"operationId":"numVal","x-retry-class":42,"responses":{"200":{"description":"ok"}}}
+            }}}"##,
+        );
+        let ops = build(&s);
+        let unknown_op = ops
+            .iter()
+            .find(|o| o.operation_id.as_deref() == Some("unknownVal"))
+            .unwrap();
+        assert_eq!(unknown_op.retry_class, RetryClassIR::Unclassified);
+
+        let bool_op = ops
+            .iter()
+            .find(|o| o.operation_id.as_deref() == Some("boolVal"))
+            .unwrap();
+        assert_eq!(bool_op.retry_class, RetryClassIR::Unclassified);
+
+        let num_op = ops
+            .iter()
+            .find(|o| o.operation_id.as_deref() == Some("numVal"))
+            .unwrap();
+        assert_eq!(num_op.retry_class, RetryClassIR::Unclassified);
+    }
+
+    #[test]
+    fn retry_class_reads_extension_on_additional_operations() {
+        let s = spec(
+            r##"{"paths":{"/pets":{
+              "additionalOperations":{
+                "PURGE":{"operationId":"purgePets","x-retry-class":"non-retryable","responses":{"204":{"description":"no content"}}}
+              }
+            }}}"##,
+        );
+        let ops = build(&s);
+        let purge = ops.iter().find(|o| o.method == "purge").unwrap();
+        assert_eq!(purge.retry_class, RetryClassIR::NonRetryable);
     }
 }
