@@ -23,9 +23,10 @@ The mixed-source compatibility test also checks type assignment, independent
 mounts, a shared scheduler and the forwarded debug API. This does not satisfy
 the separate MicroDOM/layout/rendering backlog issues.
 
-Surface is currently private. An authenticated local Git fetch works. Public
-Core/Jet builds and hosted CI need access to that dependency before this change
-can land. Repository visibility has not been changed.
+Surface is public. Anonymous dependency access was verified on 2026-11-04.
+Its input checkpoint passed [Linux CI](https://github.com/faberline/surface/actions/runs/41762321151)
+at the pinned revision. New Material and DOM export work is a later,
+separate proposal; these facades still pin the qualified input checkpoint.
 
 The archived EC inventories now name the qualified Cargo packages and actual
 test paths. Their old July generation digests have not been regenerated:
@@ -38,5 +39,9 @@ including their previously ignored contract wrappers, run directly.
 On 2026-11-04, the facade checks passed on macOS with Rust 1.96.1:
 10 Rust cases (including two contract wrappers), Clippy with warnings denied,
 native and WASM compilation, and the strict architecture check with zero errors
-or warnings. The two UI jobs are included in the hosted CI matrix. Hosted
-results and legacy inventory regeneration remain separate pending gates.
+or warnings. The two UI jobs are included in the hosted CI matrix.
+
+Hosted Core run 41763523240 stopped in development preflight: the PR is a
+draft and has no single canonical open issue. Downstream test jobs were
+skipped. These local results do not replace hosted or independent acceptance.
+Legacy inventory regeneration also remains open.
