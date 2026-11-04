@@ -7,6 +7,7 @@ mod certificate_rbac_least_privilege;
 mod certificate_rotation;
 mod certificate_status;
 mod lifecycle_render;
+mod placement;
 mod prune_unserved_api_is_scoped;
 mod reconcile_once_does_not_assume_leadership;
 mod stateful_adapter_equivalence;
