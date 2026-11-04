@@ -18,6 +18,7 @@
 //! read the root as legacy, and do not "finish" the split without moving the
 //! callers in the same change.
 
+pub use crate::infrastructure::manifest::projected_token::ProjectedServiceAccountToken;
 pub use crate::infrastructure::manifest::{
     client_service, client_service_with_ports, cron_job, dedicated_node_affinity,
     guaranteed_resources, headless_service, headless_service_with_ports, horizontal_pod_autoscaler,
@@ -28,11 +29,11 @@ pub use crate::infrastructure::manifest::{
     DaemonSetPlan, DeploymentPlan, FqdnMatchPlan, FqdnNetworkPolicyPlan, HorizontalPodAutoscaler,
     LabelSet, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
     PersistentVolumeClaimPlan, PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy, RbacRulePlan,
-    RenderCtx, RoleBindingPlan, RolePlan, ServiceAccountPlan, ServiceAccountSubjectPlan,
-    ServicePlan, ServicePortPlan, ServiceStatefulSet, ShardedStatefulSet, StatefulSetPlan,
-    TokenRegistryProjection, TokenRegistrySource, WorkloadPlan, WorkloadPlanError,
-    WorkloadVolumeClaim, DEFAULT_TOKEN_REGISTRY_CSI_DRIVER, ENV_POD_NAME, ENV_POD_NAMESPACE,
-    ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_VOTER_COUNT,
+    RenderCtx, RoleBindingPlan, RolePlan, ServiceAccountIdentityPlan, ServiceAccountPlan,
+    ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan, ServiceStatefulSet,
+    ShardedStatefulSet, StatefulSetPlan, TokenRegistryProjection, TokenRegistrySource,
+    WorkloadPlan, WorkloadPlanError, WorkloadVolumeClaim, DEFAULT_TOKEN_REGISTRY_CSI_DRIVER,
+    ENV_POD_NAME, ENV_POD_NAMESPACE, ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_VOTER_COUNT,
 };
 
 pub mod common {
@@ -74,8 +75,8 @@ pub mod workload_plan {
         ClusterRoleBindingPlan, ContainerPlan, CronJobPlan, DaemonSetPlan, DeploymentPlan,
         FqdnMatchPlan, FqdnNetworkPolicyPlan, LabelSet, NetworkPeerPlan, NetworkPolicyPlan,
         NetworkPortPlan, NetworkRulePlan, PersistentVolumeClaimPlan, PodDisruptionBudgetPlan,
-        PodPlan, PodRuntimePolicy, RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountPlan,
-        ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan, StatefulSetPlan, WorkloadPlan,
-        WorkloadPlanError,
+        PodPlan, PodRuntimePolicy, RbacRulePlan, RoleBindingPlan, RolePlan,
+        ServiceAccountIdentityPlan, ServiceAccountPlan, ServiceAccountSubjectPlan, ServicePlan,
+        ServicePortPlan, StatefulSetPlan, WorkloadPlan, WorkloadPlanError,
     };
 }
