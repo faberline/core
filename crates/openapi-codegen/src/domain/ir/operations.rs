@@ -23,6 +23,13 @@ pub struct BodyIR {
     pub required: bool,
 }
 
+/// A declared non-success response.
+#[derive(Debug, Clone)]
+pub struct ErrorResponseIR {
+    pub status: String,
+    pub schema: Option<RefOr<Schema>>,
+}
+
 /// One HTTP operation, fully structural (no language-specific names or types).
 #[derive(Debug, Clone)]
 pub struct OperationIR {
@@ -46,6 +53,9 @@ pub struct OperationIR {
     pub body: Option<BodyIR>,
     /// The success-response JSON schema, or `None` for a no-content response.
     pub response: Option<RefOr<Schema>>,
+    /// Declared non-success responses modeled in deterministic order:
+    /// numeric ascending, range keys (4XX, 5XX), then default.
+    pub error_responses: Vec<ErrorResponseIR>,
     /// POST-twin fallback target for `QUERY` operations (epic #1296 policy:
     /// every QUERY endpoint has a POST twin). `Some` only when `method ==
     /// "query"`: the operation's `x-post-twin: <path>` vendor extension if
@@ -154,6 +164,46 @@ fn build_one(
             .unwrap_or_else(|| path.to_string())
     });
 
+    let has_2xx = op
+        .responses
+        .keys()
+        .any(|k| k.starts_with('2') || k.eq_ignore_ascii_case("2xx"));
+
+    let mut error_responses = Vec::new();
+    for (key, resp_ref) in &op.responses {
+        let is_error = key.starts_with('4')
+            || key.starts_with('5')
+            || (key.eq_ignore_ascii_case("default") && has_2xx);
+        if !is_error {
+            continue;
+        }
+        if let RefOr::Item(resp) = resp_ref {
+            let schema = resp
+                .content
+                .get("application/json")
+                .and_then(|mt| mt.schema.clone());
+            error_responses.push(ErrorResponseIR {
+                status: key.clone(),
+                schema,
+            });
+        }
+    }
+
+    error_responses.sort_by(|a, b| {
+        let sort_key = |s: &str| -> (u8, u16, String) {
+            if let Ok(code) = s.parse::<u16>() {
+                (0, code, String::new())
+            } else if s.eq_ignore_ascii_case("default") {
+                (2, 0, String::new())
+            } else {
+                (1, 0, s.to_ascii_uppercase())
+            }
+        };
+        sort_key(&a.status)
+            .cmp(&sort_key(&b.status))
+            .then_with(|| a.status.cmp(&b.status))
+    });
+
     OperationIR {
         operation_id: op.operation_id.clone(),
         method: method.to_string(),
@@ -165,6 +215,7 @@ fn build_one(
         header_params,
         body,
         response,
+        error_responses,
         post_twin_path,
     }
 }
@@ -260,5 +311,69 @@ mod tests {
         assert_eq!(purge.http_method, "PURGE");
         assert_eq!(purge.operation_id.as_deref(), Some("purgePets"));
         assert_eq!(purge.post_twin_path, None);
+    }
+
+    #[test]
+    fn declared_error_responses_with_json_schemas_4xx_range_and_default_next_to_200() {
+        let s = spec(
+            r##"{"paths":{"/items":{
+              "get":{"operationId":"listItems",
+                "responses":{
+                  "200":{"content":{"application/json":{"schema":{"type":"array"}}}},
+                  "401":{"content":{"application/json":{"schema":{"type":"object"}}}},
+                  "413":{"content":{"application/json":{"schema":{"type":"string"}}}},
+                  "429":{"content":{"application/json":{"schema":{"type":"boolean"}}}},
+                  "500":{"content":{"application/json":{"schema":{"type":"integer"}}}},
+                  "4XX":{"content":{"application/json":{"schema":{"type":"object"}}}},
+                  "default":{"content":{"application/json":{"schema":{"type":"string"}}}}
+                }}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        assert!(op.response.is_some());
+        let statuses: Vec<&str> = op
+            .error_responses
+            .iter()
+            .map(|e| e.status.as_str())
+            .collect();
+        assert_eq!(statuses, vec!["401", "413", "429", "500", "4XX", "default"]);
+        for err in &op.error_responses {
+            assert!(err.schema.is_some());
+        }
+    }
+
+    #[test]
+    fn default_as_only_response_stays_success_and_has_no_error_entry() {
+        let s = spec(
+            r##"{"paths":{"/items":{
+              "get":{"operationId":"getItem",
+                "responses":{
+                  "default":{"content":{"application/json":{"schema":{"type":"string"}}}}
+                }}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        assert!(op.response.is_some());
+        assert!(op.error_responses.is_empty());
+    }
+
+    #[test]
+    fn error_response_without_content_and_ignored_status_classes() {
+        let s = spec(
+            r##"{"paths":{"/items":{
+              "post":{"operationId":"createItem",
+                "responses":{
+                  "201":{"description":"created"},
+                  "301":{"content":{"application/json":{"schema":{"type":"string"}}}},
+                  "404":{"description":"not found without content"},
+                  "502":{"$ref":"#/components/responses/BadGateway"}
+                }}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        assert_eq!(op.error_responses.len(), 1);
+        let err = &op.error_responses[0];
+        assert_eq!(err.status, "404");
+        assert!(err.schema.is_none());
     }
 }
