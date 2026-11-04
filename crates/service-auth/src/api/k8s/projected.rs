@@ -32,5 +32,9 @@
 //! failures above are exactly the ones a maintainer is tempted to debug by
 //! printing the value.
 
-pub use crate::domain::k8s::ProjectedToken;
-pub use crate::infrastructure::k8s::{ProjectedTokenError, ProjectedTokenFile};
+pub use crate::domain::k8s::{ProjectedToken, ProjectedTokenMode};
+pub use crate::infrastructure::k8s::{
+    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenFile,
+    OpaqueProjectedTokenReader, OpaqueProjectedTokenSource, ProjectedTokenError,
+    ProjectedTokenFile, ProjectedTokenReader,
+};

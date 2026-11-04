@@ -70,7 +70,11 @@ pub use principal::{
     PrincipalRejection, ReviewedIdentity, ServiceAccountPrincipal, ServiceAccountRef,
     SERVICE_ACCOUNT_PREFIX,
 };
-pub use projected::{ProjectedToken, ProjectedTokenError, ProjectedTokenFile};
+pub use projected::{
+    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenFile,
+    OpaqueProjectedTokenReader, OpaqueProjectedTokenSource, ProjectedToken, ProjectedTokenError,
+    ProjectedTokenFile, ProjectedTokenMode, ProjectedTokenReader,
+};
 pub use review::{
     AccessReviewOutcome, ExtraFields, ResourceAttributes, ReviewBackend, ReviewError,
     TokenReviewOutcome,
