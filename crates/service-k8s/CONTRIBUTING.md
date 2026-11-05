@@ -32,16 +32,17 @@ module and declare it in `tests/it/main.rs`; a case that needs the `certificate`
 or `controller` feature starts with `#![cfg(feature = "…")]`. Keep internal
 rules in colocated unit tests.
 
-Keep shared mechanisms service-neutral. A caller supplies its CRD schema,
-access resource mapping, domain topology, protected paths, health mapping, and
-external provider policy. Do not move an app policy into this crate only
-because two controllers use Kubernetes.
+Keep shared mechanisms service-neutral, and follow the boundary in
+[ADR 0002](../../docs/adr/0002-core-owned-service-operations.md). A caller
+supplies its CRD schema or profile, product config, the verb each operation
+needs, domain readiness dimensions, alert rules, and external provider policy.
+Topology, membership, placement group identity, certificate identities, and
+rollout gates belong in this crate. Do not move app domain logic into this
+crate, and do not add a hook that lets an app override render or reconcile.
 
-For placement, the app supplies the failure-domain group and quorum meaning.
-For certificate work, the app supplies identities and readiness. For public
-trust, this library handles only public ConfigMap data and ownership. For
-StatefulSet rollout, never treat a PDB as an update gate. A PDB controls
-voluntary eviction.
+For public trust, this library handles only public ConfigMap data and
+ownership. For StatefulSet rollout, never treat a PDB as an update gate. A PDB
+controls voluntary eviction.
 
 When README, STATUS, or ROADMAP changes, treat them as one document set. Run
 the deterministic check.
