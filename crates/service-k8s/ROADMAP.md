@@ -178,13 +178,18 @@ phase table orders the outcomes.
 - Boundary: Core derives the group identity (one shard) from its own topology
   and decides host or zone separation from the instance's placement spec. It
   validates label selectors and topology keys, then renders standard
-  Kubernetes scheduling fields. The shared contract stays free of
-  cloud-specific fields such as GKE machine types, ComputeClasses, and
-  node-pool lifecycle. Apps supply nothing.
+  Kubernetes scheduling fields. The placement block also carries the capacity
+  catalog that ADR 0002 D6 gives core: each named class maps to typed
+  selectors and tolerations, and core treats the class name as opaque data.
+  A catalog may name its classes after machine types, as lumen's does today,
+  but the shared contract stays free of cloud-specific fields such as GKE
+  machine types, ComputeClasses, and node-pool lifecycle. Apps supply
+  nothing.
 - Completion evidence: Pure render tests prove group-scoped host anti-affinity,
-  required and preferred zone spread, selectors, tolerations, deterministic
-  labels, allowed node sharing by different groups, malformed-input refusal,
-  and no cloud-specific field in the shared contract.
+  required and preferred zone spread, selectors, tolerations, a catalog class
+  resolving to its selectors and tolerations, deterministic labels, allowed
+  node sharing by different groups, malformed-input refusal, and no
+  cloud-specific field in the shared contract.
 - Tracking: Not assigned.
 
 ### Controlled StatefulSet member rollout
