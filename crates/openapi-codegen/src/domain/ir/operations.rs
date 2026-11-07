@@ -26,7 +26,10 @@ pub struct BodyIR {
 /// A declared non-success response.
 #[derive(Debug, Clone)]
 pub struct ErrorResponseIR {
+    /// The declared response key exactly as written in the spec (e.g. `"401"`,
+    /// `"4XX"`, `"default"`), not normalized.
     pub status: String,
+    /// The `application/json` schema, or `None` when the response has no JSON body.
     pub schema: Option<RefOr<Schema>>,
 }
 
@@ -164,10 +167,7 @@ fn build_one(
             .unwrap_or_else(|| path.to_string())
     });
 
-    let has_2xx = op
-        .responses
-        .keys()
-        .any(|k| k.starts_with('2') || k.eq_ignore_ascii_case("2xx"));
+    let has_2xx = op.responses.keys().any(|k| k.starts_with('2'));
 
     let mut error_responses = Vec::new();
     for (key, resp_ref) in &op.responses {
@@ -324,8 +324,8 @@ mod tests {
                   "413":{"content":{"application/json":{"schema":{"type":"string"}}}},
                   "429":{"content":{"application/json":{"schema":{"type":"boolean"}}}},
                   "500":{"content":{"application/json":{"schema":{"type":"integer"}}}},
-                  "4XX":{"content":{"application/json":{"schema":{"type":"object"}}}},
-                  "default":{"content":{"application/json":{"schema":{"type":"string"}}}}
+                  "4XX":{"content":{"application/json":{"schema":{"type":"number"}}}},
+                  "default":{"content":{"application/json":{"schema":{"type":"null"}}}}
                 }}}}}"##,
         );
         let ops = build(&s);
@@ -337,9 +337,47 @@ mod tests {
             .map(|e| e.status.as_str())
             .collect();
         assert_eq!(statuses, vec!["401", "413", "429", "500", "4XX", "default"]);
-        for err in &op.error_responses {
-            assert!(err.schema.is_some());
-        }
+        let schema_type = |e: &ErrorResponseIR| match &e.schema {
+            Some(RefOr::Item(s)) => s.ty.0.clone(),
+            _ => panic!("expected an inline JSON schema for status {}", e.status),
+        };
+        let types: Vec<(&str, Vec<String>)> = op
+            .error_responses
+            .iter()
+            .map(|e| (e.status.as_str(), schema_type(e)))
+            .collect();
+        assert_eq!(
+            types,
+            vec![
+                ("401", vec!["object".to_string()]),
+                ("413", vec!["string".to_string()]),
+                ("429", vec!["boolean".to_string()]),
+                ("500", vec!["integer".to_string()]),
+                ("4XX", vec!["number".to_string()]),
+                ("default", vec!["null".to_string()]),
+            ]
+        );
+    }
+
+    #[test]
+    fn declared_error_4xx_with_default_and_no_2xx_keeps_default_as_success() {
+        let s = spec(
+            r##"{"paths":{"/items":{
+              "get":{"operationId":"listItems",
+                "responses":{
+                  "default":{"content":{"application/json":{"schema":{"type":"string"}}}},
+                  "4XX":{"content":{"application/json":{"schema":{"type":"object"}}}}
+                }}}}}"##,
+        );
+        let ops = build(&s);
+        let op = &ops[0];
+        assert!(op.response.is_some());
+        let statuses: Vec<&str> = op
+            .error_responses
+            .iter()
+            .map(|e| e.status.as_str())
+            .collect();
+        assert_eq!(statuses, vec!["4XX"]);
     }
 
     #[test]
