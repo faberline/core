@@ -136,4 +136,22 @@ impl RaftHost {
     pub fn applied_watch(&self) -> watch::Receiver<Index> {
         self.shared.applied_tx.subscribe()
     }
+
+    /// Step an inbound `AppendEntries` message into this host (#47 test hook).
+    #[doc(hidden)]
+    pub async fn step_append_entries(
+        &self,
+        from: NodeId,
+        req: raft_core::AppendReq,
+    ) -> raft_core::AppendResp {
+        self.shared.step_append_entries(from, req).await
+    }
+
+    /// Step an inbound `VoteResp` message into this host (#47 test hook).
+    #[doc(hidden)]
+    pub async fn step_vote_response(&self, from: NodeId, resp: raft_core::VoteResp) {
+        let mut n = self.shared.node.lock().await;
+        n.handle(from, raft_core::RaftMsg::VoteResp(resp));
+        let _ = self.shared.persist(&n);
+    }
 }

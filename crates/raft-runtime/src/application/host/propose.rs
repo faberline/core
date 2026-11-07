@@ -1,5 +1,42 @@
 use super::*;
 use crate::domain::{ForwardReply, PUBLISH_PATH};
+use raft_core::Term;
+
+/// The waiter owns this registration, including across cancellation. The applier
+/// records the actual term, even when a different entry occupies the same index.
+struct ProposalIdentity<'a> {
+    shared: &'a Shared,
+    index: Index,
+    term: Term,
+}
+
+impl ProposalIdentity<'_> {
+    fn committed_or_resident_term(&self, node: &RaftNode) -> Option<Term> {
+        self.shared
+            .proposal_committed_terms
+            .lock()
+            .unwrap()
+            .get(&(self.index, self.term.get()))
+            .copied()
+            .flatten()
+            .or_else(|| {
+                // Only the boundary itself has an exact term after compaction.
+                (self.index >= node.snapshot_index())
+                    .then(|| node.term_at_index(self.index))
+                    .flatten()
+            })
+    }
+}
+
+impl Drop for ProposalIdentity<'_> {
+    fn drop(&mut self) {
+        self.shared
+            .proposal_committed_terms
+            .lock()
+            .unwrap()
+            .remove(&(self.index, self.term.get()));
+    }
+}
 
 impl Shared {
     /// Try a leader-side proposal and return its index once the **state machine
@@ -26,7 +63,7 @@ impl Shared {
                 return Some(rejected_admission(error));
             }
         };
-        let index = {
+        let (index, term, identity) = {
             let mut n = self.node.lock().await;
             if self.lifecycle_generation.load(Ordering::Acquire) > 0 {
                 self.proposal_rejected_before_append
@@ -45,6 +82,15 @@ impl Shared {
             }
             let idx = n.propose(command)?;
             let term = n.current_term();
+            self.proposal_committed_terms
+                .lock()
+                .unwrap()
+                .insert((idx, term.get()), None);
+            let identity = ProposalIdentity {
+                shared: self,
+                index: idx,
+                term,
+            };
             if let Some(permit) = permit {
                 let previous = self
                     .pending_admission
@@ -60,7 +106,7 @@ impl Shared {
                 });
             }
             self.apply_ready(&mut n); // sole voter queues its committed apply here
-            idx
+            (idx, term, identity)
         };
         self.flush().await;
 
@@ -69,9 +115,6 @@ impl Shared {
                 index: Some(index),
                 failure,
             });
-        }
-        if self.completed_applied_index() >= index {
-            return Some(ProposalOutcome::Completed { index });
         }
         let mut rx = self.applied_tx.subscribe();
         let deadline = Instant::now() + self.cfg.propose_timeout();
@@ -85,8 +128,25 @@ impl Shared {
                         failure,
                     });
                 }
+                let entry_term = identity.committed_or_resident_term(&n);
+                if let Some(replacing_term) = entry_term {
+                    if replacing_term != term {
+                        return Some(ProposalOutcome::Ambiguous {
+                            index: Some(index),
+                            reason: format!(
+                                "raft: proposal at index {index} (term {term}) superseded by entry of term {replacing_term}"
+                            ),
+                        });
+                    }
+                }
                 if self.completed_applied_index() >= index {
-                    return Some(ProposalOutcome::Completed { index });
+                    if entry_term == Some(term) {
+                        return Some(ProposalOutcome::Completed { index });
+                    }
+                    return Some(ProposalOutcome::Ambiguous {
+                        index: Some(index),
+                        reason: format!("raft: proposal identity unavailable after compaction at index {index} (term {term})"),
+                    });
                 }
             }
             tokio::select! {
