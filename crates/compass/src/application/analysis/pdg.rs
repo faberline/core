@@ -23,7 +23,7 @@ impl RequestHandler {
         let source = self
             .get_document_content(&path)
             .await
-            .map_err(|e| RpcError::invalid_params(e))?;
+            .map_err(RpcError::invalid_params)?;
 
         let mut parser_guard = self.parser.lock().await;
         let parsed = parser_guard
@@ -59,7 +59,7 @@ impl RequestHandler {
         let source = self
             .get_document_content(&path)
             .await
-            .map_err(|e| RpcError::invalid_params(e))?;
+            .map_err(RpcError::invalid_params)?;
 
         let mut parser_guard = self.parser.lock().await;
         let parsed = parser_guard
@@ -114,7 +114,7 @@ impl RequestHandler {
         let source = self
             .get_document_content(&path)
             .await
-            .map_err(|e| RpcError::invalid_params(e))?;
+            .map_err(RpcError::invalid_params)?;
 
         let mut parser_guard = self.parser.lock().await;
         let parsed = parser_guard
@@ -166,7 +166,7 @@ impl RequestHandler {
         let source = self
             .get_document_content(&path)
             .await
-            .map_err(|e| RpcError::invalid_params(e))?;
+            .map_err(RpcError::invalid_params)?;
 
         let mut parser_guard = self.parser.lock().await;
         let parsed = parser_guard

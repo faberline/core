@@ -15,7 +15,7 @@ impl SemanticSearchEngine {
         let mut result = SearchResult::empty();
 
         // Get all class symbols
-        for (_name, locations) in &self.symbol_index {
+        for locations in self.symbol_index.values() {
             for location in locations {
                 if matches!(location.kind, MatchKind::ClassDef) {
                     // Check if this class implements the protocol
@@ -98,7 +98,7 @@ impl SemanticSearchEngine {
         let pattern_lower = pattern.to_lowercase();
 
         // Simple pattern matching based on symbol names
-        for (_name, locations) in &self.symbol_index {
+        for locations in self.symbol_index.values() {
             for location in locations {
                 // Simple heuristic: match if symbol name contains pattern
                 if location.name.to_lowercase().contains(&pattern_lower) {
@@ -143,7 +143,7 @@ impl SemanticSearchEngine {
         let query_lower = doc_query.to_lowercase();
 
         // Search through symbols that have documentation
-        for (_name, locations) in &self.symbol_index {
+        for locations in self.symbol_index.values() {
             for location in locations {
                 // Skip symbols without docstrings
                 let docstring = match &location.docstring {

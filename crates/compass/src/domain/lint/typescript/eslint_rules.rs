@@ -268,7 +268,7 @@ impl TypeScriptChecker {
                                     .filter(|c| c.kind() == "import_specifier")
                                     .all(|c| {
                                         let n = file.node_text(&c).trim().to_string();
-                                        n.chars().next().map_or(false, |ch| ch.is_uppercase())
+                                        n.chars().next().is_some_and(|ch| ch.is_uppercase())
                                     });
                                 let has_any = spec
                                     .children(&mut spec.walk())
