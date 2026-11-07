@@ -4,6 +4,7 @@ mod admin_request_golden;
 mod admin_snapshot_backup;
 #[cfg(feature = "http-client")]
 mod projected_admin_transport;
+mod restore_ledger;
 mod schema_golden;
 mod sink_error;
 mod wire_golden;
