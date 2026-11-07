@@ -47,7 +47,7 @@ async fn test_1_propose_refusal_and_restart() {
         _serve,
         _dir,
     } = node;
-    let dir_path = _dir.into_path();
+    let dir_path = _dir.keep();
     drop(host);
 
     let sm2 = TestSm::new();
@@ -78,7 +78,7 @@ async fn test_2_request_vote_refusal() {
 
     let client = h2c_client();
     let vote_resp: serde_json::Value = client
-        .post(&format!("{}/raft/request-vote", node.url))
+        .post(format!("{}/raft/request-vote", node.url))
         .json(&serde_json::json!({
             "group_id": LEGACY_GROUP_ID,
             "from": 1,
@@ -96,7 +96,7 @@ async fn test_2_request_vote_refusal() {
         .await
         .unwrap();
 
-    assert_eq!(vote_resp.get("granted").unwrap().as_bool().unwrap(), false);
+    assert!(!vote_resp.get("granted").unwrap().as_bool().unwrap());
 }
 
 #[tokio::test]
@@ -112,7 +112,7 @@ async fn test_3_append_entries_refusal() {
 
     let client = h2c_client();
     let append_resp: serde_json::Value = client
-        .post(&format!("{}/raft/append-entries", node.url))
+        .post(format!("{}/raft/append-entries", node.url))
         .json(&serde_json::json!({
             "group_id": LEGACY_GROUP_ID,
             "from": 1,
@@ -132,10 +132,7 @@ async fn test_3_append_entries_refusal() {
         .await
         .unwrap();
 
-    assert_eq!(
-        append_resp.get("success").unwrap().as_bool().unwrap(),
-        false
-    );
+    assert!(!append_resp.get("success").unwrap().as_bool().unwrap());
 }
 
 #[tokio::test]
@@ -156,7 +153,7 @@ async fn test_4_error_value_and_raftz() {
 
     let client = h2c_client();
     let raftz_resp: serde_json::Value = client
-        .get(&format!("{}/raftz", node.url))
+        .get(format!("{}/raftz", node.url))
         .send()
         .await
         .unwrap()
@@ -190,7 +187,7 @@ async fn test_5_healthy_host() {
         _serve,
         _dir,
     } = node;
-    let dir_path = _dir.into_path();
+    let dir_path = _dir.keep();
     drop(host);
 
     let sm2 = TestSm::new();
@@ -221,7 +218,7 @@ async fn test_6_install_snapshot_refusal() {
 
     let client = h2c_client();
     let snap_resp: serde_json::Value = client
-        .post(&format!("{}/raft/install-snapshot", node.url))
+        .post(format!("{}/raft/install-snapshot", node.url))
         .json(&serde_json::json!({
             "group_id": LEGACY_GROUP_ID,
             "from": 1,
@@ -269,7 +266,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         }
     });
     let vote_resp: serde_json::Value = client
-        .post(&format!("{}/raft/request-vote", node.url))
+        .post(format!("{}/raft/request-vote", node.url))
         .json(&vote_req)
         .send()
         .await
@@ -277,7 +274,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         .json()
         .await
         .unwrap();
-    assert_eq!(vote_resp.get("granted").unwrap().as_bool().unwrap(), true);
+    assert!(vote_resp.get("granted").unwrap().as_bool().unwrap());
 
     // 2. Healthy host accepts append_entries
     let append_req = serde_json::json!({
@@ -293,7 +290,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         }
     });
     let append_resp: serde_json::Value = client
-        .post(&format!("{}/raft/append-entries", node.url))
+        .post(format!("{}/raft/append-entries", node.url))
         .json(&append_req)
         .send()
         .await
@@ -301,7 +298,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         .json()
         .await
         .unwrap();
-    assert_eq!(append_resp.get("success").unwrap().as_bool().unwrap(), true);
+    assert!(append_resp.get("success").unwrap().as_bool().unwrap());
 
     // 3. Healthy host accepts install_snapshot
     let snap_req = serde_json::json!({
@@ -316,7 +313,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         }
     });
     let snap_resp: serde_json::Value = client
-        .post(&format!("{}/raft/install-snapshot", node.url))
+        .post(format!("{}/raft/install-snapshot", node.url))
         .json(&snap_req)
         .send()
         .await
@@ -348,7 +345,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         }
     });
     let vote_resp_latched: serde_json::Value = client
-        .post(&format!("{}/raft/request-vote", node.url))
+        .post(format!("{}/raft/request-vote", node.url))
         .json(&vote_req_latched)
         .send()
         .await
@@ -356,10 +353,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         .json()
         .await
         .unwrap();
-    assert_eq!(
-        vote_resp_latched.get("granted").unwrap().as_bool().unwrap(),
-        false
-    );
+    assert!(!vote_resp_latched.get("granted").unwrap().as_bool().unwrap());
 
     // 2b. Latched host refuses append_entries
     let append_req_latched = serde_json::json!({
@@ -375,7 +369,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         }
     });
     let append_resp_latched: serde_json::Value = client
-        .post(&format!("{}/raft/append-entries", node.url))
+        .post(format!("{}/raft/append-entries", node.url))
         .json(&append_req_latched)
         .send()
         .await
@@ -383,14 +377,11 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         .json()
         .await
         .unwrap();
-    assert_eq!(
-        append_resp_latched
-            .get("success")
-            .unwrap()
-            .as_bool()
-            .unwrap(),
-        false
-    );
+    assert!(!append_resp_latched
+        .get("success")
+        .unwrap()
+        .as_bool()
+        .unwrap());
 
     // 3b. Latched host refuses install_snapshot
     let snap_req_latched = serde_json::json!({
@@ -405,7 +396,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         }
     });
     let snap_resp_latched: serde_json::Value = client
-        .post(&format!("{}/raft/install-snapshot", node.url))
+        .post(format!("{}/raft/install-snapshot", node.url))
         .json(&snap_req_latched)
         .send()
         .await
@@ -447,7 +438,7 @@ async fn test_8_latched_follower_refuses_proposal() {
     let client = h2c_client();
     for _ in 0..50 {
         let raftz_resp: serde_json::Value = client
-            .get(&format!("{}/raftz", follower.url))
+            .get(format!("{}/raftz", follower.url))
             .send()
             .await
             .unwrap()

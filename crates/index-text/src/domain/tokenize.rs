@@ -188,6 +188,7 @@ fn jieba(text: &str) -> Vec<String> {
     tokens
 }
 
+#[cfg(not(feature = "jieba"))]
 fn is_cjk_char(character: char) -> bool {
     let code = character as u32;
     (0x4E00..=0x9FFF).contains(&code)

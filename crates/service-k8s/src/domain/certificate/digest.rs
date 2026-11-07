@@ -34,6 +34,8 @@ mod tests {
     fn is_lowercase_hex_without_separators() {
         let digest = hex_sha256(b"lumen");
         assert_eq!(digest.len(), 64);
-        assert!(digest.chars().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
+        assert!(digest
+            .chars()
+            .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
     }
 }
