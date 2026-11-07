@@ -102,7 +102,7 @@ impl SwarmGenerator {
             if let Some(summary) = &op.summary {
                 lines.push(format!("{}\"\"\"{}", ctx.indent, summary));
                 if let Some(desc) = &channel.description {
-                    lines.push(format!("{}", ctx.indent));
+                    lines.push(ctx.indent.to_string());
                     lines.push(format!("{}Channel: {}", ctx.indent, channel.name));
                     lines.push(format!("{}Description: {}", ctx.indent, desc));
                 }

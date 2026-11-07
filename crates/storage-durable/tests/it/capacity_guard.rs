@@ -1,4 +1,7 @@
-use std::sync::{atomic::{AtomicU64, Ordering}, Arc};
+use std::sync::{
+    atomic::{AtomicU64, Ordering},
+    Arc,
+};
 
 use storage_durable::{CapacityGuard, CapacityLevel, CapacityThresholds, SpaceProbe};
 
@@ -34,11 +37,19 @@ fn thresholds_and_raii_reservations_are_bounded() {
         let _reservation = guard.reserve(1).unwrap();
         assert_eq!(guard.level(), CapacityLevel::Warning);
     }
-    assert_eq!(guard.used_bytes(), 69, "drop must release an uncommitted reservation");
+    assert_eq!(
+        guard.used_bytes(),
+        69,
+        "drop must release an uncommitted reservation"
+    );
 
     let reservation = guard.reserve(1).unwrap();
     reservation.commit();
-    assert_eq!(guard.used_bytes(), 70, "commit keeps the durable byte estimate");
+    assert_eq!(
+        guard.used_bytes(),
+        70,
+        "commit keeps the durable byte estimate"
+    );
 }
 
 #[test]

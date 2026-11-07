@@ -266,8 +266,8 @@ impl<'a> CfgNarrowingPass<'a> {
         }
 
         let attr_name = attr_part
-            .trim_start_matches(|c| c == '"' || c == '\'')
-            .trim_end_matches(|c| c == '"' || c == '\'')
+            .trim_start_matches(['"', '\''])
+            .trim_end_matches(['"', '\''])
             .to_string();
 
         Some(NarrowingCondition::HasAttr {

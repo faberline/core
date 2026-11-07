@@ -156,9 +156,14 @@ fn oversized_response() -> Response {
 /// unbounded, matching this crate's documented probe behavior
 /// ([`crate::standard_probe_routes`]):
 ///
-/// ```ignore
-/// let data_plane = my_routes()
-///     .layer(service_http::body_limit_layer(cfg.body_limit_bytes()));
+/// ```
+/// use std::sync::Arc;
+/// use axum::Router;
+/// use server_lifecycle::LifecycleController;
+/// # fn openapi() -> utoipa::openapi::OpenApi { unimplemented!() }
+/// let readiness = Arc::new(LifecycleController::new());
+/// let data_plane = Router::new()
+///     .layer(service_http::body_limit_layer(8 * 1024 * 1024));
 /// let app = service_http::standard_probe_routes(readiness, None, openapi)
 ///     .merge(data_plane);
 /// ```

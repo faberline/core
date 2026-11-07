@@ -125,11 +125,16 @@ impl<B> tower_http::trace::OnResponse<B> for AccessLogOnResponse {
 /// layer (when wired) would export are produced. Attach it to the **outer**
 /// router so it spans probe and data-plane requests alike:
 ///
-/// ```ignore
-/// let app = service_http::standard_probe_routes(readiness, metrics, openapi)
+/// ```
+/// use std::sync::Arc;
+/// use axum::Router;
+/// use server_lifecycle::LifecycleController;
+/// # fn openapi() -> utoipa::openapi::OpenApi { unimplemented!() }
+/// let readiness = Arc::new(LifecycleController::new());
+/// let data_plane = Router::new();
+/// let app = service_http::standard_probe_routes(readiness, None, openapi)
 ///     .merge(data_plane)
-///     .layer(service_http::trace_layer())
-///     .with_state(state);
+///     .layer(service_http::trace_layer());
 /// ```
 ///
 /// Returns the concrete `TraceLayer` so callers `.layer()` it directly. For a

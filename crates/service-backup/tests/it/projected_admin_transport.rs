@@ -82,7 +82,7 @@ async fn non_success_diagnostic_is_bounded_and_structured() {
         .unwrap_err();
     let diagnostic = error.diagnostic().expect("status error has diagnostics");
     assert_eq!(diagnostic.status, 503);
-    assert_eq!(diagnostic.body.as_bytes().len(), 10);
+    assert_eq!(diagnostic.body.len(), 10);
     assert!(diagnostic.truncated);
     assert_eq!(diagnostic.operation.as_str(), "backup");
 }
