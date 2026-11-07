@@ -262,6 +262,14 @@ impl RaftHost {
 
     /// Forward a command to the leader and wait until **this node's** state
     /// machine applies the returned index (read-your-write on a follower).
+    ///
+    /// # Invariant
+    ///
+    /// Returning `ProposalOutcome::Completed { index: seq }` relies on:
+    /// 1. The leader replying `200` only for its own committed entry (#47),
+    ///    ensuring that a superseded or truncated uncommitted entry never yields `200`; and
+    /// 2. Raft log matching for the follower's apply, ensuring that the entry applied
+    ///    at `seq` on this node matches the leader's committed entry.
     pub(super) async fn forward(&self, leader_url: &str, command: &[u8]) -> ProposalOutcome {
         let seq = match self.shared.peer_client.forward(leader_url, command).await {
             ForwardReply::Accepted { seq } => Index::new(seq),
@@ -278,6 +286,12 @@ impl RaftHost {
             }
             ForwardReply::Rejected { reason } => {
                 return ProposalOutcome::RejectedBeforeAdmission { reason };
+            }
+            ForwardReply::Ambiguous { index, reason } => {
+                return ProposalOutcome::Ambiguous {
+                    index: index.map(Index::new),
+                    reason,
+                };
             }
             ForwardReply::Failed { reason } => {
                 return ProposalOutcome::Ambiguous {

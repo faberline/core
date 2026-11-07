@@ -18,18 +18,21 @@
 //! 7. A follower forwarding to a quiesced leader returns `RejectedBeforeAdmission`.
 //! 8. A forwarded request that times out returns an `Ambiguous` routing-timeout outcome.
 //! 9. Negative control: sequential proposals on a healthy host strictly increase indices.
+//! 10. A forwarded proposal whose uncommitted entry is superseded by a leader change does not
+//!     report Completed (`forwarded_proposal_superseded_by_leader_change_does_not_complete`).
 
 use raft_runtime::NodeId;
 use std::collections::HashMap;
 use std::io::ErrorKind;
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use axum::{http::StatusCode, routing::post, Json, Router};
-use raft_core::{AppendReq, EntryKind, RaftEntry, Term};
+use raft_core::{AppendReq, EntryKind, RaftEntry, Term, VoteResp};
 use raft_runtime::{
     FsyncPolicy, HostConfig, Index, Membership, ProposalOutcome, RaftHost, RaftStateMachine,
-    RaftStore,
+    RaftStore, StateMachineError,
 };
 use tempfile::TempDir;
 use tokio::io::AsyncReadExt;
@@ -729,4 +732,240 @@ async fn compacted_superseded_proposal_names_actual_replacing_term() {
         }
         other => panic!("expected superseded outcome, got {other:?}"),
     }
+}
+
+/// A test state machine that records `(index, command)` for each applied entry.
+struct RecordingSm {
+    applied: Mutex<HashMap<Index, Vec<u8>>>,
+    applied_index: AtomicU64,
+}
+
+impl RecordingSm {
+    fn new() -> Arc<Self> {
+        Arc::new(Self {
+            applied: Mutex::new(HashMap::new()),
+            applied_index: AtomicU64::new(0),
+        })
+    }
+
+    fn applied_command(&self, index: Index) -> Option<Vec<u8>> {
+        self.applied.lock().unwrap().get(&index).cloned()
+    }
+}
+
+impl RaftStateMachine for RecordingSm {
+    fn apply(&self, index: Index, command: &[u8]) -> Result<(), StateMachineError> {
+        self.applied.lock().unwrap().insert(index, command.to_vec());
+        self.applied_index.store(index.get(), Ordering::Release);
+        Ok(())
+    }
+
+    fn snapshot(&self, _writer: &mut dyn std::io::Write) -> Result<(), StateMachineError> {
+        Ok(())
+    }
+
+    fn restore(&self, _reader: &mut dyn std::io::Read) -> Result<(), StateMachineError> {
+        Ok(())
+    }
+
+    fn applied_index(&self) -> Index {
+        Index::new(self.applied_index.load(Ordering::Acquire))
+    }
+}
+
+/// Truncating a forwarded proposal's uncommitted entry through a leader change must not report Completed.
+///
+/// Follower (node 1) forwards a command to the current leader (node 0). Node 0 appends
+/// the entry at index 1 in term 1, but cannot commit it because it has no peer connection
+/// to node 1. While the forwarded proposal waits on node 0, a leader change occurs:
+/// node 2 takes over in term 2 and replicates a conflicting entry that commits at index 1.
+/// Both node 0 and node 1 receive this supersede request; node 0 truncates its uncommitted
+/// entry and returns an error (Ambiguous / 503) to the follower's forward client (#47).
+///
+/// The follower state machine applies the replacing command from term 2 at index 1.
+/// The forwarding follower must NOT receive `Completed { index: 1 }` for its own proposal,
+/// and whenever the follower receives `Completed { index }`, the command applied at `index`
+/// must be the follower's own command.
+#[tokio::test]
+async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
+    let (listener0, url0) = bind().await;
+
+    let dir0 = TempDir::new().unwrap();
+    let store0 = RaftStore::open(
+        dir0.path().to_str().unwrap(),
+        NodeId::new(0),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
+    let cfg0 = HostConfig::default().with_propose_timeout(Duration::from_secs(2));
+    let sm0 = TestSm::new();
+    let host0 = Arc::new(RaftHost::spawn(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![]),
+        HashMap::new(),
+        store0,
+        sm0.clone() as Arc<dyn RaftStateMachine>,
+        cfg0,
+    ));
+
+    // Serve node 0's router so node 1 can forward /raft/publish over h2c.
+    let router0 = host0.router();
+    let _serve0 = tokio::spawn(async move {
+        loop {
+            if let Ok((stream, _)) = listener0.accept().await {
+                let r = router0.clone();
+                tokio::spawn(async move {
+                    let _ = transport_h2c::server::serve_connection(stream, r).await;
+                });
+            }
+        }
+    });
+
+    // Node 1 is the follower with a RecordingSm that records (index, command).
+    let dir1 = TempDir::new().unwrap();
+    let store1 = RaftStore::open(
+        dir1.path().to_str().unwrap(),
+        NodeId::new(1),
+        FsyncPolicy::Os,
+    )
+    .unwrap();
+    let cfg1 = HostConfig::default().with_propose_timeout(Duration::from_secs(2));
+    let follower_sm = RecordingSm::new();
+    let host1 = Arc::new(RaftHost::spawn(
+        NodeId::new(1),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![]),
+        HashMap::from([(NodeId::new(0), url0)]),
+        store1,
+        follower_sm.clone() as Arc<dyn RaftStateMachine>,
+        cfg1,
+    ));
+
+    // Wait until node 0 campaigns, then grant voter 1's vote so node 0 becomes leader.
+    let start = std::time::Instant::now();
+    loop {
+        let term = host_current_term(&host0);
+        if term > 0 {
+            host0
+                .step_vote_response(
+                    NodeId::new(1),
+                    VoteResp {
+                        term: Term::new(term),
+                        granted: true,
+                    },
+                )
+                .await;
+            if host0.is_leader().await {
+                break;
+            }
+        }
+        tokio::time::sleep(Duration::from_millis(20)).await;
+        if start.elapsed() > Duration::from_secs(2) {
+            panic!("node 0 did not become leader within deadline");
+        }
+    }
+
+    let leader_term = host_current_term(&host0);
+    assert!(leader_term > 0);
+
+    // Node 1 learns that node 0 is the leader for leader_term.
+    host1
+        .step_append_entries(
+            NodeId::new(0),
+            AppendReq {
+                term: Term::new(leader_term),
+                leader: NodeId::new(0),
+                prev_log_index: Index::new(0),
+                prev_log_term: Term::new(0),
+                entries: vec![],
+                leader_commit: Index::new(0),
+            },
+        )
+        .await;
+
+    // Follower node 1 proposes a command; this forwards to node 0 over h2c.
+    let follower_cmd = b"follower-forwarded-command".to_vec();
+    let host1_clone = Arc::clone(&host1);
+    let cmd_for_propose = follower_cmd.clone();
+    let propose_task =
+        tokio::spawn(async move { host1_clone.propose_outcome(cmd_for_propose).await });
+
+    // Wait deterministically for node 0 to append the proposal at index 1.
+    tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            if let Ok(Some(persisted)) = host0.store().load() {
+                if persisted.log.last().map(|e| e.index) == Some(Index::new(1)) {
+                    break;
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await
+    .expect("node 0 must append forwarded proposal at index 1");
+
+    // Leader change: node 2 takes over in term leader_term + 1 and replicates a conflicting entry
+    // that commits at index 1, truncating node 0's uncommitted proposal.
+    let replacing_term = leader_term + 1;
+    let replacing_cmd = b"replacing-superseding-command".to_vec();
+    let supersede_req = AppendReq {
+        term: Term::new(replacing_term),
+        leader: NodeId::new(2),
+        prev_log_index: Index::new(0),
+        prev_log_term: Term::new(0),
+        entries: vec![RaftEntry {
+            term: Term::new(replacing_term),
+            index: Index::new(1),
+            command: replacing_cmd.clone(),
+            kind: EntryKind::Command,
+        }],
+        leader_commit: Index::new(1),
+    };
+
+    // Step the supersede request on both node 0 (truncating the uncommitted proposal)
+    // and follower node 1 (applying the committed replacing entry).
+    let resp0 = host0
+        .step_append_entries(NodeId::new(2), supersede_req.clone())
+        .await;
+    assert!(resp0.success, "node 0 must accept supersede_req");
+
+    let resp1 = host1
+        .step_append_entries(NodeId::new(2), supersede_req)
+        .await;
+    assert!(resp1.success, "node 1 must accept supersede_req");
+
+    // Ensure the follower's state machine has applied index 1.
+    tokio::time::timeout(Duration::from_secs(2), async {
+        while follower_sm.applied_index() < Index::new(1) {
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .expect("follower state machine applies index 1");
+
+    // Await the forwarding proposal outcome.
+    let outcome = tokio::time::timeout(Duration::from_secs(2), propose_task)
+        .await
+        .expect("follower propose task completes within deadline")
+        .expect("propose task did not panic");
+
+    // The leader reports the superseded entry as Ambiguous at index 1, naming the replacing
+    // term. The follower must never receive Completed for it, and must not fall back to a
+    // generic routing timeout.
+    match outcome {
+        ProposalOutcome::Ambiguous { index, reason } => {
+            assert_eq!(index, Some(Index::new(1)));
+            assert!(
+                reason.contains(&format!("superseded by entry of term {replacing_term}")),
+                "{reason}"
+            );
+        }
+        other => panic!("expected superseded Ambiguous, got {other:?}"),
+    }
+
+    // Verify that the command applied at index 1 is indeed the replacing command.
+    assert_eq!(
+        follower_sm.applied_command(Index::new(1)),
+        Some(replacing_cmd),
+        "follower applied the replacing command at index 1"
+    );
 }
