@@ -3,6 +3,9 @@
 //! from and writes it through, and the bearer token source the admin
 //! snapshot transport authenticates with.
 
+mod artifact_verifier;
+mod backup_set;
+mod backup_set_error;
 mod backup_sink;
 mod backup_sink_error;
 #[cfg(feature = "http-client")]
@@ -18,6 +21,11 @@ mod snapshot_source;
 #[cfg(feature = "http-client")]
 mod snapshot_source_error;
 
+pub use artifact_verifier::ArtifactVerifier;
+pub use backup_set::{
+    BackupArtifact, BackupSetV1, MAX_ARTIFACTS, MAX_ARTIFACT_NAME_BYTES, MAX_MANIFEST_BYTES,
+};
+pub use backup_set_error::BackupSetError;
 pub use backup_sink::BackupSink;
 pub use backup_sink_error::BackupSinkError;
 #[cfg(feature = "http-client")]
