@@ -32,7 +32,6 @@ service-auth = { path = "../service-auth", optional = true }
 urlencoding = { workspace = true }
 sha2 = "0.10"
 
-
 [dev-dependencies]
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
