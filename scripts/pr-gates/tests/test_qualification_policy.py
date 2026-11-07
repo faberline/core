@@ -153,14 +153,17 @@ class FullPolicyTests(unittest.TestCase):
             allowed.add(prior.get('ci_handoff_policy',prior)['aw_revision'])
         self.assertIn(CONFIG['ci_handoff_policy']['aw_revision'],allowed)
 
-    def test_real_issue_registry_keeps_unreviewed_requirements_on_hold(self):
+    def test_real_issue_registry_binds_legacy_contracts_to_full_gates(self):
         policy=q.validate(CONFIG)
         self.assertEqual(policy['version'],2)
         self.assertEqual(set(policy['contracts']['73']['applicability']),q.CATEGORIES)
         for number in ('15','45'):
             case=policy['contracts'][number]
-            self.assertTrue(case['unresolved'])
-            self.assertTrue(all(value['status']=='unknown' for value in case['applicability'].values()))
+            self.assertEqual(case['unresolved'],[])
+            for category in q.CATEGORIES:
+                expected=[name for name,check in policy['checks'].items() if check['kind']==category]
+                self.assertEqual(case['applicability'][category]['status'],'required')
+                self.assertEqual(case['applicability'][category]['checks'],expected)
         pull_with_missing=pull();pull_with_missing['body']='Closes #999999'
         self.assertIn('linked issue has no reviewed contract',q.select(CONFIG,pull_with_missing,files())['issues'])
 
