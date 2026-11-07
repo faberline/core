@@ -734,7 +734,7 @@ async fn compacted_superseded_proposal_names_actual_replacing_term() {
     }
 }
 
-/// A test state machine that durably records `(index, command)` for each applied entry.
+/// A test state machine that records `(index, command)` for each applied entry.
 struct RecordingSm {
     applied: Mutex<HashMap<Index, Vec<u8>>>,
     applied_index: AtomicU64,
@@ -829,7 +829,7 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
         FsyncPolicy::Os,
     )
     .unwrap();
-    let cfg1 = HostConfig::default().with_propose_timeout(Duration::from_millis(300));
+    let cfg1 = HostConfig::default().with_propose_timeout(Duration::from_secs(2));
     let follower_sm = RecordingSm::new();
     let host1 = Arc::new(RaftHost::spawn(
         NodeId::new(1),
@@ -948,24 +948,19 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
         .expect("follower propose task completes within deadline")
         .expect("propose task did not panic");
 
-    // Invariant: whenever the follower receives Completed { index }, the command
-    // applied at index on that follower must be the follower's own command.
-    if let ProposalOutcome::Completed { index } = outcome {
-        assert_eq!(
-            follower_sm.applied_command(index),
-            Some(follower_cmd),
-            "follower must never report Completed for another writer's applied command"
-        );
-        panic!(
-            "forwarded proposal must not report Completed for superseded entry at index {index}"
-        );
+    // The leader reports the superseded entry as Ambiguous at index 1, naming the replacing
+    // term. The follower must never receive Completed for it, and must not fall back to a
+    // generic routing timeout.
+    match outcome {
+        ProposalOutcome::Ambiguous { index, reason } => {
+            assert_eq!(index, Some(Index::new(1)));
+            assert!(
+                reason.contains(&format!("superseded by entry of term {replacing_term}")),
+                "{reason}"
+            );
+        }
+        other => panic!("expected superseded Ambiguous, got {other:?}"),
     }
-
-    // The forwarding follower's propose_outcome must NOT be Completed { index: 1 }.
-    assert!(
-        !matches!(outcome, ProposalOutcome::Completed { index } if index == Index::new(1)),
-        "forwarded proposal must not report Completed for superseded index 1, got {outcome:?}"
-    );
 
     // Verify that the command applied at index 1 is indeed the replacing command.
     assert_eq!(

@@ -287,6 +287,12 @@ impl RaftHost {
             ForwardReply::Rejected { reason } => {
                 return ProposalOutcome::RejectedBeforeAdmission { reason };
             }
+            ForwardReply::Ambiguous { index, reason } => {
+                return ProposalOutcome::Ambiguous {
+                    index: index.map(Index::new),
+                    reason,
+                };
+            }
             ForwardReply::Failed { reason } => {
                 return ProposalOutcome::Ambiguous {
                     index: None,
