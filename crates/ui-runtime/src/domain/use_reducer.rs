@@ -11,7 +11,7 @@ use super::update_scheduler::notify_update_scheduled;
 pub struct DispatchHandle<S: Clone + 'static, A: 'static> {
     fiber_id: FiberId,
     idx: usize,
-    reducer: Rc<dyn Fn(&S, A) -> S>,
+    reducer: Reducer<S, A>,
     _marker: std::marker::PhantomData<(S, A)>,
 }
 
@@ -82,3 +82,5 @@ pub fn use_reducer<S: Clone + 'static, A: 'static, F: Fn(&S, A) -> S + 'static>(
         )
     })
 }
+
+type Reducer<S, A> = Rc<dyn Fn(&S, A) -> S>;

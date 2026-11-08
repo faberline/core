@@ -24,15 +24,13 @@ impl HtmlChecker {
         file.walk(|node, _depth| {
             if node.kind() == "element" || node.kind() == "self_closing_tag" {
                 let tag_name = Self::get_tag_name(node, file);
-                if tag_name.eq_ignore_ascii_case("img") {
-                    if !Self::has_attribute(node, "alt", file) {
-                        diagnostics.push(Diagnostic::warning(
-                            node.to_range(),
-                            "HTML001",
-                            DiagnosticCategory::Style,
-                            "Missing 'alt' attribute on <img> — required for accessibility",
-                        ));
-                    }
+                if tag_name.eq_ignore_ascii_case("img") && !Self::has_attribute(node, "alt", file) {
+                    diagnostics.push(Diagnostic::warning(
+                        node.to_range(),
+                        "HTML001",
+                        DiagnosticCategory::Style,
+                        "Missing 'alt' attribute on <img> — required for accessibility",
+                    ));
                 }
             }
             true
@@ -51,15 +49,14 @@ impl HtmlChecker {
         file.walk(|node, _depth| {
             if node.kind() == "element" {
                 let tag_name = Self::get_tag_name(node, file);
-                if tag_name.eq_ignore_ascii_case("html") {
-                    if !Self::has_attribute(node, "lang", file) {
-                        diagnostics.push(Diagnostic::warning(
-                            node.to_range(),
-                            "HTML002",
-                            DiagnosticCategory::Style,
-                            "Missing 'lang' attribute on <html> — required for accessibility",
-                        ));
-                    }
+                if tag_name.eq_ignore_ascii_case("html") && !Self::has_attribute(node, "lang", file)
+                {
+                    diagnostics.push(Diagnostic::warning(
+                        node.to_range(),
+                        "HTML002",
+                        DiagnosticCategory::Style,
+                        "Missing 'lang' attribute on <html> — required for accessibility",
+                    ));
                 }
             }
             true
