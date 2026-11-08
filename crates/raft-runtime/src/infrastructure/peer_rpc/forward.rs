@@ -77,6 +77,14 @@ impl HttpPeerClient {
                     };
                 }
             }
+            if v.get("outcome").and_then(|outcome| outcome.as_str()) == Some("ambiguous") {
+                if let Some(reason) = v.get("error").and_then(|error| error.as_str()) {
+                    return ForwardReply::Ambiguous {
+                        index: v.get("index").and_then(|i| i.as_u64()),
+                        reason: reason.to_string(),
+                    };
+                }
+            }
             return ForwardReply::Failed {
                 reason: format!("raft: leader redirect returned {status}"),
             };
