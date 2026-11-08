@@ -264,7 +264,7 @@ fn strip_bearer(text: &str) -> String {
         }
         out.push_str("Bearer [redacted]");
         if let Some(idx) = segment.find(char::is_whitespace) {
-            out.push_str(&segment[idx..]);
+            out.push_str(&segment[idx..])
         }
     }
     out

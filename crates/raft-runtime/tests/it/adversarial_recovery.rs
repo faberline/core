@@ -916,8 +916,7 @@ impl Engine {
                     });
                 }
                 let quorum = |voters: &[NodeId]| {
-                    witness.iter().filter(|node| voters.contains(node)).count()
-                        >= voters.len() / 2 + 1
+                    witness.iter().filter(|node| voters.contains(node)).count() > voters.len() / 2
                 };
                 let old_ok = quorum(outgoing);
                 let new_ok = quorum(incoming);

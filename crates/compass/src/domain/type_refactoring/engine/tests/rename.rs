@@ -21,7 +21,7 @@ fn test_rename_symbol() {
     // Should rename at least one occurrence
     let edits = result.file_edits.get(&PathBuf::from("test.py"));
     assert!(edits.is_some());
-    assert!(edits.unwrap().len() >= 1);
+    assert!(!edits.unwrap().is_empty());
 }
 
 #[test]

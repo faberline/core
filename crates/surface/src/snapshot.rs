@@ -76,7 +76,7 @@ fn push_snapshot_nodes(
             children,
         } => {
             let semantic_id = props.id().map_or_else(|| node_id.clone(), str::to_string);
-            let name = accessible_name(*tag, props, children);
+            let name = accessible_name(tag, props, children);
             snapshot.nodes.push(SurfaceNode {
                 node_id: node_id.clone(),
                 semantic_id,
@@ -84,7 +84,7 @@ fn push_snapshot_nodes(
                 kind: SurfaceNodeKind::Element,
                 tag: Some((*tag).to_string()),
                 component: None,
-                role: role_for(*tag, props),
+                role: role_for(tag, props),
                 name,
                 text: None,
                 props: SurfaceProps::from(props),

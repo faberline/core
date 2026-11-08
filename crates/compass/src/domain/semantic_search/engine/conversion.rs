@@ -17,10 +17,7 @@ impl SemanticSearchEngine {
 
         for symbol in symbol_table.all_symbols() {
             let kind = Self::convert_symbol_kind(symbol.kind);
-            let ty = symbol
-                .type_info
-                .as_ref()
-                .map(|ti| Self::convert_type_info(ti));
+            let ty = symbol.type_info.as_ref().map(Self::convert_type_info);
 
             locations.push(SymbolLocation {
                 file: file.clone(),
