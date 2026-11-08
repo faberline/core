@@ -28,7 +28,10 @@ pub struct ProcessUsage {
     pub rss_bytes: u64,
 }
 
-/// Sample one process through the portable `ps` surface without unsafe FFI.
+/// Sample one process through the `ps` command without unsafe FFI.
+///
+/// `ps` must be on `PATH`. It is unavailable in distroless images, so use this
+/// from tests, benchmarks and soaks, not from a shipped service binary.
 pub fn process_usage(pid: u32) -> Result<ProcessUsage> {
     let output = Command::new("ps")
         .args(["-o", "rss=", "-o", "time=", "-p", &pid.to_string()])
