@@ -75,7 +75,8 @@ lumen and defer use it in tests.
   multiplications saturate at `u64::MAX`, and a missing path is an error, not
   a zeroed sample.
 - `process_usage` samples through `ps`, so `ps` must be on `PATH` and each
-  sample costs a fork; resident memory has 1 KiB resolution.
+  sample costs a fork; resident memory has 1 KiB resolution. It is therefore
+  unavailable in distroless runtime images; treat it as evidence tooling.
 
 ## Published language
 
