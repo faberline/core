@@ -61,7 +61,7 @@ fn emit_schema(name: &str, node: &RefOr<Schema>, tm: &TypeMap, target: RustTarge
 }
 
 /// True when a component schema is a string enum eligible for a Rust enum definition.
-pub fn is_string_enum(schema: &Schema) -> bool {
+fn is_string_enum(schema: &Schema) -> bool {
     schema.type_names().as_slice() == ["string"]
         && !schema.enum_values.is_empty()
         && schema.enum_values.iter().all(|v| v.is_string())
@@ -118,7 +118,6 @@ fn esc(s: &str) -> String {
 mod tests {
     use super::*;
     use crate::domain::ir::build_type_map;
-    use serde::{Deserialize, Serialize};
 
     fn parse_spec(json: &str) -> Spec {
         serde_json::from_str(json).unwrap()
@@ -298,21 +297,35 @@ mod tests {
 
     #[test]
     fn serde_round_trip_rejects_undeclared_value() {
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-        pub enum Status {
-            #[serde(rename = "active")]
-            Active,
-            #[serde(rename = "inactive")]
-            Inactive,
-        }
-
-        let serialized = serde_json::to_string(&Status::Active).unwrap();
-        assert_eq!(serialized, "\"active\"");
-
-        let deserialized: Status = serde_json::from_str("\"active\"").unwrap();
-        assert_eq!(deserialized, Status::Active);
-
-        let err = serde_json::from_str::<Status>("\"unknown\"");
-        assert!(err.is_err());
+        // The emitted enum has no catch-all variant, so serde rejects any value
+        // that is not declared. Assert on the emitter's own output.
+        let spec = parse_spec(
+            r##"{
+            "openapi": "3.0.0",
+            "info": { "title": "Test", "version": "1.0.0" },
+            "paths": {},
+            "components": {
+                "schemas": {
+                    "Status": {
+                        "type": "string",
+                        "enum": ["active", "inactive"]
+                    }
+                }
+            }
+        }"##,
+        );
+        let tm = build_type_map(&spec);
+        let out = emit(&spec, &tm, RustTarget::Rust2021);
+        let block = out
+            .split("pub enum Status {")
+            .nth(1)
+            .and_then(|rest| rest.split("\n}\n").next())
+            .expect("emitted Status enum");
+        assert_eq!(block.matches("#[serde(rename = ").count(), 2);
+        assert!(block.contains("    #[serde(rename = \"active\")]\n    Active,\n"));
+        assert!(block.ends_with("    #[serde(rename = \"inactive\")]\n    Inactive,"));
+        assert!(!block.contains("serde(other"));
+        assert!(!block.contains("untagged"));
+        assert!(!block.contains("(String)"));
     }
 }
