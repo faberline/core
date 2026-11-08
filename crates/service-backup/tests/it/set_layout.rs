@@ -3,6 +3,16 @@ use std::time::{Duration, UNIX_EPOCH};
 
 use service_backup::{plan_retention, SetInventory, SetKeyError, SetKeyLayout, SetState};
 
+/// Complete set `set-<n>` created `n * 10` seconds after `t0`.
+fn complete_set(n: u64, t0: std::time::SystemTime) -> SetInventory {
+    let at = t0 + Duration::from_secs(n * 10);
+    SetInventory {
+        set_id: format!("set-{n}"),
+        state: SetState::Complete { created_at: at },
+        newest_object_at: at,
+    }
+}
+
 #[test]
 fn key_shapes_with_and_without_prefix() {
     let layout_with = SetKeyLayout::new("backups/cluster1").unwrap();
@@ -211,74 +221,23 @@ fn collision_cross_product() {
 #[test]
 fn retention_keeps_newest_n() {
     let t0 = UNIX_EPOCH + Duration::from_secs(1_000_000);
-    let inventory = vec![
-        SetInventory {
-            set_id: "set-1".to_string(),
-            state: SetState::Complete {
-                created_at: t0 + Duration::from_secs(10),
-            },
-            newest_object_at: t0 + Duration::from_secs(10),
-        },
-        SetInventory {
-            set_id: "set-2".to_string(),
-            state: SetState::Complete {
-                created_at: t0 + Duration::from_secs(20),
-            },
-            newest_object_at: t0 + Duration::from_secs(20),
-        },
-        SetInventory {
-            set_id: "set-3".to_string(),
-            state: SetState::Complete {
-                created_at: t0 + Duration::from_secs(30),
-            },
-            newest_object_at: t0 + Duration::from_secs(30),
-        },
-        SetInventory {
-            set_id: "set-4".to_string(),
-            state: SetState::Complete {
-                created_at: t0 + Duration::from_secs(40),
-            },
-            newest_object_at: t0 + Duration::from_secs(40),
-        },
-        SetInventory {
-            set_id: "set-5".to_string(),
-            state: SetState::Complete {
-                created_at: t0 + Duration::from_secs(50),
-            },
-            newest_object_at: t0 + Duration::from_secs(50),
-        },
-    ];
+    let inventory: Vec<SetInventory> = (1..=5).map(|n| complete_set(n, t0)).collect();
 
     let plan = plan_retention(
         &inventory,
-        3,
+        2,
         t0 + Duration::from_secs(100),
         Duration::from_secs(3600),
     );
-    assert_eq!(plan.keep, vec!["set-3", "set-4", "set-5"]);
-    assert_eq!(plan.delete_complete, vec!["set-1", "set-2"]);
+    assert_eq!(plan.keep, vec!["set-4", "set-5"]);
+    assert_eq!(plan.delete_complete, vec!["set-1", "set-2", "set-3"]);
     assert!(plan.delete_orphans.is_empty());
 }
 
 #[test]
 fn keep_latest_zero_still_keeps_one() {
     let t0 = UNIX_EPOCH + Duration::from_secs(1_000_000);
-    let inventory = vec![
-        SetInventory {
-            set_id: "set-1".to_string(),
-            state: SetState::Complete {
-                created_at: t0 + Duration::from_secs(10),
-            },
-            newest_object_at: t0 + Duration::from_secs(10),
-        },
-        SetInventory {
-            set_id: "set-2".to_string(),
-            state: SetState::Complete {
-                created_at: t0 + Duration::from_secs(20),
-            },
-            newest_object_at: t0 + Duration::from_secs(20),
-        },
-    ];
+    let inventory: Vec<SetInventory> = (1..=5).map(|n| complete_set(n, t0)).collect();
 
     let plan = plan_retention(
         &inventory,
@@ -286,8 +245,11 @@ fn keep_latest_zero_still_keeps_one() {
         t0 + Duration::from_secs(100),
         Duration::from_secs(3600),
     );
-    assert_eq!(plan.keep, vec!["set-2"]);
-    assert_eq!(plan.delete_complete, vec!["set-1"]);
+    assert_eq!(plan.keep, vec!["set-5"]);
+    assert_eq!(
+        plan.delete_complete,
+        vec!["set-1", "set-2", "set-3", "set-4"]
+    );
     assert!(plan.delete_orphans.is_empty());
 }
 
@@ -314,7 +276,7 @@ fn aged_partial_set_is_orphan() {
     let inventory = vec![SetInventory {
         set_id: "partial-aged".to_string(),
         state: SetState::Partial,
-        newest_object_at: now - Duration::from_secs(7200), // 2 hours old
+        newest_object_at: now - grace, // exactly the grace period
     }];
 
     let plan = plan_retention(&inventory, 1, now, grace);
@@ -377,12 +339,16 @@ fn input_order_does_not_change_plan() {
         item2.clone(),
     ];
 
-    let plan1 = plan_retention(&order1, 2, now, grace);
-    let plan2 = plan_retention(&order2, 2, now, grace);
-    let plan3 = plan_retention(&order3, 2, now, grace);
+    let plan1 = plan_retention(&order1, 1, now, grace);
+    let plan2 = plan_retention(&order2, 1, now, grace);
+    let plan3 = plan_retention(&order3, 1, now, grace);
 
     assert_eq!(plan1, plan2);
     assert_eq!(plan1, plan3);
+    // Ties on created_at break by set_id, so complete-c is the newest.
+    assert_eq!(plan1.keep, vec!["complete-c"]);
+    assert_eq!(plan1.delete_complete, vec!["complete-a", "complete-b"]);
+    assert_eq!(plan1.delete_orphans, vec!["partial-aged"]);
 }
 
 #[test]

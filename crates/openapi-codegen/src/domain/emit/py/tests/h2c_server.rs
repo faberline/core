@@ -180,6 +180,9 @@ fn accept_h2c(listener: TcpListener, label: &str) -> TcpStream {
         }
     };
     stream.set_nonblocking(false).unwrap();
+    // Frame headers and bodies use separate writes. Do not let Nagle plus
+    // delayed ACKs add a fixed wait to every local request in the perf guard.
+    stream.set_nodelay(true).unwrap();
     stream
         .set_read_timeout(Some(Duration::from_secs(5)))
         .unwrap();

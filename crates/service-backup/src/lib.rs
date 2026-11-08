@@ -27,9 +27,11 @@ pub use app::run_admin_snapshot_backup;
 pub use app::sink_from_destination;
 pub use application::{run_backup_once, BackupObject, BackupRunResult};
 pub use domain::{
-    plan_retention, BackupDestination, BackupPolicy, BackupSink, BackupSinkError, DestinationError,
-    PolicyError, RetentionPlan, RetentionPolicy, ScheduledBackupPolicy, SchemeInfo, SetInventory,
-    SetKeyError, SetKeyLayout, SetState, SUPPORTED_SCHEMES,
+    plan_retention, ArtifactVerifier, BackupArtifact, BackupDestination, BackupPolicy,
+    BackupSetError, BackupSetV1, BackupSink, BackupSinkError, DestinationError, PolicyError,
+    RetentionPlan, RetentionPolicy, ScheduledBackupPolicy, SchemeInfo, SetInventory, SetKeyError,
+    SetKeyLayout, SetState, MAX_ARTIFACTS, MAX_ARTIFACT_NAME_BYTES, MAX_MANIFEST_BYTES,
+    SUPPORTED_SCHEMES,
 };
 pub use infrastructure::{fetch_backup_object, GcsSink, LocalFsSink, UnsupportedCloudSink};
 #[cfg(feature = "http-client")]
