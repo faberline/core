@@ -4,6 +4,7 @@
 use serde_json::{json, Value};
 
 use super::common::{apply_termination_budget, apply_termination_contract};
+use super::stateful_instance::StatefulInstanceError;
 use super::{dedicated_node_affinity, requested_resources, RenderCtx, WorkloadVolumeClaim};
 use crate::domain::lifecycle::TerminationBudget;
 
@@ -223,17 +224,27 @@ impl ServiceStatefulSet<'_> {
 /// workloads. It preserves the exact raft-runtime env contract while letting a
 /// service supply its own probes, security hardening, storage path, extra
 /// volumes, and rollout details.
-pub fn service_statefulset(p: ServiceStatefulSet) -> Value {
+///
+/// # Errors
+///
+/// Returns [`StatefulInstanceError::ZeroReplicas`] when `shard_count` or
+/// `replicas_per_shard` is 0.
+pub fn service_statefulset(p: ServiceStatefulSet) -> Result<Value, StatefulInstanceError> {
     crate::render::stateful_instance::render_compat_service_statefulset(p)
 }
 
 /// Render a StatefulSet with an explicit Kubernetes service-link setting.
 /// This additive entry point keeps the historical struct and renderer
 /// source-compatible.
+///
+/// # Errors
+///
+/// Returns [`StatefulInstanceError::ZeroReplicas`] when `shard_count` or
+/// `replicas_per_shard` is 0.
 pub fn service_statefulset_with_service_links(
     p: ServiceStatefulSet,
     enable_service_links: bool,
-) -> Value {
+) -> Result<Value, StatefulInstanceError> {
     super::stateful_instance::render_compat_service_statefulset_with_links(p, enable_service_links)
 }
 
@@ -267,7 +278,12 @@ pub struct ShardedStatefulSet<'a> {
 /// (`POD_NAME`/`POD_NAMESPACE`/`SHARD_COUNT`/`REPLICAS_PER_SHARD`/`VOTER_COUNT`)
 /// together with `<headless_env_key>`, which `raft_runtime::ClusterTopology::from_env`
 /// reads to derive node id / membership / peers.
-pub fn sharded_statefulset(p: ShardedStatefulSet) -> Value {
+///
+/// # Errors
+///
+/// Returns [`StatefulInstanceError::ZeroReplicas`] when `shard_count` or
+/// `replicas_per_shard` is 0.
+pub fn sharded_statefulset(p: ShardedStatefulSet) -> Result<Value, StatefulInstanceError> {
     let volume_claim = p.volume_claim.map(|template| {
         let name = template["metadata"]["name"]
             .as_str()
