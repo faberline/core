@@ -935,7 +935,8 @@ fn workload_profiles_measurements() {
     ss1_template.liveness_probe = Some(json!({"initialDelaySeconds": 10, "failureThreshold": 60}));
     ss1_template.readiness_probe = Some(json!({"initialDelaySeconds": 10, "failureThreshold": 60}));
     ss1_template.startup_probe = Some(json!({"initialDelaySeconds": 10, "failureThreshold": 60}));
-    let ss1 = service_statefulset(ss1_template.with_termination_budget(&budget, 8443));
+    let ss1 = service_statefulset(ss1_template.with_termination_budget(&budget, 8443))
+        .expect("valid statefulset");
     let c1 = &ss1["spec"]["template"]["spec"]["containers"][0];
 
     println!(
@@ -980,7 +981,8 @@ fn workload_profiles_measurements() {
     // Row 2: ServiceStatefulSet whose own termination_grace_period_seconds is Some(30)
     let mut ss2_template = test_statefulset(&cx);
     ss2_template.termination_grace_period_seconds = Some(30);
-    let ss2 = service_statefulset(ss2_template.with_termination_budget(&budget, 8443));
+    let ss2 = service_statefulset(ss2_template.with_termination_budget(&budget, 8443))
+        .expect("valid statefulset");
     let pod_spec2 = &ss2["spec"]["template"]["spec"];
     let c2 = &pod_spec2["containers"][0];
 
@@ -1004,7 +1006,8 @@ fn workload_profiles_measurements() {
     assert_eq!(deadline_entry2["value"], "45");
 
     // Row 3: ServiceStatefulSet cost 8 declared in budget
-    let ss3 = service_statefulset(test_statefulset(&cx).with_termination_budget(&budget, 8443));
+    let ss3 = service_statefulset(test_statefulset(&cx).with_termination_budget(&budget, 8443))
+        .expect("valid statefulset");
     let c3 = &ss3["spec"]["template"]["spec"]["containers"][0];
 
     println!(
@@ -1036,7 +1039,8 @@ fn workload_profiles_measurements() {
 
     let ss4 = service_statefulset(
         test_statefulset(&cx).with_termination_budget(&budget_no_prestop, 8443),
-    );
+    )
+    .expect("valid statefulset");
     let ss4_str = serde_json::to_string(&ss4).unwrap();
     let c4 = &ss4["spec"]["template"]["spec"]["containers"][0];
 
@@ -1047,7 +1051,8 @@ fn workload_profiles_measurements() {
     assert_eq!(c4["livenessProbe"]["httpGet"]["port"], 8443);
 
     // Row 5: ServiceStatefulSet and ServiceDeployment built from same budget & port 8443
-    let ss5 = service_statefulset(test_statefulset(&cx).with_termination_budget(&budget, 8443));
+    let ss5 = service_statefulset(test_statefulset(&cx).with_termination_budget(&budget, 8443))
+        .expect("valid statefulset");
     let dep5 = service_deployment(ServiceDeployment {
         name: "test-deploy",
         replicas: 3,
@@ -1113,7 +1118,8 @@ fn workload_profiles_measurements() {
         json!({ "name": "SERVICE_RUNTIME_DEADLINE_SECONDS", "value": "999" }),
         json!({ "name": "LUMEN_WAL", "value": "auto" }),
     ];
-    let ss7 = service_statefulset(ss7_template.with_termination_budget(&budget, 8443));
+    let ss7 = service_statefulset(ss7_template.with_termination_budget(&budget, 8443))
+        .expect("valid statefulset");
     let c7 = &ss7["spec"]["template"]["spec"]["containers"][0];
     let env7 = c7["env"].as_array().unwrap();
 
@@ -1216,7 +1222,8 @@ fn termination_contract_split_measurements() {
     ss2_template.liveness_probe = Some(fixture_liveness.clone());
     ss2_template.startup_probe = Some(fixture_startup.clone());
 
-    let ss2 = service_statefulset(ss2_template.with_termination_contract(&budget_b, 8443));
+    let ss2 = service_statefulset(ss2_template.with_termination_contract(&budget_b, 8443))
+        .expect("valid statefulset");
     let c2 = &ss2["spec"]["template"]["spec"]["containers"][0];
     let spec2 = &ss2["spec"]["template"]["spec"];
 
@@ -1265,7 +1272,8 @@ fn termination_contract_split_measurements() {
     let c4_dep = &dep4["spec"]["template"]["spec"]["containers"][0];
     let spec4_dep = &dep4["spec"]["template"]["spec"];
 
-    let ss4 = service_statefulset(test_statefulset(&cx).with_termination_contract(&budget_b, 8443));
+    let ss4 = service_statefulset(test_statefulset(&cx).with_termination_contract(&budget_b, 8443))
+        .expect("valid statefulset");
     let c4_ss = &ss4["spec"]["template"]["spec"]["containers"][0];
     let spec4_ss = &ss4["spec"]["template"]["spec"];
 

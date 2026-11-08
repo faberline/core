@@ -42,11 +42,8 @@ fn parse_enum_def(name: &str, schema: &Value, values: &[Value]) -> EnumDef {
             let (variant_name, value) = match v {
                 Value::String(s) => (to_pascal_case(s), Some(EnumValue::String(s.clone()))),
                 Value::Number(n) => {
-                    if let Some(i) = n.as_i64() {
-                        (format!("Value{}", i), Some(EnumValue::Int(i)))
-                    } else {
-                        return None;
-                    }
+                    let i = n.as_i64()?;
+                    (format!("Value{}", i), Some(EnumValue::Int(i)))
                 }
                 _ => return None,
             };

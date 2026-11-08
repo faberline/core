@@ -65,7 +65,11 @@ fn tls_reload_keeps_the_last_valid_generation_when_a_candidate_is_rejected() {
     source.set(MaterialPem::new("-----BEGIN CERT", "", ca.pem()));
     tls.reload().expect_err("garbage must not activate");
 
-    assert_eq!(tls.generation(), 1, "a refusal must not advance the generation");
+    assert_eq!(
+        tls.generation(),
+        1,
+        "a refusal must not advance the generation"
+    );
     assert_eq!(tls.fingerprint().as_deref(), Some(first.as_str()));
     assert!(
         tls.server_config().is_some(),
@@ -295,7 +299,8 @@ fn tls_reload_accepts_a_leaf_and_bundle_that_move_to_a_new_authority_together() 
     // without a rolling restart, which is the outage this whole issue removes.
     let successor = authority("axiom-peer-ca-successor");
     source.set(good(&successor));
-    tls.reload().expect("a coherent trust-domain migration activates");
+    tls.reload()
+        .expect("a coherent trust-domain migration activates");
     assert_eq!(tls.generation(), 2);
 }
 
@@ -314,7 +319,9 @@ fn tls_reload_never_activates_material_for_another_workload() {
         .issue(&ca);
     source.set(MaterialPem::new(theirs.cert_pem, theirs.key_pem, ca.pem()));
 
-    let rejection = tls.reload().expect_err("another member's leaf must not activate");
+    let rejection = tls
+        .reload()
+        .expect_err("another member's leaf must not activate");
     assert_eq!(rejection.reason.as_str(), "wrong_identity");
     assert_eq!(tls.fingerprint().unwrap(), ours);
 }

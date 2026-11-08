@@ -31,8 +31,15 @@ use crate::type_inference::{DeepTypeInferencer, ImportInfo};
 /// Top-level orchestrator for cross-file type propagation.
 ///
 /// Usage:
-/// ```ignore
-/// let result = PropagationPipeline::run(&files, &mut inferencer, &file_import_graph);
+/// ```
+/// use compass::graph::ImportGraph;
+/// use compass::type_inference::{DeepTypeInferencer, PropagationPipeline, PropagationRequest};
+///
+/// let request = PropagationRequest { files: vec![], changed_files: vec![] };
+/// let mut inferencer = DeepTypeInferencer::new();
+/// let graph = ImportGraph::new();
+/// let result = PropagationPipeline::run(&request, &mut inferencer, &graph);
+/// assert_eq!(result.stats.files_analyzed, 0);
 /// ```
 pub struct PropagationPipeline;
 
@@ -297,14 +304,17 @@ impl PropagationPipeline {
 
     /// Resolve stub: if `{stem}.pyi` exists in the inferencer's file analysis,
     /// return the stub path; otherwise return the original source.
-    fn resolve_stub_or_source(source: &PathBuf, inferencer: &DeepTypeInferencer) -> PathBuf {
-        if source.extension().map_or(false, |e| e == "py") {
+    fn resolve_stub_or_source(
+        source: &std::path::Path,
+        inferencer: &DeepTypeInferencer,
+    ) -> PathBuf {
+        if source.extension().is_some_and(|e| e == "py") {
             let stub = source.with_extension("pyi");
             if inferencer.file_analysis(&stub).is_some() {
                 return stub;
             }
         }
-        source.clone()
+        source.to_path_buf()
     }
 
     /// Maximum recursion depth for transitive importer collection.
