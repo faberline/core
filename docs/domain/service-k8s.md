@@ -6,9 +6,11 @@ watches the resource, holds a leader lease, applies children with server-side
 apply, prunes unwanted ones and projects status conditions. It also renders
 workloads and RBAC roles, validates termination budgets, plans stateful
 capacity and PVC growth, and runs a certificate lifecycle. It never defines a
-service's schema, access policy, topology or health meaning. Eight downstream
-apps build their operators on it: defer, keep, loom, lumen, pgpool, relay, sift
-and tape.
+service's schema, its operation-to-verb access mapping, or domain health
+meaning. Topology, scaling, membership and rollout policy are moving into the
+kit under [ADR 0002](../adr/0002-core-owned-service-operations.md); until then
+each service supplies them. Eight downstream apps build their operators on it:
+defer, keep, loom, lumen, pgpool, relay, sift and tape.
 
 **Form:** layered · **Depends on:** cli-std, metrics-prometheus (both only with the `controller` feature) · **Crate:** [`crates/service-k8s`](../../crates/service-k8s)
 
