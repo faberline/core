@@ -88,11 +88,7 @@ impl CfgBuilder<'_> {
         // Connect try body end to finally or exit (normal path)
         if let Some(finally) = finally_block {
             if self.cfg.get_successors(try_body_end).is_empty()
-                || !self
-                    .cfg
-                    .get_successors(try_body_end)
-                    .iter()
-                    .any(|id| *id == finally)
+                || !self.cfg.get_successors(try_body_end).contains(&finally)
             {
                 self.cfg
                     .add_edge(try_body_end, finally, EdgeKind::Sequential);

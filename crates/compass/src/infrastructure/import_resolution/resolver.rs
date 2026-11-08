@@ -194,9 +194,9 @@ impl ImportResolver {
                             },
                         );
                     }
-                    Some("py") => {
+                    Some("py")
                         // Only add .py if no .pyi exists
-                        if !self.module_index.contains_key(&module_path) {
+                        if !self.module_index.contains_key(&module_path) => {
                             self.module_index.insert(
                                 module_path.clone(),
                                 ModuleIndexEntry {
@@ -207,7 +207,6 @@ impl ImportResolver {
                                 },
                             );
                         }
-                    }
                     _ => {}
                 }
             }
