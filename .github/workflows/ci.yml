@@ -280,7 +280,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --silent --show-error -o "$RUNNER_TEMP/kind" https://github.com/kubernetes-sigs/kind/releases/download/v0.29.0/kind-linux-amd64
+          curl --fail --location --silent --show-error --retry 5 --retry-connrefused -o "$RUNNER_TEMP/kind" https://github.com/kubernetes-sigs/kind/releases/download/v0.29.0/kind-linux-amd64
           echo "c72eda46430f065fb45c5f70e7c957cc9209402ef309294821978677c8fb3284  $RUNNER_TEMP/kind" | sha256sum --check --strict
           chmod +x "$RUNNER_TEMP/kind"
           "$RUNNER_TEMP/kind" create cluster --name core-contracts --wait 120s
