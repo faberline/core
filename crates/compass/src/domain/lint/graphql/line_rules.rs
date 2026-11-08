@@ -70,8 +70,8 @@ impl GraphqlChecker {
                 "union ",
                 "scalar ",
             ] {
-                if t.starts_with(kw) {
-                    let name = t[kw.len()..].split_whitespace().next().unwrap_or("");
+                if let Some(rest) = t.strip_prefix(*kw) {
+                    let name = rest.split_whitespace().next().unwrap_or("");
                     if !name.is_empty() {
                         defined.insert(name.to_string());
                     }
@@ -87,7 +87,7 @@ impl GraphqlChecker {
                         .trim_end_matches('!')
                         .trim();
                     if !tp.is_empty()
-                        && tp.chars().next().map_or(false, |c| c.is_uppercase())
+                        && tp.chars().next().is_some_and(|c| c.is_uppercase())
                         && !tp.contains('(')
                     {
                         refs.push((tp.to_string(), i as u32));
@@ -165,8 +165,8 @@ impl GraphqlChecker {
         for (i, line) in lines.iter().enumerate() {
             let t = line.trim();
             for kw in &["type ", "input ", "interface "] {
-                if t.starts_with(kw) {
-                    let name = t[kw.len()..].split_whitespace().next().unwrap_or("");
+                if let Some(rest) = t.strip_prefix(*kw) {
+                    let name = rest.split_whitespace().next().unwrap_or("");
                     if matches!(name, "Query" | "Mutation" | "Subscription") {
                         continue;
                     }
@@ -267,11 +267,9 @@ impl GraphqlChecker {
                     } else {
                         depth_fields[depth].clear();
                     }
-                } else if ch == '}' {
-                    if depth > 0 {
-                        depth_fields[depth].clear();
-                        depth -= 1;
-                    }
+                } else if ch == '}' && depth > 0 {
+                    depth_fields[depth].clear();
+                    depth -= 1;
                 }
             }
             if !t.contains('{')
@@ -284,7 +282,7 @@ impl GraphqlChecker {
                     .next()
                     .unwrap_or("");
                 if !field.is_empty()
-                    && field.chars().next().map_or(false, |c| c.is_alphabetic())
+                    && field.chars().next().is_some_and(|c| c.is_alphabetic())
                     && depth < depth_fields.len()
                 {
                     if let Some(&prev) = depth_fields[depth].get(field) {

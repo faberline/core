@@ -100,11 +100,7 @@ fn measurement_1_hard_state_size_bounded_and_independent_of_snapshot() {
         len2 <= 4096,
         "store2 hard-state file length {len2} exceeds 4096"
     );
-    let diff = if len1 > len2 {
-        len1 - len2
-    } else {
-        len2 - len1
-    };
+    let diff = len1.abs_diff(len2);
     assert!(
         diff < 512,
         "hard-state lengths differ by {diff} bytes (expected < 512)"

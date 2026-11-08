@@ -88,9 +88,9 @@ fn rustls_pemfile_certs(pem: &str) -> Vec<rustls::pki_types::CertificateDer<'sta
     for block in pem.split("-----BEGIN CERTIFICATE-----").skip(1) {
         let body = block.split("-----END CERTIFICATE-----").next().unwrap();
         let base64: String = body.chars().filter(|c| !c.is_whitespace()).collect();
-        out.push(rustls::pki_types::CertificateDer::from(
-            base64_decode(&base64),
-        ));
+        out.push(rustls::pki_types::CertificateDer::from(base64_decode(
+            &base64,
+        )));
     }
     out
 }
@@ -237,7 +237,9 @@ async fn tls_reload_swaps_the_serving_leaf_without_rebinding_the_listener() {
     let f = fixture(&ca).await;
     let client = client_config(&ca);
 
-    let (first_leaf, body) = request(f.addr, client.clone()).await.expect("first request");
+    let (first_leaf, body) = request(f.addr, client.clone())
+        .await
+        .expect("first request");
     assert_eq!(body, "ok");
     assert_eq!(first_leaf, f.tls.fingerprint().unwrap());
 
@@ -247,7 +249,9 @@ async fn tls_reload_swaps_the_serving_leaf_without_rebinding_the_listener() {
 
     // Same address, no rebind, no restart — and the next handshake gets the new
     // certificate. That is the entire feature.
-    let (second_leaf, body) = request(f.addr, client).await.expect("post-rotation request");
+    let (second_leaf, body) = request(f.addr, client)
+        .await
+        .expect("post-rotation request");
     assert_eq!(body, "ok");
     assert_ne!(second_leaf, first_leaf);
     assert_eq!(second_leaf, f.tls.fingerprint().unwrap());
@@ -393,11 +397,7 @@ async fn tls_reload_never_answers_the_tls_port_in_cleartext() {
         .await
         .unwrap();
     let mut response = Vec::new();
-    let _ = tokio::time::timeout(
-        Duration::from_secs(2),
-        plain.read_to_end(&mut response),
-    )
-    .await;
+    let _ = tokio::time::timeout(Duration::from_secs(2), plain.read_to_end(&mut response)).await;
     assert!(
         !String::from_utf8_lossy(&response).contains("200"),
         "cleartext must not be served on the TLS listener: {}",

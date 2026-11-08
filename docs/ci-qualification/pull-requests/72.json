@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "queried_at": "2026-10-27T09:36:04Z",
+  "pr": 72,
+  "url": "https://github.com/faberline/core/pull/72",
+  "title": "cli-std: <cli> llm content rots \u2014 derive fact sections from in-binary sources of truth and gate the rest (llms.txt becomes generated)",
+  "state": "open",
+  "head_sha": "95496c12f2f9f9ea7f70340bf7742257b6d20922",
+  "base_sha": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "branch": "issue/9",
+  "source": "GitHub connector get_pr_info and paginated list_pr_changed_filenames",
+  "source_issue_contracts": [
+    {
+      "number": 9,
+      "url": "https://github.com/faberline/core/issues/9",
+      "title": "cli-std: <cli> llm content rots \u2014 derive fact sections from in-binary sources of truth and gate the rest (llms.txt becomes generated)",
+      "body_sha256": "09f7452853aa46fa8de5871a3cb1d25b4d55ab0891044fffab9e26a34de246a5",
+      "updated_at": "2026-10-24T14:59:33Z",
+      "source_commands": [],
+      "source_command_status": "not executed by this inventory; see recorded CI observations where present. Legacy libs/ or scripts/meta paths may not exist in this split repo and need reviewed mapping.",
+      "contract_note": "Source issue remains authoritative; this inventory does not narrow acceptance or turn a partial PR into completion."
+    }
+  ],
+  "changed_paths": [
+    "crates/cli-std/CONTRIBUTING.md",
+    "crates/cli-std/src/api/llm.rs",
+    "crates/cli-std/src/application/llm.rs",
+    "crates/cli-std/src/application/llm/tests.rs"
+  ],
+  "changed_crates": [
+    "cli-std"
+  ],
+  "reverse_dependency_closure_at_baseline": [
+    "cli-std",
+    "openapi-codegen",
+    "raft-runtime",
+    "server-http",
+    "service-auth",
+    "service-backup",
+    "service-http",
+    "service-k8s",
+    "service-mcp",
+    "transport-h2c"
+  ],
+  "unknown_or_global_paths": [],
+  "conservative_selection": [
+    "cli-std",
+    "openapi-codegen",
+    "raft-runtime",
+    "server-http",
+    "service-auth",
+    "service-backup",
+    "service-http",
+    "service-k8s",
+    "service-mcp",
+    "transport-h2c"
+  ],
+  "selection_reason": "changed crates plus transitive normal/dev/build local reverse dependencies, including optional dependencies conservatively",
+  "inventory_sha": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "inventory_limit": "Baseline manifests are not exact-head feature/dependency proof. Head manifest changes, deleted/renamed paths or unresolvable graphs require fresh metadata and conservative all-workspace selection.",
+  "obligations": [
+    {
+      "kind": "unit",
+      "command": "cargo test --locked -p cli-std --lib",
+      "oracle": "Every discovered library unit target runs; record named test counts/failures; include documented feature profiles. No success recorded by this snapshot.",
+      "status": "pending_online"
+    },
+    {
+      "kind": "static",
+      "command": "cargo clippy --locked -p cli-std --all-targets -- -D warnings",
+      "oracle": "Exit zero without suppressing warnings, on exact PR HEAD and required features; includes dependencies.",
+      "status": "pending_online"
+    }
+  ],
+  "performance": {
+    "command": null,
+    "oracle": null,
+    "measurement": null,
+    "status": "blocked_no_reviewed_command_or_baseline",
+    "followup_issue": 73,
+    "requirement": "Map measured affected-performance command, baseline, workload/environment, thresholds and immutable output identity; no measurement or waiver has been verified."
+  },
+  "functional_qualification": {
+    "status": "blocked_no_approved_affected_gate_mapping",
+    "followup_issues": [
+      9
+    ],
+    "requirement": "Existing integration targets are candidate commands, not proof the whole original acceptance is covered. Compare every source issue criterion, downstream consumer/cluster scenarios and negative controls; map missing rows to the same original issue."
+  },
+  "evidence_identity_required": [
+    "repository",
+    "exact head SHA",
+    "base SHA",
+    "workflow path and immutable workflow/policy revision",
+    "job name/matrix",
+    "run id and attempt",
+    "command/feature profile",
+    "test roster and counts",
+    "oracle/threshold revision",
+    "immutable result artifact digest",
+    "applicability approval reference"
+  ],
+  "verified_online_evidence": [],
+  "qualification": "nonqualified; inventory only; no online execution or independent review performed by this task",
+  "observations": [
+    {
+      "url": "https://github.com/faberline/core/actions/runs/40423896447/job/121924770170",
+      "status": "pending",
+      "scope": "historical handoff reconciled all 22 heads; success of handoff did not qualify product gates",
+      "observed_by": "parent tracking session; reread logs 2026-10-27"
+    }
+  ]
+}
