@@ -241,7 +241,7 @@ fn typed_plan_renders_identity_separated_backup_and_restore_service_accounts() {
         backup_sa.workload_identity(),
         Some("backup-agent@demo-project.iam.gserviceaccount.com")
     );
-    assert_eq!(backup_sa.automount_service_account_token(), false);
+    assert!(!backup_sa.automount_service_account_token());
 
     let restore_sa = ServiceAccountIdentityPlan::new("sample-restore-sa", "restore")
         .with_workload_identity("restore-agent@demo-project.iam.gserviceaccount.com");
@@ -251,7 +251,7 @@ fn typed_plan_renders_identity_separated_backup_and_restore_service_accounts() {
         restore_sa.workload_identity(),
         Some("restore-agent@demo-project.iam.gserviceaccount.com")
     );
-    assert_eq!(restore_sa.automount_service_account_token(), false);
+    assert!(!restore_sa.automount_service_account_token());
 
     let backup_role = RolePlan::new("sample-backup-role", "backup").with_rule(RbacRulePlan::new(
         vec!["".into()],
@@ -409,8 +409,7 @@ fn typed_plan_renders_pod_with_projected_service_account_token_and_no_secret_vol
 }
 
 #[test]
-fn service_account_identity_without_annotations_omits_annotations_key_and_equals_service_account_plan(
-) {
+fn identity_without_annotations_equals_service_account_plan() {
     let cx = context();
 
     let mut identity_plan = WorkloadPlan::new(&cx);
