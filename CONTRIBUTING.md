@@ -19,7 +19,7 @@ agent can navigate cheaply and act on correctly:
 
 ## Contents
 
-- [Shared delivery entrypoints](#shared-delivery-entrypoints)
+- [Shared delivery entrypoint](#shared-delivery-entrypoint)
 - [Authoring principle: right-sized files, semantic paths, explicit names](#authoring-principle-right-sized-files-semantic-paths-explicit-names)
   - [The three rules](#the-three-rules)
   - [Balanced splitting](#balanced-splitting)
@@ -65,23 +65,18 @@ agent can navigate cheaply and act on correctly:
   - [Debug builds](#debug-builds)
   - [Release builds](#release-builds)
 
-## Shared delivery entrypoints
+## Shared delivery entrypoint
 
-Use the shared Faberline `issue-plan`, `issue-work`, and `issue-review` skills
-from [AW](https://github.com/faberline/aw/tree/main/plugins/faberline/skills).
-Each skill runs one pass. Its `-loop` companion adds a user-requested interval.
-Installing or updating a skill does not start a loop.
+Delivery runs through one shared skill, `aw-worker` (`/faberline:aw-worker`),
+from [faberline/aw at a pinned commit](https://github.com/faberline/aw/tree/6807ca7eb10a8d95eb13295e417ba36c2721c75e/plugins/faberline/skills/aw-worker).
 
-Planning writes the issue contract. Work submits one issue's PR and runs
-affected unit/static checks. CI owns functional, integration and performance
-validation and sets `done` only after every required current-input gate passes.
-The issue stays open for independent local review. Failed required CI reports
-its evidence and returns the issue to `todo`. Review runs no tests and does
-not merge, close the issue, or change lifecycle labels.
+One agent does triage, spec, tdd and review in stages, selected by the issue's
+`stage:` labels. `aw` opens and merges the pull request. CI alone owns done: an
+issue is done only when the required CI gates pass on its current inputs.
+Review runs no tests.
 
-Keep all existing acceptance rules and test gates. The authoring conventions
-below still apply; they do not require the retired tracker-writing AW engine.
-The README and project-document validators remain shared tools in AW.
+The authoring conventions below still apply. The `aw-worker` spec stage writes
+each issue contract, and its review stage reads the authored sections.
 
 ## Authoring principle: right-sized files, semantic paths, explicit names
 
@@ -294,9 +289,9 @@ anti-boilerplate check rejected only seven literals (`(fill)`,
 `(replace-this)`, `tbd`, `todo`, `maybe`, `unclear`, `uncertain`). A title echo
 was accepted by construction.
 
-That generator is deleted with the crate that held it. The shared planning
-skill now writes each bounded issue contract, and independent review checks
-the authored requirements. The numbers above still describe the historical
+That generator is deleted with the crate that held it. The `aw-worker` spec stage
+now writes each bounded issue contract, and its review stage checks the authored
+requirements. The numbers above still describe the historical
 tracker population; those bodies have not been rewritten. No retired workflow
 CLI is an active authoring entrypoint.
 
@@ -310,7 +305,7 @@ GHAN is the **authored** layer. It states the requirement and refusal
 conditions. CI and independent review supply measured evidence for that
 contract; authored prose alone does not prove completion.
 
-The shared issue workflow uses the linked issue, the PR's exact head and base,
+The `aw-worker` workflow uses the linked issue, the PR's exact head and base,
 and the configured CI workflow/run/attempt evidence. Read the latest planned
 spec comment when present, otherwise the issue body. Keep the declared gate
 commands and their applicable checks. Missing, skipped, cancelled or stale
@@ -343,8 +338,7 @@ Each is specified as *required content · machine consumer · refusal conditions
 Not "improve X", not "support Y", not "make Z better". If there is no value to
 name on either side, the work is not yet bounded.
 
-**Consumer.** The shared planning and independent review skills read this
-authored requirement. It is an authoring rule, not a claim that the retired
+**Consumer.** The `aw-worker` spec and review stages read this authored requirement. It is an authoring rule, not a claim that the retired
 workflow CLI still validates current issues.
 
 **Refused when** the section still carries the skeleton placeholder, is written
@@ -1182,8 +1176,8 @@ These rules make the tree honest:
   `tests/it/` is allowed only when one of these holds:
   1. It is the crate's only test file: no other `tests/<name>.rs` and no
      `tests/it/`.
-  2. It contains one of the `test_isolation_markers` in the workspace
-     repository's `scripts/meta/rust_arch/policy.toml` (`set_var(`,
+  2. It contains one of the `test_isolation_markers` of the retired `rust_arch`
+     policy (`set_var(`,
      `remove_var(`, `#[global_allocator]`). These change process-global state,
      so the file must not share a process with other cases.
   3. Its leading `//!` block has a line `//! isolation: <reason>` with a
@@ -1530,9 +1524,9 @@ must exist on the real clap surface and chain-required positionals/flags must
 be present. A `next` that doesn't resolve against the binary's own `--help`
 is worse than no `next` at all.
 
-The working example in this repo is the `aw` plugin's phase scripts. Every one
-of `e2e.py` and `impl.py` ends by printing the command that follows it, and the
-last phase prints that the change is closed instead — so an agent driving the
+The working example was the retired `aw` phase CLI, not an active entrypoint.
+Its `e2e.py` and `impl.py` phase scripts each ended by printing the command that
+followed them, and the last phase printed that the change was closed instead — so an agent driving the
 ladder never has to infer the next verb. That is the convention in its
 simplest conforming form: a fixed trailing stdout line, no envelope.
 
@@ -1624,11 +1618,11 @@ There used to be a machine-readable source for the matrix below — `meta_docs.r
 drove placement and section validation, and the legacy META CLI was the sole
 writer and checker. Both are deleted. The matrix is hand-maintained
 now, and there is no single checker for every row. Project product-document rows
-are the exception: `scripts/meta/readme_contract.py` validates a README, and
-`scripts/meta/project_docs_contract.py` validates an adopted README, STATUS,
-and ROADMAP set plus its adopted protocol, generated-client, indexing,
-querying, GKE, client-integration, and linked migration guides.
-Other rows still depend on their named reader or a human review.
+are the exception in intent only: no deterministic README or project-document
+checker is retained. Verification of an adopted README, STATUS, and ROADMAP set,
+its adopted protocol, generated-client, indexing, querying, GKE,
+client-integration, and linked migration guides is a review step by a person or
+the review stage. Other rows still depend on their named reader or a human review.
 
 | Layer | Doc | Fact owner | Required headings | Inherits |
 |---|---|---|---|---|
@@ -1734,12 +1728,11 @@ composition. `libs/<name>` supplies a reusable mechanism.
 contract. A capability can name several sources, and a source can support
 several capabilities. The source list is not an ownership class.
 
-The deterministic validator is
-`scripts/meta/readme_contract.py`. The `project-readme-check` skill that added
-a clean-context reader after it was deleted on 2026-09-02; the script is now
-the whole check, and a semantic read is a review step a human asks for.
-The script checks format, links, source paths, and resolvable gate names. It
-does not execute the gates or decide whether their behavior proves the promise.
+No deterministic README checker is retained. The `project-readme-check` skill,
+which added a clean-context reader, was deleted on 2026-09-02. Its format, link,
+source-path and gate-name checks are now a review step: a person or the review
+stage verifies them. That review does not execute the gates or decide whether
+their behavior proves the promise.
 
 A project can adopt `STATUS.md` and `ROADMAP.md` together. Until it does, its
 README remains valid under the README-only contract. After adoption,
@@ -1831,13 +1824,12 @@ both sides of each change, the caller action, Managed activation, available
 migration tools, and verification. Historical migration notes that are not
 linked from the README remain outside the adopted product-document set.
 
-The full-set validator is `scripts/meta/project_docs_contract.py`. It applies
-the README validator, checks both companion formats, resolves gates and
-anchors, validates adopted supporting guides, and rejects deterministic
-cross-document conflicts. The clean-context read that used to follow it (the
-deleted `project-readme-check` skill) is now a review step a human asks for:
-give only the exact adopted files to one context-free reader when meaning or
-contradictions — what a script cannot decide — need checking.
+No full-set project-document checker is retained. The README checks, companion-format
+checks, gate and anchor resolution, adopted supporting-guide validation, and
+cross-document conflict detection that it once performed are not run by any script.
+Verification is a review step by a person or the review stage: give only the exact
+adopted files to one context-free reader when meaning or contradictions, which no
+script decides, need checking.
 
 `apps/<name>/CONTRIBUTING.md` / `projects/<name>/CONTRIBUTING.md` is the local
 operating guide. It does not restate root authoring rules and does not carry
