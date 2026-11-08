@@ -29,8 +29,6 @@
 //! [`generate`] is the pure core (spec text → in-memory files, no I/O); [`run`]
 //! is the filesystem-writing CLI entry.
 
-#![allow(clippy::single_char_add_str)]
-
 mod api;
 mod app;
 mod application;

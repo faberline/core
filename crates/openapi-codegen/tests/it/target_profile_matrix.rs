@@ -1,7 +1,7 @@
 // <HANDWRITE gap="missing-generator:external-target-profile-matrix" tracker="#1569" reason="external compiler and runtime oracles require process orchestration">
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 

@@ -100,6 +100,12 @@ fn rejects_empty_or_whitespace_service_compatibility_label_before_generation() {
 }
 
 fn extract_third_party_imports(files: &[GeneratedFile], lang: Lang) -> BTreeSet<String> {
+    if matches!(lang, Lang::Rust) {
+        return files
+            .iter()
+            .flat_map(|file| rust_crate_roots(&file.contents))
+            .collect();
+    }
     let mut imports = BTreeSet::new();
     for file in files {
         for line in file.contents.lines() {
@@ -138,19 +144,111 @@ fn extract_third_party_imports(files: &[GeneratedFile], lang: Lang) -> BTreeSet<
                         }
                     }
                 }
-                Lang::Rust => {
-                    for crate_name in ["reqwest", "serde", "serde_json"] {
-                        if file.contents.contains(&format!("{crate_name}::"))
-                            || file.contents.contains(&format!("use {crate_name}"))
-                        {
-                            imports.insert(crate_name.to_string());
-                        }
-                    }
-                }
+                Lang::Rust => {}
             }
         }
     }
     imports
+}
+
+/// Crate roots that generated Rust source uses: every `use <crate>` and every
+/// `<crate>::` path root. `std`, `core`, `alloc`, `crate`, `self`, `super`,
+/// primitive type names and the file's own `mod` names are not third-party.
+fn rust_crate_roots(contents: &str) -> BTreeSet<String> {
+    fn is_ident_start(b: u8) -> bool {
+        b.is_ascii_lowercase() || b == b'_'
+    }
+    fn is_ident_char(b: u8) -> bool {
+        b.is_ascii_alphanumeric() || b == b'_'
+    }
+    let mut local_mods = BTreeSet::new();
+    for line in contents.lines() {
+        let t = line.trim();
+        let t = t
+            .strip_prefix("pub(crate) ")
+            .or_else(|| t.strip_prefix("pub "))
+            .unwrap_or(t);
+        if let Some(rest) = t.strip_prefix("mod ") {
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            local_mods.insert(name);
+        }
+        // `use std::fmt;` binds `fmt`, which is then `fmt::Display`, not a crate.
+        let builtin_use = [
+            "use std::",
+            "use core::",
+            "use alloc::",
+            "use crate::",
+            "use super::",
+            "use self::",
+        ]
+        .iter()
+        .any(|p| t.starts_with(p));
+        if builtin_use {
+            for word in t.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_')) {
+                if word.starts_with(|c: char| c.is_ascii_lowercase()) {
+                    local_mods.insert(word.to_string());
+                }
+            }
+        }
+    }
+    let mut roots = BTreeSet::new();
+    for line in contents.lines() {
+        let code = line.trim_start();
+        if code.starts_with("//") {
+            continue;
+        }
+        let bytes = code.as_bytes();
+        let mut i = 0;
+        while i < bytes.len() {
+            let b = bytes[i];
+            let at_root = is_ident_start(b)
+                && (i == 0 || !(is_ident_char(bytes[i - 1]) || bytes[i - 1] == b':'));
+            if !at_root {
+                i += 1;
+                continue;
+            }
+            let start = i;
+            while i < bytes.len() && is_ident_char(bytes[i]) {
+                i += 1;
+            }
+            if code[i..].starts_with("::") {
+                let ident = &code[start..i];
+                let builtin = matches!(
+                    ident,
+                    "std"
+                        | "core"
+                        | "alloc"
+                        | "crate"
+                        | "self"
+                        | "super"
+                        | "bool"
+                        | "char"
+                        | "str"
+                        | "f32"
+                        | "f64"
+                        | "isize"
+                        | "usize"
+                        | "i8"
+                        | "i16"
+                        | "i32"
+                        | "i64"
+                        | "i128"
+                        | "u8"
+                        | "u16"
+                        | "u32"
+                        | "u64"
+                        | "u128"
+                );
+                if !builtin && !local_mods.contains(ident) {
+                    roots.insert(ident.to_string());
+                }
+            }
+        }
+    }
+    roots
 }
 
 fn is_py_stdlib(module: &str) -> bool {
@@ -269,6 +367,26 @@ fn negative_control_removing_runtime_dependency_fails_coverage_test_naming_depen
     assert!(
         err.contains("reqwest"),
         "expected error to name missing dependency 'reqwest', got: {err}"
+    );
+}
+
+#[test]
+fn rust_negative_control_unlisted_crate_import_fails_coverage_naming_crate() {
+    // A new third-party crate import in generated Rust must fail coverage
+    // even though it is not one of the three names the extractor used to know.
+    let rust_opts = opts_for(Lang::Rust).with_target(TargetProfile::Rust(RustTarget::Rust2021));
+    let mut rust_out = generate(MINIMAL, &rust_opts).unwrap();
+    let rust_manifest = rust_out.manifest().unwrap();
+    let file = rust_out
+        .files
+        .iter_mut()
+        .find(|f| f.rel_path.ends_with(".rs"))
+        .expect("generated Rust file");
+    file.contents.push_str("\nuse url::Url;\n");
+    let err = check_dependency_coverage(&rust_out, &rust_manifest, Lang::Rust).unwrap_err();
+    assert!(
+        err.contains("url"),
+        "expected error to name missing dependency 'url', got: {err}"
     );
 }
 
