@@ -161,6 +161,9 @@ pub enum PlacementError {
     #[error("invalid maxSkew: maxSkew must be greater than 0")]
     InvalidMaxSkew,
 
+    #[error("invalid preferred weight {0}: must be between 1 and 100")]
+    InvalidWeight(i32),
+
     #[error("invalid toleration operator '{0}': must be 'Equal' or 'Exists'")]
     InvalidTolerationOperator(String),
 
@@ -375,6 +378,12 @@ impl PlacementPlan {
 
         for t in &self.tolerations {
             validate_toleration(t)?;
+        }
+
+        if let HostSeparation::Soft(weight) = self.host_separation {
+            if !(1..=100).contains(&weight) {
+                return Err(PlacementError::InvalidWeight(weight));
+            }
         }
 
         if let Some((replicas, hosts)) = self.domain_counts {

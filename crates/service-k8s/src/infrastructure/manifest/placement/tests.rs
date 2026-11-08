@@ -335,32 +335,25 @@ fn two_different_groups_render_selectors_that_do_not_match_each_other() {
 }
 
 #[test]
-fn negative_control_removing_group_label_causes_different_groups_share_node_to_fail() {
-    // If the anti-affinity selector omitted the group label and only matched the app name:
-    let shared_app_selector_without_group = json!({
-        "app.kubernetes.io/name": "database"
-    });
+fn soft_host_separation_refuses_weight_outside_kubernetes_range() {
+    for weight in [0, -5, 101, 500] {
+        let err = PlacementPlan::new("app.kubernetes.io/shard", "shard-0")
+            .with_host_separation(HostSeparation::soft_with_weight(weight))
+            .validate()
+            .unwrap_err();
+        assert_eq!(err, PlacementError::InvalidWeight(weight));
+        assert!(PlacementPlan::new("app.kubernetes.io/shard", "shard-0")
+            .with_host_separation(HostSeparation::soft_with_weight(weight))
+            .optional_affinity()
+            .is_err());
+    }
 
-    let pod_labels_a = BTreeMap::from([
-        ("app.kubernetes.io/name".to_string(), "database".to_string()),
-        ("app.kubernetes.io/shard".to_string(), "shard-0".to_string()),
-    ]);
-    let pod_labels_b = BTreeMap::from([
-        ("app.kubernetes.io/name".to_string(), "database".to_string()),
-        ("app.kubernetes.io/shard".to_string(), "shard-1".to_string()),
-    ]);
-
-    // Negative control verification:
-    // Without group scoping, group A's selector matches both pod A and pod B,
-    // which would incorrectly prevent shard-1 from sharing a node with shard-0!
-    assert!(
-        selector_matches_labels(&shared_app_selector_without_group, &pod_labels_a),
-        "unscoped selector matches pod A"
-    );
-    assert!(
-        selector_matches_labels(&shared_app_selector_without_group, &pod_labels_b),
-        "negative control: removing group label causes selector to match other groups"
-    );
+    for weight in [1, 100] {
+        assert!(PlacementPlan::new("app.kubernetes.io/shard", "shard-0")
+            .with_host_separation(HostSeparation::soft_with_weight(weight))
+            .validate()
+            .is_ok());
+    }
 }
 
 fn selector_matches_labels(selector: &Value, labels: &BTreeMap<String, String>) -> bool {

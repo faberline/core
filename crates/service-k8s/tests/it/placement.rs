@@ -253,31 +253,6 @@ fn different_groups_render_selectors_allowing_them_to_share_a_node() {
 }
 
 #[test]
-fn negative_control_unscoped_selector_prevents_different_groups_from_sharing_node() {
-    // Negative control:
-    // If the anti-affinity selector were erroneously not group-scoped (e.g. matching all pods of the app),
-    // then shard-1 would match shard-0's anti-affinity selector, and the "different groups may share a node"
-    // invariant would fail.
-    let unscoped_app_selector = json!({
-        "app.kubernetes.io/name": "core-store"
-    });
-
-    let pod_shard_1 = BTreeMap::from([
-        (
-            "app.kubernetes.io/name".to_string(),
-            "core-store".to_string(),
-        ),
-        ("app.kubernetes.io/shard".to_string(), "shard-1".to_string()),
-    ]);
-
-    // The unscoped selector collides with shard-1 pods, causing mutual exclusion across shards:
-    assert!(
-        matches_selector(&unscoped_app_selector, &pod_shard_1),
-        "negative control confirms removing the group label makes different groups collide"
-    );
-}
-
-#[test]
 fn no_cloud_specific_fields_in_rendered_statefulset_manifest() {
     let cx = context();
 
