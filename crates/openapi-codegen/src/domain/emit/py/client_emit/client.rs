@@ -204,17 +204,17 @@ pub fn emit(
     out.push_str(
         "            self._default_headers[\"Authorization\"] = f\"Bearer {auth_token}\"\n",
     );
-    out.push_str("\n");
+    out.push('\n');
     if target.is_some() {
         out.push_str("    def __enter__(self) -> Self:\n");
     } else {
         out.push_str("    def __enter__(self) -> \"Client\":\n");
     }
     out.push_str("        return self\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("    def __exit__(self, exc_type: Any, exc: Any, tb: Any) -> None:\n");
     out.push_str("        self.close()\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("    def close(self) -> None:\n");
     out.push_str("        close = getattr(self._client, \"close\", None)\n");
     out.push_str("        if close is not None:\n");
@@ -265,24 +265,24 @@ pub fn emit(
     out.push_str(
         "            self._default_headers[\"Authorization\"] = f\"Bearer {auth_token}\"\n",
     );
-    out.push_str("\n");
+    out.push('\n');
     if target.is_some() {
         out.push_str("    async def __aenter__(self) -> Self:\n");
     } else {
         out.push_str("    async def __aenter__(self) -> \"AsyncClient\":\n");
     }
     out.push_str("        return self\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:\n");
     out.push_str("        await self.aclose()\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("    async def aclose(self) -> None:\n");
     out.push_str("        close = getattr(self._client, \"aclose\", None) or getattr(self._client, \"close\", None)\n");
     out.push_str("        if close is not None:\n");
     out.push_str("            result = close()\n");
     out.push_str("            if hasattr(result, \"__await__\"):\n");
     out.push_str("                await result\n");
-    out.push_str("\n");
+    out.push('\n');
     out.push_str("    async def close(self) -> None:\n");
     out.push_str("        await self.aclose()\n");
     let mut async_reg = NameRegistry::new();

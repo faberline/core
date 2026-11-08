@@ -282,8 +282,7 @@ fn extract_json_string_value(line: &str, key: &str) -> Option<String> {
     let after = &line[pos + pattern.len()..];
     let colon_pos = after.find(':')?;
     let value_part = after[colon_pos + 1..].trim();
-    if value_part.starts_with('"') {
-        let inner = &value_part[1..];
+    if let Some(inner) = value_part.strip_prefix('"') {
         let end = inner.find('"')?;
         Some(inner[..end].to_string())
     } else {

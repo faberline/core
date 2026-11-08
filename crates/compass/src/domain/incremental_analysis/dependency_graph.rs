@@ -53,9 +53,9 @@ impl DependencyGraph {
     }
 
     /// Get files affected by changes to a file.
-    pub fn get_affected_files(&self, changed: &PathBuf) -> HashSet<PathBuf> {
+    pub fn get_affected_files(&self, changed: &std::path::Path) -> HashSet<PathBuf> {
         let mut affected = HashSet::new();
-        let mut queue = vec![changed.clone()];
+        let mut queue = vec![changed.to_path_buf()];
 
         while let Some(file) = queue.pop() {
             if affected.insert(file.clone()) {

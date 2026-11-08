@@ -134,7 +134,9 @@ fn configuration_changes_only_when_its_exact_identity_finishes() {
 
 #[test]
 fn public_timing_constants_are_nonzero_and_ordered() {
-    assert_ne!(ELECTION_TIMEOUT_FLOOR_TICKS, 0);
-    assert_ne!(HEARTBEAT_INTERVAL_TICKS, 0);
-    assert!(HEARTBEAT_INTERVAL_TICKS < ELECTION_TIMEOUT_FLOOR_TICKS);
+    const {
+        assert!(ELECTION_TIMEOUT_FLOOR_TICKS != 0);
+        assert!(HEARTBEAT_INTERVAL_TICKS != 0);
+        assert!(HEARTBEAT_INTERVAL_TICKS < ELECTION_TIMEOUT_FLOOR_TICKS);
+    }
 }

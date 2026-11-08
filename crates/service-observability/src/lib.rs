@@ -2,8 +2,9 @@
 //!
 //! This crate owns configuration, stable identity, structured logging,
 //! optional OTLP export, metric-provider semantics, and lifecycle connection
-//! counters. It also exposes safe, portable process-resource samples for
-//! service evidence. Protocol adapters such as HTTP remain in their protocol
+//! counters. It also exposes `ps`-based process-resource samples for service
+//! evidence; they need `ps` on `PATH`, so they are unavailable in distroless
+//! runtime images. Protocol adapters such as HTTP remain in their protocol
 //! crates.
 
 pub mod config;

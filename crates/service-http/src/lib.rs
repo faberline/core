@@ -39,7 +39,7 @@
 //! init_tracing(&cfg)?;
 //! let lifecycle = server_lifecycle::LifecycleController::new();
 //! lifecycle.transition(server_lifecycle::LifecyclePhase::Serving, "ready", "startup complete")?;
-//! let app = lifecycle_probe_routes(lifecycle.clone(), None, my_service::openapi)
+//! let app = lifecycle_probe_routes(lifecycle.clone(), None, openapi)
 //!     .merge(data_plane)
 //!     .layer(trace_layer())
 //!     .layer(axum::middleware::from_fn(server_timing_middleware));
@@ -92,6 +92,7 @@ mod application;
 mod infrastructure;
 mod interfaces;
 
+pub use api::transport;
 pub use application::{
     AdmissionConfig, AdmissionConfigError, AdmissionController, AdmissionDecision, AdmissionEvent,
     AdmissionInput, AdmissionObserver, AdmissionOutcome, AdmissionPolicy, AdmissionPolicyError,
@@ -101,7 +102,6 @@ pub use application::{
     ConcurrencyLease, WeightedAdmission, WeightedAdmissionConfig, WeightedAdmissionConfigError,
     WeightedAdmissionError,
 };
-pub use api::transport;
 #[cfg(feature = "otlp")]
 pub use infrastructure::extract_trace_context;
 pub use infrastructure::{

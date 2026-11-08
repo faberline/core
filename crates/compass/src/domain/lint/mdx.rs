@@ -45,7 +45,7 @@ impl MdxChecker {
                     if !tag_text.ends_with('/') {
                         // Look for a closing </Name> anywhere in the file
                         let closing = format!("</{}", name);
-                        let self_close = format!("/>");
+                        let self_close = "/>".to_string();
                         let has_close = file.source.contains(&closing)
                             || tag_region.contains(&self_close as &str);
 

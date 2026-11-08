@@ -94,12 +94,10 @@ fn parse_comparison(source: &str, node: &tree_sitter::Node) -> NarrowingConditio
                     };
                 }
             }
-            "!=" => {
-                if left.kind() == "identifier" && right_text == "None" {
-                    return NarrowingCondition::IsNotNone {
-                        var_name: left_text.to_string(),
-                    };
-                }
+            "!=" if left.kind() == "identifier" && right_text == "None" => {
+                return NarrowingCondition::IsNotNone {
+                    var_name: left_text.to_string(),
+                };
             }
             _ => {}
         }
@@ -227,8 +225,8 @@ fn parse_call_condition(source: &str, node: &tree_sitter::Node) -> NarrowingCond
                     // Extract string content without quotes
                     let attr_text = node_text(attr_node);
                     let attr_name = attr_text
-                        .trim_start_matches(|c| c == '"' || c == '\'')
-                        .trim_end_matches(|c| c == '"' || c == '\'')
+                        .trim_start_matches(['"', '\''])
+                        .trim_end_matches(['"', '\''])
                         .to_string();
                     return NarrowingCondition::HasAttr {
                         var_name,
@@ -237,16 +235,15 @@ fn parse_call_condition(source: &str, node: &tree_sitter::Node) -> NarrowingCond
                 }
             }
         }
-        "callable" => {
+        "callable"
             // callable(x)
-            if !arg_nodes.is_empty() {
+            if !arg_nodes.is_empty() => {
                 let var_node = &arg_nodes[0];
                 if var_node.kind() == "identifier" {
                     let var_name = node_text(var_node).to_string();
                     return NarrowingCondition::IsCallable { var_name };
                 }
             }
-        }
         _ => {}
     }
 

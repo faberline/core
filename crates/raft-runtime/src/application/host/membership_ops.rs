@@ -29,6 +29,12 @@ impl RaftHost {
     pub async fn leader(&self) -> Option<NodeId> {
         self.shared.node.lock().await.leader()
     }
+    /// Return the host's current [`RaftStatus`].
+    ///
+    /// Returns the same value as the `/raftz` body and is a point-in-time snapshot.
+    pub async fn status(&self) -> RaftStatus {
+        host_status(&self.shared).await
+    }
     /// Hand leadership to an eligible caught-up voter before shutdown (#3664).
     pub async fn handoff_leadership(&self) -> LeadershipHandoff {
         let (outcome, transferred) = {
@@ -135,5 +141,23 @@ impl RaftHost {
     /// Watch the state machine's applied head (followers await an index here).
     pub fn applied_watch(&self) -> watch::Receiver<Index> {
         self.shared.applied_tx.subscribe()
+    }
+
+    /// Step an inbound `AppendEntries` message into this host (#47 test hook).
+    #[doc(hidden)]
+    pub async fn step_append_entries(
+        &self,
+        from: NodeId,
+        req: raft_core::AppendReq,
+    ) -> raft_core::AppendResp {
+        self.shared.step_append_entries(from, req).await
+    }
+
+    /// Step an inbound `VoteResp` message into this host (#47 test hook).
+    #[doc(hidden)]
+    pub async fn step_vote_response(&self, from: NodeId, resp: raft_core::VoteResp) {
+        let mut n = self.shared.node.lock().await;
+        n.handle(from, raft_core::RaftMsg::VoteResp(resp));
+        let _ = self.shared.persist(&n);
     }
 }
