@@ -108,8 +108,26 @@ async fn sequential() {
 }
 
 #[tokio::test]
-#[should_panic(expected = "timed out waiting for node 0")]
 async fn wait_for_applied_index_times_out_by_name() {
-    let nodes = cluster(3).await;
-    wait_for_applied_index(&nodes, Index::new(1), Duration::from_millis(50)).await;
+    // Run the wait in a spawned task so its panic is captured as a JoinError
+    // and the payload can be asserted. `#[should_panic]` is not used: CI's
+    // contract roster check cannot match the executed name for it.
+    let handle = tokio::spawn(async {
+        let nodes = cluster(3).await;
+        wait_for_applied_index(&nodes, Index::new(1), Duration::from_millis(50)).await;
+    });
+    let err = handle
+        .await
+        .expect_err("an idle cluster must not reach applied index 1");
+    assert!(err.is_panic(), "the wait must fail by panicking");
+    let payload = err.into_panic();
+    let msg = payload
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| payload.downcast_ref::<&str>().copied())
+        .expect("the timeout panic carries a string message");
+    assert!(
+        msg.contains("timed out waiting for node 0"),
+        "unexpected panic message: {msg}"
+    );
 }
