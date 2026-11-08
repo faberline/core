@@ -43,7 +43,7 @@ pub struct RaftStatus {
     pub resident_log_bytes: u64,
     #[serde(default)]
     pub max_resident_log_bytes: u64,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub peer_match_index: Vec<PeerMatch>,
 }
 
