@@ -63,8 +63,7 @@ impl RequestHandler {
         params: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, RpcError> {
         let params: DiagnosticsParams = params
-            .map(|p| serde_json::from_value(p).ok())
-            .flatten()
+            .and_then(|p| serde_json::from_value(p).ok())
             .unwrap_or(DiagnosticsParams { file: None });
 
         let cache = self.cache.read().await;

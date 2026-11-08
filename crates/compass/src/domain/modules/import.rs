@@ -134,10 +134,10 @@ impl ModuleInfo {
 
     /// Create a module info from a file path
     pub fn from_file(path: &str, file_path: PathBuf) -> Self {
-        let is_stub = file_path.extension().map_or(false, |ext| ext == "pyi");
-        let is_package = file_path.file_name().map_or(false, |name| {
-            name == "__init__.py" || name == "__init__.pyi"
-        });
+        let is_stub = file_path.extension().is_some_and(|ext| ext == "pyi");
+        let is_package = file_path
+            .file_name()
+            .is_some_and(|name| name == "__init__.py" || name == "__init__.pyi");
 
         Self {
             path: path.to_string(),

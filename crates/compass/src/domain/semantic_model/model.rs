@@ -99,7 +99,7 @@ impl SemanticModel {
         if let Some(symbol_data) = self.symbols.get(&id) {
             self.references.push(SymbolReference {
                 symbol_id: id,
-                range: symbol_data.def_range.clone(),
+                range: symbol_data.def_range,
                 is_definition: true,
             });
         }
@@ -178,13 +178,10 @@ impl SemanticModel {
         }
 
         // Then check symbol definitions
-        for symbol in self.symbols.values() {
-            if symbol.def_range.contains(line, column) {
-                return Some(symbol);
-            }
-        }
-
-        None
+        self.symbols
+            .values()
+            .find(|&symbol| symbol.def_range.contains(line, column))
+            .map(|v| v as _)
     }
 
     /// Get the definition of the symbol at a position

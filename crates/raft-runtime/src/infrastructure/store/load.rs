@@ -1,5 +1,7 @@
 use super::*;
 
+type LoadedLogArtifact = (Vec<RaftEntry>, BTreeMap<(Index, Term), CommandFrame>);
+
 impl RaftStore {
     /// Load the persisted hard state, or `None` if this node has none yet.
     pub fn load(&self) -> io::Result<Option<PersistedState>> {
@@ -26,10 +28,7 @@ impl RaftStore {
         }
     }
 
-    pub(super) fn read_log_artifact(
-        &self,
-        layout: LogLayout,
-    ) -> io::Result<(Vec<RaftEntry>, BTreeMap<(Index, Term), CommandFrame>)> {
+    pub(super) fn read_log_artifact(&self, layout: LogLayout) -> io::Result<LoadedLogArtifact> {
         if layout.entry_count == 0 || layout.byte_len < LOG_MAGIC_V1.len() as u64 {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,

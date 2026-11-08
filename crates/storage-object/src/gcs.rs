@@ -95,7 +95,7 @@ impl GcsObjectStore {
             .and_then(Value::as_str)
             .ok_or_else(|| corrupt("GCS object metadata lacks size"))?
             .parse::<u64>()
-            .map_err(|error| corrupt(error))?;
+            .map_err(corrupt)?;
         let generation = value
             .get("generation")
             .and_then(Value::as_str)

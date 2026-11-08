@@ -14,3 +14,6 @@ pub use decode::{
     PROMETHEUS_STALE_NAN_BITS,
 };
 pub use headers::{validate_headers, HeaderError};
+
+#[cfg(test)]
+mod tests;
