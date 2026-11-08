@@ -29,6 +29,12 @@ impl RaftHost {
     pub async fn leader(&self) -> Option<NodeId> {
         self.shared.node.lock().await.leader()
     }
+    /// Return the host's current [`RaftStatus`].
+    ///
+    /// Returns the same value as the `/raftz` body and is a point-in-time snapshot.
+    pub async fn status(&self) -> RaftStatus {
+        host_status(&self.shared).await
+    }
     /// Hand leadership to an eligible caught-up voter before shutdown (#3664).
     pub async fn handoff_leadership(&self) -> LeadershipHandoff {
         let (outcome, transferred) = {
