@@ -1,5 +1,11 @@
 # Guarded completion preparation
 
+Historical preparation only. Normal completion now follows the
+[local-review pipeline](development-pipeline.md). The old cloud review,
+publisher, drain and recovery configuration are removed from the active
+policy. This document and actor/ledger history remain preserved; they do
+not require a new activation or schedule change.
+
 Core consumes the [AW activation contract](https://github.com/faberline/aw/blob/c929e87e50cd2c5e7d578c4b44e002182291031a/docs/standards/issue-guard-activation.md).
 Issue #86 prepares the inactive deployment. Issues #83 and #84 remain open
 until their full deployed acceptance is proved. AW #115 also remains open.
