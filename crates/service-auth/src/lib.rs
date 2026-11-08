@@ -57,7 +57,7 @@
 //! async fn handler(Extension(p): Extension<Principal>) -> String { p.subject }
 //!
 //! let verifier = Arc::new(MyVerifier { /* ... */ });
-//! let app = axum::Router::new()
+//! let app: axum::Router = axum::Router::new()
 //!     .route("/things", axum::routing::get(handler))
 //!     .layer(from_fn_with_state(verifier, auth_middleware::<MyVerifier>));
 //! ```

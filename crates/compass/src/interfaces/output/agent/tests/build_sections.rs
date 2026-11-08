@@ -7,16 +7,21 @@ fn test_output_format_agent_variant() {
     use crate::interfaces::output::output_format::OutputFormat;
 
     assert_eq!(
-        OutputFormat::from_str("agent"),
+        OutputFormat::parse_name("agent"),
         Some(OutputFormat::Agent),
-        "from_str(\"agent\") should return Some(OutputFormat::Agent)"
+        "parse_name(\"agent\") should return Some(OutputFormat::Agent)"
     );
     // Case insensitivity
     assert_eq!(
-        OutputFormat::from_str("AGENT"),
+        OutputFormat::parse_name("AGENT"),
         Some(OutputFormat::Agent),
-        "from_str should be case-insensitive"
+        "parse_name should be case-insensitive"
     );
+    assert_eq!(
+        "AGENT".parse::<OutputFormat>().unwrap(),
+        OutputFormat::Agent
+    );
+    assert!("unknown".parse::<OutputFormat>().is_err());
 }
 
 // --- R2, R7: build_symbols from SymbolTable ---

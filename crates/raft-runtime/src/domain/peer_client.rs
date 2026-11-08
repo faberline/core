@@ -23,6 +23,10 @@ pub(crate) enum ForwardReply {
     },
     /// The leader refused the command before append.
     Rejected { reason: String },
+    /// The leader appended the command but could not confirm that its own entry
+    /// committed (superseded, truncated, apply timeout). `index` is the leader's
+    /// log index when known.
+    Ambiguous { index: Option<u64>, reason: String },
     /// The request failed or the reply was not understood; the command may or
     /// may not have been appended.
     Failed { reason: String },

@@ -172,7 +172,10 @@ pub enum ProfileError {
 impl fmt::Display for ProfileError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoNames => write!(f, "a certificate profile must request at least one DNS name"),
+            Self::NoNames => write!(
+                f,
+                "a certificate profile must request at least one DNS name"
+            ),
             Self::ForeignDnsName { name, namespace } => write!(
                 f,
                 "DNS name {name} is not inside namespace {namespace}; one instance may not \

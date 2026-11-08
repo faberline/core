@@ -74,3 +74,32 @@ fn csv_env(name: &str, default: Vec<String>) -> Result<Vec<String>> {
     }
     Ok(values)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::HttpTransportConfig;
+
+    #[test]
+    fn each_browser_allowlist_must_have_nonblank_entries() {
+        let hosts = vec!["localhost:8000".to_owned()];
+        let origins = vec!["https://console.example.com".to_owned()];
+        for invalid in [
+            vec![],
+            vec!["".to_owned()],
+            vec!["  ".to_owned()],
+            vec!["valid".to_owned(), "".to_owned()],
+        ] {
+            assert!(HttpTransportConfig::new(invalid.clone(), origins.clone()).is_err());
+            assert!(HttpTransportConfig::new(hosts.clone(), invalid).is_err());
+        }
+    }
+
+    #[test]
+    fn explicit_host_and_origin_lists_are_kept_separate() {
+        let hosts = vec!["localhost:8000".to_owned(), "mcp.example.com".to_owned()];
+        let origins = vec!["https://console.example.com".to_owned()];
+        let config = HttpTransportConfig::new(hosts.clone(), origins.clone()).unwrap();
+        assert_eq!(config.allowed_hosts, hosts);
+        assert_eq!(config.allowed_origins, origins);
+    }
+}

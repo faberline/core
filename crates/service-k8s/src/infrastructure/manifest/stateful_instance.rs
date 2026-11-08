@@ -21,21 +21,23 @@ pub use renderer::stateful_instance;
 
 /// Compatibility adapter for the historical render root.  The root API stays
 /// source-compatible while the stateful shape is assembled by this module.
-pub fn render_compat_service_statefulset(p: ServiceStatefulSet) -> Value {
+pub fn render_compat_service_statefulset(
+    p: ServiceStatefulSet,
+) -> Result<Value, StatefulInstanceError> {
     render_compat_service_statefulset_impl(p, None)
 }
 
 pub(super) fn render_compat_service_statefulset_with_links(
     p: ServiceStatefulSet,
     enable_service_links: bool,
-) -> Value {
+) -> Result<Value, StatefulInstanceError> {
     render_compat_service_statefulset_impl(p, Some(enable_service_links))
 }
 
 fn render_compat_service_statefulset_impl(
     p: ServiceStatefulSet,
     enable_service_links: Option<bool>,
-) -> Value {
+) -> Result<Value, StatefulInstanceError> {
     let ServiceStatefulSet {
         cx,
         name,
@@ -130,8 +132,7 @@ fn render_compat_service_statefulset_impl(
     plan.revision_history_limit = revision_history_limit;
     plan.update_strategy = update_strategy;
     plan.enable_service_links = enable_service_links;
-    let rendered = stateful_instance(plan).expect("validated compatibility stateful plan");
-    rendered.workload
+    Ok(stateful_instance(plan)?.workload)
 }
 
 /// A StatefulSet-managed PVC template and the mount that consumes it.

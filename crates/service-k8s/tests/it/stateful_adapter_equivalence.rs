@@ -258,7 +258,7 @@ fn compatibility_adapter_matches_all_lumen_statefulset_profiles() {
     .with_owner(json!({"uid":"owner"}));
     for kind in 0..4 {
         let expected = baseline(profile(&cx, kind));
-        let actual = service_statefulset(profile(&cx, kind));
+        let actual = service_statefulset(profile(&cx, kind)).expect("valid statefulset");
         assert_eq!(
             actual, expected,
             "profile {kind} changed its complete Value"
@@ -274,9 +274,11 @@ fn compatibility_adapter_matches_all_lumen_statefulset_profiles() {
 #[test]
 fn service_links_opt_in_only_adds_the_explicit_pod_field() {
     let cx = RenderCtx::new("lumen", "lumen-operator", "v1", "Lumen", "lumen", "default");
-    let legacy = service_statefulset(profile(&cx, 0));
-    let disabled = service_statefulset_with_service_links(profile(&cx, 0), false);
-    let enabled = service_statefulset_with_service_links(profile(&cx, 0), true);
+    let legacy = service_statefulset(profile(&cx, 0)).expect("valid statefulset");
+    let disabled =
+        service_statefulset_with_service_links(profile(&cx, 0), false).expect("valid statefulset");
+    let enabled =
+        service_statefulset_with_service_links(profile(&cx, 0), true).expect("valid statefulset");
     let mut expected = legacy.clone();
     expected["spec"]["template"]["spec"]["enableServiceLinks"] = json!(false);
     assert_eq!(disabled, expected);
@@ -304,7 +306,7 @@ fn compatibility_adapter_preserves_safe_same_pvc_child_mount_order() {
         json!({"name":"raft","mountPath":"/var/lib/lumen/data","subPath":"data","readOnly":false}),
     ];
 
-    let actual = service_statefulset(rendered);
+    let actual = service_statefulset(rendered).expect("valid statefulset");
     assert_eq!(
         actual["spec"]["template"]["spec"]["containers"][0]["volumeMounts"],
         json!([
