@@ -190,11 +190,9 @@ impl RustScanner {
         if let Some(body) = node.child_by_field_name("body") {
             let mut cursor = body.walk();
             for child in body.children(&mut cursor) {
-                if child.kind() == "function_item" {
-                    if self.has_pub_visibility(child, source) {
-                        if let Some(method) = self.extract_method(child, source)? {
-                            methods.push(method);
-                        }
+                if child.kind() == "function_item" && self.has_pub_visibility(child, source) {
+                    if let Some(method) = self.extract_method(child, source)? {
+                        methods.push(method);
                     }
                 }
             }

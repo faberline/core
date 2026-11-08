@@ -7,7 +7,10 @@ fn scope() -> InstanceScope {
 
 fn serving_identity() -> CertificateIdentity {
     CertificateIdentity {
-        dns_names: vec!["lumen.lumen.svc.cluster.local".into(), "lumen.lumen.svc".into()],
+        dns_names: vec![
+            "lumen.lumen.svc.cluster.local".into(),
+            "lumen.lumen.svc".into(),
+        ],
         spiffe_uri: None,
     }
 }

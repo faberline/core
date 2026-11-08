@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the trusted failure-only rollout without blocking real failures."""
+"""Validate explicit full qualification or an explicitly held legacy policy."""
 import importlib.util
 from pathlib import Path
 import sys
@@ -15,13 +15,18 @@ def load_controller():
 
 def check(path):
     controller = load_controller()
-    if not all(callable(getattr(controller, name, None)) for name in ('load_config', 'evaluate_policy')):
-        raise RuntimeError('failure-only rollout requires the reviewed policy-aware controller')
+    names = ('load_config', 'evaluate_policy', 'validate_adoption', 'qualification_module')
+    if not all(callable(getattr(controller, name, None)) for name in names):
+        raise RuntimeError('reviewed qualification-aware controller required')
     policy = controller.load_config(path)
-    if policy.get('lifecycle_mode') != 'failure-only':
-        raise RuntimeError('this rollout requires explicit lifecycle_mode failure-only')
-    if not isinstance(policy.get('qualification_blockers'), list) or not policy['qualification_blockers']:
-        raise RuntimeError('this rollout requires an explicit nonempty qualification_blockers list')
+    controller.validate_adoption(policy)
+    if policy['lifecycle_mode'] == 'failure-only':
+        if not policy['qualification_blockers']:
+            raise RuntimeError('failure-only requires explicit nonempty qualification blockers')
+    else:
+        if policy['qualification_blockers'] or 'qualification' not in policy:
+            raise RuntimeError('full qualification requires the complete approved contract and no unresolved blockers')
+        controller.qualification_module().validate(policy)
     return policy
 
 

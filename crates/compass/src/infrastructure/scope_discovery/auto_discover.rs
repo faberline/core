@@ -12,7 +12,7 @@ pub fn discover_scopes(project_root: &Path) -> Vec<ScopeConfig> {
     discover_recursive(project_root, project_root, 0, 5, &mut scopes);
 
     // Sort by root path length descending (longest prefix first for routing)
-    scopes.sort_by(|a, b| b.root.as_os_str().len().cmp(&a.root.as_os_str().len()));
+    scopes.sort_by_key(|scope| std::cmp::Reverse(scope.root.as_os_str().len()));
 
     scopes
 }
@@ -174,8 +174,7 @@ fn detect_site_packages(interpreter: &Path) -> Option<PathBuf> {
 /// Convert a relative path to a URL-safe slug.
 fn slugify(path: &Path) -> String {
     path.to_string_lossy()
-        .replace('/', "-")
-        .replace('\\', "-")
+        .replace(['/', '\\'], "-")
         .to_lowercase()
 }
 
