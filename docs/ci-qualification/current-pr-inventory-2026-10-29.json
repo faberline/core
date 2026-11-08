@@ -1,0 +1,1422 @@
+{
+  "schema_version": 1,
+  "observed_date_utc": "2026-10-29",
+  "source": "GitHub REST open PRs and per-PR paginated changed files; head and base rechecked during collection",
+  "scope": "Historical observation only. Recheck each current head, base, issue and file list before use. This inventory does not qualify CI, review or source-issue acceptance.",
+  "pull_requests": [
+    {
+      "pr": 51,
+      "head": "019061dd744aaa8386d77246d5f9b61bf3f5bef4",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 47,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "635b773e86a4628d520d1c50c6a5be249a4189719e4897bfbefb27df94b15579",
+        "body": "6b59ecf3518a16371f1eab24600930edb1af24fe6573a66ac6bd3f9919be5bc1"
+      },
+      "changed_files": [
+        {
+          "path": "crates/raft-runtime/src/application/host.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host/membership_ops.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host/ordered_apply.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host/propose.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host/spawn.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host/tests/admission.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/interfaces/peer_http/handlers.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/tests/it/proposal_outcomes.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "raft-runtime"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 52,
+      "head": "38f9b3c060c0d9fc1c3b7e802cc6440401194970",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 48,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "6031f8f474316737e23a6afb318f844b2471d531a5fd9dd5d122709e841e156e",
+        "body": "d89eaa15d1fd5678bfd05dc3829ee2dd6c3d93cfa876c77cbaf78b0f9fe2c669"
+      },
+      "changed_files": [
+        {
+          "path": "crates/raft-runtime/tests/it/concurrent_host.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/tests/it/support/cluster.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "raft-runtime"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 53,
+      "head": "6d8f6eb7b2abe3ba7d68aaae02b5925ec6941cf9",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 16,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "650c92999452ee61c3f569d82845a157a875f18c4fac256c4cff014c892a8ae2",
+        "body": "c49713d34570700901581064272a7d5ee50ab90904b97dabcd9b1aa16f6711d3"
+      },
+      "changed_files": [
+        {
+          "path": "Cargo.lock",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/Cargo.toml",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/domain.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/domain/artifact_verifier.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/domain/backup_set.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/domain/backup_set_error.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/backup_set.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/main.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/projected_admin_transport.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-backup"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 54,
+      "head": "a6ec47f5f8d1f870b3bbbc88eae441f51c361436",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 15,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "72991f427d12f783645a1cec2fb468ab54b3fe29977d1cc8660bcc38e77c74f1",
+        "body": "a607e6928546ad3496ba79eaf1a1d25ed6f35fca51eec69bf579acf3b22161c8"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/workload_plan.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/workload_plan/workload.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/workload_plan.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 55,
+      "head": "1e4bef6567f9b23dfc63bd5cd838907968f2fea9",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 26,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "35784c80ea480cdf70aa750bf41e0098947fab0e6aa677958d7b39ec9989c196",
+        "body": "f8fb8195a2bab3fab8ea96f13636047c494dd538f4f9c421f44273854423700a"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-k8s/src/api.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/api/rollout.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/rollout.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/rollout/tests.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 56,
+      "head": "6e58f41e89e21a29addc9f27a022e05734983524",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 27,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "0885cb7b1902c10ff421032ef22152b19c7547661d00e997bcadbc797fe2ab87",
+        "body": "d60370be1aee2d82eeecd47eb8ae617a2c70b22ca18a4e29a9f7dc4a6b09fd82"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-k8s/src/domain.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/fleet.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/fleet/adoption.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/fleet/child_key.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/fleet/desired_hash.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/fleet/ownership.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/fleet/plan.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/fleet/plan_error.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/fleet/prune.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/fleet_plan.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/main.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 57,
+      "head": "a174627fd70207750cbf2c55f41ab723c4c57c81",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 28,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "63adf325f19220d1f5cc31b73e4692cb2452c4687a89e964e0c47fb1b7bc119d",
+        "body": "20b04ab9395cc49c62737e957477ce6bd7a0432e5719f25b3876e617698bedc1"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-k8s/src/api/render.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/access.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/access/condition.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/access/error.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/access/grant.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/access/policy.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/access/rule.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/access/subject.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/certificate/digest.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/certificate/profile.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/certificate/profile/certificate_profile.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/certificate/profile/tests.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/certificate/state.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/certificate/status.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/workload_plan.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/workload_plan/access.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/access_grants.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/certificate_ownership.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/certificate_rotation.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/certificate_status.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/main.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 58,
+      "head": "4ad9db76e0f57521819faa594086faba78ba8379",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 29,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "312fe7c28d725f4401a69c9e62925c1f64cc2e261d2fed536935a69a48310665",
+        "body": "44e09dd8ddb6b8651aace62c18304e427a6ccca993d6293b22ac7f48ee6fa686"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-auth/src/api/k8s.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-auth/src/api/k8s/projected.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-auth/src/domain/k8s.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-auth/src/domain/k8s/projected_token.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-auth/src/domain/k8s/projected_token_mode.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-auth/src/infrastructure/k8s.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-auth/src/infrastructure/k8s/opaque_projected_token.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-auth/src/infrastructure/k8s/opaque_projected_token/tests.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-auth/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-auth"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 59,
+      "head": "bf4b8e80ce97b12565d219247891f34960a5d74c",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 33,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "45d926cca44389caf56cdb695f774f7a0d8d1033ef531fa9edb785beb496bd15",
+        "body": "806cbcc412da5439eed338d69a3932a7db00a566ae2c0af99364c814e0cdfd94"
+      },
+      "changed_files": [
+        {
+          "path": "crates/openapi-codegen/src/api/ir.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/ir/operations.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 60,
+      "head": "b66321d916f316170477bebd81196f565e30e413",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 30,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "77c15f597cd1fdb91a45847c2a446bf2bf85a7d9728fced9659ac5be505fc108",
+        "body": "b12b99da49d8b6da13fe1a72ee8c020f86500c1542180ab0e17f312b987c9e9c"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-k8s/ROADMAP.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/STATUS.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/api.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/api/trust_bundle.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/application.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/application/trust_bundle.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/application/trust_bundle/reconcile.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/trust_bundle.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/trust_bundle/condition.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/trust_bundle/spec.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/trust_bundle/store.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/domain/trust_bundle/validation.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/trust_bundle.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/trust_bundle/kubernetes_store.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/trust_bundle/memory_store.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/main.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/trust_bundle_convergence.rs",
+          "status": "added",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 61,
+      "head": "352419ef9fe9c67789927fa81c65e3fcdf2932c7",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 31,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "68dca1ebf90074e1185bc640872d569c64a7c3679c6d8c414be7b947a19583bb",
+        "body": "3b58004486419fec6784ae758fbe4c255f8845c8b4e45896d2e7befbfb60e01d"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-k8s/STATUS.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/api/render.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/placement.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/placement/tests.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/workload_plan/pod.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/main.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/placement.rs",
+          "status": "added",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 62,
+      "head": "323e12e2f52e6877242689d43e15aeb4f50e692f",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 32,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "165ffc520415d4b47487089c3cc64e9ddf3529138b68fba6dd4a6bc84fbb3316",
+        "body": "13844ded416fadcba1dde8d1f28da526d27d74f32cc2ca327a2aeaf2e33e079a"
+      },
+      "changed_files": [
+        {
+          "path": "crates/openapi-codegen/src/api/ir.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/emit/py/client_emit/client.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/emit/py/client_emit/method.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/emit/rust/client_emit/method.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/emit/ts/plan.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/ir/openapi.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/ir/operations.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/tests/it/target_profile_matrix.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 63,
+      "head": "597c84147a08ff775fa47ec595733a09be916b67",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 17,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "dd849e06004b13fbcde778e6476d9cc1a4cfbe10a7e5d361c85b0c634f3931f8",
+        "body": "240b7924fb4bb189791479969e60b795f35bbcee95fc131731968bab04082d24"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-backup/src/domain.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/domain/retention_plan.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/domain/set_key_layout.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/main.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/projected_admin_transport.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/set_layout.rs",
+          "status": "added",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-backup"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 64,
+      "head": "625f003461e7f16175857a32e5f129006a85e526",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 18,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "0f117de35369301f70c8c5ac5a212445d02d026dc7524337ee68c4db918408a6",
+        "body": "8809828ae354557f544783456cbbd3997f78d6109fe06cdbe94cfcce888db19a"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-backup/src/domain.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/domain/restore_ledger.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/domain/restore_ledger_error.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/main.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/projected_admin_transport.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-backup/tests/it/restore_ledger.rs",
+          "status": "added",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-backup"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 65,
+      "head": "a01978cea39831c570ea37637451faaab835f759",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 19,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "24ca8524ad9b1fe66d25c97179f78478a35fcd07802a4dc8f1d73495b3c1f556",
+        "body": "cc7aa508994d2ef2309cc8010e1d58d2fd9795ba2f10c7e592d91fa31df05605"
+      },
+      "changed_files": [
+        {
+          "path": "crates/service-k8s/src/api/render.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/workload_plan.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/src/infrastructure/manifest/workload_plan/service_account_identity.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/service-k8s/tests/it/workload_plan.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "service-k8s"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 66,
+      "head": "5d99c6672f6a57fa717b4e96910818f907d5073d",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 34,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "754fd11e84940e92d313e5871ac9f2195b511545d6603956f74b3cc7ce8a7b3f",
+        "body": "66831469c9d6549a4ef6a481dd02d74830312934f0725874bd8df27a82f8c3c8"
+      },
+      "changed_files": [
+        {
+          "path": "crates/openapi-codegen/src/domain/emit/rust.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/emit/rust/models_emit.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/emit/rust/rsmap.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 67,
+      "head": "eb36873af2e9421172a0df9d593c0c50edbf0f25",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 35,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "d25ae6c308603b8608f9a2d04ef2c637607c9580e800457543ff4dbf23c63b9d",
+        "body": "bb0d9446348ca3bb07ea483ab1a140fa8f48614eb1e46522dc6ad58b8a4942a0"
+      },
+      "changed_files": [
+        {
+          "path": "Cargo.lock",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/Cargo.toml",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/ROADMAP.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/STATUS.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/application/generate.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/generation.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/generation/options.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/generation/output.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/generation/service_compatibility_error.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/target.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/tests/output.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/tests/it/target_profile_matrix.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 68,
+      "head": "4e7b8b093f9ec75bfc7127bd8922fa224acf4c6c",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 36,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "99b30e5178af3228f2d84cf9af8109b90ac984605a2b5cbd987501eaba351694",
+        "body": "c1bb04fdc332ce027c8b106786e58e55e66338de47cf982ef4d3179dfa1b4434"
+      },
+      "changed_files": [
+        {
+          "path": "crates/openapi-codegen/src/api/ir.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/src/domain/ir/operations.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "openapi-codegen"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 69,
+      "head": "9ab26c1b377791074a0ad3d513e5af94476c8219",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 42,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "4157cbdbdb10bea6ea4b8aaca6f150c9c5d55878263cee14cec1a02dae737616",
+        "body": "972903a9183f99d5c2721546ed19c8818386c4e6bf990440aa1cad02ce63c562"
+      },
+      "changed_files": [
+        {
+          "path": "crates/raft-runtime/src/application.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host/membership_ops.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host/status.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/interfaces/peer_http/status.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/tests/it/host_status.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/tests/it/main.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "raft-runtime"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 70,
+      "head": "aadac4deca3a0a994fd84b86bab89c035fcbc6bd",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 45,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "016d463cab72502e11442f97e6a03fed70ded37e790e8ba8b87d5e4d6a2e6352",
+        "body": "1c4e864b4c30e989fb5822c450eb29548dec9b1eab3af0a18c0c8a1c49d7bd71"
+      },
+      "changed_files": [
+        {
+          "path": "crates/raft-core/src/domain/raft_node/accessors.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-core/tests/it/consensus.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/application/host/status.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/interfaces/peer_http/status.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/src/lib.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/tests/it/membership_changes.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/tests/it/wire_golden.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "raft-core",
+        "raft-runtime"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 71,
+      "head": "c09d6bdfd5b3819576d7a181cc63997cb6effb74",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 49,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "ba7758a8ca8ee81cbf76a5c9f8445cabb7e514c85bccf0c57df1ac0e1928798c",
+        "body": "beb54986f5132357debcbfb7e8e70b73884e2e06245cf08e02e99384d8bfbfb3"
+      },
+      "changed_files": [
+        {
+          "path": "crates/raft-runtime/tests/it/host_shutdown_deadline.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "raft-runtime"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 72,
+      "head": "95496c12f2f9f9ea7f70340bf7742257b6d20922",
+      "base": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+      "issue": 9,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "e3c9b553dfc4f1a6c0e53c119a25d6990fd3f0fd064b3ca45130149f73ffde75",
+        "body": "09f7452853aa46fa8de5871a3cb1d25b4d55ab0891044fffab9e26a34de246a5"
+      },
+      "changed_files": [
+        {
+          "path": "crates/cli-std/CONTRIBUTING.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/cli-std/src/api/llm.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/cli-std/src/application/llm.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/cli-std/src/application/llm/tests.rs",
+          "status": "modified",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "cli-std"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    },
+    {
+      "pr": 75,
+      "head": "083ddf007593d663c3f26a556be155b15e5aa0cd",
+      "base": "2708ce21c782d52eae304e142ba5e899d0241c20",
+      "issue": 73,
+      "issue_state": "open",
+      "issue_hashes": {
+        "title": "b5b0e04f0bc385e59e31c0e2f04a04e3af11d0c6fd42d3c650cabc941fa66103",
+        "body": "0e7428bc695d460fe14b9a7a6cb3167b935ab7718b65acb5dc15218458d501ee"
+      },
+      "changed_files": [
+        {
+          "path": ".github/issue-ci-required-gates.json",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": ".github/workflows/ci.yml",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": ".github/workflows/claude-final-review.yml",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": ".github/workflows/issue-ci.yml",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/tests/it/file_bearer_auth.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/openapi-codegen/tests/it/target_profile_matrix.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "crates/raft-runtime/tests/snapshot_peak_memory.rs",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "docs/ci-qualification/README.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "docs/ci-qualification/claude-lifecycle.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "docs/ci-qualification/formal-pipeline.md",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/issue-ci/README.md",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "scripts/issue-ci/check-policy.py",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "scripts/issue-ci/handoff.py",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "scripts/issue-ci/json_data.py",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/issue-ci/qualification.py",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/issue-ci/tests/fixtures/legacy-policy.json",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/issue-ci/tests/test_handoff.py",
+          "status": "modified",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/contracts.py",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/docs.py",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/generated-rust-dependencies/Cargo.toml",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/generated-rust-dependencies/src/lib.rs",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/measure.py",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/tests/test_contracts.py",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/tests/test_docs.py",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/tests/test_measure.py",
+          "status": "added",
+          "previous": null
+        },
+        {
+          "path": "scripts/pr-gates/tests/test_qualification_policy.py",
+          "status": "added",
+          "previous": null
+        }
+      ],
+      "changed_crates": [
+        "openapi-codegen",
+        "raft-runtime"
+      ],
+      "selection": "all_workspace_profiles",
+      "reason": "Every path selects the whole manifest-derived workspace; changed or unknown dependencies cannot be omitted.",
+      "qualification": "not_evaluated_source_issue_evidence_required"
+    }
+  ]
+}

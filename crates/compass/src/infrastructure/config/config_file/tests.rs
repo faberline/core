@@ -3,7 +3,7 @@ use crate::domain::config::argus_config::{LanguageConfig, LintConfig};
 
 #[test]
 fn test_parse_empty_config() {
-    let config = ArgusConfig::from_str("").unwrap();
+    let config = ArgusConfig::parse_toml("").unwrap();
     assert!(config.cclab_lens.python.lint.enabled);
 }
 
@@ -34,7 +34,7 @@ enabled = true
 enabled = true
 "#;
 
-    let config = ArgusConfig::from_str(toml).unwrap();
+    let config = ArgusConfig::parse_toml(toml).unwrap();
 
     assert_eq!(
         config.cclab_lens.languages,

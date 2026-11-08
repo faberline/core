@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "queried_at": "2026-10-27T09:36:04Z",
+  "pr": 70,
+  "url": "https://github.com/faberline/core/pull/70",
+  "title": "raft-runtime: expose per-peer match_index and follower-observed leader commit (replica lag)",
+  "state": "open",
+  "head_sha": "aadac4deca3a0a994fd84b86bab89c035fcbc6bd",
+  "base_sha": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "branch": "issue/45",
+  "source": "GitHub connector get_pr_info and paginated list_pr_changed_filenames",
+  "source_issue_contracts": [
+    {
+      "number": 45,
+      "url": "https://github.com/faberline/core/issues/45",
+      "title": "raft-runtime: expose per-peer match_index and follower-observed leader commit (replica lag)",
+      "body_sha256": "1c4e864b4c30e989fb5822c450eb29548dec9b1eab3af0a18c0c8a1c49d7bd71",
+      "updated_at": "2026-10-24T15:01:06Z",
+      "source_commands": [],
+      "source_command_status": "not executed by this inventory; see recorded CI observations where present. Legacy libs/ or scripts/meta paths may not exist in this split repo and need reviewed mapping.",
+      "contract_note": "Source issue remains authoritative; this inventory does not narrow acceptance or turn a partial PR into completion."
+    }
+  ],
+  "changed_paths": [
+    "crates/raft-core/src/domain/raft_node/accessors.rs",
+    "crates/raft-core/tests/it/consensus.rs",
+    "crates/raft-runtime/src/application.rs",
+    "crates/raft-runtime/src/application/host.rs",
+    "crates/raft-runtime/src/application/host/status.rs",
+    "crates/raft-runtime/src/interfaces/peer_http/status.rs",
+    "crates/raft-runtime/src/lib.rs",
+    "crates/raft-runtime/tests/it/membership_changes.rs",
+    "crates/raft-runtime/tests/it/wire_golden.rs"
+  ],
+  "changed_crates": [
+    "raft-core",
+    "raft-runtime"
+  ],
+  "reverse_dependency_closure_at_baseline": [
+    "raft-core",
+    "raft-runtime"
+  ],
+  "unknown_or_global_paths": [],
+  "conservative_selection": [
+    "raft-core",
+    "raft-runtime"
+  ],
+  "selection_reason": "changed crates plus transitive normal/dev/build local reverse dependencies, including optional dependencies conservatively",
+  "inventory_sha": "41c352eaae687a1914087d279f36adbe9e9b4af5",
+  "inventory_limit": "Baseline manifests are not exact-head feature/dependency proof. Head manifest changes, deleted/renamed paths or unresolvable graphs require fresh metadata and conservative all-workspace selection.",
+  "obligations": [
+    {
+      "kind": "unit",
+      "command": "cargo test --locked -p raft-core --lib",
+      "oracle": "Every discovered library unit target runs; record named test counts/failures; include documented feature profiles. No success recorded by this snapshot.",
+      "status": "pending_online"
+    },
+    {
+      "kind": "static",
+      "command": "cargo clippy --locked -p raft-core --all-targets -- -D warnings",
+      "oracle": "Exit zero without suppressing warnings, on exact PR HEAD and required features; includes dependencies.",
+      "status": "pending_online"
+    },
+    {
+      "kind": "functional_e2e_candidate",
+      "command": "cargo test --locked -p raft-core --test it",
+      "oracle": "Existing assertions in crates/raft-core/tests/it/main.rs and declared modules; compare issue acceptance to executed named test roster. Full target may include network/cluster/process tests; online only.",
+      "source": "https://github.com/faberline/core/blob/41c352eaae687a1914087d279f36adbe9e9b4af5/crates/raft-core/tests/it/main.rs",
+      "status": "pending_online_and_applicability_review"
+    },
+    {
+      "kind": "unit",
+      "command": "cargo test --locked -p raft-runtime --lib",
+      "oracle": "Every discovered library unit target runs; record named test counts/failures; include documented feature profiles. No success recorded by this snapshot.",
+      "status": "pending_online"
+    },
+    {
+      "kind": "static",
+      "command": "cargo clippy --locked -p raft-runtime --all-targets -- -D warnings",
+      "oracle": "Exit zero without suppressing warnings, on exact PR HEAD and required features; includes dependencies.",
+      "status": "pending_online"
+    },
+    {
+      "kind": "functional_e2e_candidate",
+      "command": "cargo test --locked -p raft-runtime --test it",
+      "oracle": "Existing assertions in crates/raft-runtime/tests/it/main.rs and declared modules; compare issue acceptance to executed named test roster. Full target may include network/cluster/process tests; online only.",
+      "source": "https://github.com/faberline/core/blob/41c352eaae687a1914087d279f36adbe9e9b4af5/crates/raft-runtime/tests/it/main.rs",
+      "status": "pending_online_and_applicability_review"
+    },
+    {
+      "kind": "functional_e2e_candidate",
+      "command": "cargo test --locked -p raft-runtime --test resident_log_admission",
+      "oracle": "Existing assertions in crates/raft-runtime/tests/resident_log_admission.rs and declared modules; compare issue acceptance to executed named test roster. Full target may include network/cluster/process tests; online only.",
+      "source": "https://github.com/faberline/core/blob/41c352eaae687a1914087d279f36adbe9e9b4af5/crates/raft-runtime/tests/resident_log_admission.rs",
+      "status": "pending_online_and_applicability_review"
+    },
+    {
+      "kind": "functional_e2e_candidate",
+      "command": "cargo test --locked -p raft-runtime --test snapshot_peak_memory",
+      "oracle": "Existing assertions in crates/raft-runtime/tests/snapshot_peak_memory.rs and declared modules; compare issue acceptance to executed named test roster. Full target may include network/cluster/process tests; online only.",
+      "source": "https://github.com/faberline/core/blob/41c352eaae687a1914087d279f36adbe9e9b4af5/crates/raft-runtime/tests/snapshot_peak_memory.rs",
+      "status": "pending_online_and_applicability_review"
+    }
+  ],
+  "performance": {
+    "command": null,
+    "oracle": null,
+    "measurement": null,
+    "status": "blocked_no_reviewed_command_or_baseline",
+    "followup_issue": 73,
+    "requirement": "Map measured affected-performance command, baseline, workload/environment, thresholds and immutable output identity; no measurement or waiver has been verified."
+  },
+  "functional_qualification": {
+    "status": "blocked_no_approved_affected_gate_mapping",
+    "followup_issues": [
+      45
+    ],
+    "requirement": "Existing integration targets are candidate commands, not proof the whole original acceptance is covered. Compare every source issue criterion, downstream consumer/cluster scenarios and negative controls; map missing rows to the same original issue."
+  },
+  "evidence_identity_required": [
+    "repository",
+    "exact head SHA",
+    "base SHA",
+    "workflow path and immutable workflow/policy revision",
+    "job name/matrix",
+    "run id and attempt",
+    "command/feature profile",
+    "test roster and counts",
+    "oracle/threshold revision",
+    "immutable result artifact digest",
+    "applicability approval reference"
+  ],
+  "verified_online_evidence": [],
+  "qualification": "nonqualified; inventory only; no online execution or independent review performed by this task",
+  "observations": [
+    {
+      "url": "https://github.com/faberline/core/actions/runs/40423896447/job/121924770170",
+      "status": "pending",
+      "scope": "historical handoff reconciled all 22 heads; success of handoff did not qualify product gates",
+      "observed_by": "parent tracking session; reread logs 2026-10-27"
+    }
+  ]
+}
