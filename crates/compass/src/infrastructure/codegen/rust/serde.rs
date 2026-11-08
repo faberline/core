@@ -53,9 +53,7 @@ impl SerdeGenerator {
 
     /// Get struct-level serde attributes
     fn get_struct_serde_attrs(&self, _model: &ModelDef) -> Vec<String> {
-        let mut attrs = Vec::new();
-        attrs.push("rename_all = \"camelCase\"".to_string());
-        attrs
+        vec!["rename_all = \"camelCase\"".to_string()]
     }
 
     /// Generate a single field

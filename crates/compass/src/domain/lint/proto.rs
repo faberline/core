@@ -61,7 +61,7 @@ fn import_path(line: &str) -> Option<String> {
 }
 
 fn to_pascal(s: &str) -> String {
-    s.split(|c: char| c == '_' || c == '-')
+    s.split(['_', '-'])
         .filter(|p| !p.is_empty())
         .map(|p| {
             let mut c = p.chars();

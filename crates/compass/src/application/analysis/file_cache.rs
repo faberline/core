@@ -40,10 +40,8 @@ impl RequestHandler {
 
                 if path.is_dir() {
                     files.extend(self.collect_files(&path));
-                } else if path.is_file() {
-                    if Language::from_path(&path).is_some() {
-                        files.push(path);
-                    }
+                } else if path.is_file() && Language::from_path(&path).is_some() {
+                    files.push(path);
                 }
             }
         }
