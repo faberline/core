@@ -224,7 +224,8 @@ pub const DEFAULT_APPLIED_INDEX_BUDGET: Duration = Duration::from_secs(60);
 
 /// Wait for every node in `nodes` to reach `target` applied index.
 ///
-/// Each node gets its own budget of `per_node_budget` (at least 60 s).
+/// Each node gets its own budget of `per_node_budget`; callers should pass at
+/// least 60 s (`DEFAULT_APPLIED_INDEX_BUDGET` is 60 s).
 /// When the budget is exhausted, the helper panics with a timeout message
 /// naming the failing node and the applied index each node reached. It never
 /// falls through to value assertions.

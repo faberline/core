@@ -106,3 +106,10 @@ async fn sequential() {
         assert_eq!(*sm_val, Index::new(num_proposals));
     }
 }
+
+#[tokio::test]
+#[should_panic(expected = "timed out waiting for node 0")]
+async fn wait_for_applied_index_times_out_by_name() {
+    let nodes = cluster(3).await;
+    wait_for_applied_index(&nodes, Index::new(1), Duration::from_millis(50)).await;
+}
