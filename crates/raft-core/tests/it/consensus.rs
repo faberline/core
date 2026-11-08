@@ -183,6 +183,7 @@ fn stale_leader_steps_down_on_higher_term() {
             term: Term::new(term.get() + 5),
             success: false,
             match_index: Index::new(0),
+            read_round: 0,
         }),
     );
     assert_eq!(c.nodes[&leader].role(), Role::Follower);

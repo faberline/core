@@ -27,7 +27,9 @@ pub use message::{
 };
 pub use persisted_state::{PersistedState, PersistedStateRef};
 pub use raft_node::RaftNode;
-pub use refusal::{DemotionRefused, PromotionRefused, RemovalRefused, TransferRefused};
+pub use refusal::{
+    DemotionRefused, PromotionRefused, ReadRefused, RemovalRefused, TransferRefused,
+};
 pub use role::Role;
 pub use storage::{CommandLease, PinnedCommand, RaftStorage};
 pub use timing::{ELECTION_TIMEOUT_FLOOR_TICKS, HEARTBEAT_INTERVAL_TICKS};
