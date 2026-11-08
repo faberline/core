@@ -163,6 +163,15 @@ fn snapshot_peak_memory_grows_sublinearly() {
     let (small_peak, small_applied) = measure_snapshot_peak(SMALL_ENTRIES);
     let (large_peak, large_applied) = measure_snapshot_peak(LARGE_ENTRIES);
 
+    eprintln!(
+        "CORE_SNAPSHOT_PEAK small_entries={} small_peak_bytes={} large_entries={} large_peak_bytes={} limit_bytes={}",
+        SMALL_ENTRIES,
+        small_peak,
+        LARGE_ENTRIES,
+        large_peak,
+        small_peak.max(SNAPSHOT_CHUNK_SIZE) * 4
+    );
+
     assert_eq!(small_applied, SMALL_ENTRIES);
     assert_eq!(large_applied, LARGE_ENTRIES);
 

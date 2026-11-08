@@ -126,11 +126,7 @@ pub struct Desired<'a> {
 const ACTIVATION_RECHECK: Duration = Duration::from_secs(15);
 
 /// Decide the next step.
-pub fn next_action(
-    desired: &Desired<'_>,
-    observed: &Observed,
-    now: DateTime<Utc>,
-) -> Action {
+pub fn next_action(desired: &Desired<'_>, observed: &Observed, now: DateTime<Utc>) -> Action {
     // Trust before identity, always. A leaf from an issuer nobody trusts is
     // worse than no leaf: it fails at handshake time, on the far side, where
     // the error says "unknown CA" and names nothing useful.
@@ -212,7 +208,8 @@ pub fn next_action(
 /// certificate — while different certificates still spread out, which is the
 /// point of jitter (R4).
 pub fn renew_at(profile: &CertificateProfile, leaf: &ObservedLeaf) -> DateTime<Utc> {
-    let window = chrono::Duration::from_std(profile.renew_before()).unwrap_or(chrono::Duration::zero());
+    let window =
+        chrono::Duration::from_std(profile.renew_before()).unwrap_or(chrono::Duration::zero());
     let base = leaf.not_after - window;
     let jitter_secs = profile.renew_jitter().as_secs();
     if jitter_secs == 0 {

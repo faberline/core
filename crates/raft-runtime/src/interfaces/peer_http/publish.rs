@@ -108,9 +108,13 @@ pub(crate) async fn publish_handler(
                     .into_response()
             }
         }
-        Some(ProposalOutcome::Ambiguous { reason, .. }) => (
+        Some(ProposalOutcome::Ambiguous { index, reason }) => (
             StatusCode::SERVICE_UNAVAILABLE,
-            Json(serde_json::json!({ "error": reason })),
+            Json(serde_json::json!({
+                "outcome": "ambiguous",
+                "error": reason,
+                "index": index.map(|i| i.get()),
+            })),
         )
             .into_response(),
         Some(ProposalOutcome::DurabilityFailure { failure, .. }) => (

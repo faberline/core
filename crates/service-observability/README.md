@@ -56,7 +56,7 @@ IDs one way.
 | Attribute Containment | - | implemented | verified | smoke | ready | core; caller-supplied fields cannot overwrite an envelope field, cannot carry a credential-bearing key, and cannot grow a log line without bound |
 | Degraded Telemetry Fallback | - | implemented | verified | smoke | ready | non-core; a missing, malformed, or uncompiled trace exporter downgrades to structured logs instead of failing startup |
 | Connection Lifecycle Metrics | - | implemented | verified | smoke | ready | non-core; accepted, rejected, and closed connections are counted behind the lifecycle seam and rendered as canonical Prometheus text, so every runtime that links this crate exposes the same three series |
-| Portable Process Sampling | - | implemented | verified | smoke | ready | non-core; resident memory and CPU time are read through one portable surface whose macOS and Linux output shapes both parse exactly |
+| Portable Process Sampling | - | implemented | verified | smoke | ready | non-core; resident memory and CPU time are read by running the `ps` command, whose macOS and Linux output shapes both parse exactly, and it is unavailable in distroless runtime images, so it is evidence tooling for benchmarks and soaks |
 | Physical Filesystem Usage | - | implemented | verified | smoke | ready | non-core; total, used, and available bytes are read through safe statvfs without external binaries or unsafe FFI |
 
 ### Core Features
@@ -255,13 +255,17 @@ Type: Feature
 Feature Class: non-core
 Required Verification: smoke
 Promise:
-Resident memory and accumulated CPU time for a process are read through one
-portable surface, with no unsafe FFI and no platform-specific branch in the
-caller. Resident size arrives in KiB and is published in bytes. CPU time is
-parsed from every shape the surface emits — `MM:SS.ss`, `HH:MM:SS`, and
-`D-HH:MM:SS` — and converted to seconds. A sample that cannot be parsed, or a
-process that does not exist, is an error the caller sees, not a zero it might
-mistake for an idle process.
+Resident memory and accumulated CPU time for a process are read by running the
+`ps` command as a child process, with no unsafe FFI and no platform-specific
+branch in the caller. The `ps` command is not in the distroless runtime images
+the services deploy as, such as `gcr.io/distroless/cc-debian12`, which has no
+`ps` and no shell. The samples are therefore unavailable there, and this is
+evidence tooling for benchmarks and soaks, not a production surface. Resident
+size arrives in KiB and is published in bytes. CPU time is parsed from every
+shape the `ps` command emits — `MM:SS.ss`, `HH:MM:SS`, and `D-HH:MM:SS` — and
+converted to seconds. A sample that cannot be parsed, or a process that does not
+exist, is an error the caller sees, not a zero it might mistake for an idle
+process.
 Surfaces:
 - Rust API: `service_observability::ProcessUsage` - the sample, as CPU seconds and resident bytes.
 - Rust API: `service_observability::process_usage` - sample one process by pid.
