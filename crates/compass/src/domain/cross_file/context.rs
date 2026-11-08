@@ -61,7 +61,7 @@ impl TypeContext {
         }
 
         // Then check all files for exported symbols
-        for (_, bindings) in &self.bindings {
+        for bindings in self.bindings.values() {
             if let Some(binding) = bindings.get(symbol) {
                 if binding.is_exported {
                     return Some(&binding.ty);

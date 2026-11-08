@@ -32,7 +32,7 @@ fn test_multiple_defs() {
 
     // x should have 2 definitions
     let x_defs = deps.get_defs("x");
-    assert!(x_defs.len() >= 1);
+    assert!(!x_defs.is_empty());
 }
 
 #[test]

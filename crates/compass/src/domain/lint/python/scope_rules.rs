@@ -21,7 +21,7 @@ impl PythonChecker {
                 }
             };
             diagnostics.push(Diagnostic::warning(
-                symbol.defined_at.clone(),
+                symbol.defined_at,
                 "PY103",
                 DiagnosticCategory::Names,
                 message,
@@ -31,7 +31,7 @@ impl PythonChecker {
         // PY106: Variable redeclaration (assigned multiple times without use)
         for symbol in analyzer.redeclared_symbols() {
             diagnostics.push(Diagnostic::new(
-                symbol.defined_at.clone(),
+                symbol.defined_at,
                 crate::diagnostic::DiagnosticSeverity::Hint,
                 "PY106",
                 DiagnosticCategory::Names,
