@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use raft_runtime::{NodeId, RaftStatus};
 
 use crate::support::cluster;
-use cluster::{Node, await_leader, cluster};
+use cluster::{await_leader, cluster, Node};
 
 fn h2c_client() -> reqwest::Client {
     reqwest::Client::builder()
