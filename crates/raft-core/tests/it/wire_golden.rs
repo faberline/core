@@ -235,3 +235,17 @@ fn debug_output_is_pinned() {
         "NotCaughtUp { target: 2, matched: 4, last_index: 9 }"
     );
 }
+
+#[test]
+fn noop_entry_json_is_pinned() {
+    pin_json(
+        &entry(8, EntryKind::Noop, vec![]),
+        r#"{"term":2,"index":8,"command":[],"kind":"Noop"}"#,
+    );
+    // Old encodings still decode: an explicit Command kind and a missing kind.
+    let explicit: RaftEntry =
+        serde_json::from_str(r#"{"term":2,"index":5,"command":[1],"kind":"Command"}"#).unwrap();
+    assert_eq!(explicit.kind, EntryKind::Command);
+    let missing: RaftEntry = serde_json::from_str(r#"{"term":2,"index":5,"command":[1]}"#).unwrap();
+    assert_eq!(missing.kind, EntryKind::Command);
+}

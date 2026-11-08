@@ -383,3 +383,32 @@ fn command_pin_map_refuses_truncated_published_artifact() {
     };
     assert_eq!(error.kind(), io::ErrorKind::InvalidData);
 }
+
+#[test]
+fn noop_entry_survives_save_reopen_and_is_not_a_pinnable_command() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut persisted = state(vec![(Index::new(1), Term::new(1), b"cmd".to_vec())]);
+    persisted.log.push(RaftEntry {
+        index: Index::new(2),
+        term: Term::new(1),
+        command: Vec::new(),
+        kind: EntryKind::Noop,
+    });
+    persisted.commit_index = Index::new(2);
+    {
+        let store = store(&dir);
+        store.save(&persisted).unwrap();
+    }
+    let reopened = store(&dir);
+    let loaded = reopened.load().unwrap().unwrap();
+    assert_eq!(loaded.log[1].kind, EntryKind::Noop);
+
+    let err = reopened
+        .pin_committed_command(Index::new(2), Term::new(1))
+        .err()
+        .expect("a Noop entry must not be pinnable as a command");
+    assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
+    assert!(reopened
+        .pin_committed_command(Index::new(1), Term::new(1))
+        .is_ok());
+}
