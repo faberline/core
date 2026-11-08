@@ -21,8 +21,8 @@ use crate::support;
 
 use std::sync::Arc;
 
-use peer_tls::reload::{MaterialSource, MemoryMaterialSource, ReloadableTls, TlsRuntimeProfile};
 use peer_tls::material::MaterialPem;
+use peer_tls::reload::{MaterialSource, MemoryMaterialSource, ReloadableTls, TlsRuntimeProfile};
 use support::{authority, bundle, handshake, Authority, LeafBuilder};
 
 const MEMBER: &str = "lumen-0.lumen-peer.axiom.svc.cluster.local";
@@ -233,10 +233,8 @@ async fn trust_overlap_survives_a_second_rotation_before_the_first_was_observed(
     // runtime must not lose the anchor it was holding on behalf of members that
     // have not been reissued.
     let third = authority("axiom-peer-ca-gen3");
-    r.source.set(member_material(
-        &third,
-        bundle(&[&r.incoming, &third]),
-    ));
+    r.source
+        .set(member_material(&third, bundle(&[&r.incoming, &third])));
     r.tls.reload().expect("the second rotation activates");
 
     let server = r.tls.server_config().unwrap();

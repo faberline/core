@@ -1,0 +1,20 @@
+{
+  "aw_revision": "67af8d020df3ca2ec4b064289408cfb0c2f8b299",
+  "workflows": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "jobs": [
+        "service-k8s",
+        "storage-durable",
+        "service-backup",
+        "raft-core",
+        "raft-runtime"
+      ]
+    }
+  ],
+  "qualification_blockers": [
+    "Existing CI covers only five fixed crates, not an approved affected-crate selection or complete MR unit policy.",
+    "No approved current-head affected functional/e2e/performance qualification gates."
+  ],
+  "lifecycle_mode": "failure-only"
+}

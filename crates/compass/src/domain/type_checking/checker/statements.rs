@@ -56,18 +56,19 @@ impl<'a> TypeChecker<'a> {
         };
 
         // Check compatibility
-        if !expected_return.is_unknown() && !expected_return.is_any() {
-            if !self.is_assignable(&expected_return, &actual_return) {
-                self.diagnostics.push(Diagnostic::error(
-                    node.to_range(),
-                    "TC003",
-                    DiagnosticCategory::Type,
-                    format!(
-                        "Incompatible return type: expected '{}', got '{}'",
-                        expected_return, actual_return
-                    ),
-                ));
-            }
+        if !expected_return.is_unknown()
+            && !expected_return.is_any()
+            && !self.is_assignable(&expected_return, &actual_return)
+        {
+            self.diagnostics.push(Diagnostic::error(
+                node.to_range(),
+                "TC003",
+                DiagnosticCategory::Type,
+                format!(
+                    "Incompatible return type: expected '{}', got '{}'",
+                    expected_return, actual_return
+                ),
+            ));
         }
     }
 }
