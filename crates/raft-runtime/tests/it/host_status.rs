@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use raft_runtime::{NodeId, RaftStatus};
 
 use crate::support::cluster;
-use cluster::{await_leader, cluster};
+use cluster::{Node, await_leader, cluster};
 
 fn h2c_client() -> reqwest::Client {
     reqwest::Client::builder()
@@ -44,6 +44,23 @@ where
         assert!(
             Instant::now() < deadline,
             "timed out waiting for condition: {desc} at {url}"
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+/// Waits until `node` reports the follower role and knows `leader_id`.
+/// A follower learns the leader only when the leader's first Append reaches it.
+async fn await_follower_of(node: &Node, leader_id: NodeId) {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let s = node.host.status().await;
+        if s.role == "Follower" && s.leader == Some(leader_id) {
+            return;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "timed out waiting for follower to know leader {leader_id:?}"
         );
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
@@ -90,6 +107,7 @@ async fn follower_status() {
     let follower_idx = (leader_idx + 1) % 3;
     let follower = &nodes[follower_idx];
 
+    await_follower_of(follower, leader_id).await;
     let status = follower.host.status().await;
     assert_eq!(status.role, "Follower");
     assert!(!status.is_leader);
