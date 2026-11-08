@@ -38,11 +38,7 @@ fn member(ca: &Authority) -> (ReloadableTls, Arc<MemoryMaterialSource>) {
 }
 
 fn dialer(ca: &Authority) -> Arc<rustls::ClientConfig> {
-    let source = Arc::new(MemoryMaterialSource::new(material(
-        ca,
-        PEER,
-        PEER_SPIFFE,
-    )));
+    let source = Arc::new(MemoryMaterialSource::new(material(ca, PEER, PEER_SPIFFE)));
     ReloadableTls::required(
         TlsRuntimeProfile::peer([PEER.to_string()], [PEER_SPIFFE.to_string()]),
         source as Arc<dyn MaterialSource>,
@@ -181,12 +177,12 @@ async fn peer_rotation_never_leaves_a_plaintext_window() {
         let (server_io, mut client_io) = tokio::io::duplex(4096);
         let acceptor = tokio_rustls::TlsAcceptor::from(config);
         let accepted = tokio::spawn(async move { acceptor.accept(server_io).await.is_ok() });
-        client_io.write_all(b"POST /raft/append HTTP/1.1\r\n\r\n").await.unwrap();
+        client_io
+            .write_all(b"POST /raft/append HTTP/1.1\r\n\r\n")
+            .await
+            .unwrap();
         client_io.flush().await.unwrap();
-        assert!(
-            !accepted.await.unwrap(),
-            "plaintext was accepted {stage}"
-        );
+        assert!(!accepted.await.unwrap(), "plaintext was accepted {stage}");
 
         source.set(material(&ca, MEMBER, SPIFFE));
         tls.reload().unwrap();
