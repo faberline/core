@@ -19,6 +19,7 @@ agent can navigate cheaply and act on correctly:
 
 ## Contents
 
+- [Shared delivery entrypoint](#shared-delivery-entrypoint)
 - [Authoring principle: right-sized files, semantic paths, explicit names](#authoring-principle-right-sized-files-semantic-paths-explicit-names)
   - [The three rules](#the-three-rules)
   - [Balanced splitting](#balanced-splitting)
@@ -63,6 +64,19 @@ agent can navigate cheaply and act on correctly:
 - [Project build and release contract](#project-build-and-release-contract)
   - [Debug builds](#debug-builds)
   - [Release builds](#release-builds)
+
+## Shared delivery entrypoint
+
+Delivery runs through one shared skill, `aw-worker` (`/faberline:aw-worker`),
+from [faberline/aw at a pinned commit](https://github.com/faberline/aw/tree/6807ca7eb10a8d95eb13295e417ba36c2721c75e/plugins/faberline/skills/aw-worker).
+
+One agent does triage, spec, tdd and review in stages, selected by the issue's
+`stage:` labels. `aw` opens and merges the pull request. CI alone owns done: an
+issue is done only when the required CI gates pass on its current inputs.
+Review runs no tests.
+
+The authoring conventions below still apply. The `aw-worker` spec stage writes
+each issue contract, and its review stage reads the authored sections.
 
 ## Authoring principle: right-sized files, semantic paths, explicit names
 
@@ -275,11 +289,11 @@ anti-boilerplate check rejected only seven literals (`(fill)`,
 `(replace-this)`, `tbd`, `todo`, `maybe`, `unclear`, `uncertain`). A title echo
 was accepted by construction.
 
-That generator is deleted with the crate that held it. `aw change skeleton`
-(`uv run --project apps/aw aw ...`) emits the empty GHAN template in its
-place and `aw change validate` is what refuses a body now. The numbers above still describe the tracker,
-though — those bodies were written under the old generator and nothing has
-rewritten them.
+That generator is deleted with the crate that held it. The `aw-worker` spec stage
+now writes each bounded issue contract, and its review stage checks the authored
+requirements. The numbers above still describe the historical
+tracker population; those bodies have not been rewritten. No retired workflow
+CLI is an active authoring entrypoint.
 
 So the rule that generates GHAN's shape is: **every section MUST name the
 consumer that reads it and the condition under which that consumer refuses it.**
@@ -287,38 +301,26 @@ A section with no refusal condition is decoration and MUST NOT be added.
 
 ### The layering GHAN sits in
 
-GHAN is the **authored** layer only. Phase progress — which behavior or
-maintenance phase has landed, and what it was measured against — is the
-**machine** layer and lives in commit trailers, never in authored prose:
+GHAN is the **authored** layer. It states the requirement and refusal
+conditions. CI and independent review supply measured evidence for that
+contract; authored prose alone does not prove completion.
 
-- *landed?* → the phase's `Refs #<iid>` commit exists in the tree, which is what
-  the next phase's predecessor check looks for.
-- *against which red?* → `E2E-Red:` and `Impl-Red:` name the cases and tests
-  observed failing immediately before, so the following phase's green is
-  attributable to something rather than merely asserted. Impl has no predecessor
-  commit to parse a trailer back out of — it is the ladder's last phase, and
-  there is no earlier `impl` commit — so the evidence moves to a mid-phase
-  record instead: `red` writes it to `.aw/impl-red/<iid>.json`, and
-  `apps/aw/src/aw/scripts/impl.py:581-645` (`C2`) reads that record back and
-  refuses a run with no record on file, a record naming no failing test, a HEAD
-  that has moved since the record was measured, or a test file whose bytes have
-  changed since then.
-- *reviewed against which bytes?* → `E2E-Change-Digest:`, which carries
-  `leg.change_digest` — one sha256 over the work-item body **and** every path
-  under review (`apps/aw/src/aw/scripts/leg.py:331`).
-- *which maintenance evidence?* → `Maint-Contract:` and
-  `Maint-Change-Digest:` name the maintenance contract and its measured bytes.
+The `aw-worker` workflow uses the linked issue, the PR's exact head and base,
+and the configured CI workflow/run/attempt evidence. Read the latest planned
+spec comment when present, otherwise the issue body. Keep the declared gate
+commands and their applicable checks. Missing, skipped, cancelled or stale
+checks do not prove acceptance.
 
-Two properties of that layer are load-bearing. The digest covers the work item
-as well as the code because the question a reviewer answers is "does this change
-satisfy this work item", so an edit to either side can flip the answer: edit the
-body and the recorded verdict stops matching, and an approval cannot outlive the
-requirement it approved. And the record lives on the commit rather than in a
-state file, so a phase rebased away takes its record with it — a state file
-would go on asserting a red for history that no longer exists.
+A change to the issue contract or the reviewed bytes requires fresh
+qualification. Preserve failing-test and negative-control evidence required
+by the acceptance contract. Do not reuse an old verdict for changed inputs.
+The former phase CLI, phase-specific trailers and local phase-state files are
+not current delivery entrypoints.
 
-The two layers meet at exactly one point: **the gate command named in
-`## Acceptance` is the command the phase runs.** Everything else is independent.
+The layers meet at the declared acceptance gates: CI measures the applicable
+checks, and independent review reads the contract, diff and current results.
+A successful CI processing job is not proof of product acceptance, and a review
+receipt is not merge or issue-close authority.
 
 ### The four sections
 
@@ -336,20 +338,19 @@ Each is specified as *required content · machine consumer · refusal conditions
 Not "improve X", not "support Y", not "make Z better". If there is no value to
 name on either side, the work is not yet bounded.
 
-**Consumer.** `aw change validate` (`apps/aw/src/aw/scripts/change.py:289-294`).
+**Consumer.** The `aw-worker` spec and review stages read this authored requirement. It is an authoring rule, not a claim that the retired
+workflow CLI still validates current issues.
 
 **Refused when** the section still carries the skeleton placeholder, is written
-as a list, or runs to more than one paragraph. That is the whole of what a
-script can see. The rest of the shape — an observation point, a current value,
-a target value, and exactly one of each — is what `product-plan` asks to make
-explicit; nothing measures it, so a one-paragraph sentence naming nothing
-passes `validate` and is still an unbounded goal.
+as a list, or runs to more than one paragraph. Planning and review also require
+the observation point, current value and target value stated above. A
+one-paragraph sentence that names none of them is still an unbounded goal;
+its shape alone is not acceptance evidence.
 
 The boundedness heuristic that used to back this section — `looks_too_large_for_atomic_wi`,
 a phrase set matched against `title + goal` — is gone rather than ported. It
 lived in the deleted crate's planner instead of in the section schema, and it is
-the single rule the plugin's validator deliberately does not reproduce
-(`change.py:31`).
+not an active validator in the shared issue skills.
 
 ---
 
@@ -1175,8 +1176,8 @@ These rules make the tree honest:
   `tests/it/` is allowed only when one of these holds:
   1. It is the crate's only test file: no other `tests/<name>.rs` and no
      `tests/it/`.
-  2. It contains one of the `test_isolation_markers` in the workspace
-     repository's `scripts/meta/rust_arch/policy.toml` (`set_var(`,
+  2. It contains one of the `test_isolation_markers` of the retired `rust_arch`
+     policy (`set_var(`,
      `remove_var(`, `#[global_allocator]`). These change process-global state,
      so the file must not share a process with other cases.
   3. Its leading `//!` block has a line `//! isolation: <reason>` with a
@@ -1523,9 +1524,9 @@ must exist on the real clap surface and chain-required positionals/flags must
 be present. A `next` that doesn't resolve against the binary's own `--help`
 is worse than no `next` at all.
 
-The working example in this repo is the `aw` plugin's phase scripts. Every one
-of `e2e.py` and `impl.py` ends by printing the command that follows it, and the
-last phase prints that the change is closed instead — so an agent driving the
+The working example was the retired `aw` phase CLI, not an active entrypoint.
+Its `e2e.py` and `impl.py` phase scripts each ended by printing the command that
+followed them, and the last phase printed that the change was closed instead — so an agent driving the
 ladder never has to infer the next verb. That is the convention in its
 simplest conforming form: a fixed trailing stdout line, no envelope.
 
@@ -1614,14 +1615,14 @@ trait does not imply Kubernetes, HA, backup, or performance traits.
 
 Meta docs split by *layer*, not by topic. A fact belongs to exactly one layer.
 There used to be a machine-readable source for the matrix below — `meta_docs.rs`
-drove placement and section validation, and `aw meta init` / `sync` / `check`
-were the sole writer and checker. Both are deleted. The matrix is hand-maintained
+drove placement and section validation, and the legacy META CLI was the sole
+writer and checker. Both are deleted. The matrix is hand-maintained
 now, and there is no single checker for every row. Project product-document rows
-are the exception: `scripts/meta/readme_contract.py` validates a README, and
-`scripts/meta/project_docs_contract.py` validates an adopted README, STATUS,
-and ROADMAP set plus its adopted protocol, generated-client, indexing,
-querying, GKE, client-integration, and linked migration guides.
-Other rows still depend on their named reader or a human review.
+are the exception in intent only: no deterministic README or project-document
+checker is retained. Verification of an adopted README, STATUS, and ROADMAP set,
+its adopted protocol, generated-client, indexing, querying, GKE,
+client-integration, and linked migration guides is a review step by a person or
+the review stage. Other rows still depend on their named reader or a human review.
 
 | Layer | Doc | Fact owner | Required headings | Inherits |
 |---|---|---|---|---|
@@ -1727,12 +1728,11 @@ composition. `libs/<name>` supplies a reusable mechanism.
 contract. A capability can name several sources, and a source can support
 several capabilities. The source list is not an ownership class.
 
-The deterministic validator is
-`scripts/meta/readme_contract.py`. The `project-readme-check` skill that added
-a clean-context reader after it was deleted on 2026-09-02; the script is now
-the whole check, and a semantic read is a review step a human asks for.
-The script checks format, links, source paths, and resolvable gate names. It
-does not execute the gates or decide whether their behavior proves the promise.
+No deterministic README checker is retained. The `project-readme-check` skill,
+which added a clean-context reader, was deleted on 2026-09-02. Its format, link,
+source-path and gate-name checks are now a review step: a person or the review
+stage verifies them. That review does not execute the gates or decide whether
+their behavior proves the promise.
 
 A project can adopt `STATUS.md` and `ROADMAP.md` together. Until it does, its
 README remains valid under the README-only contract. After adoption,
@@ -1824,13 +1824,12 @@ both sides of each change, the caller action, Managed activation, available
 migration tools, and verification. Historical migration notes that are not
 linked from the README remain outside the adopted product-document set.
 
-The full-set validator is `scripts/meta/project_docs_contract.py`. It applies
-the README validator, checks both companion formats, resolves gates and
-anchors, validates adopted supporting guides, and rejects deterministic
-cross-document conflicts. The clean-context read that used to follow it (the
-deleted `project-readme-check` skill) is now a review step a human asks for:
-give only the exact adopted files to one context-free reader when meaning or
-contradictions — what a script cannot decide — need checking.
+No full-set project-document checker is retained. The README checks, companion-format
+checks, gate and anchor resolution, adopted supporting-guide validation, and
+cross-document conflict detection that it once performed are not run by any script.
+Verification is a review step by a person or the review stage: give only the exact
+adopted files to one context-free reader when meaning or contradictions, which no
+script decides, need checking.
 
 `apps/<name>/CONTRIBUTING.md` / `projects/<name>/CONTRIBUTING.md` is the local
 operating guide. It does not restate root authoring rules and does not carry
