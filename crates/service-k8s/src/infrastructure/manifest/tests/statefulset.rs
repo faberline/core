@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::infrastructure::manifest::stateful_instance::StatefulInstanceError;
+
 #[test]
 fn service_statefulset_keeps_exact_downward_api_env_contract() {
     let cx = cx();
@@ -38,7 +40,8 @@ fn service_statefulset_keeps_exact_downward_api_env_contract() {
         revision_history_limit: None,
         update_strategy: None,
         volume_claim: None,
-    });
+    })
+    .expect("valid statefulset");
     assert_eq!(ss["spec"]["replicas"], 6); // shard_count * replicas_per_shard
     assert_eq!(ss["spec"]["serviceName"], "s-headless");
     assert_eq!(ss["spec"]["podManagementPolicy"], "Parallel");
@@ -161,7 +164,7 @@ fn service_statefulset_can_render_lumen_style_production_template() {
             mount_path: "/var/lib/lumen",
             read_only: false,
         }),
-    });
+    }).expect("valid statefulset");
     let pod = &ss["spec"]["template"]["spec"];
     let container = &pod["containers"][0];
     assert_eq!(
@@ -243,7 +246,8 @@ fn sharded_statefulset_legacy_wrapper_keeps_default_claim_mount() {
         memory: "",
         extra_env: vec![],
         volume_claim: Some(json!({ "metadata": { "name": "data" }, "spec": {} })),
-    });
+    })
+    .expect("valid statefulset");
     assert!(ss["spec"]["volumeClaimTemplates"].is_array());
     let pod = &ss["spec"]["template"]["spec"];
     let resources = &pod["containers"][0]["resources"];
@@ -258,5 +262,171 @@ fn sharded_statefulset_legacy_wrapper_keeps_default_claim_mount() {
     assert_eq!(
         ss["spec"]["template"]["spec"]["containers"][0]["volumeMounts"][0]["mountPath"],
         "/data"
+    );
+}
+
+#[test]
+fn service_statefulset_zero_shard_count_returns_error() {
+    let cx = cx();
+    let p = ServiceStatefulSet {
+        cx: &cx,
+        name: "s",
+        component: "server",
+        image: "img:1",
+        image_pull_policy: "IfNotPresent",
+        command: vec!["serve".into()],
+        args: vec![],
+        ports: vec![json!({ "name": "http", "containerPort": 7000, "protocol": "TCP" })],
+        headless_service: "s-headless",
+        shard_count: 0,
+        replicas_per_shard: 3,
+        voter_count: 3,
+        headless_env_key: "SVC_HEADLESS_SERVICE",
+        service_account_name: Some("s"),
+        env: vec![json!({ "name": "EXTRA", "value": "x" })],
+        env_from: vec![],
+        resources: guaranteed_resources("1", "1Gi"),
+        pod_annotations: None,
+        pod_security_context: None,
+        container_security_context: None,
+        termination_grace_period_seconds: None,
+        readiness_probe: None,
+        liveness_probe: None,
+        startup_probe: None,
+        lifecycle: None,
+        volumes: vec![],
+        volume_mounts: vec![],
+        affinity: None,
+        node_selector: None,
+        tolerations: vec![],
+        topology_spread_constraints: vec![],
+        revision_history_limit: None,
+        update_strategy: None,
+        volume_claim: None,
+    };
+    assert_eq!(
+        service_statefulset(p),
+        Err(StatefulInstanceError::ZeroReplicas)
+    );
+}
+
+#[test]
+fn service_statefulset_zero_replicas_per_shard_returns_error() {
+    let cx = cx();
+    let p = ServiceStatefulSet {
+        cx: &cx,
+        name: "s",
+        component: "server",
+        image: "img:1",
+        image_pull_policy: "IfNotPresent",
+        command: vec!["serve".into()],
+        args: vec![],
+        ports: vec![json!({ "name": "http", "containerPort": 7000, "protocol": "TCP" })],
+        headless_service: "s-headless",
+        shard_count: 3,
+        replicas_per_shard: 0,
+        voter_count: 3,
+        headless_env_key: "SVC_HEADLESS_SERVICE",
+        service_account_name: Some("s"),
+        env: vec![json!({ "name": "EXTRA", "value": "x" })],
+        env_from: vec![],
+        resources: guaranteed_resources("1", "1Gi"),
+        pod_annotations: None,
+        pod_security_context: None,
+        container_security_context: None,
+        termination_grace_period_seconds: None,
+        readiness_probe: None,
+        liveness_probe: None,
+        startup_probe: None,
+        lifecycle: None,
+        volumes: vec![],
+        volume_mounts: vec![],
+        affinity: None,
+        node_selector: None,
+        tolerations: vec![],
+        topology_spread_constraints: vec![],
+        revision_history_limit: None,
+        update_strategy: None,
+        volume_claim: None,
+    };
+    assert_eq!(
+        service_statefulset(p),
+        Err(StatefulInstanceError::ZeroReplicas)
+    );
+}
+
+#[test]
+fn sharded_statefulset_zero_counts_return_error() {
+    let cx = cx();
+    let sharded = |shard_count: u32, replicas_per_shard: u32| ShardedStatefulSet {
+        cx: &cx,
+        name: "s",
+        component: "server",
+        image: "img:1",
+        image_pull_policy: "IfNotPresent",
+        command: vec!["serve".into()],
+        ports: vec![("http", 7000)],
+        headless_service: "s-headless",
+        shard_count,
+        replicas_per_shard,
+        voter_count: 3,
+        headless_env_key: "SVC_HEADLESS_SERVICE",
+        cpu: "1",
+        memory: "1Gi",
+        extra_env: vec![],
+        volume_claim: None,
+    };
+    assert_eq!(
+        sharded_statefulset(sharded(0, 3)),
+        Err(StatefulInstanceError::ZeroReplicas)
+    );
+    assert_eq!(
+        sharded_statefulset(sharded(3, 0)),
+        Err(StatefulInstanceError::ZeroReplicas)
+    );
+}
+
+#[test]
+fn service_statefulset_with_service_links_zero_replicas_returns_error() {
+    let cx = cx();
+    let p = ServiceStatefulSet {
+        cx: &cx,
+        name: "s",
+        component: "server",
+        image: "img:1",
+        image_pull_policy: "IfNotPresent",
+        command: vec!["serve".into()],
+        args: vec![],
+        ports: vec![json!({ "name": "http", "containerPort": 7000, "protocol": "TCP" })],
+        headless_service: "s-headless",
+        shard_count: 0,
+        replicas_per_shard: 3,
+        voter_count: 3,
+        headless_env_key: "SVC_HEADLESS_SERVICE",
+        service_account_name: Some("s"),
+        env: vec![json!({ "name": "EXTRA", "value": "x" })],
+        env_from: vec![],
+        resources: guaranteed_resources("1", "1Gi"),
+        pod_annotations: None,
+        pod_security_context: None,
+        container_security_context: None,
+        termination_grace_period_seconds: None,
+        readiness_probe: None,
+        liveness_probe: None,
+        startup_probe: None,
+        lifecycle: None,
+        volumes: vec![],
+        volume_mounts: vec![],
+        affinity: None,
+        node_selector: None,
+        tolerations: vec![],
+        topology_spread_constraints: vec![],
+        revision_history_limit: None,
+        update_strategy: None,
+        volume_claim: None,
+    };
+    assert_eq!(
+        service_statefulset_with_service_links(p, true),
+        Err(StatefulInstanceError::ZeroReplicas)
     );
 }
