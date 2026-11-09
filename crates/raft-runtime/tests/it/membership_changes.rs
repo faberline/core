@@ -257,3 +257,55 @@ async fn a_host_that_is_not_the_leader_returns_core_refusals() {
         other => panic!("expected Err(RemovalRefused::NotLeader), got {other:?}"),
     }
 }
+
+#[tokio::test]
+async fn raftz_peer_match_index_reported_on_leader_and_empty_on_follower() {
+    let nodes = cluster(4).await;
+    let leader = await_leader(&nodes)
+        .await
+        .expect("a four-voter cluster elects a leader");
+    let target = (leader + 1) % 4;
+    let follower = (leader + 2) % 4;
+    let client = h2c_client();
+
+    let target_id = NodeId::new(target as u64);
+    let leader_id = NodeId::new(leader as u64);
+
+    // Demote voter `target` so cluster has 3 voters plus one learner.
+    nodes[leader]
+        .host
+        .demote_voter(target_id)
+        .await
+        .expect("demoting a voter succeeds");
+
+    // Wait until target is recognized as a learner.
+    poll_status_until(
+        &client,
+        &nodes[target].url,
+        |s| s.role == "Learner" && s.learners.contains(&target_id),
+        Duration::from_secs(5),
+        "target node is learner",
+    )
+    .await;
+
+    // Read /raftz on leader: leader reports all peers (other voters and learners).
+    let leader_status = status(&client, &nodes[leader].url).await;
+    assert_eq!(leader_status.peer_match_index.len(), 3);
+    let peer_ids: Vec<NodeId> = leader_status
+        .peer_match_index
+        .iter()
+        .map(|p| p.id)
+        .collect();
+    assert!(!peer_ids.contains(&leader_id));
+    assert!(peer_ids.contains(&target_id));
+    let mut expected_sorted_ids = peer_ids.clone();
+    expected_sorted_ids.sort();
+    assert_eq!(
+        peer_ids, expected_sorted_ids,
+        "peer_match_index must be sorted by NodeId"
+    );
+
+    // Read /raftz on follower: reports an empty list.
+    let follower_status = status(&client, &nodes[follower].url).await;
+    assert!(follower_status.peer_match_index.is_empty());
+}
