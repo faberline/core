@@ -27,10 +27,12 @@ pub use app::run_admin_snapshot_backup;
 pub use app::sink_from_destination;
 pub use application::{run_backup_once, BackupObject, BackupRunResult};
 pub use domain::{
-    plan_retention, ArtifactVerifier, BackupArtifact, BackupDestination, BackupPolicy,
-    BackupSetError, BackupSetV1, BackupSink, BackupSinkError, DestinationError, PolicyError,
-    RetentionPlan, RetentionPolicy, ScheduledBackupPolicy, SchemeInfo, SetInventory, SetKeyError,
-    SetKeyLayout, SetState, MAX_ARTIFACTS, MAX_ARTIFACT_NAME_BYTES, MAX_MANIFEST_BYTES,
+    plan_retention, resume_or_begin, ArtifactEntry, ArtifactStage, ArtifactVerifier,
+    BackupArtifact, BackupDestination, BackupPolicy, BackupSetError, BackupSetV1, BackupSink,
+    BackupSinkError, DestinationError, PolicyError, RestoreLedger, RestoreLedgerError,
+    RestorePhase, ResumePoint, RetentionPlan, RetentionPolicy, ScheduledBackupPolicy, SchemeInfo,
+    SetInventory, SetKeyError, SetKeyLayout, SetState, MAX_ARTIFACTS, MAX_ARTIFACT_NAME_BYTES,
+    MAX_MANIFEST_BYTES, MAX_RESTORE_LEDGER_ARTIFACTS, MAX_RESTORE_LEDGER_BYTES, MAX_SET_ID_BYTES,
     SUPPORTED_SCHEMES,
 };
 pub use infrastructure::{fetch_backup_object, GcsSink, LocalFsSink, UnsupportedCloudSink};

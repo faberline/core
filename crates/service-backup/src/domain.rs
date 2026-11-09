@@ -16,6 +16,8 @@ mod destination;
 mod destination_error;
 mod policy;
 mod policy_error;
+mod restore_ledger;
+mod restore_ledger_error;
 mod retention_plan;
 mod set_key_layout;
 #[cfg(feature = "http-client")]
@@ -38,6 +40,11 @@ pub use destination::{BackupDestination, SchemeInfo, SUPPORTED_SCHEMES};
 pub use destination_error::DestinationError;
 pub use policy::{BackupPolicy, RetentionPolicy, ScheduledBackupPolicy};
 pub use policy_error::PolicyError;
+pub use restore_ledger::{
+    resume_or_begin, ArtifactEntry, ArtifactStage, RestoreLedger, RestorePhase, ResumePoint,
+    MAX_RESTORE_LEDGER_ARTIFACTS, MAX_RESTORE_LEDGER_BYTES, MAX_SET_ID_BYTES,
+};
+pub use restore_ledger_error::RestoreLedgerError;
 pub use retention_plan::{plan_retention, RetentionPlan, SetInventory, SetState};
 pub use set_key_layout::{SetKeyError, SetKeyLayout};
 #[cfg(feature = "http-client")]

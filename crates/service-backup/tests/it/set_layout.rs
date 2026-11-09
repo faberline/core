@@ -161,53 +161,54 @@ fn invalid_prefix_set_id_and_name() {
 
 #[test]
 fn parse_set_id_round_trip_and_rejection() {
-    let layout = SetKeyLayout::new("backup/v1").unwrap();
-    let key = layout.artifact_key("set.1-a_b", "a/b.bin").unwrap();
-    assert_eq!(layout.parse_set_id(&key), Some("set.1-a_b"));
-    assert_eq!(layout.parse_set_id(&layout.latest_key()), None);
-    assert_eq!(
-        layout.parse_set_id("other/sets/set.1-a_b/manifest.json"),
-        None
-    );
-    assert_eq!(layout.parse_set_id("backup/v1/sets/"), None);
-    assert_eq!(layout.parse_set_id("backup/v1/sets/set.1-a_b"), None);
+    let layouts = [
+        SetKeyLayout::new("backup/v1").unwrap(),
+        SetKeyLayout::new("").unwrap(),
+    ];
+    let set_ids = ["a.b", "a-b", "a_b", "1"];
+    let names = ["x.bin", "a/b.bin"];
 
-    let layout_empty = SetKeyLayout::new("").unwrap();
-    let key_empty = layout_empty.artifact_key("set.1-a_b", "a/b.bin").unwrap();
-    assert_eq!(layout_empty.parse_set_id(&key_empty), Some("set.1-a_b"));
-    assert_eq!(layout_empty.parse_set_id(&layout_empty.latest_key()), None);
-    assert_eq!(
-        layout_empty.parse_set_id("other/sets/set.1-a_b/manifest.json"),
-        None
-    );
+    for layout in &layouts {
+        for set_id in &set_ids {
+            for name in &names {
+                let key = layout.artifact_key(set_id, name).unwrap();
+                assert_eq!(layout.parse_set_id(&key), Some(*set_id), "key {key}");
+            }
+            let manifest = layout.manifest_key(set_id).unwrap();
+            assert_eq!(layout.parse_set_id(&manifest), Some(*set_id));
+        }
+        assert_eq!(layout.parse_set_id(&layout.latest_key()), None);
+    }
+
+    let layout = SetKeyLayout::new("backup/v1").unwrap();
+    assert_eq!(layout.parse_set_id("other/sets/a_b/manifest.json"), None);
+    assert_eq!(layout.parse_set_id("backup/v1/sets/"), None);
+    assert_eq!(layout.parse_set_id("backup/v1/sets/a_b"), None);
 }
 
 #[test]
 fn collision_cross_product() {
-    let layouts = [
+    let set_ids = ["a", "b", "a.b"];
+    let names = ["manifest.json", "latest.json", "x", "a/b"];
+
+    for layout in [
         SetKeyLayout::new("").unwrap(),
         SetKeyLayout::new("backup").unwrap(),
-    ];
-    let set_ids = ["s1", "s2", "set-a.1_b"];
-    let names = [
-        "manifest.json",
-        "latest.json",
-        "data.bin",
-        "nested/part.0",
-        "artifacts",
-    ];
-
-    for layout in &layouts {
-        let mut seen = HashSet::new();
+    ] {
         let latest = layout.latest_key();
+        let manifests: Vec<String> = set_ids
+            .iter()
+            .map(|id| layout.manifest_key(id).unwrap())
+            .collect();
 
+        let mut seen = HashSet::new();
         for set_id in &set_ids {
-            let manifest = layout.manifest_key(set_id).unwrap();
-            assert_ne!(manifest, latest);
-
             for name in &names {
                 let artifact = layout.artifact_key(set_id, name).unwrap();
-                assert_ne!(artifact, manifest);
+                assert!(
+                    !manifests.contains(&artifact),
+                    "artifact {artifact} equals a manifest key"
+                );
                 assert_ne!(artifact, latest);
                 assert!(
                     seen.insert(artifact),
@@ -215,6 +216,7 @@ fn collision_cross_product() {
                 );
             }
         }
+        assert_eq!(seen.len(), set_ids.len() * names.len());
     }
 }
 
@@ -289,54 +291,38 @@ fn aged_partial_set_is_orphan() {
 fn input_order_does_not_change_plan() {
     let now = UNIX_EPOCH + Duration::from_secs(1_000_000);
     let grace = Duration::from_secs(3600);
+    let created = now - Duration::from_secs(500);
 
-    let item1 = SetInventory {
-        set_id: "complete-a".to_string(),
+    // Three complete sets with the same created_at: the tie breaks by set_id.
+    let complete = |id: &str| SetInventory {
+        set_id: id.to_string(),
         state: SetState::Complete {
-            created_at: now - Duration::from_secs(500),
+            created_at: created,
         },
-        newest_object_at: now - Duration::from_secs(500),
+        newest_object_at: created,
     };
-    let item2 = SetInventory {
-        set_id: "complete-b".to_string(),
-        state: SetState::Complete {
-            created_at: now - Duration::from_secs(500), // tie with complete-a
-        },
-        newest_object_at: now - Duration::from_secs(500),
-    };
-    let item3 = SetInventory {
-        set_id: "complete-c".to_string(),
-        state: SetState::Complete {
-            created_at: now - Duration::from_secs(200),
-        },
-        newest_object_at: now - Duration::from_secs(200),
-    };
-    let item4 = SetInventory {
-        set_id: "partial-young".to_string(),
-        state: SetState::Partial,
-        newest_object_at: now - Duration::from_secs(100),
-    };
-    let item5 = SetInventory {
+    let item_a = complete("complete-a");
+    let item_b = complete("complete-b");
+    let item_c = complete("complete-c");
+    let item_p = SetInventory {
         set_id: "partial-aged".to_string(),
         state: SetState::Partial,
         newest_object_at: now - Duration::from_secs(5000),
     };
 
     let order1 = vec![
-        item1.clone(),
-        item2.clone(),
-        item3.clone(),
-        item4.clone(),
-        item5.clone(),
+        item_b.clone(),
+        item_a.clone(),
+        item_c.clone(),
+        item_p.clone(),
     ];
     let mut order2 = order1.clone();
     order2.reverse();
     let order3 = vec![
-        item3.clone(),
-        item5.clone(),
-        item1.clone(),
-        item4.clone(),
-        item2.clone(),
+        item_c.clone(),
+        item_p.clone(),
+        item_a.clone(),
+        item_b.clone(),
     ];
 
     let plan1 = plan_retention(&order1, 1, now, grace);
@@ -345,7 +331,7 @@ fn input_order_does_not_change_plan() {
 
     assert_eq!(plan1, plan2);
     assert_eq!(plan1, plan3);
-    // Ties on created_at break by set_id, so complete-c is the newest.
+    // Equal created_at: the greatest set_id is the newest and is kept.
     assert_eq!(plan1.keep, vec!["complete-c"]);
     assert_eq!(plan1.delete_complete, vec!["complete-a", "complete-b"]);
     assert_eq!(plan1.delete_orphans, vec!["partial-aged"]);
