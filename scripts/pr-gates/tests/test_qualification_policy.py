@@ -181,8 +181,9 @@ class FullPolicyTests(unittest.TestCase):
 
     def test_candidate_inspection_job_does_not_grant_policy_approval(self):
         raw=(ROOT/WORKFLOW).read_text()
-        self.assertIn('name: Inspect exact-head issue contract as untrusted data',raw)
-        self.assertIn('faberline/aw/.github/actions/issue-contract@'+CONFIG['aw_revision'],raw)
+        self.assertNotIn('Inspect exact-head issue contract',raw)
+        self.assertNotIn('actions/issue-contract@',raw)
+        self.assertIn('cargo fmt --all -- --check',raw)
         self.assertIn('gate infrastructure change requires reviewed policy update',
                       ' '.join(scope(path='.github/workflows/development-ci.yml')['_qualification_context']['issues']))
 
