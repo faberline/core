@@ -131,4 +131,23 @@ mod tests {
             "Pet"
         );
     }
+
+    #[test]
+    fn inline_and_non_string_enums_stay_string() {
+        assert_eq!(
+            type_expr(&s(r##"{"type":"string","enum":["a","b"]}"##), &tm()),
+            "String"
+        );
+        assert_eq!(
+            type_expr(&s(r##"{"type":"integer","enum":[1,2]}"##), &tm()),
+            "String"
+        );
+        assert_eq!(
+            type_expr(
+                &s(r##"{"type":"string","enum":["a","b"],"nullable":true}"##),
+                &tm()
+            ),
+            "Option<String>"
+        );
+    }
 }
