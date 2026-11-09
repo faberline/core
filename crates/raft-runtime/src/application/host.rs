@@ -55,7 +55,7 @@ pub use outcome::{ProposalOutcome, SnapshotCompactionOutcome, StorageFailed};
 pub use shutdown_report::{
     HostShutdownReport, LeadershipHandoff, PhaseRecord, PhaseStatus, ShutdownCaller, ShutdownPhase,
 };
-pub use status::{MembershipPhase, RaftStatus};
+pub use status::{MembershipPhase, PeerMatch, RaftStatus};
 
 pub(crate) use apply::{apply_ready, cold_start, persist_node};
 pub(crate) use backpressure::decode_backpressure;

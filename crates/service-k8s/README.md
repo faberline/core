@@ -11,7 +11,10 @@ status.
 The crate also provides workload rendering, projected ServiceAccount tokens,
 scoped RBAC objects, lifecycle policy, stateful planning, PVC growth,
 controller metrics, and certificate lifecycle mechanisms. It does not define
-a service's schema, access policy, topology policy, or health meaning.
+a service's schema, its operation-to-verb access mapping, or domain health
+meaning. Topology, scaling, and rollout policy are moving into core under
+[ADR 0002](../../docs/adr/0002-core-owned-service-operations.md); until the
+[roadmap outcomes](ROADMAP.md) land, each service still supplies them.
 
 ## Primary workflow
 
@@ -64,8 +67,10 @@ rollout, and multi-namespace status remain app code until the
 The certificate module is a current reusable mechanism. It does not make any
 app operator own certificates until that app composes an issuer, identities,
 Secrets, readiness, and a gate. Public CA ConfigMap convergence,
-failure-domain-scoped placement helpers, and controller-driven member rollout
-are future shared outcomes.
+failure-domain-scoped placement helpers, controller-driven member rollout, the
+service profile engine, per-shard topology, membership changes, resharding,
+shard routing, managed certificates, and instance data retention are future
+shared outcomes.
 
 ## Contract discovery
 
@@ -78,7 +83,7 @@ are future shared outcomes.
 | Operator entry points and leadership | `crates/service-k8s/src/app/operator.rs`, `crates/service-k8s/src/application/operator/leadership.rs` |
 | Workload render inputs | `crates/service-k8s/src/infrastructure/manifest.rs` and its submodules |
 | Executable behavior | `cargo test -p service-k8s` |
-| Planned trust, placement, and rollout mechanisms | [ROADMAP.md](ROADMAP.md) |
+| Planned engine, topology, scaling, trust, placement, and rollout outcomes | [ROADMAP.md](ROADMAP.md), [ADR 0002](../../docs/adr/0002-core-owned-service-operations.md) |
 
 ## Capabilities
 

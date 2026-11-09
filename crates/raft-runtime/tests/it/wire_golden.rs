@@ -16,8 +16,8 @@ use raft_core::{ConfState, EntryKind, Index, Membership, PersistedState, RaftEnt
 use raft_runtime::conformance::DeterministicHost;
 use raft_runtime::{
     ActiveAssignment, AdmissionRefused, AssignmentEpoch, ClusterStateView, FenceToken,
-    FencedAssignment, FsyncPolicy, GroupId, LeadershipHandoff, MembershipPhase, PeerAddr, RaftRole,
-    RaftStateMachine, RaftStatus, RaftStore, StateMachineError,
+    FencedAssignment, FsyncPolicy, GroupId, LeadershipHandoff, MembershipPhase, PeerAddr,
+    PeerMatch, RaftRole, RaftStateMachine, RaftStatus, RaftStore, StateMachineError,
 };
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -202,6 +202,7 @@ fn raft_status_json_is_pinned() {
         snapshot_capability: Some("cap-v1".to_owned()),
         resident_log_bytes: 64,
         max_resident_log_bytes: 1024,
+        peer_match_index: vec![],
     };
     pin_json(
         &status,
@@ -214,6 +215,60 @@ fn raft_status_json_is_pinned() {
             r#""proposal_rejected_before_append":8,"proposal_admission_closed":false,"#,
             r#""lifecycle_generation":2,"snapshot_capability":"cap-v1","resident_log_bytes":64,"#,
             r#""max_resident_log_bytes":1024}"#,
+        ),
+    );
+}
+
+#[test]
+fn raft_status_json_with_peer_match_index_is_pinned() {
+    let status = RaftStatus {
+        group_id: "orders".to_owned(),
+        id: NodeId::new(1),
+        role: "Leader".to_owned(),
+        term: 3,
+        commit_index: 9,
+        last_index: 10,
+        snapshot_index: 4,
+        applied_index: 8,
+        leader: Some(NodeId::new(1)),
+        is_leader: true,
+        durability_error: None,
+        committed_voters: vec![NodeId::new(1), NodeId::new(2), NodeId::new(3)],
+        incoming_voters: None,
+        learners: vec![],
+        membership_phase: MembershipPhase::Stable,
+        undeliverable_never_addressed: 0,
+        undeliverable_withdrawn_address: 0,
+        proposal_rejected_before_routing: 0,
+        proposal_rejected_before_append: 0,
+        proposal_admission_closed: false,
+        lifecycle_generation: 1,
+        snapshot_capability: None,
+        resident_log_bytes: 0,
+        max_resident_log_bytes: 0,
+        peer_match_index: vec![
+            PeerMatch {
+                id: NodeId::new(2),
+                match_index: 9,
+            },
+            PeerMatch {
+                id: NodeId::new(3),
+                match_index: 7,
+            },
+        ],
+    };
+    pin_json(
+        &status,
+        concat!(
+            r#"{"group_id":"orders","id":1,"role":"Leader","term":3,"commit_index":9,"#,
+            r#""last_index":10,"snapshot_index":4,"applied_index":8,"leader":1,"is_leader":true,"#,
+            r#""durability_error":null,"committed_voters":[1,2,3],"incoming_voters":null,"#,
+            r#""learners":[],"membership_phase":"Stable","undeliverable_never_addressed":0,"#,
+            r#""undeliverable_withdrawn_address":0,"proposal_rejected_before_routing":0,"#,
+            r#""proposal_rejected_before_append":0,"proposal_admission_closed":false,"#,
+            r#""lifecycle_generation":1,"snapshot_capability":null,"resident_log_bytes":0,"#,
+            r#""max_resident_log_bytes":0,"peer_match_index":[{"id":2,"match_index":9},"#,
+            r#"{"id":3,"match_index":7}]}"#,
         ),
     );
 }
