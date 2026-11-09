@@ -1,6 +1,6 @@
 # Core release entry
 
-Release uses the same `.github/workflows/development-ci.yml` implementation.
+Release uses `.github/workflows/ci.yml` (#140 replaced `development-ci.yml`).
 Every `v*` RC or formal tag must pass AW's immutable tag/milestone preflight
 and select `all`. It executes every Core-owned required test and original
 numeric threshold. Independent legacy main/tag/manual gates remain intact.
@@ -19,8 +19,8 @@ no PR and closes no issue.
 
 `.github/aw-release.json` holds the reviewed contract for milestone 8:
 `core@0.5.0` is version `0.5.0`, tag `v0.5.0`, and a milestone is ready when
-all its issues are closed. `python3 scripts/pr-gates/release_contract.py check
---milestone 8 --open-issues <n> --closed <list>` prints the holds. The
+all its issues are closed. The check script `scripts/pr-gates/release_contract.py` was removed by #140,
+so no command prints the holds. The
 workspace stays `0.4.14` until a separately reviewed version change lands, so
 `version-mismatch` stays a visible hold. This change creates no tag and starts
 no release.
