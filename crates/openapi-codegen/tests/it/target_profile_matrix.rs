@@ -74,10 +74,16 @@ fn assert_success(output: Output, description: &str) {
     );
 }
 
-fn expected_manifest(requirements: TargetRequirements) -> GenerationManifest {
+fn expected_manifest(
+    requirements: TargetRequirements,
+    output: &GeneratedOutput,
+) -> GenerationManifest {
     GenerationManifest {
-        schema_version: 1,
+        schema_version: 2,
         generator: "openapi-codegen".to_string(),
+        generator_version: env!("CARGO_PKG_VERSION").to_string(),
+        openapi_sha256: output.openapi_sha256.clone().unwrap_or_default(),
+        service_compatibility: output.service_compatibility.clone(),
         compiler: requirements.compiler.to_string(),
         target: requirements.target.to_string(),
         language: requirements.language.id().to_string(),
@@ -107,7 +113,7 @@ fn assert_materialized_manifest(
         serde_json::from_slice(&bytes).expect("parse target sidecar");
     assert_eq!(
         manifest,
-        expected_manifest(output.requirements.expect("target requirements"))
+        expected_manifest(output.requirements.expect("target requirements"), output)
     );
     manifest
 }
