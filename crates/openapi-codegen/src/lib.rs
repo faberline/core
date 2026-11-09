@@ -46,7 +46,8 @@ pub use domain::ir::{build_type_map, TypeMap};
 pub use domain::SpecParseError;
 pub use domain::{
     FileBearerAuth, FileBearerAuthError, FileBearerScheme, GenOptions, GeneratedFile,
-    GeneratedOutput, GenerationManifest, HttpClient, Lang, MANIFEST_FILE,
+    GeneratedOutput, GenerationManifest, HttpClient, Lang, ServiceCompatibilityError,
+    MANIFEST_FILE,
 };
 pub use domain::{
     PythonTarget, RustTarget, TargetPolicy, TargetPolicyError, TargetProfile, TargetRequirements,
