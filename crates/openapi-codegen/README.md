@@ -105,10 +105,10 @@ responses. It does not model streaming operations. An operation such as an
 NDJSON upload or streaming response therefore has no generated streaming
 method today.
 
-Generated methods expose transport-level HTTP failures. They do not decode a
-service's structured error envelope into a generated error type. Services own
-the meaning of those error bodies. The generator owns the future reusable
-mapping mechanism.
+Rust methods decode declared non-success responses into a per-operation typed
+error (`ApiError::Api`). Undeclared statuses and transport failures stay
+`ApiError::Client`. TypeScript and Python methods still expose transport-level
+HTTP failures only. Services own the meaning of those error bodies.
 
 Type mapping is also not equal across languages. Rust unions fall back to
 `serde_json::Value`, and Rust enums fall back to `String`. The TypeScript target

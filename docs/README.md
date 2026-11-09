@@ -9,7 +9,7 @@ each crate's `README.md` and `llms.txt`; contributor rules live in
 | [architecture.md](architecture.md) | How the workspace is cut into bounded contexts and layers, what may depend on what, and which rule breaks are allowed and why. |
 | [glossary.md](glossary.md) | Terms that mean the same thing in every crate, and terms that mean different things in different crates. |
 | [domain/](domain/) | One page per context: what it models, its ports, its invariants, and its recorded exceptions. |
-| [adr/](adr/) | Architecture decisions and the reasons behind them. |
+| [adr/](adr/) | Architecture decisions and the reasons behind them: [0001](adr/0001-standard-layout-and-ddd.md) standard layout and DDD layers; [0002](adr/0002-core-owned-service-operations.md) core-owned service operations. |
 | [operations/](operations/README.md) | Releasing, how downstream repos pin core, and how to run the architecture checker. |
 | [P1 migration](migration/ddd-p1.md), [P2 migration](migration/ddd-p2.md) | What each refactor phase changes for downstream repos, and where moved source files are now. |
 | [P2 validation](migration/ddd-p2-validation.md), [downstream checks](migration/ddd-p2-downstream.md) | Test results, API inventories and each downstream repo's required migration. |
