@@ -188,4 +188,37 @@ fn stale_leader_steps_down_on_higher_term() {
     assert_eq!(c.nodes[&leader].role(), Role::Follower);
     assert_eq!(c.nodes[&leader].current_term(), Term::new(term.get() + 5));
 }
+
+#[test]
+fn peer_match_index_reports_leader_peers_and_advances() {
+    let mut c = Cluster::new(4);
+    let leader = c.run_until_leader();
+    let follower_id = (0..4).map(NodeId::new).find(|id| *id != leader).unwrap();
+
+    // Accessor is None on a follower.
+    assert!(c.nodes[&follower_id].peer_match_index().is_none());
+
+    // On the leader, lists every voter and learner other than itself, sorted by NodeId.
+    let initial = c.nodes[&leader].peer_match_index().unwrap();
+    let expected_peers: Vec<NodeId> = (0..4).map(NodeId::new).filter(|id| *id != leader).collect();
+    assert_eq!(initial.len(), 3);
+    assert_eq!(
+        initial.iter().map(|(id, _)| *id).collect::<Vec<_>>(),
+        expected_peers
+    );
+    for (_, idx) in &initial {
+        assert_eq!(*idx, Index::new(0));
+    }
+
+    // Advances after an append is acknowledged.
+    c.propose(vec![42]);
+    let after = c.nodes[&leader].peer_match_index().unwrap();
+    assert_eq!(after.len(), 3);
+    for (id, idx) in &after {
+        assert!(
+            *idx > Index::new(0),
+            "match index for peer {id:?} should advance after append"
+        );
+    }
+}
 // CODEGEN-END
