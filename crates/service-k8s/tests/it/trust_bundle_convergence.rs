@@ -13,9 +13,9 @@
 //! - Fault isolation: one namespace failing does not stop other namespaces
 
 use service_k8s::trust_bundle::{
-    reconcile, ConfigMapStore, InMemoryConfigMapStore, NamespaceOutcome, StoredConfigMap,
-    TrustBundleSpec, CA_BUNDLE_DATA_KEY, CLIENT_TRUST_READY_CONDITION, OWNER_IDENTITY_ANNOTATION,
-    OWNER_IDENTITY_LABEL,
+    reconcile, ConfigMapStore, InMemoryConfigMapStore, NamespaceOutcome, StoreError,
+    StoredConfigMap, TrustBundleSpec, CA_BUNDLE_DATA_KEY, CLIENT_TRUST_READY_CONDITION,
+    OWNER_IDENTITY_ANNOTATION, OWNER_IDENTITY_LABEL,
 };
 use std::collections::BTreeMap;
 
@@ -318,6 +318,13 @@ async fn exact_namespace_scope_never_reads_or_writes_unscoped_namespaces() {
     let report = reconcile(&store, &spec).await;
     assert!(report.is_ready);
     assert!(!report.outcomes.contains_key("ns-unscoped"));
+    assert_eq!(store.read_count(), 1, "only ns-allowed may be read");
+    assert_eq!(store.apply_count(), 1, "only ns-allowed may be written");
+    assert_eq!(
+        store.get("ns-unscoped", "ca-bundle"),
+        Some(StoredConfigMap::default()),
+        "unscoped configmap must be left as seeded"
+    );
 }
 
 #[tokio::test]
@@ -394,4 +401,114 @@ async fn one_namespace_failing_does_not_stop_the_others() {
 
     // ns-healthy was successfully applied despite ns-conflict's failure
     assert!(store.get("ns-healthy", "ca-bundle").is_some());
+}
+
+#[tokio::test]
+async fn leader_failover_resumes_from_existing_owned_configmaps() {
+    let store = InMemoryConfigMapStore::new();
+    let spec = TrustBundleSpec::new("my-service", "ca-bundle", ROOT_1)
+        .with_allowed_namespaces(["ns-a", "ns-b"]);
+
+    let first = reconcile(&store, &spec).await;
+    assert!(first.is_ready);
+
+    // A new leader builds the same spec and reconciles against the same store.
+    let new_leader_spec = TrustBundleSpec::new("my-service", "ca-bundle", ROOT_1)
+        .with_allowed_namespaces(["ns-a", "ns-b"]);
+    let report = reconcile(&store, &new_leader_spec).await;
+
+    assert!(report.is_ready);
+    assert_eq!(report.condition.reason, "Converged");
+    assert_eq!(
+        report.outcomes.get("ns-a"),
+        Some(&NamespaceOutcome::Applied)
+    );
+    assert_eq!(
+        report.outcomes.get("ns-b"),
+        Some(&NamespaceOutcome::Applied)
+    );
+    for ns in ["ns-a", "ns-b"] {
+        let cm = store.get(ns, "ca-bundle").expect("configmap exists");
+        assert_eq!(
+            cm.data.get(CA_BUNDLE_DATA_KEY).map(|s| s.trim()),
+            Some(ROOT_1.trim())
+        );
+        assert_eq!(
+            cm.labels.get(OWNER_IDENTITY_LABEL).map(String::as_str),
+            Some("my-service")
+        );
+    }
+}
+
+#[tokio::test]
+async fn failing_namespace_is_isolated_and_client_trust_ready_recovers() {
+    let store = InMemoryConfigMapStore::new();
+    store.fail_namespace("ns-bad", StoreError::unavailable("apiserver unavailable"));
+
+    let spec = TrustBundleSpec::new("my-service", "ca-bundle", ROOT_1)
+        .with_allowed_namespaces(["ns-bad", "ns-good"]);
+
+    let report1 = reconcile(&store, &spec).await;
+    assert!(!report1.is_ready);
+    assert_eq!(report1.condition.status.as_str(), "False");
+    assert_eq!(report1.condition.reason, "ReconcileFailed");
+    assert!(matches!(
+        report1.outcomes.get("ns-bad"),
+        Some(NamespaceOutcome::Failed { .. })
+    ));
+    assert_eq!(
+        report1.outcomes.get("ns-good"),
+        Some(&NamespaceOutcome::Applied)
+    );
+    assert!(store.get("ns-good", "ca-bundle").is_some());
+    assert!(store.get("ns-bad", "ca-bundle").is_none());
+
+    store.clear_namespace_failure("ns-bad");
+    let report2 = reconcile(&store, &spec).await;
+    assert!(report2.is_ready);
+    assert_eq!(report2.condition.status.as_str(), "True");
+    assert_eq!(report2.condition.reason, "Converged");
+}
+
+#[tokio::test]
+async fn annotation_and_label_disagreeing_on_owner_is_refused() {
+    let store = InMemoryConfigMapStore::new();
+    let mut labels = BTreeMap::new();
+    labels.insert(
+        OWNER_IDENTITY_LABEL.to_string(),
+        "foreign-operator".to_string(),
+    );
+    let mut annotations = BTreeMap::new();
+    annotations.insert(
+        OWNER_IDENTITY_ANNOTATION.to_string(),
+        "my-service".to_string(),
+    );
+    store.insert(
+        "ns-client",
+        "ca-bundle",
+        StoredConfigMap {
+            data: BTreeMap::new(),
+            labels,
+            annotations,
+        },
+    );
+
+    let spec =
+        TrustBundleSpec::new("my-service", "ca-bundle", ROOT_1).with_allowed_namespace("ns-client");
+
+    let report = reconcile(&store, &spec).await;
+
+    assert!(!report.is_ready);
+    assert_eq!(
+        report.outcomes.get("ns-client"),
+        Some(&NamespaceOutcome::AdoptionRefused {
+            foreign_owner: "foreign-operator".to_string(),
+        })
+    );
+    assert_eq!(
+        store.apply_count(),
+        0,
+        "conflicting owner must not be written"
+    );
+    assert_eq!(store.delete_count(), 0);
 }

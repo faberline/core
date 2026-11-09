@@ -14,6 +14,7 @@ pub struct InMemoryConfigMapStore {
     reads: AtomicU64,
     applies: AtomicU64,
     deletes: AtomicU64,
+    failures: Mutex<BTreeMap<String, StoreError>>,
 }
 
 impl Default for InMemoryConfigMapStore {
@@ -30,7 +31,32 @@ impl InMemoryConfigMapStore {
             reads: AtomicU64::new(0),
             applies: AtomicU64::new(0),
             deletes: AtomicU64::new(0),
+            failures: Mutex::new(BTreeMap::new()),
         }
+    }
+
+    /// Make every `read`, `apply` and `delete` in `namespace` fail with `error`.
+    pub fn fail_namespace(&self, namespace: &str, error: StoreError) {
+        self.failures
+            .lock()
+            .expect("memory store failures lock")
+            .insert(namespace.to_string(), error);
+    }
+
+    /// Stop failing operations in `namespace`.
+    pub fn clear_namespace_failure(&self, namespace: &str) {
+        self.failures
+            .lock()
+            .expect("memory store failures lock")
+            .remove(namespace);
+    }
+
+    fn injected_failure(&self, namespace: &str) -> Option<StoreError> {
+        self.failures
+            .lock()
+            .expect("memory store failures lock")
+            .get(namespace)
+            .cloned()
     }
 
     /// Read an existing ConfigMap directly from memory without counting as a store call.
@@ -73,8 +99,11 @@ impl ConfigMapStore for InMemoryConfigMapStore {
         name: &'a str,
     ) -> BoxFuture<'a, Result<Option<StoredConfigMap>, StoreError>> {
         self.reads.fetch_add(1, Ordering::SeqCst);
-        let res = self.get(namespace, name);
-        Box::pin(futures::future::ready(Ok(res)))
+        let res = match self.injected_failure(namespace) {
+            Some(err) => Err(err),
+            None => Ok(self.get(namespace, name)),
+        };
+        Box::pin(futures::future::ready(res))
     }
 
     fn apply<'a>(
@@ -84,6 +113,9 @@ impl ConfigMapStore for InMemoryConfigMapStore {
         object: Value,
     ) -> BoxFuture<'a, Result<(), StoreError>> {
         self.applies.fetch_add(1, Ordering::SeqCst);
+        if let Some(err) = self.injected_failure(namespace) {
+            return Box::pin(futures::future::ready(Err(err)));
+        }
         let mut data_map = BTreeMap::new();
         if let Some(data) = object.get("data").and_then(|d| d.as_object()) {
             for (k, v) in data {
@@ -135,6 +167,9 @@ impl ConfigMapStore for InMemoryConfigMapStore {
         name: &'a str,
     ) -> BoxFuture<'a, Result<(), StoreError>> {
         self.deletes.fetch_add(1, Ordering::SeqCst);
+        if let Some(err) = self.injected_failure(namespace) {
+            return Box::pin(futures::future::ready(Err(err)));
+        }
         self.maps
             .lock()
             .expect("memory store lock")

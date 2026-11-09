@@ -6,7 +6,7 @@ use std::collections::BTreeMap;
 use crate::domain::condition::{ConditionFact, ConditionStatus};
 use crate::domain::trust_bundle::{
     canonicalize_bundle_pem, client_trust_ready_condition, validate_public_certificates,
-    ConfigMapStore, NamespaceOutcome, TrustBundleSpec, CA_BUNDLE_DATA_KEY,
+    ConfigMapStore, NamespaceOutcome, StoredConfigMap, TrustBundleSpec, CA_BUNDLE_DATA_KEY,
     OWNER_IDENTITY_ANNOTATION, OWNER_IDENTITY_LABEL,
 };
 
@@ -19,6 +19,25 @@ pub struct TrustBundleReport {
     pub condition: ConditionFact,
     /// Whether all operations succeeded and client trust is ready.
     pub is_ready: bool,
+}
+
+/// The owner recorded on an existing ConfigMap, or `None` when it has no owner markers.
+///
+/// The owner annotation and the owner label must both name `owner`. When either
+/// names another owner, that foreign owner is returned, so the ConfigMap is refused.
+fn existing_owner(cm: &StoredConfigMap, owner: &str) -> Option<String> {
+    let markers: Vec<&String> = [
+        cm.annotations.get(OWNER_IDENTITY_ANNOTATION),
+        cm.labels.get(OWNER_IDENTITY_LABEL),
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
+
+    if let Some(foreign) = markers.iter().find(|marker| marker.as_str() != owner) {
+        return Some((*foreign).clone());
+    }
+    markers.first().map(|marker| (*marker).clone())
 }
 
 /// Construct the desired ConfigMap JSON representation.
@@ -88,13 +107,10 @@ pub async fn reconcile(store: &dyn ConfigMapStore, spec: &TrustBundleSpec) -> Tr
                 );
             }
             Ok(Some(cm)) => {
-                let existing_owner = cm
-                    .annotations
-                    .get(OWNER_IDENTITY_ANNOTATION)
-                    .or_else(|| cm.labels.get(OWNER_IDENTITY_LABEL));
+                let existing_owner = existing_owner(&cm, &spec.owner_identity);
 
                 match existing_owner {
-                    Some(owner) if owner == &spec.owner_identity => {
+                    Some(owner) if owner == spec.owner_identity => {
                         let desired = build_config_map_json(spec, ns, &canonical_pem);
                         match store.apply(ns, &spec.config_map_name, desired).await {
                             Ok(()) => {
@@ -113,9 +129,7 @@ pub async fn reconcile(store: &dyn ConfigMapStore, spec: &TrustBundleSpec) -> Tr
                     Some(foreign_owner) => {
                         outcomes.insert(
                             ns.clone(),
-                            NamespaceOutcome::AdoptionRefused {
-                                foreign_owner: foreign_owner.clone(),
-                            },
+                            NamespaceOutcome::AdoptionRefused { foreign_owner },
                         );
                     }
                     None => {
@@ -175,13 +189,10 @@ pub async fn reconcile(store: &dyn ConfigMapStore, spec: &TrustBundleSpec) -> Tr
                 );
             }
             Ok(Some(cm)) => {
-                let existing_owner = cm
-                    .annotations
-                    .get(OWNER_IDENTITY_ANNOTATION)
-                    .or_else(|| cm.labels.get(OWNER_IDENTITY_LABEL));
+                let existing_owner = existing_owner(&cm, &spec.owner_identity);
 
                 match existing_owner {
-                    Some(owner) if owner == &spec.owner_identity => {
+                    Some(owner) if owner == spec.owner_identity => {
                         match store.delete(ns, &spec.config_map_name).await {
                             Ok(()) => {
                                 outcomes.insert(ns.clone(), NamespaceOutcome::Pruned);

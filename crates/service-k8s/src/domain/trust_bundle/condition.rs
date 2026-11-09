@@ -13,8 +13,6 @@ pub enum NamespaceOutcome {
     Applied,
     /// Existing unowned ConfigMap was adopted.
     Adopted,
-    /// ConfigMap was already current; no write needed.
-    Unchanged,
     /// Owned ConfigMap in a pruned namespace was deleted.
     Pruned,
     /// Foreign ConfigMap in a pruned namespace was retained untouched.
@@ -31,7 +29,7 @@ impl NamespaceOutcome {
     pub fn is_success(&self) -> bool {
         matches!(
             self,
-            Self::Applied | Self::Adopted | Self::Unchanged | Self::Pruned | Self::ForeignRetained
+            Self::Applied | Self::Adopted | Self::Pruned | Self::ForeignRetained
         )
     }
 }
