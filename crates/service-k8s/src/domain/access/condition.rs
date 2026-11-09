@@ -8,26 +8,31 @@ use super::{grant::AccessGrant, policy::validate_policy};
 pub const ACCESS_POLICY_READY_CONDITION: &str = "AccessPolicyReady";
 
 /// Per-grant outcome passed to [`access_policy_condition`].
+///
+/// An outcome is keyed by (namespace, name), the same key that
+/// `validate_policy` uses for duplicates.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GrantOutcome {
+    pub namespace: String,
     pub name: String,
     pub applied: bool,
 }
 
 impl GrantOutcome {
-    pub fn new(name: impl Into<String>, applied: bool) -> Self {
+    pub fn new(namespace: impl Into<String>, name: impl Into<String>, applied: bool) -> Self {
         Self {
+            namespace: namespace.into(),
             name: name.into(),
             applied,
         }
     }
 
-    pub fn applied(name: impl Into<String>) -> Self {
-        Self::new(name, true)
+    pub fn applied(namespace: impl Into<String>, name: impl Into<String>) -> Self {
+        Self::new(namespace, name, true)
     }
 
-    pub fn failed(name: impl Into<String>) -> Self {
-        Self::new(name, false)
+    pub fn failed(namespace: impl Into<String>, name: impl Into<String>) -> Self {
+        Self::new(namespace, name, false)
     }
 
     pub fn grant(&self) -> &str {
@@ -35,19 +40,26 @@ impl GrantOutcome {
     }
 }
 
-impl<S: Into<String>> From<(S, bool)> for GrantOutcome {
-    fn from((name, applied): (S, bool)) -> Self {
-        Self::new(name, applied)
+impl<N: Into<String>, G: Into<String>> From<(N, G, bool)> for GrantOutcome {
+    fn from((namespace, name, applied): (N, G, bool)) -> Self {
+        Self::new(namespace, name, applied)
     }
 }
 
 /// Compute the clock-free [`ConditionFact`] for the application's access policy.
 ///
+/// Readiness is computed from the declared `grants`, not from `outcomes`:
+/// a declared grant is applied only when it has an applied outcome with the
+/// same (namespace, name) and no failed outcome with that key. A declared
+/// grant with no outcome counts as failed. Outcomes that match no declared
+/// grant are ignored.
+///
 /// Returns:
-/// - `True / PolicyApplied` when every grant is applied,
+/// - `True / PolicyApplied` when every declared grant is applied,
 /// - `True / DenyAll` when the desired set is empty,
 /// - `False / InvalidPolicy` when validation failed (message names the grant),
-/// - `False / ApplyFailed` when some grant failed (message lists the failed grant names, never an error body),
+/// - `False / ApplyFailed` when some grant is not applied (message lists only
+///   those grants as `namespace/name`, never an error body),
 ///
 /// and `True` again on subsequent calls once failures are resolved (recovery).
 pub fn access_policy_condition(grants: &[AccessGrant], outcomes: &[GrantOutcome]) -> ConditionFact {
@@ -69,10 +81,10 @@ pub fn access_policy_condition(grants: &[AccessGrant], outcomes: &[GrantOutcome]
         );
     }
 
-    let failed_grants: Vec<&str> = outcomes
+    let failed_grants: Vec<String> = grants
         .iter()
-        .filter(|o| !o.applied)
-        .map(|o| o.name.as_str())
+        .filter(|grant| !is_applied(grant, outcomes))
+        .map(|grant| format!("{}/{}", grant.namespace, grant.name))
         .collect();
 
     if !failed_grants.is_empty() {
@@ -90,4 +102,15 @@ pub fn access_policy_condition(grants: &[AccessGrant], outcomes: &[GrantOutcome]
             "all access grants applied",
         )
     }
+}
+
+/// A grant is applied only when an applied outcome exists for its key and no
+/// failed outcome exists for the same key (fail closed).
+fn is_applied(grant: &AccessGrant, outcomes: &[GrantOutcome]) -> bool {
+    let matching = || {
+        outcomes
+            .iter()
+            .filter(|o| o.namespace == grant.namespace && o.name == grant.name)
+    };
+    matching().any(|o| o.applied) && !matching().any(|o| !o.applied)
 }

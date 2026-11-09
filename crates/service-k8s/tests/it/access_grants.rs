@@ -215,8 +215,8 @@ fn access_policy_ready_condition_lifecycle_and_partial_failure() {
     let grants = vec![g1, g2];
 
     let partial_outcomes = vec![
-        GrantOutcome::applied("grant-one"),
-        GrantOutcome::failed("grant-two"),
+        GrantOutcome::applied("app-ns", "grant-one"),
+        GrantOutcome::failed("app-ns", "grant-two"),
     ];
     let fact = access_policy_condition(&grants, &partial_outcomes);
     assert_eq!(fact.type_, "AccessPolicyReady");
@@ -232,8 +232,8 @@ fn access_policy_ready_condition_lifecycle_and_partial_failure() {
     );
 
     let recovered_outcomes = vec![
-        GrantOutcome::applied("grant-one"),
-        GrantOutcome::applied("grant-two"),
+        GrantOutcome::applied("app-ns", "grant-one"),
+        GrantOutcome::applied("app-ns", "grant-two"),
     ];
     let recovered_fact = access_policy_condition(&grants, &recovered_outcomes);
     assert_eq!(recovered_fact.type_, "AccessPolicyReady");
@@ -250,4 +250,48 @@ fn access_policy_condition_invalid_policy() {
     assert_eq!(fact.status, ConditionStatus::False);
     assert_eq!(fact.reason, "InvalidPolicy");
     assert!(fact.message.contains("bad-grant"));
+}
+
+#[test]
+fn access_policy_condition_missing_outcome_is_not_applied() {
+    // A declared grant with no outcome has not been applied: fail closed.
+    let grant = valid_grant("grant-one");
+    let fact = access_policy_condition(&[grant], &[]);
+    assert_eq!(fact.type_, "AccessPolicyReady");
+    assert_eq!(fact.status, ConditionStatus::False);
+    assert_eq!(fact.reason, "ApplyFailed");
+    assert!(
+        fact.message.contains("app-ns/grant-one"),
+        "grant without an outcome must be named in message"
+    );
+}
+
+#[test]
+fn access_policy_condition_same_name_in_two_namespaces_is_keyed_by_namespace() {
+    // Two valid grants share the name "grant-x" in different namespaces.
+    let g_app = valid_grant("grant-x");
+    let g_other = AccessGrant::new(
+        "other-ns",
+        "grant-x",
+        vec![sample_rule()],
+        vec![sample_subject()],
+    );
+    let grants = vec![g_app, g_other];
+
+    // Only the app-ns grant applied; the other-ns grant failed.
+    let outcomes = vec![
+        GrantOutcome::applied("app-ns", "grant-x"),
+        GrantOutcome::failed("other-ns", "grant-x"),
+    ];
+    let fact = access_policy_condition(&grants, &outcomes);
+    assert_eq!(fact.status, ConditionStatus::False);
+    assert_eq!(fact.reason, "ApplyFailed");
+    assert!(
+        fact.message.contains("other-ns/grant-x"),
+        "failed grant must be named by namespace and name"
+    );
+    assert!(
+        !fact.message.contains("app-ns/grant-x"),
+        "applied grant must NOT be named in message"
+    );
 }
