@@ -17,11 +17,13 @@ all tests. Publication must succeed before milestone closure. A formal-tag
 code repair needs a new reviewed SemVer version. Cloud CI reviews or merges
 no PR and closes no issue.
 
-`.github/aw-release.json` currently contains no approved milestone mapping.
-The existing core@0.5.0 work-batch metadata is not a release contract and the
-workspace still uses 0.4.14. Keep this hold visible. A release needs a reviewed
-version/goal/check mapping and the product's publication gates. This adoption
-does not invent those decisions, change Cargo or create a real tag.
+`.github/aw-release.json` holds the reviewed contract for milestone 8:
+`core@0.5.0` is version `0.5.0`, tag `v0.5.0`, and a milestone is ready when
+all its issues are closed. `python3 scripts/pr-gates/release_contract.py check
+--milestone 8 --open-issues <n> --closed <list>` prints the holds. The
+workspace stays `0.4.14` until a separately reviewed version change lands, so
+`version-mismatch` stays a visible hold. This change creates no tag and starts
+no release.
 
 Use the installed shared skill's absolute `scripts/plan.sh` path for
 `release-status --milestone 8`. Only a fresh matching assessment permits its
