@@ -68,8 +68,7 @@ def build(shared, policy, mode, repo, head, base, pull=None, changed=None, issue
         # review. This receipt only plans execution and cannot approve adoption.
         pending=[reason for reason in scope['issues'] if reason.startswith('gate infrastructure change requires reviewed policy update:')]
         other=[reason for reason in scope['issues'] if reason not in pending]
-        rebinding={'linked issue title differs from reviewed contract','linked issue body differs from reviewed contract',
-                   'linked issue has no reviewed contract'}
+        rebinding={'linked issue title differs from reviewed contract','linked issue body differs from reviewed contract'}
         if other and set(other)<=rebinding:
             pending.append(contract_proposal(shared,policy,proposed,pull,issue))
             other=[]

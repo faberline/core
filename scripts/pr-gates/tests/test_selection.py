@@ -72,5 +72,16 @@ class SelectionTests(unittest.TestCase):
             result=selection.build(shared,policy,mode,'faberline/core',HEAD,BASE,pull,[dict(filename='README.md',status='modified')],issue)
             self.assertEqual(result['test_plan']['checks'],prior)
 
+    def test_pr_without_contract_selects_full_roster(self):
+        policy,issue,pull=issue_and_policy()
+        del policy['qualification']['contracts']['84']
+        result=selection.build(shared,policy,'diff','faberline/core',HEAD,BASE,pull,[dict(filename='crates/raft-core/src/lib.rs',status='modified')],issue)
+        self.assertEqual(result['test_plan']['selected'],sorted(policy['qualification']['checks']))
+
+    def test_pr_without_closes_line_is_still_refused(self):
+        policy,issue,pull=issue_and_policy();pull['body']='no link here'
+        with self.assertRaisesRegex(ValueError,'one canonical linked issue is required'):
+            selection.build(shared,policy,'diff','faberline/core',HEAD,BASE,pull,[dict(filename='crates/raft-core/src/lib.rs',status='modified')],issue)
+
 
 if __name__=='__main__':unittest.main()

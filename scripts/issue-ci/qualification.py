@@ -138,8 +138,9 @@ def issue_contract(policy, pr, issue):
     if number is None:
         return context, ['one canonical linked issue is required'], selected
     case = policy['contracts'].get(str(number))
-    if case is None:
-        return context, ['linked issue has no reviewed contract'], selected
+    has_case = case is not None
+    if not has_case:
+        case = {'applicability': {kind: {'status': 'required', 'checks': sorted(n for n, c in policy['checks'].items() if c['kind'] == kind)} for kind in sorted(CATEGORIES)}, 'additional': [], 'unresolved': []}
     repo = pr.get('base', {}).get('repo', {}).get('full_name')
     head_repo = pr.get('head', {}).get('repo', {}).get('full_name')
     if (not isinstance(repo, str) or not re.fullmatch(r'[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+', repo)
@@ -160,9 +161,9 @@ def issue_contract(policy, pr, issue):
             continue
         digest = hashlib.sha256(value.encode('utf-8')).hexdigest()
         context[name + '_sha256'] = digest
-        if digest != case[name + '_sha256']:
+        if has_case and digest != case[name + '_sha256']:
             issues.append('linked issue ' + name + ' differs from reviewed contract')
-    context['contract_sha256'] = hashlib.sha256(json.dumps(case, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')).hexdigest()
+    context['contract_sha256'] = hashlib.sha256(json.dumps(case, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')).hexdigest() if has_case else None
     for kind, decision in case['applicability'].items():
         if decision['status'] == 'unknown':
             issues.append('linked issue has unknown ' + kind + ' applicability')

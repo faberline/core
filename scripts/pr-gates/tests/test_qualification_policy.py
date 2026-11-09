@@ -165,7 +165,21 @@ class FullPolicyTests(unittest.TestCase):
                 self.assertEqual(case['applicability'][category]['status'],'required')
                 self.assertEqual(case['applicability'][category]['checks'],expected)
         pull_with_missing=pull();pull_with_missing['body']='Closes #999999'
-        self.assertIn('linked issue has no reviewed contract',q.select(CONFIG,pull_with_missing,files())['issues'])
+        issue_missing=dict(number=999999,state='open',title='Uncontracted',body='No reviewed contract',labels=[],url='https://api.github.com/repos/o/r/issues/999999',repository_url='https://api.github.com/repos/o/r')
+        plan=q.select(CONFIG,pull_with_missing,files(),issue_missing)
+        self.assertNotIn('linked issue has no reviewed contract',plan['issues'])
+        self.assertEqual(plan['issues'],[])
+        self.assertEqual(plan['selected'],sorted(CONFIG['qualification']['checks']))
+
+    def test_uncontracted_issue_that_is_closed_or_blocked_is_still_refused(self):
+        pull_with_missing=pull();pull_with_missing['body']='Closes #999999'
+        issue=dict(number=999999,state='open',title='Uncontracted',body='No reviewed contract',labels=[],url='https://api.github.com/repos/o/r/issues/999999',repository_url='https://api.github.com/repos/o/r')
+        issue['state']='closed'
+        plan=q.select(CONFIG,pull_with_missing,files(),issue)
+        self.assertIn('linked issue identity, state or repository cannot be verified',plan['issues'])
+        issue['state']='open';issue['labels']=[{'name':'blocked'}]
+        plan=q.select(CONFIG,pull_with_missing,files(),issue)
+        self.assertIn('linked issue labels are missing, malformed or blocked',plan['issues'])
 
     def test_checkout_issue_keeps_every_existing_framework_gate(self):
         policy=q.validate(CONFIG)
