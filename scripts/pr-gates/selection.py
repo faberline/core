@@ -1,5 +1,7 @@
 """Core test execution plan from the pinned AW selector. No lifecycle writes."""
 import argparse
+import copy
+import hashlib
 import importlib.util
 import json
 import os
@@ -56,6 +58,27 @@ def contract_proposal(shared, policy, proposed, pull, issue):
     return 'source issue contract proposal requires independent protected review'
 
 
+def with_default_contract(q, policy, pull, issue):
+    # A linked issue without a reviewed contract gets the full required roster.
+    # The default case binds to the issue's own title and body, so only the
+    # identity, state and label checks of issue_contract still apply to it.
+    number=q.linked_issue(pull)
+    qualification=policy.get('qualification',{})
+    if number is None or qualification.get('version')!=2 or str(number) in qualification.get('contracts',{}):
+        return policy
+    checks=qualification['checks']
+    texts={name:issue.get(name) if isinstance(issue,dict) and isinstance(issue.get(name),str) else '' for name in ('title','body')}
+    scoped=copy.deepcopy(policy)
+    scoped['qualification']['contracts'][str(number)]=dict(
+        title_sha256=hashlib.sha256(texts['title'].encode('utf-8')).hexdigest(),
+        body_sha256=hashlib.sha256(texts['body'].encode('utf-8')).hexdigest(),
+        applicability={kind:dict(status='required',checks=sorted(name for name,check in checks.items() if check['kind']==kind),
+                                 reason='no per-issue contract: full required roster')
+                       for kind in sorted(q.CATEGORIES)},
+        additional=[],unresolved=[])
+    return scoped
+
+
 def build(shared, policy, mode, repo, head, base, pull=None, changed=None, issue=None, proposed=None):
     pending=[]
     if mode=='diff':
@@ -63,7 +86,9 @@ def build(shared, policy, mode, repo, head, base, pull=None, changed=None, issue
                 or pull.get('head',{}).get('sha')!=head or pull.get('base',{}).get('sha')!=base
                 or any(pull.get(side,{}).get('repo',{}).get('full_name')!=repo for side in ('head','base'))):
             raise ValueError('PR moved or is foreign, closed or draft during planning')
-        scope=shared.qualification().select(policy,pull,changed,issue)
+        q=shared.qualification()
+        scoped=with_default_contract(q,policy,pull,issue)
+        scope=q.select(scoped,pull,changed,issue)
         # A protected policy proposal must run every old gate before independent
         # review. This receipt only plans execution and cannot approve adoption.
         pending=[reason for reason in scope['issues'] if reason.startswith('gate infrastructure change requires reviewed policy update:')]
@@ -76,7 +101,7 @@ def build(shared, policy, mode, repo, head, base, pull=None, changed=None, issue
         if pending:
             result=shared.select(policy,'all',repo,head,base)
         else:
-            result=shared.select(policy,'diff',repo,head,base,pull=pull,files=changed,issue=issue)
+            result=shared.select(scoped,'diff',repo,head,base,pull=pull,files=changed,issue=issue)
     elif mode=='all':
         result=shared.select(policy,'all',repo,head,base)
     else:

@@ -83,5 +83,16 @@ class SelectionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'one canonical linked issue is required'):
             selection.build(shared,policy,'diff','faberline/core',HEAD,BASE,pull,[dict(filename='crates/raft-core/src/lib.rs',status='modified')],issue)
 
+    def test_pr_without_contract_still_refuses_closed_or_blocked_issue(self):
+        policy,issue,pull=issue_and_policy()
+        del policy['qualification']['contracts']['84']
+        changed=[dict(filename='crates/raft-core/src/lib.rs',status='modified')]
+        issue['state']='closed'
+        with self.assertRaisesRegex(ValueError,'linked issue identity, state or repository cannot be verified'):
+            selection.build(shared,policy,'diff','faberline/core',HEAD,BASE,pull,changed,issue)
+        issue['state']='open';issue['labels']=[dict(name='blocked')]
+        with self.assertRaisesRegex(ValueError,'linked issue labels are missing, malformed or blocked'):
+            selection.build(shared,policy,'diff','faberline/core',HEAD,BASE,pull,changed,issue)
+
 
 if __name__=='__main__':unittest.main()
