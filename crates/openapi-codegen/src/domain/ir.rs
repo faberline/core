@@ -8,6 +8,7 @@
 pub mod names;
 pub mod openapi;
 pub mod operations;
+pub mod select;
 pub mod typemap;
 
 pub use typemap::{build_type_map, TypeMap};
