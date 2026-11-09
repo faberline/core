@@ -70,7 +70,13 @@ fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) ->
         if let Some(orig) = rename {
             s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(&orig)));
         }
-        if !required {
+        if !required && rsmap::is_free_form(&ty) {
+            // `Value` is not wrapped in `Option`: a missing key and `null` both
+            // decode to `Value::Null`, and `is_null` omits it on output.
+            s.push_str(
+                "    #[serde(default, skip_serializing_if = \"serde_json::Value::is_null\")]\n",
+            );
+        } else if !required {
             s.push_str("    #[serde(skip_serializing_if = \"Option::is_none\")]\n");
         }
         s.push_str(&format!("    pub {field}: {ty},\n"));
@@ -82,3 +88,6 @@ fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) ->
 fn esc(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
 }
+
+#[cfg(test)]
+mod tests;
