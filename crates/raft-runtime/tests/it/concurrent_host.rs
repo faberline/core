@@ -38,15 +38,12 @@ async fn concurrent() {
         "indices must be contiguous 1..={num_proposals}"
     );
 
-    let deadline = std::time::Instant::now() + Duration::from_secs(10);
-    for n in &nodes {
-        while n.sm.applied_index() < Index::new(num_proposals) {
-            if std::time::Instant::now() >= deadline {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    }
+    wait_for_applied_index(
+        &nodes,
+        Index::new(num_proposals),
+        DEFAULT_APPLIED_INDEX_BUDGET,
+    )
+    .await;
 
     let mut sm_vals = Vec::new();
     let mut watch_vals = Vec::new();
@@ -90,15 +87,12 @@ async fn sequential() {
         "indices must be contiguous 1..={num_proposals}"
     );
 
-    let deadline = std::time::Instant::now() + Duration::from_secs(10);
-    for n in &nodes {
-        while n.sm.applied_index() < Index::new(num_proposals) {
-            if std::time::Instant::now() >= deadline {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(10)).await;
-        }
-    }
+    wait_for_applied_index(
+        &nodes,
+        Index::new(num_proposals),
+        DEFAULT_APPLIED_INDEX_BUDGET,
+    )
+    .await;
 
     let mut sm_vals = Vec::new();
     let mut watch_vals = Vec::new();
@@ -111,4 +105,29 @@ async fn sequential() {
     for sm_val in &sm_vals {
         assert_eq!(*sm_val, Index::new(num_proposals));
     }
+}
+
+#[tokio::test]
+async fn wait_for_applied_index_times_out_by_name() {
+    // Run the wait in a spawned task so its panic is captured as a JoinError
+    // and the payload can be asserted. `#[should_panic]` is not used: CI's
+    // contract roster check cannot match the executed name for it.
+    let handle = tokio::spawn(async {
+        let nodes = cluster(3).await;
+        wait_for_applied_index(&nodes, Index::new(1), Duration::from_millis(50)).await;
+    });
+    let err = handle
+        .await
+        .expect_err("an idle cluster must not reach applied index 1");
+    assert!(err.is_panic(), "the wait must fail by panicking");
+    let payload = err.into_panic();
+    let msg = payload
+        .downcast_ref::<String>()
+        .map(String::as_str)
+        .or_else(|| payload.downcast_ref::<&str>().copied())
+        .expect("the timeout panic carries a string message");
+    assert!(
+        msg.contains("timed out waiting for node 0"),
+        "unexpected panic message: {msg}"
+    );
 }
