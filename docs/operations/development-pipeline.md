@@ -43,7 +43,8 @@ Ordinary PRs use `.github/workflows/development-ci.yml`:
 2. `unit-plan` records changed, deleted and renamed paths and reverse
    dependency impact. It still selects the complete current workspace and
    feature matrix. The impact report cannot remove a required test.
-3. One static job runs formatting and issue-contract inspection. Eight unit
+3. One static job runs formatting only; reviewed per-issue contracts are no
+   longer used. Eight unit
    batches run all 70 package/feature rows, each with its original unit,
    all-target Clippy, and documentation commands.
 4. Eight functional batches retain all 62 contract rows, five original crate
