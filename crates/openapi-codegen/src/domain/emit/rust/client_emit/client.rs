@@ -1,5 +1,5 @@
 use super::literal::rust_literal;
-use super::method::emit_method;
+use super::method::{emit_method, has_declared_errors};
 use crate::domain::ir::names::NameRegistry;
 use crate::domain::ir::operations::OperationIR;
 use crate::domain::ir::typemap::TypeMap;
@@ -111,6 +111,40 @@ pub fn emit(ops: &[OperationIR], tm: &TypeMap, auth: Option<&FileBearerAuth>) ->
     out.push_str("    }\n");
     out.push_str("}\n\n");
     out.push_str("pub type ClientResult<T> = std::result::Result<T, ClientError>;\n\n");
+    if ops.iter().any(|op| has_declared_errors(op, tm)) {
+        out.push_str("/// A failure of an operation with declared error responses: transport\n");
+        out.push_str("/// trouble (`Client`) or a declared, decoded response (`Api`).\n");
+        out.push_str("#[derive(Debug)]\n");
+        out.push_str("pub enum ApiError<E> {\n");
+        out.push_str("    /// Transport, pool, trust or undeclared-status failure.\n");
+        out.push_str("    Client(ClientError),\n");
+        out.push_str("    /// A declared non-success response, decoded.\n");
+        out.push_str("    Api(E),\n");
+        out.push_str("}\n\n");
+        out.push_str("impl<E> From<ClientError> for ApiError<E> {\n");
+        out.push_str("    fn from(value: ClientError) -> Self { Self::Client(value) }\n");
+        out.push_str("}\n\n");
+        out.push_str("impl<E> From<reqwest::Error> for ApiError<E> {\n");
+        out.push_str("    fn from(value: reqwest::Error) -> Self { Self::Client(ClientError::Http(value)) }\n");
+        out.push_str("}\n\n");
+        out.push_str("impl<E: fmt::Debug> fmt::Display for ApiError<E> {\n");
+        out.push_str("    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {\n");
+        out.push_str("        match self {\n");
+        out.push_str("            Self::Client(err) => write!(f, \"{err}\"),\n");
+        out.push_str("            Self::Api(err) => write!(f, \"API error: {err:?}\"),\n");
+        out.push_str("        }\n");
+        out.push_str("    }\n");
+        out.push_str("}\n\n");
+        out.push_str("impl<E: fmt::Debug> std::error::Error for ApiError<E> {\n");
+        out.push_str("    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {\n");
+        out.push_str("        match self {\n");
+        out.push_str("            Self::Client(err) => Some(err),\n");
+        out.push_str("            Self::Api(_) => None,\n");
+        out.push_str("        }\n");
+        out.push_str("    }\n");
+        out.push_str("}\n\n");
+        out.push_str("pub type ApiResult<T, E> = std::result::Result<T, ApiError<E>>;\n\n");
+    }
     out.push_str("/// Verify the server against a private CA instead of the public roots.\n");
     out.push_str("///\n");
     out.push_str("/// For a service published only inside a cluster, the public roots cannot\n");
@@ -320,10 +354,17 @@ pub fn emit(ops: &[OperationIR], tm: &TypeMap, auth: Option<&FileBearerAuth>) ->
 
     let mut reg = NameRegistry::new();
     reg.unique("new");
+    let mut error_enums = String::new();
     for ir in ops {
         out.push('\n');
-        out.push_str(&emit_method(ir, tm, &mut reg, auth.is_some()));
+        let method = emit_method(ir, tm, &mut reg, auth.is_some());
+        out.push_str(&method.method);
+        if !method.error_type.is_empty() {
+            error_enums.push('\n');
+            error_enums.push_str(&method.error_type);
+        }
     }
     out.push_str("}\n");
+    out.push_str(&error_enums);
     out
 }
