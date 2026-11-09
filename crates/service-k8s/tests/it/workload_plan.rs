@@ -5,7 +5,7 @@ use service_k8s::render::{
     ClusterRoleBindingPlan, ContainerPlan, CronJobPlan, DeploymentPlan, FqdnMatchPlan,
     FqdnNetworkPolicyPlan, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
     PodPlan, PodRuntimePolicy, RbacRulePlan, RenderCtx, RoleBindingPlan, RolePlan,
-    ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan, WorkloadPlan,
+    ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan, WorkloadPlan, WorkloadPlanError,
 };
 
 fn context() -> RenderCtx<'static> {
@@ -225,5 +225,144 @@ fn typed_plan_renders_role_role_binding_and_cron_job_from_constructors() {
     assert_eq!(
         spec["jobTemplate"]["spec"]["template"]["spec"]["restartPolicy"],
         "OnFailure"
+    );
+}
+
+#[test]
+fn typed_plan_renders_cron_job_defaults_without_optional_execution_policy_keys() {
+    let cx = context();
+    let pod = PodPlan::new(
+        "backup",
+        ContainerPlan::new("backup", "demo:1", vec!["backup".into()]),
+        PodRuntimePolicy::restricted("sample-backup", json!({})),
+    );
+    let cron = CronJobPlan::new("sample-backup-defaults", "0 2 * * *", pod);
+    assert_eq!(cron.suspend(), None);
+    assert_eq!(cron.starting_deadline_seconds(), None);
+    assert_eq!(cron.active_deadline_seconds(), None);
+    assert_eq!(cron.backoff_limit(), None);
+    assert_eq!(cron.ttl_seconds_after_finished(), None);
+
+    let mut plan = WorkloadPlan::new(&cx);
+    plan.add_cron_job(cron);
+    let objects = plan.render().expect("render cron job with defaults");
+    assert_eq!(objects.len(), 1);
+
+    let spec = &objects[0]["spec"];
+    assert_eq!(spec["schedule"], "0 2 * * *");
+    assert_eq!(spec["concurrencyPolicy"], "Forbid");
+    assert_eq!(spec["successfulJobsHistoryLimit"], 3);
+    assert_eq!(spec["failedJobsHistoryLimit"], 1);
+    assert!(spec.get("suspend").is_none());
+    assert!(spec.get("startingDeadlineSeconds").is_none());
+
+    let job_spec = &spec["jobTemplate"]["spec"];
+    assert!(job_spec.get("activeDeadlineSeconds").is_none());
+    assert!(job_spec.get("backoffLimit").is_none());
+    assert!(job_spec.get("ttlSecondsAfterFinished").is_none());
+    assert_eq!(job_spec["template"]["spec"]["restartPolicy"], "OnFailure");
+}
+
+#[test]
+fn typed_plan_renders_cron_job_with_all_execution_policy_knobs() {
+    let cx = context();
+    let pod = PodPlan::new(
+        "backup",
+        ContainerPlan::new("backup", "demo:1", vec!["backup".into()]),
+        PodRuntimePolicy::restricted("sample-backup", json!({})),
+    );
+    let cron = CronJobPlan::new("sample-backup-configured", "0 4 * * *", pod)
+        .with_suspend(true)
+        .with_starting_deadline_seconds(120)
+        .with_active_deadline_seconds(3600)
+        .with_backoff_limit(4)
+        .with_ttl_seconds_after_finished(86400);
+
+    assert_eq!(cron.suspend(), Some(true));
+    assert_eq!(cron.starting_deadline_seconds(), Some(120));
+    assert_eq!(cron.active_deadline_seconds(), Some(3600));
+    assert_eq!(cron.backoff_limit(), Some(4));
+    assert_eq!(cron.ttl_seconds_after_finished(), Some(86400));
+
+    let mut plan = WorkloadPlan::new(&cx);
+    plan.add_cron_job(cron);
+    let objects = plan.render().expect("render configured cron job");
+    assert_eq!(objects.len(), 1);
+
+    let spec = &objects[0]["spec"];
+    assert_eq!(spec["schedule"], "0 4 * * *");
+    assert_eq!(spec["concurrencyPolicy"], "Forbid");
+    assert_eq!(spec["suspend"], json!(true));
+    assert_eq!(spec["startingDeadlineSeconds"], json!(120));
+
+    let job_spec = &spec["jobTemplate"]["spec"];
+    assert_eq!(job_spec["activeDeadlineSeconds"], json!(3600));
+    assert_eq!(job_spec["backoffLimit"], json!(4));
+    assert_eq!(job_spec["ttlSecondsAfterFinished"], json!(86400));
+    assert_eq!(job_spec["template"]["spec"]["restartPolicy"], "OnFailure");
+}
+
+#[test]
+fn typed_plan_rejects_negative_cron_job_execution_policy_knobs() {
+    let cx = context();
+    let make_pod = || {
+        PodPlan::new(
+            "backup",
+            ContainerPlan::new("backup", "demo:1", vec!["backup".into()]),
+            PodRuntimePolicy::restricted("sample-backup", json!({})),
+        )
+    };
+
+    // Negative startingDeadlineSeconds
+    let mut plan1 = WorkloadPlan::new(&cx);
+    plan1.add_cron_job(
+        CronJobPlan::new("sample-cron", "0 1 * * *", make_pod()).with_starting_deadline_seconds(-1),
+    );
+    assert_eq!(
+        plan1.render(),
+        Err(WorkloadPlanError::NegativeValue(
+            "sample-cron".into(),
+            "startingDeadlineSeconds",
+        ))
+    );
+
+    // Negative activeDeadlineSeconds
+    let mut plan2 = WorkloadPlan::new(&cx);
+    plan2.add_cron_job(
+        CronJobPlan::new("sample-cron", "0 1 * * *", make_pod()).with_active_deadline_seconds(-1),
+    );
+    assert_eq!(
+        plan2.render(),
+        Err(WorkloadPlanError::NegativeValue(
+            "sample-cron".into(),
+            "activeDeadlineSeconds",
+        ))
+    );
+
+    // Negative backoffLimit
+    let mut plan3 = WorkloadPlan::new(&cx);
+    plan3.add_cron_job(
+        CronJobPlan::new("sample-cron", "0 1 * * *", make_pod()).with_backoff_limit(-1),
+    );
+    assert_eq!(
+        plan3.render(),
+        Err(WorkloadPlanError::NegativeValue(
+            "sample-cron".into(),
+            "backoffLimit",
+        ))
+    );
+
+    // Negative ttlSecondsAfterFinished
+    let mut plan4 = WorkloadPlan::new(&cx);
+    plan4.add_cron_job(
+        CronJobPlan::new("sample-cron", "0 1 * * *", make_pod())
+            .with_ttl_seconds_after_finished(-1),
+    );
+    assert_eq!(
+        plan4.render(),
+        Err(WorkloadPlanError::NegativeValue(
+            "sample-cron".into(),
+            "ttlSecondsAfterFinished",
+        ))
     );
 }
