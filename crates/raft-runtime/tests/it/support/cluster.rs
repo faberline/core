@@ -8,7 +8,7 @@ use tokio::net::TcpListener;
 
 use raft_core::ELECTION_TIMEOUT_FLOOR_TICKS;
 use raft_runtime::{
-    FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
+    FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStatus, RaftStore,
     StateMachineError,
 };
 
@@ -211,9 +211,70 @@ pub async fn await_leader_with_tick(nodes: &[Node], tick: Duration) -> Option<us
 
         let elapsed = started.elapsed();
         if elapsed >= timing.wait_budget {
+            report_election_timeout(nodes, timing, elapsed).await;
             return None;
         }
         let remaining = timing.wait_budget.saturating_sub(elapsed);
         tokio::time::sleep(timing.poll_interval.min(remaining)).await;
+    }
+}
+
+/// Default budget per node when waiting for state machines to reach an applied index.
+pub const DEFAULT_APPLIED_INDEX_BUDGET: Duration = Duration::from_secs(60);
+
+/// Wait for every node in `nodes` to reach `target` applied index.
+///
+/// Each node gets its own budget of `per_node_budget`; callers should pass at
+/// least 60 s (`DEFAULT_APPLIED_INDEX_BUDGET` is 60 s).
+/// When the budget is exhausted, the helper panics with a timeout message
+/// naming the failing node and the applied index each node reached. It never
+/// falls through to value assertions.
+pub async fn wait_for_applied_index(nodes: &[Node], target: Index, per_node_budget: Duration) {
+    for (i, n) in nodes.iter().enumerate() {
+        let deadline = tokio::time::Instant::now() + per_node_budget;
+        while n.sm.applied_index() < target {
+            if tokio::time::Instant::now() >= deadline {
+                let reached: Vec<String> = nodes
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, node)| format!("node {idx}: {}", node.sm.applied_index()))
+                    .collect();
+                panic!(
+                    "timed out waiting for node {i} to reach applied index {target} within {per_node_budget:?}; applied index each node reached: [{}]",
+                    reached.join(", ")
+                );
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+    }
+}
+
+/// Capture real node state only after the existing election wait has failed.
+/// These requests cannot turn a timeout into a pass or change the wait budget.
+async fn report_election_timeout(nodes: &[Node], timing: LeaderWaitBudget, elapsed: Duration) {
+    eprintln!(
+        "leader election timed out: elapsed={elapsed:?} budget={:?} nodes={}",
+        timing.wait_budget,
+        nodes.len()
+    );
+    let client = match reqwest::Client::builder()
+        .http2_prior_knowledge()
+        .timeout(Duration::from_millis(500))
+        .build()
+    {
+        Ok(client) => client,
+        Err(error) => {
+            eprintln!("leader election diagnostics client failed: {error}");
+            return;
+        }
+    };
+    for (index, node) in nodes.iter().enumerate() {
+        match client.get(format!("{}/raftz", node.url)).send().await {
+            Ok(response) => match response.json::<RaftStatus>().await {
+                Ok(status) => eprintln!("leader election node {index}: {status:?}"),
+                Err(error) => eprintln!("leader election node {index}: invalid status: {error}"),
+            },
+            Err(error) => eprintln!("leader election node {index}: status unavailable: {error}"),
+        }
     }
 }

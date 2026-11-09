@@ -6,6 +6,12 @@ pub enum MembershipPhase {
     Joint,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct PeerMatch {
+    pub id: NodeId,
+    pub match_index: u64,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RaftStatus {
     pub group_id: String,
@@ -37,4 +43,95 @@ pub struct RaftStatus {
     pub resident_log_bytes: u64,
     #[serde(default)]
     pub max_resident_log_bytes: u64,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub peer_match_index: Vec<PeerMatch>,
+}
+
+pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
+    let n = s.node.lock().await;
+    let durability_error = s
+        .latched_failure
+        .lock()
+        .unwrap()
+        .as_ref()
+        .map(|e| e.to_string());
+    let conf = n.conf_state();
+    let (committed_voters, incoming_voters, membership_phase) = match &conf.outgoing {
+        Some(outgoing) => (
+            outgoing.clone(),
+            Some(conf.membership.voters().to_vec()),
+            MembershipPhase::Joint,
+        ),
+        None => (
+            conf.membership.voters().to_vec(),
+            None,
+            MembershipPhase::Stable,
+        ),
+    };
+    let learners = conf.membership.learners().to_vec();
+    let role = if !n.is_voter() {
+        "Learner".to_string()
+    } else {
+        format!("{:?}", n.role())
+    };
+    let peer_match_index = n
+        .peer_match_index()
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(id, index)| PeerMatch {
+            id,
+            match_index: index.get(),
+        })
+        .collect();
+    RaftStatus {
+        group_id: s.group_id.as_str().to_owned(),
+        id: s.id,
+        role,
+        term: n.current_term().get(),
+        commit_index: n.commit_index().get(),
+        last_index: n.last_index().get(),
+        snapshot_index: n.snapshot_index().get(),
+        applied_index: s.completed_applied_index().get(),
+        leader: n.leader(),
+        is_leader: n.is_leader(),
+        durability_error,
+        committed_voters,
+        incoming_voters,
+        learners,
+        membership_phase,
+        undeliverable_never_addressed: s.undeliverable_never_addressed.load(Ordering::Relaxed),
+        undeliverable_withdrawn_address: s.undeliverable_withdrawn_address(),
+        proposal_rejected_before_routing: s
+            .proposal_rejected_before_routing
+            .load(Ordering::Relaxed),
+        proposal_rejected_before_append: s.proposal_rejected_before_append.load(Ordering::Relaxed),
+        proposal_admission_closed: s.lifecycle_generation.load(Ordering::Acquire) > 0,
+        lifecycle_generation: s.lifecycle_generation.load(Ordering::Acquire),
+        snapshot_capability: s.sm.snapshot_capability().map(str::to_string),
+        resident_log_bytes: n.resident_log_bytes() as u64,
+        max_resident_log_bytes: s.max_resident_log_bytes as u64,
+        peer_match_index,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn raft_status_deserializes_without_peer_match_index() {
+        let json = concat!(
+            r#"{"group_id":"orders","id":1,"role":"Leader","term":3,"commit_index":9,"#,
+            r#""last_index":10,"snapshot_index":4,"applied_index":8,"leader":1,"is_leader":true,"#,
+            r#""durability_error":null,"committed_voters":[1,2,3],"incoming_voters":[1,2],"#,
+            r#""learners":[4],"membership_phase":"Joint","undeliverable_never_addressed":5,"#,
+            r#""undeliverable_withdrawn_address":6,"proposal_rejected_before_routing":7,"#,
+            r#""proposal_rejected_before_append":8,"proposal_admission_closed":false,"#,
+            r#""lifecycle_generation":2,"snapshot_capability":"cap-v1","resident_log_bytes":64,"#,
+            r#""max_resident_log_bytes":1024}"#
+        );
+        let s: RaftStatus =
+            serde_json::from_str(json).expect("deserialization without peer_match_index succeeds");
+        assert!(s.peer_match_index.is_empty());
+    }
 }

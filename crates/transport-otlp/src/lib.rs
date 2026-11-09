@@ -19,3 +19,6 @@ pub use grpc::{serve_grpc, GrpcProjectAuthorizer};
 pub use media::OtlpMediaType;
 pub use payload::{DecodedPayload, EncodedOtlpResponse, PartialSuccess};
 pub use signal::OtlpSignal;
+
+#[cfg(test)]
+mod tests;

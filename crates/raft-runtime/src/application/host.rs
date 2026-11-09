@@ -49,18 +49,19 @@ mod status;
 mod voter_barriers;
 
 pub use backpressure::ProposalBackpressure;
-pub use chunk_sink::{ChunkSink, SNAPSHOT_CHUNK_SIZE};
+pub use chunk_sink::{ChunkHandler, ChunkSink, SNAPSHOT_CHUNK_SIZE};
 pub use membership_ops::AdmissionRefused;
 pub use outcome::{ProposalOutcome, SnapshotCompactionOutcome, StorageFailed};
 pub use shutdown_report::{
     HostShutdownReport, LeadershipHandoff, PhaseRecord, PhaseStatus, ShutdownCaller, ShutdownPhase,
 };
-pub use status::{MembershipPhase, RaftStatus};
+pub use status::{MembershipPhase, PeerMatch, RaftStatus};
 
 pub(crate) use apply::{apply_ready, cold_start, persist_node};
 pub(crate) use backpressure::decode_backpressure;
 pub(crate) use peer_lane::PeerLaneQueue;
 pub(crate) use spawn::{HostStore, PeerWiring};
+pub(crate) use status::host_status;
 
 use apply::tick_then_maybe_persist;
 use backpressure::{encode_backpressure, rejected_admission};
@@ -78,6 +79,9 @@ pub(crate) struct Shared {
     /// their index. They are keyed by index, never command content, so a caller
     /// cancellation cannot release a live appended command.
     pub(crate) pending_admission: StdMutex<BTreeMap<(Index, u64), AdmissionPermit>>,
+    /// Exact committed terms retained only for live leader-side proposal waiters.
+    /// Historical terms below the snapshot boundary are no longer in the log.
+    pub(crate) proposal_committed_terms: StdMutex<BTreeMap<(Index, u64), Option<raft_core::Term>>>,
     /// The peer address book and the calls that are not raft messages.
     pub(crate) peer_client: Arc<dyn PeerClient<NodeId>>,
     /// Raft message delivery to peers; the same adapter as `peer_client`.

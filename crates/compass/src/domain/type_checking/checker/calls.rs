@@ -96,18 +96,19 @@ impl<'a> TypeChecker<'a> {
         // Check positional argument types
         for (i, (range, arg_ty)) in positional_args.iter().enumerate() {
             if let Some(param) = params.get(i) {
-                if !param.ty.is_unknown() && !param.ty.is_any() {
-                    if !self.is_assignable(&param.ty, arg_ty) {
-                        self.diagnostics.push(Diagnostic::error(
-                            range.clone(),
-                            "TC005",
-                            DiagnosticCategory::Type,
-                            format!(
-                                "Argument '{}' type mismatch: expected '{}', got '{}'",
-                                param.name, param.ty, arg_ty
-                            ),
-                        ));
-                    }
+                if !param.ty.is_unknown()
+                    && !param.ty.is_any()
+                    && !self.is_assignable(&param.ty, arg_ty)
+                {
+                    self.diagnostics.push(Diagnostic::error(
+                        *range,
+                        "TC005",
+                        DiagnosticCategory::Type,
+                        format!(
+                            "Argument '{}' type mismatch: expected '{}', got '{}'",
+                            param.name, param.ty, arg_ty
+                        ),
+                    ));
                 }
             }
         }
@@ -115,18 +116,19 @@ impl<'a> TypeChecker<'a> {
         // Check keyword argument types
         for (name, (range, arg_ty)) in &keyword_args {
             if let Some(param) = param_by_name.get(name.as_str()) {
-                if !param.ty.is_unknown() && !param.ty.is_any() {
-                    if !self.is_assignable(&param.ty, arg_ty) {
-                        self.diagnostics.push(Diagnostic::error(
-                            range.clone(),
-                            "TC005",
-                            DiagnosticCategory::Type,
-                            format!(
-                                "Argument '{}' type mismatch: expected '{}', got '{}'",
-                                name, param.ty, arg_ty
-                            ),
-                        ));
-                    }
+                if !param.ty.is_unknown()
+                    && !param.ty.is_any()
+                    && !self.is_assignable(&param.ty, arg_ty)
+                {
+                    self.diagnostics.push(Diagnostic::error(
+                        *range,
+                        "TC005",
+                        DiagnosticCategory::Type,
+                        format!(
+                            "Argument '{}' type mismatch: expected '{}', got '{}'",
+                            name, param.ty, arg_ty
+                        ),
+                    ));
                 }
             } else if !params
                 .iter()
@@ -134,7 +136,7 @@ impl<'a> TypeChecker<'a> {
             {
                 // Unknown keyword argument
                 self.diagnostics.push(Diagnostic::error(
-                    range.clone(),
+                    *range,
                     "TC008",
                     DiagnosticCategory::Type,
                     format!("Unknown keyword argument: '{}'", name),

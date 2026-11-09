@@ -50,7 +50,7 @@ impl PythonChecker {
                 if let Some(first_code) = first_non_import_line {
                     if line > first_code {
                         diagnostics.push(Diagnostic::warning(
-                            range.clone(),
+                            range,
                             "PY604",
                             DiagnosticCategory::Style,
                             "Import should be at the top of the file",
@@ -67,14 +67,14 @@ impl PythonChecker {
                 // Check for duplicate imports
                 if let Some(prev_range) = seen_modules.get(&module) {
                     diagnostics.push(Diagnostic::warning(
-                        range.clone(),
+                        range,
                         "PY603",
                         DiagnosticCategory::Style,
                         format!("Duplicate import: '{}'", module),
                     ));
                     let _ = prev_range; // suppress unused warning
                 } else {
-                    seen_modules.insert(module.clone(), range.clone());
+                    seen_modules.insert(module.clone(), range);
                 }
 
                 // Classify import group
@@ -116,7 +116,7 @@ impl PythonChecker {
                         if let Some(pl) = prev_line {
                             if import.line == pl + 1 {
                                 diagnostics.push(Diagnostic::new(
-                                    import.range.clone(),
+                                    import.range,
                                     crate::diagnostic::DiagnosticSeverity::Hint,
                                     "PY602",
                                     DiagnosticCategory::Style,
@@ -133,16 +133,16 @@ impl PythonChecker {
 
                 // Check alphabetical order within group
                 if let Some(ref pm) = prev_module {
-                    if prev_group == Some(import.group) {
-                        if import.module.to_lowercase() < pm.to_lowercase() {
-                            diagnostics.push(Diagnostic::new(
-                                import.range.clone(),
-                                crate::diagnostic::DiagnosticSeverity::Hint,
-                                "PY601",
-                                DiagnosticCategory::Style,
-                                format!("Import '{}' should come before '{}'", import.module, pm),
-                            ));
-                        }
+                    if prev_group == Some(import.group)
+                        && import.module.to_lowercase() < pm.to_lowercase()
+                    {
+                        diagnostics.push(Diagnostic::new(
+                            import.range,
+                            crate::diagnostic::DiagnosticSeverity::Hint,
+                            "PY601",
+                            DiagnosticCategory::Style,
+                            format!("Import '{}' should come before '{}'", import.module, pm),
+                        ));
                     }
                 }
 

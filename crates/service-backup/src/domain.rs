@@ -3,6 +3,9 @@
 //! from and writes it through, and the bearer token source the admin
 //! snapshot transport authenticates with.
 
+mod artifact_verifier;
+mod backup_set;
+mod backup_set_error;
 mod backup_sink;
 mod backup_sink_error;
 #[cfg(feature = "http-client")]
@@ -13,11 +16,18 @@ mod destination;
 mod destination_error;
 mod policy;
 mod policy_error;
+mod restore_ledger;
+mod restore_ledger_error;
 #[cfg(feature = "http-client")]
 mod snapshot_source;
 #[cfg(feature = "http-client")]
 mod snapshot_source_error;
 
+pub use artifact_verifier::ArtifactVerifier;
+pub use backup_set::{
+    BackupArtifact, BackupSetV1, MAX_ARTIFACTS, MAX_ARTIFACT_NAME_BYTES, MAX_MANIFEST_BYTES,
+};
+pub use backup_set_error::BackupSetError;
 pub use backup_sink::BackupSink;
 pub use backup_sink_error::BackupSinkError;
 #[cfg(feature = "http-client")]
@@ -28,6 +38,11 @@ pub use destination::{BackupDestination, SchemeInfo, SUPPORTED_SCHEMES};
 pub use destination_error::DestinationError;
 pub use policy::{BackupPolicy, RetentionPolicy, ScheduledBackupPolicy};
 pub use policy_error::PolicyError;
+pub use restore_ledger::{
+    resume_or_begin, ArtifactEntry, ArtifactStage, RestoreLedger, RestorePhase, ResumePoint,
+    MAX_RESTORE_LEDGER_ARTIFACTS, MAX_RESTORE_LEDGER_BYTES, MAX_SET_ID_BYTES,
+};
+pub use restore_ledger_error::RestoreLedgerError;
 #[cfg(feature = "http-client")]
 pub use snapshot_source::SnapshotSource;
 #[cfg(feature = "http-client")]

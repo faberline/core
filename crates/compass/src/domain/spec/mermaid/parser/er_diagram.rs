@@ -125,9 +125,9 @@ impl MermaidParser {
         let ty = self.parse_type(parts[0]);
         let name = parts[1].to_string();
 
-        let primary_key = parts.iter().any(|&p| p == "PK");
-        let is_foreign_key = parts.iter().any(|&p| p == "FK");
-        let unique = parts.iter().any(|&p| p == "UK");
+        let primary_key = parts.contains(&"PK");
+        let is_foreign_key = parts.contains(&"FK");
+        let unique = parts.contains(&"UK");
 
         Ok(Some(FieldDef {
             name,
