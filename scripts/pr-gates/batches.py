@@ -155,14 +155,15 @@ def execute(plan, group, batch, root, baseline, head, base, invoke=subprocess.ru
         # A legacy command must not inherit the contract-only live-cluster flag.
         env.pop('SERVICE_K8S_LIVE_KUBE', None)
         live = case['runner']=='contracts' and case['package']=='service-k8s'
-        kind = str(Path(os.environ.get('RUNNER_TEMP', '/tmp'))/'kind')
+        kind = os.environ.get('KIND_BIN') or 'kind'
+        image = os.environ.get('KIND_NODE_IMAGE')
         try:
             unit.verify_identity(root, head, base, baseline)
             if case['runner']=='contracts':
                 env['SERVICE_K8S_LIVE_KUBE'] = '1'
                 (root/'.aw').mkdir(exist_ok=True)
             if live:
-                setup = [[kind, 'create', 'cluster', '--name', 'core-contracts', '--wait', '120s'],
+                setup = [[kind, 'create', 'cluster', '--name', 'core-contracts', '--wait', '120s'] + (['--image', image] if image else []),
                          ['kubectl', 'config', 'current-context'], ['kubectl', 'get', 'nodes']]
                 for argv in setup:
                     if invoke(argv, cwd=root, env=env).returncode:

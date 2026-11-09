@@ -138,6 +138,30 @@ class BatchExecutionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'cases failed'):
                 b.execute(value,'functional','01/01',Path(directory),Path('/base'),'a'*40,'b'*40,failing)
 
+    def test_live_case_uses_kind_bin_and_node_image_from_environment(self):
+        import tempfile
+        image='ghcr.io/faberline/kindest-node:v1.33.1@sha256:050072256b9a903bd914c0b2866828150cb229cea0efe5892e2b644d5dd3b34f'
+        cases=[dict(id='0',label='0',runner='contracts',package='service-k8s',profile='default')]
+        calls=[]
+        def invoke(argv,**kwargs):calls.append(argv);return SimpleNamespace(returncode=0)
+        with tempfile.TemporaryDirectory()as directory,patch.dict(b.os.environ,{'KIND_BIN':'/opt/kind','KIND_NODE_IMAGE':image}),patch.object(b.unit,'verify_identity',return_value={}),patch.object(b.subprocess,'check_output',return_value='kind-core-contracts\n'),contextlib.redirect_stdout(io.StringIO()):
+            value=dict(sha256='d'*64,groups={'functional':[dict(batch='01/01',cases=cases)]})
+            b.execute(value,'functional','01/01',Path(directory),Path('/base'),'a'*40,'b'*40,invoke)
+        self.assertIn(['/opt/kind','create','cluster','--name','core-contracts','--wait','120s','--image',image],calls)
+        self.assertIn(['/opt/kind','delete','cluster','--name','core-contracts'],calls)
+
+    def test_live_case_falls_back_to_kind_on_path_without_image(self):
+        import tempfile
+        cases=[dict(id='0',label='0',runner='contracts',package='service-k8s',profile='default')]
+        calls=[]
+        def invoke(argv,**kwargs):calls.append(argv);return SimpleNamespace(returncode=0)
+        with tempfile.TemporaryDirectory()as directory,patch.dict(b.os.environ,{}),patch.object(b.unit,'verify_identity',return_value={}),patch.object(b.subprocess,'check_output',return_value='kind-core-contracts\n'),contextlib.redirect_stdout(io.StringIO()):
+            b.os.environ.pop('KIND_BIN',None);b.os.environ.pop('KIND_NODE_IMAGE',None)
+            value=dict(sha256='d'*64,groups={'functional':[dict(batch='01/01',cases=cases)]})
+            b.execute(value,'functional','01/01',Path(directory),Path('/base'),'a'*40,'b'*40,invoke)
+        self.assertIn(['kind','create','cluster','--name','core-contracts','--wait','120s'],calls)
+        self.assertIn(['kind','delete','cluster','--name','core-contracts'],calls)
+
     def test_legacy_command_does_not_inherit_live_cluster_flag(self):
         case=dict(id='legacy',label='raft-core',runner='legacy',package='raft-core',command=['cargo','test','--locked','-p','raft-core'])
         with patch.dict(b.os.environ,{'SERVICE_K8S_LIVE_KUBE':'1'}):result,calls,_=self.execute(self.fixture([case]))

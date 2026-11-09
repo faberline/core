@@ -1076,7 +1076,7 @@
       "trusted_workflows": {
         ".github/workflows/development-ci.yml": {
           "id": 402004875,
-          "definition_sha": "556dc72369ae3e1275c511ef8cb53196ae4789d1"
+          "definition_sha": "e73069eba76958982551b3c5f847e08629c2a5ae"
         }
       },
       "always": [
@@ -8167,7 +8167,7 @@
     "trusted_workflows": {
       ".github/workflows/development-ci.yml": {
         "id": 402004875,
-        "definition_sha": "556dc72369ae3e1275c511ef8cb53196ae4789d1"
+        "definition_sha": "e73069eba76958982551b3c5f847e08629c2a5ae"
       }
     },
     "always": [
