@@ -315,37 +315,32 @@ fn redaction_guarantees_neither_token_nor_errors_reveal_secret_material() {
         "Debug leaked secret: {dbg}"
     );
 
-    // Errors with canary in malformed token, path, or missing
-    let errors = [
-        OpaqueProjectedTokenError::Missing {
-            path: PathBuf::from(format!("/tmp/path-{CANARY}")),
-        },
-        OpaqueProjectedTokenError::Unreadable {
-            path: PathBuf::from(format!("/tmp/path-{CANARY}")),
-            source: std::io::Error::new(std::io::ErrorKind::PermissionDenied, "denied"),
-        },
-        OpaqueProjectedTokenError::Empty {
-            path: PathBuf::from(format!("/tmp/path-{CANARY}")),
-        },
-        OpaqueProjectedTokenError::Malformed {
-            path: PathBuf::from(format!("/tmp/path-{CANARY}")),
-        },
-    ];
+    // A malformed file whose content carries the secret must fail as Malformed,
+    // and neither the error's Display nor its Debug may echo the secret.
+    mount.write(format!("bad token {CANARY}"));
+    let err = mount.source().read().expect_err("interior space must fail");
+    assert!(
+        matches!(err, OpaqueProjectedTokenError::Malformed { .. }),
+        "{err:?}"
+    );
+    let disp = format!("{err}");
+    let dbg = format!("{err:?}");
+    assert!(!disp.contains(CANARY), "Display leaked secret: {disp}");
+    assert!(!dbg.contains(CANARY), "Debug leaked secret: {dbg}");
 
-    for err in &errors {
-        let disp = format!("{err}");
-        let dbg = format!("{err:?}");
-        // Path can contain canary because path was configured with it, but token content itself must not be leaked.
-        // And Malformed error must never echo the token file content.
-        assert!(
-            !disp.contains("canary-secret-token-material") || disp.contains("/tmp/path"),
-            "Display must not leak token content: {disp}"
-        );
-        assert!(
-            !dbg.contains("canary-secret-token-material") || dbg.contains("/tmp/path"),
-            "Debug must not leak token content: {dbg}"
-        );
-    }
+    // Same check for non-UTF-8 bytes that contain the secret.
+    let mut bytes = vec![0xff, 0xfe];
+    bytes.extend_from_slice(CANARY.as_bytes());
+    mount.write(&bytes);
+    let err = mount.source().read().expect_err("non-utf8 must fail");
+    assert!(
+        matches!(err, OpaqueProjectedTokenError::Malformed { .. }),
+        "{err:?}"
+    );
+    let disp = format!("{err}");
+    let dbg = format!("{err:?}");
+    assert!(!disp.contains(CANARY), "Display leaked secret: {disp}");
+    assert!(!dbg.contains(CANARY), "Debug leaked secret: {dbg}");
 
     // Negative control:
     // If Required mode were modified to cache the first read (e.g. by wrapping ProjectedToken in OnceCell),

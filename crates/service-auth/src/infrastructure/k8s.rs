@@ -12,8 +12,7 @@ mod system_clock;
 mod verifying_client;
 
 pub use opaque_projected_token::{
-    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenFile,
-    OpaqueProjectedTokenReader, OpaqueProjectedTokenSource, ProjectedTokenReader,
+    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenSource,
 };
 pub use projected_token_file::{ProjectedTokenError, ProjectedTokenFile};
 pub use system_clock::SystemClock;

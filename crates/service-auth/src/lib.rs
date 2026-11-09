@@ -1,5 +1,4 @@
 //! Shared request-auth middleware for the ecosystem's HTTP services.
-#![allow(clippy::unnecessary_get_then_check)]
 //!
 //! This is the service-kit auth layer: the generic **extract -> verify ->
 //! reject -> inject** plumbing plus a [`Verifier`] trait each service

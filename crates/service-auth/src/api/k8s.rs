@@ -71,9 +71,8 @@ pub use principal::{
     SERVICE_ACCOUNT_PREFIX,
 };
 pub use projected::{
-    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenFile,
-    OpaqueProjectedTokenReader, OpaqueProjectedTokenSource, ProjectedToken, ProjectedTokenError,
-    ProjectedTokenFile, ProjectedTokenMode, ProjectedTokenReader,
+    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenSource, ProjectedToken,
+    ProjectedTokenError, ProjectedTokenFile, ProjectedTokenMode,
 };
 pub use review::{
     AccessReviewOutcome, ExtraFields, ResourceAttributes, ReviewBackend, ReviewError,

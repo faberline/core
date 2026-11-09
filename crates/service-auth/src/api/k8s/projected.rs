@@ -34,7 +34,6 @@
 
 pub use crate::domain::k8s::{ProjectedToken, ProjectedTokenMode};
 pub use crate::infrastructure::k8s::{
-    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenFile,
-    OpaqueProjectedTokenReader, OpaqueProjectedTokenSource, ProjectedTokenError,
-    ProjectedTokenFile, ProjectedTokenReader,
+    read_projected_token, OpaqueProjectedTokenError, OpaqueProjectedTokenSource,
+    ProjectedTokenError, ProjectedTokenFile,
 };

@@ -96,11 +96,6 @@ impl OpaqueProjectedTokenSource {
         Self::new(ProjectedTokenMode::Required { path: path.into() })
     }
 
-    /// Convenient alias for required mode.
-    pub fn from_path(path: impl Into<PathBuf>) -> Self {
-        Self::required(path)
-    }
-
     /// The mode this source was configured with.
     pub fn mode(&self) -> &ProjectedTokenMode {
         &self.mode
@@ -156,11 +151,6 @@ impl OpaqueProjectedTokenSource {
         Ok(Some(ProjectedToken::new(trimmed.to_string())))
     }
 }
-
-/// Convenience aliases matching caller naming patterns.
-pub type OpaqueProjectedTokenReader = OpaqueProjectedTokenSource;
-pub type ProjectedTokenReader = OpaqueProjectedTokenSource;
-pub type OpaqueProjectedTokenFile = OpaqueProjectedTokenSource;
 
 /// Read an opaque projected token according to `mode`.
 pub fn read_projected_token(
