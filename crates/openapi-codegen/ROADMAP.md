@@ -70,6 +70,12 @@ Stable IDs here let current limits point to one destination.
   clean build fails with that dependency named.
 - Tracking: [#3807](https://github.com/faberline/axiom/issues/3807) (`lumen@0.4.45`).
 
+The complete target dependency manifest is now available in targeted generation
+runs (`.openapi-codegen.json`, schema version 2), recording the OpenAPI SHA-256,
+generator version, caller-supplied service compatibility label, and every runtime
+dependency across Python, TypeScript, and Rust. Legacy generation remains
+byte-identical and emits no manifest. Package publication remains a non-goal.
+
 ### Dynamic request auth provider
 
 - ID: `dynamic-request-auth-provider`
