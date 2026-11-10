@@ -1,6 +1,9 @@
 # Core release entry
 
-Release uses the same `.github/workflows/development-ci.yml` implementation.
+Since #140, this repository's `.github/workflows/ci.yml` runs no release preflight
+and no performance threshold. Both come back with the release workflow, which is follow-up work.
+
+Release uses `.github/workflows/ci.yml` (#140 replaced the old development workflow).
 Every `v*` RC or formal tag must pass AW's immutable tag/milestone preflight
 and select `all`. It executes every Core-owned required test and original
 numeric threshold. Independent legacy main/tag/manual gates remain intact.
@@ -17,11 +20,13 @@ all tests. Publication must succeed before milestone closure. A formal-tag
 code repair needs a new reviewed SemVer version. Cloud CI reviews or merges
 no PR and closes no issue.
 
-`.github/aw-release.json` currently contains no approved milestone mapping.
-The existing core@0.5.0 work-batch metadata is not a release contract and the
-workspace still uses 0.4.14. Keep this hold visible. A release needs a reviewed
-version/goal/check mapping and the product's publication gates. This adoption
-does not invent those decisions, change Cargo or create a real tag.
+`.github/aw-release.json` holds the reviewed contract for milestone 8:
+`core@0.5.0` is version `0.5.0`, tag `v0.5.0`, and a milestone is ready when
+all its issues are closed. The release-contract check script was removed by
+#140, so no command prints the holds. The workspace version is `0.5.0` (bumped
+by #156), which matches the milestone version. The tag still waits for the
+closed milestone and a user decision. This change creates no tag and starts no
+release.
 
 Use the installed shared skill's absolute `scripts/plan.sh` path for
 `release-status --milestone 8`. Only a fresh matching assessment permits its
