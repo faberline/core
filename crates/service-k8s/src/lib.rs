@@ -46,6 +46,10 @@ pub use application::certificate::reconcile::Reconciler;
 pub use application::operator::managed_service::{
     ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
 };
+pub use domain::backup_job::{
+    backup_job_name, plan_backup_job, BackupJobDecision, BackupJobError, BackupJobPhase,
+    BackupJobPolicy, ObservedBackupJob,
+};
 pub use domain::capacity::{
     plan_replica_layer, plan_shard_split, ObservedShardUsage, ObservedUtilization,
     ReplicaLayerError, ReplicaLayerPlan, ReplicaLayerPolicy, ShardSplitError, ShardSplitPlan,

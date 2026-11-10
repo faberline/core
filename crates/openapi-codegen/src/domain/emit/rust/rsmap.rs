@@ -23,6 +23,11 @@ pub fn type_expr(node: &RefOr<Schema>, tm: &TypeMap) -> String {
     }
 }
 
+/// True for the free-form fallback type (`serde_json::Value`).
+pub fn is_free_form(ty: &str) -> bool {
+    ty == ANY
+}
+
 /// Wrap in `Option<...>` unless already optional or free-form.
 pub fn optional(ty: &str) -> String {
     if ty == ANY || ty.starts_with("Option<") {
@@ -129,6 +134,25 @@ mod tests {
         assert_eq!(
             type_expr(&s(r##"{"$ref":"#/components/schemas/Pet"}"##), &tm()),
             "Pet"
+        );
+    }
+
+    #[test]
+    fn inline_and_non_string_enums_stay_string() {
+        assert_eq!(
+            type_expr(&s(r##"{"type":"string","enum":["a","b"]}"##), &tm()),
+            "String"
+        );
+        assert_eq!(
+            type_expr(&s(r##"{"type":"integer","enum":[1,2]}"##), &tm()),
+            "String"
+        );
+        assert_eq!(
+            type_expr(
+                &s(r##"{"type":"string","enum":["a","b"],"nullable":true}"##),
+                &tm()
+            ),
+            "Option<String>"
         );
     }
 }

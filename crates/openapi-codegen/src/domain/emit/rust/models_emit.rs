@@ -1,7 +1,7 @@
 //! Emit serde structs / aliases for the spec's component schemas.
 
 use crate::domain::emit::rust::rsmap;
-use crate::domain::ir::names::{to_pascal, to_snake};
+use crate::domain::ir::names::{to_pascal, to_snake, NameRegistry};
 use crate::domain::ir::openapi::{RefOr, Schema, Spec};
 use crate::domain::ir::typemap::TypeMap;
 use crate::domain::RustTarget;
@@ -52,11 +52,42 @@ pub fn emit(spec: &Spec, tm: &TypeMap, target: RustTarget) -> String {
 fn emit_schema(name: &str, node: &RefOr<Schema>, tm: &TypeMap, target: RustTarget) -> String {
     match node {
         RefOr::Ref(_) => format!("pub type {name} = {};\n", rsmap::type_expr(node, tm)),
+        RefOr::Item(schema) if is_string_enum(schema) => emit_enum(name, schema),
         RefOr::Item(schema) if schema.properties.is_empty() => {
             format!("pub type {name} = {};\n", rsmap::type_expr(node, tm))
         }
         RefOr::Item(schema) => emit_struct(name, schema, tm, target),
     }
+}
+
+/// True when a component schema is a string enum eligible for a Rust enum definition.
+fn is_string_enum(schema: &Schema) -> bool {
+    schema.type_names().as_slice() == ["string"]
+        && !schema.enum_values.is_empty()
+        && schema.enum_values.iter().all(|v| v.is_string())
+        && schema.properties.is_empty()
+        && schema.one_of.is_empty()
+        && schema.any_of.is_empty()
+        && schema.all_of.is_empty()
+}
+
+fn emit_enum(name: &str, schema: &Schema) -> String {
+    let mut s = String::from("#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\n");
+    s.push_str(&format!("pub enum {name} {{\n"));
+    let mut reg = NameRegistry::new();
+    for val in &schema.enum_values {
+        if let Some(raw) = val.as_str() {
+            let mut pascal = to_pascal(raw);
+            if pascal == "Self" {
+                pascal = "Self_".to_string();
+            }
+            let variant = reg.unique(&pascal);
+            s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(raw)));
+            s.push_str(&format!("    {variant},\n"));
+        }
+    }
+    s.push_str("}\n");
+    s
 }
 
 fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) -> String {
@@ -70,7 +101,13 @@ fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) ->
         if let Some(orig) = rename {
             s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(&orig)));
         }
-        if !required {
+        if !required && rsmap::is_free_form(&ty) {
+            // `Value` is not wrapped in `Option`: a missing key and `null` both
+            // decode to `Value::Null`, and `is_null` omits it on output.
+            s.push_str(
+                "    #[serde(default, skip_serializing_if = \"serde_json::Value::is_null\")]\n",
+            );
+        } else if !required {
             s.push_str("    #[serde(skip_serializing_if = \"Option::is_none\")]\n");
         }
         s.push_str(&format!("    pub {field}: {ty},\n"));
@@ -82,3 +119,6 @@ fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) ->
 fn esc(s: &str) -> String {
     s.replace('\\', "\\\\").replace('"', "\\\"")
 }
+
+#[cfg(test)]
+mod tests;
