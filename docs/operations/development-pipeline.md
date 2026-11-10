@@ -95,9 +95,10 @@ hash-locked AW dependency file in a disposable runner environment.
 The Core planner profile is shared: triage, queue and release assessment.
 App planners originate product capability demand and link their source issue
 and milestone. Core does not invent a separate product roadmap. The existing
-core@0.5.0 milestone is explicitly a work batch and Cargo still says 0.4.14.
-The empty release mapping deliberately holds tagging until a reviewed goal,
-version and acceptance mapping exists. Do not guess or bump package versions.
+core@0.5.0 milestone is explicitly a work batch. Cargo says 0.5.0 since #156,
+and a version change alone creates no tag. `.github/aw-release.json` maps
+milestone 8 to `0.5.0`; tagging waits for the closed milestone and a user
+decision.
 
 Shared AW #148 fixes same-head CI reruns. After local review returns a head,
 its reruns do not restore done or reset a new doing owner. Later failed jobs
