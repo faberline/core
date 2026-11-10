@@ -135,6 +135,8 @@ needed.
 Use `DeliveryReceipt::new(accepted, duplicates)`, `accepted()` and
 `duplicates()` (commit `f6eb525f`). Struct literals no longer compile.
 
+Migration: replace each struct literal with `DeliveryReceipt::new(accepted, duplicates)`, and read the values with `accepted()` and `duplicates()`.
+
 ### service-collector: `RuntimeConfig` is built with `try_new`; `validate` removed
 
 `RuntimeConfig` fields are private. Build it with
@@ -173,12 +175,16 @@ Fields are private (commit `54605286`). `ProjectionDescriptor::try_new(name: Pro
 returns `ProjectionError::InvalidName` for a blank name or one that contains
 `/` or NUL. Read the fields as `name()`, `schema_version()` and `retention()`.
 
+Migration: build the descriptor with `ProjectionDescriptor::try_new(...)` and handle its `Result`. Read the fields with the accessors, not with struct literals or field access.
+
 ### service-projection: port traits return `ProjectionError`
 
 `Projection`, `ProjectionSource` and `ProjectionReadSession` return
 `Result<_, ProjectionError>` instead of `anyhow::Result` (commit `75336bd1`).
 An `anyhow::Error` converts into it. Wrap any other error with
 `ProjectionError::other(err)`.
+
+Migration: change each implementation's return type to `Result<_, ProjectionError>`. Use `?` on an `anyhow::Error` (it converts), or `ProjectionError::other(err)` for any other error.
 
 ### service-projection: `ProjectionCheckpoint::empty` takes the time
 
@@ -196,7 +202,9 @@ caller.
 `with_queue_capacity(...)` are unchanged. `run_bounded` moved to a private
 module and is still re-exported at the crate root.
 
-### service-mcp: no breaking change found
+Migration: read the fields with the accessors. Build the config with `new(...)` or `with_queue_capacity(...)` as before.
+
+### service-mcp: None.
 
 The crate split into `application`, `config`, `stdio` and `http` modules
 (commit `ecef9152`). `McpApplication`, `HttpTransportConfig::new`,
