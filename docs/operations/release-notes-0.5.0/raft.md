@@ -28,10 +28,13 @@ Migration: replace struct literals and field reads with `Membership::new(...)` a
 ### raft-core: `RaftTransport` trait removed
 
 Before: `pub trait RaftTransport { fn deliver(&mut self, from: NodeId, out: Outgoing); }`.
-After: `pub trait RaftDelivery: Send + Sync` with `fn deliver(...)`. The old trait is gone from the crate root.
+After: `pub trait RaftDelivery: Send + Sync` with two required methods, and the old trait is gone from the crate root:
+- `fn deliver(&self, to: NodeId, msg: RaftMsg) -> Pin<Box<dyn Future<Output = Option<RaftMsg>> + Send + '_>>`
+- `fn install_snapshot(&self, to: NodeId, req: InstallSnapshotReq, required_capability: Option<&'static str>) -> Pin<Box<dyn Future<Output = io::Result<InstallSnapshotResp>> + Send + '_>>`
+
 Commit: `55da8a38`.
 
-Migration: implement `RaftDelivery` instead. Its `Send + Sync` bound means the driver's transport must be thread-safe.
+Migration: implement `RaftDelivery` instead. `deliver` takes `&self` (no `&mut`), sends one message to `to` and returns the reply as a boxed future (`None` when there is no reply). Also implement `install_snapshot`. The `Send + Sync` bound means the driver's transport must be thread-safe.
 
 ### raft-core: `RaftNode::learner_replication_gap` removed
 
@@ -111,6 +114,14 @@ Commit: `81579b45`.
 
 Migration: map the app's errors into `raft_runtime::StateMachineError` or `raft_runtime::MembershipError` at the port boundary.
 
+### raft-runtime: `RaftStatus` has a new field `peer_match_index`
+
+Before: `pub struct RaftStatus { ... }` with no `peer_match_index` field.
+After: `pub peer_match_index: Vec<PeerMatch>` with `#[serde(default, skip_serializing_if = "Vec::is_empty")]`, so JSON without the field still decodes.
+Commit: `8806fd92`.
+
+Migration: add `peer_match_index: Vec::new()` to `RaftStatus` struct literals, or use `..` in patterns.
+
 ## Fixes apps must take
 
 ### raft-runtime: `propose` no longer reports `Completed` for a superseded entry
@@ -129,10 +140,9 @@ Migration: handle `Ambiguous` as "unknown outcome" and retry or check the state.
 - raft-core: `RaftDelivery` port (replaces `RaftTransport`, see above).
 - raft-core: `RaftNode::peer_match_index()`, the per-peer `match_index` of voters and learners on the leader (`8806fd92`).
 - raft-core: `Membership::new`, `voters`, `learners` and `into_parts`.
-- raft-core: constants `ELECTION_TIMEOUT_FLOOR_TICKS` and `HEARTBEAT_INTERVAL_TICKS` are re-exported at the crate root.
-- raft-runtime: `RaftHost::status() -> RaftStatus` (`fc4d29f3`), with `PeerMatch` and `MembershipPhase`.
+- raft-runtime: `RaftHost::status() -> RaftStatus` (`fc4d29f3`).
 - raft-runtime: `ChunkHandler`, the boxed chunk callback type (`Box<dyn FnMut(&[u8]) -> std::io::Result<()> + Send>`) that `ChunkSink` uses by default.
-- raft-runtime: `PeerMatch` carries per-peer `match_index` and the follower-observed leader commit, for replica lag (`8806fd92`).
+- raft-runtime: `PeerMatch { id, match_index }`, the per-peer match index in `RaftStatus::peer_match_index`, for replica lag (`8806fd92`).
 
 ## Not breaking
 
