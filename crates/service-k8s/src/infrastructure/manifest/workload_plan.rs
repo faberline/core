@@ -11,6 +11,7 @@ use thiserror::Error;
 use super::RenderCtx;
 
 mod access;
+mod backup_job;
 mod network;
 mod pod;
 mod service;
@@ -19,6 +20,7 @@ mod workload;
 pub use access::{
     ClusterRoleBindingPlan, RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountSubjectPlan,
 };
+pub use backup_job::BackupJobPlan;
 pub use network::{
     FqdnMatchPlan, FqdnNetworkPolicyPlan, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan,
     NetworkRulePlan,
@@ -59,6 +61,8 @@ enum PlannedObject {
 pub enum WorkloadPlanError {
     #[error("workload {0} must have at least one replica")]
     ZeroReplicas(String),
+    #[error("workload {0} {1} must not be negative")]
+    NegativeValue(String, &'static str),
 }
 
 /// One ordered set of typed Kubernetes children for a managed service.
@@ -141,7 +145,7 @@ impl<'a> WorkloadPlan<'a> {
                 PlannedObject::Role(plan) => rendered.push(plan.render(self.cx)),
                 PlannedObject::RoleBinding(plan) => rendered.push(plan.render(self.cx)),
                 PlannedObject::ClusterRoleBinding(plan) => rendered.push(plan.render(self.cx)),
-                PlannedObject::CronJob(plan) => rendered.push(plan.render(self.cx)),
+                PlannedObject::CronJob(plan) => rendered.push(plan.render(self.cx)?),
                 PlannedObject::NetworkPolicy(plan) => rendered.push(plan.render(self.cx)),
                 PlannedObject::FqdnNetworkPolicy(plan) => rendered.push(plan.render(self.cx)),
             }

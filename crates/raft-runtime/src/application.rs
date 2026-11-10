@@ -21,8 +21,8 @@ pub use fenced_assignment::{
 };
 pub use host::{
     AdmissionRefused, ChunkHandler, ChunkSink, HostShutdownReport, LeadershipHandoff,
-    MembershipPhase, PhaseRecord, PhaseStatus, ProposalBackpressure, ProposalOutcome, RaftHost,
-    RaftStatus, ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed,
+    MembershipPhase, PeerMatch, PhaseRecord, PhaseStatus, ProposalBackpressure, ProposalOutcome,
+    RaftHost, RaftStatus, ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed,
     SNAPSHOT_CHUNK_SIZE,
 };
 pub use outcome_window::{OutcomeWindow, DEFAULT_CAPACITY as OUTCOME_WINDOW_DEFAULT_CAPACITY};
