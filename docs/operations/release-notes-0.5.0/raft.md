@@ -76,34 +76,40 @@ Migration: replace `GroupId(s)` with `GroupId::new(s)` and `g.0` with `g.as_str(
 ### raft-runtime: `AssignmentEpoch` is a newtype, not a `u64` alias
 
 Before: `pub type AssignmentEpoch = u64;`.
-After: `pub struct AssignmentEpoch(u64);` with `get(self) -> u64` and `checked_next(self) -> Option<Self>`. Constructor is in `application/fenced_assignment.rs`.
+After: `pub struct AssignmentEpoch(u64);` with `AssignmentEpoch::new(epoch: u64)`, `get(self) -> u64` and `checked_next(self) -> Option<Self>`.
 Commit: `f7339325`.
 
-Migration: wrap raw epochs with the constructor and read them with `.get()`. Use `checked_next` where the app adds to an epoch.
+Migration: wrap raw epochs with `AssignmentEpoch::new(e)` and read them with `.get()`. Use `checked_next` where the app adds to an epoch.
 
 ### raft-runtime: `ClusterDims` fields are private
 
 Before: `pub shard_count: u32`, `pub replicas_per_shard: u32`, `pub voter_count: u32`, `pub pod_name: String`.
-After: accessors `shard_count() -> u32`, `replicas_per_shard() -> u32`, `voter_count() -> u32`, `pod_name() -> &str`. Construction goes through `ClusterDims`'s constructor in `application/topology.rs`.
+After: accessors `shard_count() -> u32`, `replicas_per_shard() -> u32`, `voter_count() -> u32`, `pod_name() -> &str`. Construction: `ClusterDims::new(shard_count: u32, replicas_per_shard: u32, voter_count: u32, pod_name: impl Into<String>)`.
 Commit: `2628a0de`.
 
-Migration: replace field reads with the accessors and struct literals with the constructor.
+Migration: replace field reads with the accessors and struct literals with `ClusterDims::new(shard_count, replicas_per_shard, voter_count, pod_name)`.
 
 ### raft-runtime: `HostConfig` fields are private
 
 Before: `pub tick`, `pub pump`, `pub rpc_timeout`, `pub propose_timeout` (`Duration`) and `pub snapshot` (`SnapshotPolicy`).
-After: accessors `tick()`, `pump()`, `rpc_timeout()`, `propose_timeout()` (each `-> Duration`) and `snapshot() -> SnapshotPolicy`, in `application/config.rs`.
+After: accessors `tick()`, `pump()`, `rpc_timeout()`, `propose_timeout()` (each `-> Duration`) and `snapshot() -> SnapshotPolicy`. Builders `with_tick`, `with_pump`, `with_rpc_timeout`, `with_propose_timeout` and `with_snapshot`, from `HostConfig::default()`.
 Commit: `71fcd0d9`.
 
-Migration: read values through the accessors. Set them through the constructor or builder in `application/config.rs`.
+Migration: read values through the accessors. Build with `HostConfig::default().with_tick(..).with_pump(..).with_rpc_timeout(..).with_propose_timeout(..).with_snapshot(..)` instead of a struct literal.
 
 ### raft-runtime: state-machine and membership port errors are typed
 
-Before: the `RaftStateMachine` and `PreparedSnapshot` port methods (`admit_proposal`, `apply`, `snapshot`, `restore`, `capture_at`, `write_to`, `preflight_snapshot`, `snapshot_at`) returned `anyhow::Result<...>`.
-After: they return `Result<..., StateMachineError>`. Membership port errors use `MembershipError`. Both are exported at the crate root.
+Before: the port methods returned `anyhow::Result<...>`.
+After, by trait:
+- `RaftStateMachine`: `admit_proposal`, `apply`, `snapshot`, `preflight_snapshot`, `snapshot_at`, `validate_snapshot` and `restore` return `Result<..., StateMachineError>`.
+- `SnapshotPreparation::capture_at` returns `Result<..., StateMachineError>`.
+- `PreparedSnapshot::write_to` returns `Result<(), StateMachineError>`.
+- `MembershipPolicy::validate` returns `Result<(), MembershipError>`.
+
+`StateMachineError` and `MembershipError` are exported at the crate root.
 Commit: `81579b45`.
 
-Migration: map the app's errors into `StateMachineError` or `MembershipError` (the enums in `application/port_error.rs`) at the port boundary.
+Migration: map the app's errors into `raft_runtime::StateMachineError` or `raft_runtime::MembershipError` at the port boundary.
 
 ## Fixes apps must take
 
@@ -122,9 +128,10 @@ Migration: handle `Ambiguous` as "unknown outcome" and retry or check the state.
 - raft-core: `RaftStorage` port (`domain/storage.rs`) and `CommandLease` / `PinnedCommand` types.
 - raft-core: `RaftDelivery` port (replaces `RaftTransport`, see above).
 - raft-core: `RaftNode::peer_match_index()`, the per-peer `match_index` of voters and learners on the leader (`8806fd92`).
-- raft-core: `Membership::new`, `voters`, `learners`, `into_parts` and `auto_membership`.
+- raft-core: `Membership::new`, `voters`, `learners` and `into_parts`.
 - raft-core: constants `ELECTION_TIMEOUT_FLOOR_TICKS` and `HEARTBEAT_INTERVAL_TICKS` are re-exported at the crate root.
 - raft-runtime: `RaftHost::status() -> RaftStatus` (`fc4d29f3`), with `PeerMatch` and `MembershipPhase`.
+- raft-runtime: `ChunkHandler`, the boxed chunk callback type (`Box<dyn FnMut(&[u8]) -> std::io::Result<()> + Send>`) that `ChunkSink` uses by default.
 - raft-runtime: `PeerMatch` carries per-peer `match_index` and the follower-observed leader commit, for replica lag (`8806fd92`).
 
 ## Not breaking
