@@ -13,12 +13,6 @@ the `sha2` dependency, `cli-std` added `thiserror`, and `compass` removed
 `uuid`, `indexmap` and fifteen other unused dependencies. None of these
 changes a public signature.
 
-Not compared line by line in this pass: the `cli-std` builder structs'
-individual method sets, the full `surface` `Props` and `Component` method
-list, and the compass `api` module contents. Each is listed below by
-commit and by the names that changed. Check them against the source before
-you rely on an entry as complete.
-
 ## Crates checked
 
 - `crates/openapi-codegen`
@@ -45,10 +39,15 @@ Migration: import from the crate root, for example
 
 `GenOptions` had public fields (`lang`, `target`, `spec_path`, `out_dir`,
 `client_name`, `http_client`, `emit_types`, and others). They are private now.
-Build it through `new` and the `with_*` builders (commit `c5de0770`).
+Build it through `GenOptions::new(lang, spec_path, out_dir, client_name)` and
+the builders `with_target`, `with_service_compatibility` (or
+`try_with_service_compatibility`, which returns a `Result`), `with_http_client`,
+`with_emit_types`, `with_emit_client` and `with_emit_hooks` (commit `c5de0770`).
 
-Migration: replace each struct literal with the builder chain, and each field
-read with its getter. Check the method names in `src/domain`.
+Migration: replace each struct literal with `GenOptions::new(...)` and the
+builder chain. Read each field through its getter: `lang()`, `target()`,
+`service_compatibility()`, `spec_path()`, `out_dir()`, `client_name()`,
+`http_client()`, `emit_types()`, `emit_client()` and `emit_hooks()`.
 
 ### openapi-codegen: `TargetProfile::default_for` removed
 
@@ -122,10 +121,25 @@ fields through their getters.
 
 `Diagnostic.code` changed from `String` to the `RuleCode` newtype (commit
 `272857ff`). `RuleCode` serializes as the bare string (`#[serde(transparent)]`),
-so the JSON output does not change.
+so the JSON output does not change. `RuleCode` is re-exported at the root.
 
-Migration: convert with the `RuleCode` API in `domain/diagnostic/rule_code.rs`
-where your code used the `String`.
+Migration: `RuleCode::new(impl Into<String>)` builds one. Use `as_str()` where
+your code needed a `&str`, and `into_string()` where it needed a `String`. It
+implements `Display` (`to_string()`), `AsRef<str>`, `From<&str>`, `From<String>`,
+`PartialEq<&str>` and `PartialEq<&&str>`.
+
+### compass: `SymbolId` and `ScopeId` fields are private; `RuleCode` replaces `String` in two methods
+
+- `compass::type_inference::SymbolId(pub u64)` and `ScopeId(pub u64)` are now
+  `SymbolId(u64)` and `ScopeId(u64)` (commit `272857ff`). Both constructors
+  `new` are now `const fn`. The other `SymbolId` (`compass::semantic`, `SymbolId(pub usize)`)
+  is not changed.
+- `CustomRuleConfig::code(&self)` returns `RuleCode`, not `String`.
+- `CustomLintEngine::rule_codes(&self)` returns `Vec<RuleCode>`, not `Vec<String>`.
+
+Migration: replace each `.0` read of a `SymbolId` or `ScopeId` with `.get()`,
+which returns `u64`. Where your code needed the `String` from `code()` or
+`rule_codes()`, call `as_str()` or `into_string()` on the `RuleCode`.
 
 ### compass: `Range::from_node` replaced by `NodeRange`
 
@@ -158,6 +172,15 @@ with the accessor that the constructor's module provides.
 `issue::CommentOptions` (`cd19b0c3`, now `try_new` plus `with_*`) and
 `issue::CreateOptions` (`d0e589bc`, now `new` plus `with_*`) have private fields.
 
+- `upgrade::Options`: `Default`, then `with_check`, `with_tag`, `with_force`, `with_yes`.
+  Read with `check()`, `force()`, `yes()`.
+- `issue::SearchOptions`: `Default`, then `with_query`, `with_state`, `with_limit`.
+  Read with `limit()`.
+- `issue::CommentOptions`: `try_new(number)`, then `with_message`, `with_repo`,
+  `with_dry_run`, `with_yes`.
+- `issue::CreateOptions`: `new(title)`, then `with_message`, `with_url`,
+  `with_repo`, `with_label`, `with_dry_run`, `with_yes`.
+
 Migration: replace each struct literal with its constructor and builder chain.
 `CommentOptions::try_new` returns `Result`, so handle the error.
 
@@ -177,8 +200,17 @@ The public fields of `Component` (`name`, `render`, `props`) and of `Props`
 type names and the root re-exports are unchanged (commit `894aab04` splits the
 modules, and the root names stay).
 
-Migration: build and read these values through the constructors and accessors
-in `src/component.rs` and `src/props.rs`. Replace each direct field access.
+- `Component::new(name, render, props)` (`const fn`), then `name()` and `render()`.
+  No getter for `props` is provided.
+- `Props` derives `Default`. Set values with `with_class_name`, `with_style`,
+  `with_on_click`, `with_on_change`, `with_on_checked_change`, `with_id`,
+  `with_value`, `with_input_type`, `with_placeholder`, `with_checked`,
+  `with_aria_label`, `with_html_for` and `with_disabled`. Read them with the
+  getter of the same name; it returns `Option` (for example `class_name()`
+  returns `Option<&str>`, `on_click()` returns `Option<&Callback<()>>`).
+
+Migration: build a value with `Props::default().with_...(...)` and pass it to
+`Component::new`. Replace each direct field access with the getter above.
 
 ### ui-runtime: `FiberId` field is private and debug API takes `FiberId`
 
@@ -189,12 +221,19 @@ in `src/component.rs` and `src/props.rs`. Replace each direct field access.
 Migration: pass a `FiberId` value, not a raw `u64`. Take the id from the
 runtime's own reports, because the field is no longer readable from outside.
 
+### build-stamp: None.
+
+`stamp(prefix: &str)` keeps its signature and is re-exported with `pub use stamp::stamp`.
+
 ## Fixes apps must take
 
 - `compass`: `d514f26a` (`fix(compass): slice test-extractor arguments on byte offsets`).
-  The test extractor now slices argument text on byte offsets. Re-run any
-  extraction that depends on the argument text. This pass did not add a test
-  for the exact input, so check the commit for the case it fixes.
+  The Python test extractor's `translate_assert_eq` walked the argument text with
+  `chars().enumerate()` and used that character index as a byte offset. On text
+  with multi-byte characters it sliced in the wrong place. It now uses
+  `char_indices()`, which gives byte offsets. The commit adds the test
+  `test_translate_assert_eq_non_ascii`: `assert_eq!("é", "ü")` becomes
+  `assert "é" == "ü"`. Re-run any extraction that depends on such argument text.
 - `openapi-codegen`: `b41c6a3f` (`optional untyped Rust field gets Option::is_none on serde_json::Value`).
   The generated Rust code for an optional field with an untyped schema now uses
   `Option::is_none` on the `serde_json::Value`. Regenerate the client to pick
@@ -203,6 +242,6 @@ runtime's own reports, because the field is no longer readable from outside.
 ## New
 
 - `openapi-codegen`: `SpecParseError`, `FileBearerAuthError` and `ServiceCompatibilityError` at the root; QUERY fallback, operation retry classification (`b329b335`) and complete manifests (`e3b970db`) in the generator.
-- `compass`: `RuleCode`, `NodeRange`, `RejectedRule` and `SourceParser` at the root.
+- `compass`: `RuleCode`, `NodeRange`, `RejectedRule` and `SourceParser` at the root; `ScopeId::get` and `SymbolId::get` (`const fn`).
 - `cli-std`: `IssueNumberError` at the root; `ToolInfo` is now re-exported from `application`.
 - `ui-runtime`: `debug_snapshot_fibers` and `debug_snapshot_hooks` are re-exported from the root with their debug types.
