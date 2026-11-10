@@ -68,13 +68,38 @@ that names `anyhow::Error`, downcasts it or matches its message must match
 
 The fields are private (commit `945641cb`). `TokenClaims` has
 `TokenClaims::new(subject, roles)`, `subject() -> &str` and
-`roles() -> &HashMap<String, Role>`. `CachePolicy` is read through
-`allow_ttl()`, `deny_ttl()`, `stale_window()`, `max_entries()` and
-`revocation_bound()`, all in `src/domain/k8s/cache.rs`.
+`roles() -> &HashMap<String, Role>`. `TokenReviewOutcome` has the public
+fields `authenticated: bool` and `error: Option<String>` removed. It is built
+with `TokenReviewOutcome::authenticated(identity, audiences)` or
+`TokenReviewOutcome::rejected(error)`, and read with `is_authenticated()` and
+`error() -> Option<&str>`; both are in `src/domain/k8s/review.rs`.
+`CachePolicy` is read through `allow_ttl()`, `deny_ttl()`, `stale_window()`,
+`max_entries()` and `revocation_bound()`, all in `src/domain/k8s/cache.rs`.
 
 Migration: replace struct literals with the constructors and field reads with
-the accessors. `TokenClaims` still derives `Deserialize`, and the wire format
-is unchanged.
+the accessors. `outcome.authenticated` becomes `outcome.is_authenticated()`,
+and `outcome.error` becomes `outcome.error()`. `TokenClaims` still derives
+`Deserialize`, and the wire format is unchanged.
+
+### service-auth: `ReloadableRoleMapVerifier::reload_file` removed
+
+`ReloadableRoleMapVerifier::reload_file(&self, path: impl AsRef<Path>) -> Result<u64>`
+was removed (at `v0.4.14`, `crates/service-auth/src/reload.rs:460`). Only
+`reload_files(&self, paths: &[PathBuf]) -> Result<u64>` remains, in
+`src/application/role_map/reloadable.rs`.
+
+Migration: call `reload_files(&[path.to_path_buf()])` where you called
+`reload_file(path)`.
+
+### service-auth: `TokenRequestTarget::qualified_name` removed
+
+`TokenRequestTarget::qualified_name(&self) -> String` (at `v0.4.14`,
+`crates/service-auth/src/k8s/token_request.rs:185`) no longer exists. The
+accessors `namespace() -> &str` and `service_account() -> &str` remain, in
+`src/application/k8s/token_request/target.rs`.
+
+Migration: replace `target.qualified_name()` with
+`format!("{}/{}", target.namespace(), target.service_account())`.
 
 ### service-http: `HttpConfig` fields are private
 
@@ -108,9 +133,9 @@ Migration: import from the crate root, for example
 `service_http::{HttpConfig, LogFormat, serve_with_lifecycle}`. A path into a
 removed module no longer compiles.
 
-Not compared in this pass: the trait behind `ReadinessHook` now comes from
-`server_lifecycle::Readiness` (re-exported under the old name). Check the
-method set in an implementation before you upgrade.
+`ReadinessHook` is unchanged: at `v0.4.14` it was already
+`pub use server_lifecycle::Readiness as ReadinessHook`, so an implementation
+needs no change.
 
 ### service-observability: `ObservabilityConfig` fields are private
 
@@ -165,9 +190,21 @@ and the checkpoint and state-envelope bytes are pinned by commit `742c957d`.
   returns `Result<ProjectionCursor, ProjectionLag>`.
 - `ProjectionRegistry::current_cursor()` and `catch_up()` return
   `ProjectionCursor`.
+- `ProjectionCheckpoint` (`src/domain/checkpoint.rs`): the public field
+  `projection` is `ProjectionName` (was `String`); `cursor` and
+  `source_generation` are `ProjectionCursor` and `SourceGeneration` (were
+  `u64`); `event_id` is `Option<ProjectionEventId>` (was `Option<String>`).
+- `ProjectionLag` (`src/domain/lag.rs`): `projection` is `ProjectionName`
+  (was `String`); `required_cursor` and `current_cursor` are
+  `ProjectionCursor` (were `u64`).
+- `RebuildComparison` (`src/domain/rebuild.rs`): `source_cursor` and
+  `rebuilt_cursor` are `ProjectionCursor` (were `u64`).
 
 Migration: call `.get()` on a cursor where a `u64` is needed, and
-`ProjectionCursor::new(n)` where you pass one in.
+`ProjectionCursor::new(n)` where you pass one in. Use `.as_str()` on a
+`ProjectionName` or `ProjectionEventId` where a `&str` is needed, and build
+one with `ProjectionName::new(s)` or `ProjectionEventId::new(s)` where you
+pass one in.
 
 ### service-projection: `ProjectionDescriptor` is built with `try_new`
 
