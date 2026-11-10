@@ -50,6 +50,7 @@ impl RaftNode {
                 prev_log_term: prev_term,
                 entries,
                 leader_commit: commit,
+                read_round: self.read_round,
             }),
         );
     }
@@ -64,6 +65,7 @@ impl RaftNode {
                     term,
                     success: false,
                     match_index: Index::new(0),
+                    read_round: req.read_round,
                 }),
             );
             return;
@@ -90,6 +92,7 @@ impl RaftNode {
                     term,
                     success: false,
                     match_index,
+                    read_round: req.read_round,
                 }),
             );
             return;
@@ -130,6 +133,7 @@ impl RaftNode {
                 term,
                 success: true,
                 match_index,
+                read_round: req.read_round,
             }),
         );
     }
@@ -141,6 +145,10 @@ impl RaftNode {
         }
         if self.role != Role::Leader || resp.term != self.current_term {
             return;
+        }
+        if resp.read_round != 0 && resp.read_round == self.read_round {
+            self.read_acks.insert(from);
+            self.note_read_quorum();
         }
         if resp.success {
             // Multiple h2 requests to one peer can complete out of order.
