@@ -7,6 +7,7 @@ mod leader_self_demotion;
 mod leadership_transfer;
 mod learner_admission;
 mod membership_durability;
+mod read_round;
 mod snapshot;
 mod source_ownership;
 mod wire_golden;
