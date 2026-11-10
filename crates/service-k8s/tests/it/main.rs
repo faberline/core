@@ -7,6 +7,7 @@ mod certificate_ownership;
 mod certificate_rbac_least_privilege;
 mod certificate_rotation;
 mod certificate_status;
+mod fleet_plan;
 mod lifecycle_render;
 mod placement;
 mod prune_unserved_api_is_scoped;
