@@ -15,7 +15,7 @@ const SIGNING_KEY: &str = include_str!("../../../../fixtures/gcp/throwaway-signi
 const JWKS: &str = include_str!("../../../../fixtures/gcp/throwaway-jwks.json");
 const KID: &str = "test-key-1";
 const AUDIENCE: &str = "lumen";
-const IDENTITY: &str = "lumen-dev@axiom-502607.iam.gserviceaccount.com";
+const IDENTITY: &str = "lumen-dev@example-project.iam.gserviceaccount.com";
 
 // -- fakes ------------------------------------------------------------
 

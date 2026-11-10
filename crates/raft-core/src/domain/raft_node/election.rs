@@ -65,6 +65,7 @@ impl RaftNode {
         let next = self.last_index().next();
         self.next_index.clear();
         self.match_index.clear();
+        self.read_acks.clear();
         for p in self.peers.clone() {
             self.next_index.insert(p, next);
             self.match_index.insert(p, Index::new(0));

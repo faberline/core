@@ -51,6 +51,7 @@ fn append_req() -> AppendReq {
             kind: EntryKind::Command,
         }],
         leader_commit: Index::new(4),
+        read_round: 0,
     }
 }
 

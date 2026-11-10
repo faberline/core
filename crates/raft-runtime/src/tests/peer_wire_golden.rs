@@ -69,6 +69,7 @@ fn vote_append_and_timeout_envelopes_are_pinned() {
                     kind: EntryKind::Command,
                 }],
                 leader_commit: Index::new(4),
+                read_round: 0,
             },
         },
         concat!(
