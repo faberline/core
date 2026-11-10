@@ -1,5 +1,6 @@
 //! Domain layer.
 
+pub(crate) mod backup_job;
 pub(crate) mod capacity;
 #[cfg(feature = "certificate")]
 pub(crate) mod certificate;
