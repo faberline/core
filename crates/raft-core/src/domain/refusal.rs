@@ -45,3 +45,10 @@ pub enum RemovalRefused {
     ToleranceWouldDrop { before: usize, after: usize },
     WouldEmptyVoterSet { target: NodeId },
 }
+
+/// Why a leader refused to start a read round (#44).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReadRefused {
+    NotLeader,
+    NoCommitInTerm,
+}
