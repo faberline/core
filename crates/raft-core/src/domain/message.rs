@@ -25,6 +25,9 @@ pub struct AppendReq {
     pub prev_log_term: Term,
     pub entries: Vec<RaftEntry>,
     pub leader_commit: Index,
+    /// Leader read round; 0 means no read round. Echoed by the follower.
+    #[serde(default, skip_serializing_if = "is_zero_round")]
+    pub read_round: u64,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -33,6 +36,13 @@ pub struct AppendResp {
     pub success: bool,
     /// Highest log index the follower now matches the leader on.
     pub match_index: Index,
+    /// Leader read round; 0 means no read round. Echoed by the follower.
+    #[serde(default, skip_serializing_if = "is_zero_round")]
+    pub read_round: u64,
+}
+
+fn is_zero_round(round: &u64) -> bool {
+    *round == 0
 }
 
 /// Ship a state-machine snapshot to a follower whose needed entries have been

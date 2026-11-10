@@ -17,7 +17,7 @@
 //! that is the point, and why this is an `examples/` binary rather than a test:
 //!
 //! ```sh
-//! SA=lumen-dev@axiom-502607.iam.gserviceaccount.com
+//! export SA=<name>@<project>.iam.gserviceaccount.com   # the account to impersonate
 //! for ns in team-a team-b; do
 //!   gcloud auth print-identity-token --include-email \
 //!     --audiences="https://lumen.$ns.svc" --impersonate-service-account="$SA" \
@@ -39,7 +39,6 @@ use service_auth::gcp::{GoogleAuthConfig, GoogleVerifier};
 use service_auth::{AsyncVerifier, ReloadableRoleMapVerifier};
 use service_auth::{Registry, Role};
 
-const SA: &str = "lumen-dev@axiom-502607.iam.gserviceaccount.com";
 const AUD_A: &str = "https://lumen.team-a.svc";
 const AUD_B: &str = "https://lumen.team-b.svc";
 
@@ -76,6 +75,8 @@ fn read(path: &str) -> String {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
+    // The service account the tokens were minted for; see the module doc.
+    let sa = std::env::var("SA").expect("set SA to the service account email");
     let mut args = std::env::args().skip(1);
     let token_a = read(
         &args
@@ -90,7 +91,7 @@ async fn main() {
 
     // team-a granted this SA read on one collection, and nothing else.
     let granted = format!(
-        r#"{{"identities":{{"{SA}":{{"subject":"team-a:api","roles":{{"products":"read"}}}}}}}}"#
+        r#"{{"identities":{{"{sa}":{{"subject":"team-a:api","roles":{{"products":"read"}}}}}}}}"#
     );
     // team-b granted nobody. This is the default state of a new tenant.
     let empty = r#"{"identities":{}}"#.to_string();
@@ -98,7 +99,7 @@ async fn main() {
     // if the audience check were absent, this registry would say yes to
     // everything, so a rejection here can only have come from `aud`.
     let permissive = format!(
-        r#"{{"identities":{{"{SA}":{{"subject":"team-b:api","roles":{{"*":"admin"}}}}}}}}"#
+        r#"{{"identities":{{"{sa}":{{"subject":"team-b:api","roles":{{"*":"admin"}}}}}}}}"#
     );
 
     let team_a = instance(AUD_A, &granted);

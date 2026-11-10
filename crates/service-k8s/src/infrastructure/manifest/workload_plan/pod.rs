@@ -13,6 +13,8 @@ pub struct PodRuntimePolicy {
     pub security_context: Value,
     pub node_selector: Value,
     pub affinity: Option<Value>,
+    pub tolerations: Vec<Value>,
+    pub topology_spread_constraints: Vec<Value>,
     pub init_containers: Vec<Value>,
     pub volumes: Vec<Value>,
     pub restart_policy: Option<String>,
@@ -36,6 +38,8 @@ impl PodRuntimePolicy {
             }),
             node_selector,
             affinity: None,
+            tolerations: Vec::new(),
+            topology_spread_constraints: Vec::new(),
             init_containers: Vec::new(),
             volumes: Vec::new(),
             restart_policy: None,
@@ -49,6 +53,21 @@ impl PodRuntimePolicy {
 
     pub fn with_affinity(mut self, value: Value) -> Self {
         self.affinity = Some(value);
+        self
+    }
+
+    pub fn with_tolerations(mut self, values: Vec<Value>) -> Self {
+        self.tolerations = values;
+        self
+    }
+
+    pub fn with_topology_spread_constraints(mut self, values: Vec<Value>) -> Self {
+        self.topology_spread_constraints = values;
+        self
+    }
+
+    pub fn with_node_selector(mut self, value: Value) -> Self {
+        self.node_selector = value;
         self
     }
 
@@ -200,6 +219,12 @@ impl PodPlan {
         }
         if let Some(affinity) = self.runtime.affinity {
             spec["affinity"] = affinity;
+        }
+        if !self.runtime.tolerations.is_empty() {
+            spec["tolerations"] = json!(self.runtime.tolerations);
+        }
+        if !self.runtime.topology_spread_constraints.is_empty() {
+            spec["topologySpreadConstraints"] = json!(self.runtime.topology_spread_constraints);
         }
         if !self.runtime.init_containers.is_empty() {
             spec["initContainers"] = json!(self.runtime.init_containers);

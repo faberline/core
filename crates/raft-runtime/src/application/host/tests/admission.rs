@@ -349,6 +349,7 @@ fn conflicting_term_at_same_index_drops_only_replaced_uncommitted_permit() {
                 kind: raft_core::EntryKind::Command,
             }],
             leader_commit: index,
+            read_round: 0,
         }),
     );
     let sm = AdmissionSm::accepting();
