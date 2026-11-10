@@ -33,6 +33,12 @@ impl Mount {
         std::fs::write(self.path(), contents).expect("write fixture token");
     }
 
+    fn rotate(&self, contents: impl AsRef<[u8]>) {
+        let tmp = self.dir.join("token.tmp");
+        std::fs::write(&tmp, contents).expect("write temp token");
+        std::fs::rename(&tmp, self.path()).expect("rename temp token over token");
+    }
+
     fn source(&self) -> OpaqueProjectedTokenSource {
         OpaqueProjectedTokenSource::required(self.path())
     }
@@ -279,13 +285,13 @@ fn rotation_multi_threaded_never_yields_mixed_or_corrupt_tokens() {
         reader_handles.push(handle);
     }
 
-    // Writer thread rapidly rotates the token
+    // Writer thread rotates the token atomically (temp file + rename), like a kubelet projection.
     let m = Arc::clone(&mount);
     let s = Arc::clone(&stop);
     let writer_handle = thread::spawn(move || {
         for i in 0..100 {
             let next_token = if i % 2 == 0 { token_b } else { token_a };
-            m.write(next_token);
+            m.rotate(next_token);
             thread::sleep(Duration::from_millis(1));
         }
         s.store(true, Ordering::Relaxed);

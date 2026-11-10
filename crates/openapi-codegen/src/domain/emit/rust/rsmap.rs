@@ -23,6 +23,11 @@ pub fn type_expr(node: &RefOr<Schema>, tm: &TypeMap) -> String {
     }
 }
 
+/// True for the free-form fallback type (`serde_json::Value`).
+pub fn is_free_form(ty: &str) -> bool {
+    ty == ANY
+}
+
 /// Wrap in `Option<...>` unless already optional or free-form.
 pub fn optional(ty: &str) -> String {
     if ty == ANY || ty.starts_with("Option<") {

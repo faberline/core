@@ -1,5 +1,7 @@
 # Guarded completion preparation
 
+Removed by #140; see .github/workflows/ci.yml
+
 Historical preparation only. Normal completion now follows the
 [local-review pipeline](development-pipeline.md). The old cloud review,
 publisher, drain and recovery configuration are removed from the active
