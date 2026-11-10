@@ -33,6 +33,11 @@ jobs:
         with:
           toolchain: stable
           components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          shared-key: ci-lint
+          cache-on-failure: true
+          cache-workspace-crates: false
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
@@ -171,6 +176,11 @@ jobs:
           - { package: ui-runtime, profile: "feature:debug", args: "--no-default-features --features debug" }
           - { package: ui-runtime, profile: "feature:serde_json", args: "--no-default-features --features serde_json" }
           - { package: ui-runtime, profile: "no-default", args: "--no-default-features" }
+          - { package: cli-std, profile: "all-features", args: "--all-features" }
+          - { package: cli-std, profile: "feature:k8s", args: "--no-default-features --features k8s" }
+          - { package: cli-std, profile: "feature:online", args: "--no-default-features --features online" }
+          - { package: cli-std, profile: "feature:registry", args: "--no-default-features --features registry" }
+          - { package: cli-std, profile: "no-default", args: "--no-default-features" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -235,6 +245,7 @@ jobs:
           test "$(kubectl config current-context)" = kind-core-contracts
           kubectl get nodes
       - run: cargo test --release --locked -p service-k8s ${{ matrix.args }} -- --include-ignored --test-threads 1
+      - run: cargo clippy --locked -p service-k8s ${{ matrix.args }} --all-targets -- -D warnings
       - name: Remove disposable kind cluster
         if: always()
         shell: bash
@@ -246,6 +257,9 @@ jobs:
     needs: [lint, test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows, e2e-service-k8s]
     runs-on: ubuntu-latest
     steps:
+      # The guideline (docs/standards/ci.md) accepts a skipped stage; the spec does not.
+      # The first step is the guideline check. The second step keeps the spec rule:
+      # a skipped stage fails the gate too.
       - name: Check every stage
         env:
           RESULTS: ${{ toJSON(needs) }}

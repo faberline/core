@@ -25,9 +25,59 @@ grep -qx 'lint' <<<"$job_ids" || report "no job id lint"
 grep -qx 'gate' <<<"$job_ids" || report "no job id gate"
 grep -q '^test-' <<<"$job_ids" || report "no job id starting with test-"
 
+# Text of one job: from its `  <id>:` line to the next job id.
+job_block() {
+  awk -v id="$1" '
+    $0 == "  " id ":" {on=1; next}
+    on && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ {on=0}
+    on {print}' "$file"
+}
+
+# Display names: lint, test-* and e2e-* use `<stage>: <what>`; gate is `gate`.
+while IFS= read -r id; do
+  [ -n "$id" ] || continue
+  name=$(job_block "$id" | sed -n 's/^    name: *//p' | head -1 | tr -d '"')
+  case "$id" in
+    gate) [ "$name" = "gate" ] || report "job gate is not named gate (name: $name)" ;;
+    lint) [[ "$name" == "lint: "* ]] || report "job lint has no lint: display name" ;;
+    test-*) [[ "$name" == "test: "* ]] || report "job $id has no test: display name" ;;
+    e2e-*) [[ "$name" == "e2e: "* ]] || report "job $id has no e2e: display name" ;;
+  esac
+done <<<"$job_ids"
+
+# Every test-* job needs lint; every e2e-* job needs a test-* job.
+while IFS= read -r id; do
+  case "$id" in
+    test-*)
+      job_block "$id" | grep -E '^    needs: .*\blint\b' >/dev/null || report "$id does not need lint" ;;
+    e2e-*)
+      job_block "$id" | grep -E '^    needs: .*\btest-' >/dev/null || report "$id does not need a test-* job" ;;
+  esac
+done <<<"$job_ids"
+
+# gate runs always and needs every other job.
+gate_block=$(job_block gate)
+grep -qE "^    if: .*always\(\)" <<<"$gate_block" || report "gate does not have if: always()"
+gate_needs=$(sed -n 's/^    needs: *//p' <<<"$gate_block")
+while IFS= read -r id; do
+  [ -n "$id" ] && [ "$id" != "gate" ] || continue
+  grep -qE "(^|[][, ])${id}([],]|\$)" <<<"$gate_needs" || report "gate does not need $id"
+done <<<"$job_ids"
+
+# Cancel only pull request runs.
+grep -qxF "  cancel-in-progress: \${{ github.event_name == 'pull_request' }}" "$file" \
+  || report "cancel-in-progress is not limited to pull_request"
+
+# Lint runs exactly two commands: fmt, then clippy.
+lint_cargo=$(job_block lint | grep -E '(^|[[:space:]])cargo[[:space:]]' || true)
+if [ "$(grep -c . <<<"$lint_cargo")" -ne 2 ] \
+  || ! sed -n 1p <<<"$lint_cargo" | grep -qF 'cargo fmt --all -- --check' \
+  || ! sed -n 2p <<<"$lint_cargo" | grep -qF 'cargo clippy --workspace --all-targets --locked -- -D warnings'; then
+  report "lint does not run exactly cargo fmt and cargo clippy"
+fi
+
 # The first step of lint is the shape check itself.
-grep -q 'name: "Check ci.yml shape"' "$file" || grep -q 'name: Check ci.yml shape' "$file" \
-  || report "lint has no step named Check ci.yml shape"
+job_block lint | grep -q 'name: Check ci.yml shape' || report "lint has no step named Check ci.yml shape"
 
 # Every uses: line is pinned to a full 40-hex commit SHA.
 while IFS= read -r line; do

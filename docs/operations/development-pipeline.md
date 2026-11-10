@@ -36,7 +36,7 @@ closure. An unknown result requires reconciliation; a confirmed merge permits
 only a close retry. Reopen an adoption issue auto-closed by its bootstrap
 while this acceptance evidence is still missing. Preserve owners and labels.
 
-Ordinary PRs used `.github/workflows/development-ci.yml`, replaced by `.github/workflows/ci.yml` in #140:
+Ordinary PRs used the old development workflow, replaced by `.github/workflows/ci.yml` in #140:
 
 1. `development-preflight` checks the frozen head/base, current main ancestry,
    mergeability, and exactly one canonical open issue.
@@ -61,7 +61,7 @@ Ordinary PRs used `.github/workflows/development-ci.yml`, replaced by `.github/w
 
 The reviewed policy retains all 144 existing expanded checks and adds the
 preflight check, for **145 required checks in 20 physical test jobs**.
-Core owned the batch counts in `.github/development-test-batches.json` (removed by #140). AW
+Core owned the batch counts in a JSON file removed by #140. AW
 defines stages and success barriers and sets no common job or batch count.
 The runner derives the complete case roster from fresh Cargo metadata. It
 checks that roster against the reviewed policy, logs each case result and
@@ -72,7 +72,7 @@ main/tag/manual execution; it no longer duplicates ordinary PR tests.
 The same test implementation also handles release tags in `all` mode.
 PRs request `diff`; the current reviewed Core policy requires the whole
 inventory for every path, so it retains a conservative full fallback.
-`scripts/pr-gates/selection.py` (removed by #140) loaded the pinned AW selector and recorded
+The selection script removed by #140 loaded the pinned AW selector and recorded
 exact head/base, policy and complete plan digest. Protected proposals execute
 every old gate but keep `pending_protected_review`; a plan grants no approval.
 See [release entry](release-pipeline.md) for the tag and milestone boundary.
@@ -88,7 +88,7 @@ skipped, stale, unknown or unreviewed evidence remains blocked. Protected
 workflow and policy edits retain the separate adoption process. A green
 writer job is not proof of product CI, review, merge or issue closure.
 
-`scripts/issue-ci` (removed by #140) held pinned copies for offline inspection. Privileged
+The script directory removed by #140 held pinned copies for offline inspection. Privileged
 execution uses the shared AW actions. The planner's Python parser uses the
 hash-locked AW dependency file in a disposable runner environment.
 
