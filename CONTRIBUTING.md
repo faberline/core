@@ -553,7 +553,9 @@ metrics surfaces, authentication and TLS policy, graceful shutdown/drain,
 image plus layered k8s artifacts, operator reconciliation, labels/selectors,
 owner references, ServiceAccount, ordinary client Service, and applicable
 PDB/HPA helpers. Product-specific state machines, downstream quotas, schemas,
-and routing policy remain in the service.
+request classification, and the merge of scattered results remain in the
+service. Topology, scaling, routing execution, resharding, and rollout policy
+belong to core ([ADR 0002](docs/adr/0002-core-owned-service-operations.md)).
 
 #### StatefulSet-specific
 
@@ -606,18 +608,23 @@ archetype rule until `crates/service-k8s` can validate it mechanically.)*
 
 Every Kubernetes-native service composes a shared **control plane** and a
 per-instance **data plane**. The control plane is the CRD, Operator, reconcile
-loop, status, finalizers, and lifecycle resources. Its common mechanics belong
-in `crates/service-k8s`; each service supplies only its domain schema, policy,
-and operator defaults. The Operator normally runs in `<svc>-system`.
+loop, status, finalizers, and lifecycle resources. Its mechanics and its
+operational policy belong in `crates/service-k8s`
+([ADR 0002](docs/adr/0002-core-owned-service-operations.md)). Each service
+supplies only its profile: domain schema, product config, capability choices
+from a closed set, domain readiness dimensions, and alert rules. Until the
+profile engine lands, a service keeps its operator crate; the ADR's phase table
+orders the move. The Operator normally runs in `<svc>-system`.
 
 The data plane is the workload rendered for one service instance and the
 resources that carry its traffic and durable state. For a StatefulSet-profile
 service, that includes the StatefulSet, client/headless Services, PVCs, PDBs,
 and applicable backup or maintenance workloads. It belongs in the instance's
 app or service-owned namespace; do not require a fixed shared data-plane
-namespace. A service's data-plane behavior remains domain-specific, but the
-control-plane/data-plane split is a service-archetype contract, not a
-service-specific capability.
+namespace. A service's domain logic in the data plane stays with the service
+and reaches core through the data-plane hooks; routing and resharding execution
+belong to core. The control-plane/data-plane split is a service-archetype
+contract, not a service-specific capability.
 
 When a reconcile's rendered shape stops including a resource it rendered
 previously — a conditional HPA, a per-mode Service, or any other
@@ -698,14 +705,14 @@ variation. `lumen`, `keep`, `relay`, and `loom` may be at different adoption
 stages, but new work moves them toward this common kit. If the common kit is
 missing a hook, extend the shared lib first; do not fork the pattern into one
 project. Shared service capabilities live in `libs/*`; projects supply only
-domain-specific state machines, policy decisions, schemas, route wiring, and
-operator defaults.
+domain-specific state machines, schemas, request classification and result
+merging, route wiring, and their service profile.
 
 | Lib | Role |
 |-----|------|
 | **`crates/raft-core`** | the step-driven raft **consensus core** (serde-only; replaced openraft). |
 | **`crates/raft-runtime`** | the raft **host**: h2c peer transport, the single apply loop, snapshot/log compaction, read-your-write `propose`, and k8s topology + auto-mode. Services provide a `RaftStateMachine` and receive HA, backup, read-consistency, and bounded outcomes. |
-| **`crates/service-k8s`** | the **k8s operator scaffold + render toolkit**: `ManagedService`, `ClusterSpec`, resources, owner refs, Services/PDB/CronJobs, StatefulSet primitives, and PVC resize. It owns common operator mechanics; apps supply domain policy and defaults. |
+| **`crates/service-k8s`** | the **k8s operator scaffold + render toolkit**: `ManagedService`, `ClusterSpec`, resources, owner refs, Services/PDB/CronJobs, StatefulSet primitives, and PVC resize. It owns common operator mechanics; under [ADR 0002](docs/adr/0002-core-owned-service-operations.md) it also takes over operational policy, and apps supply only a profile and data-plane hooks. |
 | **`crates/server-lifecycle`** | bind configuration, shutdown/drain, readiness signals, connection budgets, and metrics hooks shared by servers. |
 | **`crates/server-tcp`** | accept loop, per-connection supervision, admission budgeting, and drain-aware shutdown for raw protocols and poolers. |
 | **`crates/server-http`** | the **listener-level HTTP runtime**: the sole HTTP accept owner, composing `server-tcp` admission, connection metrics, supervision, and bounded drain with `transport-h2c` per-connection HTTP/1.1+h2c handling. |

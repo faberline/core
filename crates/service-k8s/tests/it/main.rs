@@ -1,5 +1,6 @@
 mod support;
 
+mod backup_job;
 mod certificate_kubernetes_store;
 mod certificate_lifecycle;
 mod certificate_ownership;
@@ -8,6 +9,7 @@ mod certificate_rotation;
 mod certificate_status;
 mod fleet_plan;
 mod lifecycle_render;
+mod placement;
 mod prune_unserved_api_is_scoped;
 mod reconcile_once_does_not_assume_leadership;
 mod stateful_adapter_equivalence;

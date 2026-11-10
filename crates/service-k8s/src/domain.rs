@@ -1,5 +1,6 @@
 //! Domain layer.
 
+pub(crate) mod backup_job;
 pub(crate) mod capacity;
 #[cfg(feature = "certificate")]
 pub(crate) mod certificate;
@@ -9,3 +10,4 @@ pub mod fleet;
 #[cfg(feature = "controller")]
 pub(crate) mod leadership;
 pub(crate) mod lifecycle;
+pub(crate) mod rollout;

@@ -34,6 +34,7 @@ pub use api::metrics;
 pub use api::render;
 #[cfg(feature = "controller")]
 pub use api::resize;
+pub use api::rollout;
 pub use api::service;
 pub use api::stateful;
 
@@ -44,6 +45,10 @@ pub use application::certificate::reconcile::Reconciler;
 #[cfg(feature = "controller")]
 pub use application::operator::managed_service::{
     ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
+};
+pub use domain::backup_job::{
+    backup_job_name, plan_backup_job, BackupJobDecision, BackupJobError, BackupJobPhase,
+    BackupJobPolicy, ObservedBackupJob,
 };
 pub use domain::capacity::{
     plan_replica_layer, plan_shard_split, ObservedShardUsage, ObservedUtilization,
