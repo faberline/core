@@ -5,7 +5,7 @@ exclude = ["vendor/jieba-rs"]
 
 [workspace.package]
 version = "0.5.0"
-authors = ["Chris Cheng <chris.cheng.c4@gmail.com>"]
+authors = ["Faberline contributors"]
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/faberline/core"

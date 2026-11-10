@@ -53,6 +53,7 @@ impl Shared {
                 term: Term::new(0),
                 success: false,
                 match_index: Index::new(0),
+                read_round: 0,
             };
         }
         self.apply_ready(&mut n);
@@ -62,6 +63,7 @@ impl Shared {
                 term: Term::new(0),
                 success: false,
                 match_index: Index::new(0),
+                read_round: 0,
             },
         }
     }
