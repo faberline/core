@@ -61,12 +61,29 @@ variant or parser that your code uses.
 The emitter entry points (`generate`, `generate_with_file_bearer_auth`,
 `generate_for_target` and `generate_for_target_with_file_bearer_auth`) return
 `Result<GeneratedOutput, SpecParseError>` in each language module (commit
-`eee4ca9d`). `SpecParseError` is now re-exported from the root. `FileBearerAuth`
-and the target-profile parsers return `FileBearerAuthError` (new, root
-re-export) instead of `anyhow::Error`.
+`eee4ca9d`). `SpecParseError` is now re-exported from the root. Three other
+calls return their own typed errors (new root re-exports) instead of
+`anyhow::Error`:
+
+- `FileBearerAuth::new(token_path, hostname_suffix, schemes)` returns
+  `Result<FileBearerAuth, FileBearerAuthError>`.
+- `TargetProfile::from_id(&str)` and `impl FromStr for TargetProfile` return
+  `Result<TargetProfile, UnknownTargetProfile>`. `UnknownTargetProfile` has an
+  `id()` getter.
+- `TargetPolicy::resolve(self, Lang, Option<&str>)` returns
+  `Result<TargetProfile, TargetPolicyError>`. Its variants are
+  `UnknownExplicit { value, source }` and `LanguageMismatch { target, requested }`.
+
+`TargetPolicy::from_toml` and the root `generate*` functions keep returning
+`anyhow::Result`; they are not changed by this entry.
 
 Migration: `?` still works in a function that returns `anyhow::Result`. Code
 that names `anyhow::Error` or matches its text must match the new error types.
+For `FileBearerAuth::new`, match `FileBearerAuthError` variants (`EmptyTokenPath`,
+`NonUtf8TokenPath`, `SuffixNotDotted`, `SuffixNotDnsLabels`, `NoSchemes`). For
+`TargetProfile::from_id` and `FromStr`, match or display `UnknownTargetProfile`
+and read its id with `id()`. For `TargetPolicy::resolve`, match the
+`TargetPolicyError` variants above.
 
 ### openapi-codegen: generated Rust clients return typed errors for declared failures
 
@@ -164,7 +181,15 @@ Migration: read `RejectedRule` values where your code relied on the log line.
   The type is re-exported at the root.
 
 Migration: replace each struct literal with the constructor, and each field read
-with the accessor that the constructor's module provides.
+with the getter of the same name:
+
+- `llm::Topic`: `Topic::new(id, summary, body)` (all `&'static str`), then
+  `id()`, `summary()`, `body()`.
+- `SectionedTopic`: `SectionedTopic::new(id, summary, sections)` (`sections`
+  is `&'static [TopicSection]`), then `id()`, `summary()`, `sections()`.
+- `ToolInfo`: `ToolInfo::new(project, repo, target, version, git_sha, built_at)`
+  (all `&'static str`), then `project()`, `repo()`, `target()`, `version()`,
+  `git_sha()`, `built_at()`.
 
 ### cli-std: option structs are built with builders
 
@@ -173,13 +198,15 @@ with the accessor that the constructor's module provides.
 `issue::CreateOptions` (`d0e589bc`, now `new` plus `with_*`) have private fields.
 
 - `upgrade::Options`: `Default`, then `with_check`, `with_tag`, `with_force`, `with_yes`.
-  Read with `check()`, `force()`, `yes()`.
+  Read with `check()`, `tag()` (`Option<&str>`), `force()`, `yes()`.
 - `issue::SearchOptions`: `Default`, then `with_query`, `with_state`, `with_limit`.
-  Read with `limit()`.
+  Read with `query()` (`Option<&str>`), `state()` (`&str`), `limit()`.
 - `issue::CommentOptions`: `try_new(number)`, then `with_message`, `with_repo`,
-  `with_dry_run`, `with_yes`.
+  `with_dry_run`, `with_yes`. Read with `number()`, `message()`, `repo()`,
+  `dry_run()`, `yes()`.
 - `issue::CreateOptions`: `new(title)`, then `with_message`, `with_url`,
-  `with_repo`, `with_label`, `with_dry_run`, `with_yes`.
+  `with_repo`, `with_label`, `with_dry_run`, `with_yes`. Read with `title()`,
+  `message()`, `url()`, `repo()`, `label()` (`&[String]`), `dry_run()`, `yes()`.
 
 Migration: replace each struct literal with its constructor and builder chain.
 `CommentOptions::try_new` returns `Result`, so handle the error.
@@ -206,8 +233,9 @@ modules, and the root names stay).
   `with_on_click`, `with_on_change`, `with_on_checked_change`, `with_id`,
   `with_value`, `with_input_type`, `with_placeholder`, `with_checked`,
   `with_aria_label`, `with_html_for` and `with_disabled`. Read them with the
-  getter of the same name; it returns `Option` (for example `class_name()`
-  returns `Option<&str>`, `on_click()` returns `Option<&Callback<()>>`).
+  getter of the same name. Each getter returns `Option`, for example
+  `class_name()` returns `Option<&str>` and `on_click()` returns
+  `Option<&Callback<()>>`, except `disabled()`, which returns `bool`.
 
 Migration: build a value with `Props::default().with_...(...)` and pass it to
 `Component::new`. Replace each direct field access with the getter above.
@@ -218,8 +246,9 @@ Migration: build a value with `Props::default().with_...(...)` and pass it to
   `5943e0b6`).
 - `debug_snapshot_hooks(fiber_id: u64)` is now `debug_snapshot_hooks(fiber_id: FiberId)`.
 
-Migration: pass a `FiberId` value, not a raw `u64`. Take the id from the
-runtime's own reports, because the field is no longer readable from outside.
+Migration: `FiberId(n)` becomes `FiberId::new(n)` (`const fn`), and `id.0`
+becomes `id.get()`, which returns `u64`. `debug_snapshot_hooks(n)` becomes
+`debug_snapshot_hooks(FiberId::new(n))`.
 
 ### build-stamp: None.
 
@@ -241,7 +270,7 @@ runtime's own reports, because the field is no longer readable from outside.
 
 ## New
 
-- `openapi-codegen`: `SpecParseError`, `FileBearerAuthError` and `ServiceCompatibilityError` at the root; QUERY fallback, operation retry classification (`b329b335`) and complete manifests (`e3b970db`) in the generator.
+- `openapi-codegen`: `SpecParseError`, `FileBearerAuthError`, `UnknownTargetProfile`, `TargetPolicyError` and `ServiceCompatibilityError` at the root; QUERY fallback, operation retry classification (`b329b335`) and complete manifests (`e3b970db`) in the generator.
 - `compass`: `RuleCode`, `NodeRange`, `RejectedRule` and `SourceParser` at the root; `ScopeId::get` and `SymbolId::get` (`const fn`).
-- `cli-std`: `IssueNumberError` at the root; `ToolInfo` is now re-exported from `application`.
-- `ui-runtime`: `debug_snapshot_fibers` and `debug_snapshot_hooks` are re-exported from the root with their debug types.
+- `cli-std`: `IssueNumberError` at the root; `ToolInfo` is now re-exported from `application`; `llm::assert_snapshot_matches(committed, generated, regen_hint)` (snapshot parity helper for generated `llms.txt`, commit `edec7b57`).
+- `ui-runtime`: `FiberId::new` and `FiberId::get` (`const fn`); `debug_snapshot_fibers` and `debug_snapshot_hooks` are re-exported from the root with their debug types.
