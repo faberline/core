@@ -1,6 +1,6 @@
 # Release notes 0.5.0: raft-core and raft-runtime
 
-Range checked: `v0.4.14` (`029e765e`) to `origin/main` (`b41c6a3f`).
+Range checked: `v0.4.14` (`029e765e`) to `origin/main` (`9a7233c6`).
 
 ## Crates checked
 
@@ -43,6 +43,14 @@ After: removed. Use `RaftNode::peer_match_index(&self) -> Option<Vec<(NodeId, In
 Commit: `55da8a38`.
 
 Migration: call `peer_match_index()` and subtract the peer's match index from the leader's commit index in the app.
+
+### raft-core: `AppendReq` and `AppendResp` have a new field `read_round`
+
+Before: `AppendReq` and `AppendResp` have no `read_round` field.
+After: `pub read_round: u64` on both. `0` means no read round. The field has `#[serde(default, skip_serializing_if = "is_zero_round")]`, so JSON without it still decodes, and bodies with round `0` stay byte-identical.
+Commit: `dcd69cf0`.
+
+Migration: add `read_round: 0` to `AppendReq` and `AppendResp` struct literals, or use `..` in patterns.
 
 ### raft-runtime: `cluster` and `group` modules removed
 
@@ -139,6 +147,9 @@ Migration: handle `Ambiguous` as "unknown outcome" and retry or check the state.
 - raft-core: `RaftStorage` port (`domain/storage.rs`) and `CommandLease` / `PinnedCommand` types.
 - raft-core: `RaftDelivery` port (replaces `RaftTransport`, see above).
 - raft-core: `RaftNode::peer_match_index()`, the per-peer `match_index` of voters and learners on the leader (`8806fd92`).
+- raft-core: `ReadRefused` (`NotLeader`, `NoCommitInTerm`), why a leader refused to start a read round (`dcd69cf0`).
+- raft-core: `RaftNode::start_read_round(&mut self) -> Result<u64, ReadRefused>`, starts a leader read round (`dcd69cf0`).
+- raft-core: `RaftNode::read_round_acked(&self, round: u64) -> bool`, whether a quorum acknowledged that round (`dcd69cf0`).
 - raft-core: `Membership::new`, `voters`, `learners` and `into_parts`.
 - raft-runtime: `RaftHost::status() -> RaftStatus` (`fc4d29f3`).
 - raft-runtime: `ChunkHandler`, the boxed chunk callback type (`Box<dyn FnMut(&[u8]) -> std::io::Result<()> + Send>`) that `ChunkSink` uses by default.
@@ -146,6 +157,6 @@ Migration: handle `Ambiguous` as "unknown outcome" and retry or check the state.
 
 ## Not breaking
 
-- Wire formats: the peer HTTP and RPC bodies are pinned byte for byte by golden tests (`crates/raft-core/tests/it/wire_golden.rs`, `crates/raft-runtime/src/tests/peer_wire_golden.rs`). The comment in the golden file says the bodies are literals captured before the change and "must stay byte-identical". Durable layout is pinned by `crates/raft-runtime/tests/it/durable_layout.rs`.
+- Wire formats: the peer HTTP and RPC bodies are pinned byte for byte by golden tests (`crates/raft-core/tests/it/wire_golden.rs`, `crates/raft-runtime/src/tests/peer_wire_golden.rs`). The comment in the golden file says the bodies are literals captured before the change and "must stay byte-identical". Durable layout is pinned by `crates/raft-runtime/tests/it/durable_layout.rs`. `read_round` (commit `dcd69cf0`) is optional on the wire: it is omitted when `0`, and `0` when missing.
 - Feature flags: `Cargo.toml` `[features]` are unchanged in both crates. The diff only removes the test declarations and adds `[lints] workspace = true`.
 - File paths under `src/` moved to `domain/`, `application/`, `infrastructure/` and `interfaces/`. They are not public API unless re-exported at the crate root, and the root re-exports listed above are kept.
