@@ -97,14 +97,19 @@ Migration: replace struct literals and field reads as above.
 Every field of `ManagerConfig` (`min_connections`, `max_connections`,
 `max_keepalive_connections`, `max_in_flight_per_origin`, `grow_threshold`,
 `pool_timeout`, `connect_timeout`, `request_timeout`, `ping_interval`,
-`idle_timeout`) and of `ConnectionOptions` (`stream_window`, `conn_window`,
-`max_frame`, `max_concurrent_streams`, and others) is private (commit
-`e72837f2`). Each has a `with_*` builder and a getter of the same name.
+`idle_timeout`, `stream_window`, `conn_window`, `max_frame`) is private
+(commit `e72837f2`). Each has a `with_*` builder and a getter of the same name.
 
-Migration: start from `ManagerConfig::default()` or `ConnectionOptions::default()`
-(both still exist), then chain the builders, for example
-`ManagerConfig::default().with_min_connections(2).with_max_connections(8)`.
-Replace each field read with the getter.
+`ConnectionOptions` has one field, `max_concurrent_streams`, and it is private.
+It has no `with_*` builder. It is built with `ConnectionOptions::new(n)` (a
+`const fn`) and read with `max_concurrent_streams()`.
+
+Migration: start from `ManagerConfig::default()` (still exists), then chain the
+builders, for example `ManagerConfig::default().with_min_connections(2).with_max_connections(8)`.
+Replace each field read with the getter. For `ConnectionOptions`, replace
+`ConnectionOptions { max_concurrent_streams: n }` with `ConnectionOptions::new(n)`
+(`ConnectionOptions::default()` still exists), and replace
+`opts.max_concurrent_streams` with `opts.max_concurrent_streams()`.
 
 ### transport-otlp: `DecodedPayload::signal()` removed
 
@@ -161,7 +166,7 @@ API changes, not fixes.
 - `server-tcp`: `TcpHandlerError` and `TcpHandlerError::other`, the error type of `TcpHandler` futures.
 - `server-tcp`: `TcpConnectionResult::new` and `with_streams_*` builders.
 - `server-lifecycle`: `BindConfig::new` (const), `From<SocketAddr> for BindConfig`, `ShutdownDeadline::new`.
-- `transport-h2c`: `with_*` builders and getters on `ManagerConfig` and `ConnectionOptions`.
+- `transport-h2c`: `ManagerConfig` `with_*` builders and getters; `ConnectionOptions::new` (const) and `max_concurrent_streams()`.
 - `peer-tls`: `PeerTlsConfig::new` and field getters.
 - `metrics-prometheus`: field getters on `Bucket`, `Sample`, `Label`, `SampleGroup`, `Latency` and `LabeledSample`.
 - `server-http`: `with_*` builders and getters on `HttpServerOptions` and `TlsServerOptions`.
