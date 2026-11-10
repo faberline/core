@@ -173,7 +173,7 @@ async fn verified_identity_absent_from_the_registry_is_rejected() {
     let verifier = verifier_with(
         CountingJwks::serving(),
         Some(CountingIntrospection::live(
-            "someone-else@axiom-502607.iam.gserviceaccount.com",
+            "someone-else@example-project.iam.gserviceaccount.com",
             3600,
         )),
         FakeClock::new(1_700_000_000),

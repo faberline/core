@@ -27,6 +27,6 @@ pub use domain::{
     auto_membership, AppendReq, AppendResp, CommandLease, ConfState, DemotionRefused, EntryKind,
     Index, InstallSnapshotReq, InstallSnapshotResp, Membership, NodeId, Outgoing, PersistedState,
     PersistedStateRef, PinnedCommand, PromotionRefused, RaftDelivery, RaftEntry, RaftMsg, RaftNode,
-    RaftStorage, RemovalRefused, Role, Term, TimeoutNowReq, TransferRefused, VoteReq, VoteResp,
-    ELECTION_TIMEOUT_FLOOR_TICKS, HEARTBEAT_INTERVAL_TICKS,
+    RaftStorage, ReadRefused, RemovalRefused, Role, Term, TimeoutNowReq, TransferRefused, VoteReq,
+    VoteResp, ELECTION_TIMEOUT_FLOOR_TICKS, HEARTBEAT_INTERVAL_TICKS,
 };

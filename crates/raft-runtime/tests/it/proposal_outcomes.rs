@@ -566,6 +566,7 @@ async fn uncommitted_proposal_superseded_by_leader_change_returns_ambiguous() {
             kind: EntryKind::Command,
         }],
         leader_commit: Index::new(1),
+        read_round: 0,
     };
 
     let resp = host
@@ -694,6 +695,7 @@ async fn proposal_outcome_after_compaction(replaced: bool) -> ProposalOutcome {
                     },
                 ],
                 leader_commit: Index::new(2),
+                read_round: 0,
             },
         )
         .await;
@@ -878,6 +880,7 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
                 prev_log_term: Term::new(0),
                 entries: vec![],
                 leader_commit: Index::new(0),
+                read_round: 0,
             },
         )
         .await;
@@ -919,6 +922,7 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
             kind: EntryKind::Command,
         }],
         leader_commit: Index::new(1),
+        read_round: 0,
     };
 
     // Step the supersede request on both node 0 (truncating the uncommitted proposal)

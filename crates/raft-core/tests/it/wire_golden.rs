@@ -134,6 +134,7 @@ fn raft_messages_json_are_pinned() {
             prev_log_term: Term::new(2),
             entries: vec![entry(5, EntryKind::Command, vec![6])],
             leader_commit: Index::new(4),
+            read_round: 0,
         },
         r#"{"term":3,"leader":1,"prev_log_index":4,"prev_log_term":2,"entries":[{"term":2,"index":5,"command":[6],"kind":"Command"}],"leader_commit":4}"#,
     );
@@ -142,6 +143,7 @@ fn raft_messages_json_are_pinned() {
             term: Term::new(3),
             success: false,
             match_index: Index::new(4),
+            read_round: 0,
         },
         r#"{"term":3,"success":false,"match_index":4}"#,
     );
@@ -234,4 +236,37 @@ fn debug_output_is_pinned() {
         ),
         "NotCaughtUp { target: 2, matched: 4, last_index: 9 }"
     );
+}
+
+#[test]
+fn read_round_wire_is_pinned_and_old_encodings_decode() {
+    pin_json(
+        &AppendReq {
+            term: Term::new(3),
+            leader: NodeId::new(1),
+            prev_log_index: Index::new(4),
+            prev_log_term: Term::new(2),
+            entries: vec![entry(5, EntryKind::Command, vec![6])],
+            leader_commit: Index::new(4),
+            read_round: 7,
+        },
+        r#"{"term":3,"leader":1,"prev_log_index":4,"prev_log_term":2,"entries":[{"term":2,"index":5,"command":[6],"kind":"Command"}],"leader_commit":4,"read_round":7}"#,
+    );
+    pin_json(
+        &AppendResp {
+            term: Term::new(3),
+            success: false,
+            match_index: Index::new(4),
+            read_round: 7,
+        },
+        r#"{"term":3,"success":false,"match_index":4,"read_round":7}"#,
+    );
+    let old_req: AppendReq = serde_json::from_str(
+        r#"{"term":3,"leader":1,"prev_log_index":4,"prev_log_term":2,"entries":[{"term":2,"index":5,"command":[6],"kind":"Command"}],"leader_commit":4}"#,
+    )
+    .unwrap();
+    assert_eq!(old_req.read_round, 0);
+    let old_resp: AppendResp =
+        serde_json::from_str(r#"{"term":3,"success":false,"match_index":4}"#).unwrap();
+    assert_eq!(old_resp.read_round, 0);
 }
