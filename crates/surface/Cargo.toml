@@ -11,7 +11,7 @@ name = "surface"
 path = "src/lib.rs"
 
 [dependencies]
-serde = { workspace = true, features = ["derive"] }
+surface-upstream = { package = "surface", git = "https://github.com/faberline/surface", rev = "1754a2e96e487ea693be558041abdf21ffc63d27" }
 
 [dev-dependencies]
 serde_json.workspace = true

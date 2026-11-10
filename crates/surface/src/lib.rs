@@ -1,20 +1,8 @@
-//! Renderer-neutral UI surface primitives.
+//! Compatibility facade for the pinned standalone Surface package.
 //!
 //! `surface` is deliberately below any renderer or framework runtime. It
 //! owns the UI element tree shape that Jet WASM TSX/Vue/etc. adapters produce,
 //! plus a serializable snapshot form that native desktop readers, renderers, tests,
 //! and parity comparators can inspect without a browser or toolkit-private tree.
 
-mod callback;
-mod component;
-mod element;
-mod props;
-mod snapshot;
-mod surface_node;
-
-pub use callback::Callback;
-pub use component::{Component, ComponentFn};
-pub use element::Element;
-pub use props::Props;
-pub use snapshot::SurfaceSnapshot;
-pub use surface_node::{SurfaceNode, SurfaceNodeKind, SurfaceProps, SurfaceRect};
+pub use surface_upstream::*;

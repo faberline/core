@@ -18,7 +18,7 @@ qualified name from the second table; the code keeps its current name.
 | **port** | A trait the domain or application layer defines for something it needs from outside (a clock, a store, a transport). |
 | **adapter** | An implementation of a port against real technology, or an inbound handler that turns a protocol request into a use-case call. |
 | **published language** | The types and functions a context offers to other contexts. In a layered context it is the application layer. |
-| **shared kernel** | Code every context may use without declaring a dependency. In core it is `surface`. |
+| **shared kernel** | Code every context may use without declaring a dependency. The UI kernel now lives in standalone Surface; Core keeps compatibility facades. |
 | **assembly** | Code that wires layers together and belongs to no layer: `lib.rs`, the api modules and the composition root. `ddd.toml` lists the `src/api` and `src/app` directories under `[assembly]`. |
 | **api module** | A public module `src/api/<name>.rs` holding only `pub use` lines. It keeps a module path whose names the crate root does not re-export. |
 | **composition root** | `src/app.rs` and `src/app/`: assembly code that builds the infrastructure adapters and passes them to the application layer. Public entry points that need both live here. |

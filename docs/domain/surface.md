@@ -1,5 +1,10 @@
 # surface
 
+Core now re-exports the standalone implementation. The model below describes
+that public API. The implementation and future changes belong to
+[`faberline/surface`](https://github.com/faberline/surface).
+See [migration](../surface-migration.md) for its exact pin and access gate.
+
 surface models a user interface as a renderer-neutral element tree, below any
 renderer or framework runtime. Framework adapters produce the tree, renderers
 paint it, and native readers, tests and parity comparators inspect its
@@ -7,7 +12,7 @@ serializable snapshot without a browser or a toolkit-private tree. In core,
 ui-runtime renders components into it; downstream, jet's WASM runtime and its
 TSX-to-Rust output build on it.
 
-**Form:** shared kernel · **Depends on:** — · **Crate:** [`crates/surface`](../../crates/surface)
+**Form:** interfaces facade · **Depends on:** standalone surface · **Crate:** [`crates/surface`](../../crates/surface)
 
 ## Model
 

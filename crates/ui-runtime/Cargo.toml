@@ -8,11 +8,14 @@ description = "Renderer-neutral component runtime: hooks, fiber storage, mount, 
 
 [features]
 default = []
-debug = ["serde_json"]
+debug = ["ui-runtime-upstream/debug"]
 
 [dependencies]
+ui-runtime-upstream = { package = "ui-runtime", git = "https://github.com/faberline/surface", rev = "1754a2e96e487ea693be558041abdf21ffc63d27", default-features = false }
+
+[dev-dependencies]
 surface = { path = "../surface" }
-serde_json = { version = "1", optional = true }
+surface-upstream = { package = "surface", git = "https://github.com/faberline/surface", rev = "1754a2e96e487ea693be558041abdf21ffc63d27" }
 
 [lints]
 workspace = true

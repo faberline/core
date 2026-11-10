@@ -16,7 +16,8 @@ here is [`ddd.toml`](../ddd.toml); the decisions behind it are in
 
 One crate is one context. A context's `depends_on` is exactly its normal
 (non-dev) dependencies on other core crates; an optional dependency counts.
-`surface` is the shared kernel, which any context may use without declaring it.
+The UI implementation lives in standalone Surface. Core's two UI packages
+are interfaces that re-export it. Core no longer owns a shared UI kernel.
 
 | Context | Form | Depends on | What it owns |
 |---------|------|------------|--------------|
@@ -46,10 +47,10 @@ One crate is one context. A context's `depends_on` is exactly its normal
 | [storage-durable](domain/storage-durable.md) | infrastructure | — | crash-safe local file-system primitives |
 | [storage-object](domain/storage-object.md) | infrastructure | storage-durable | the object-store port and its local, GCS and S3 adapters |
 | [storage-segment](domain/storage-segment.md) | layered | storage-object | copy-on-write paged catalog and manifest-last archives |
-| [surface](domain/surface.md) | shared kernel | — | the renderer-neutral UI element tree |
+| [surface](domain/surface.md) | interfaces | standalone surface | UI model compatibility facade |
 | [transport-h2c](domain/transport-h2c.md) | infrastructure | cli-std, server-lifecycle | HTTP/2 cleartext client and per-connection serving |
 | [transport-otlp](domain/transport-otlp.md) | interfaces | — | the OTLP HTTP and gRPC ingest shell |
-| [ui-runtime](domain/ui-runtime.md) | domain | surface (kernel) | the React-style hooks runtime on top of surface |
+| [ui-runtime](domain/ui-runtime.md) | interfaces | standalone ui-runtime | hooks runtime compatibility facade |
 
 ## Crate forms
 
@@ -59,9 +60,9 @@ live and which rules apply to them.
 | Form | Layout | Crates |
 |------|--------|--------|
 | **Layered** | `src/{domain,application,infrastructure,interfaces}/<concept>/`. A layer with nothing in it is not created. | cli-std, compass, openapi-codegen, raft-runtime, service-auth, service-backup, service-collector, service-http, service-k8s, service-projection, storage-segment |
-| **Domain only** | `src/domain/<concept>/` | claim-token, index-text, raft-core, ui-runtime |
+| **Domain only** | `src/domain/<concept>/` | claim-token, index-text, raft-core |
 | **Whole-src adapter** | all of `src/` is one layer, split by concept directly under `src/` | infrastructure: build-stamp, metrics-prometheus, peer-tls, server-lifecycle, service-executor, service-observability, storage-durable, storage-object, transport-h2c. interfaces: metrics-remote-write, server-http, server-tcp, service-mcp, transport-otlp |
-| **Shared kernel** | all of `src/` | surface |
+| **Compatibility facade** | `src/lib.rs` re-exports upstream | surface, ui-runtime |
 
 A crate is whole-src when it is a technical library with no use cases of its
 own: it adapts one piece of technology (a file system, a wire format, a TLS
