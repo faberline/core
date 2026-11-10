@@ -1,6 +1,7 @@
 mod support;
 
 mod access_grants;
+mod backup_job;
 mod certificate_kubernetes_store;
 mod certificate_lifecycle;
 mod certificate_ownership;

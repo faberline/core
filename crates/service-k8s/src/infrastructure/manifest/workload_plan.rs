@@ -11,6 +11,7 @@ use thiserror::Error;
 use super::RenderCtx;
 
 mod access;
+mod backup_job;
 mod network;
 mod pod;
 mod service;
@@ -21,6 +22,7 @@ pub use access::render_access_grants;
 pub use access::{
     ClusterRoleBindingPlan, RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountSubjectPlan,
 };
+pub use backup_job::BackupJobPlan;
 pub use network::{
     FqdnMatchPlan, FqdnNetworkPolicyPlan, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan,
     NetworkRulePlan,
