@@ -11,6 +11,7 @@ mod learner_readiness;
 mod membership_change;
 mod persistence;
 mod proposal;
+mod read_round;
 mod replication;
 mod snapshot;
 mod step;
@@ -51,6 +52,11 @@ pub struct RaftNode {
     next_index: HashMap<NodeId, Index>,
     match_index: HashMap<NodeId, Index>,
     learner_read_targets: HashMap<NodeId, Index>,
+
+    // read rounds (leader-only)
+    read_round: u64,
+    read_acked_round: u64,
+    read_acks: HashSet<NodeId>,
 
     // election
     votes: HashSet<NodeId>,
@@ -105,6 +111,9 @@ impl RaftNode {
             next_index: HashMap::new(),
             match_index: HashMap::new(),
             learner_read_targets,
+            read_round: 0,
+            read_acked_round: 0,
+            read_acks: HashSet::new(),
             votes: HashSet::new(),
             election_elapsed: 0,
             // distinct per node so one voter always times out first.
