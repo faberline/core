@@ -61,6 +61,22 @@ Commit: `662093b7`.
 
 Migration: `KubernetesStoreError` becomes `service_k8s::certificate::StoreError`. `NetworkPeerPlan::same_namespace()` becomes `NetworkPeerPlan::same_namespace_pods(selector)`, which takes a label selector. The other items have no replacement in this release; the app computes the value itself.
 
+### service-k8s: `IssuanceRequest::build` and `read_state` take a port argument
+
+Two public functions under the `certificate` feature take a new required argument.
+
+Before:
+- `service_k8s::certificate::issuer::IssuanceRequest::build(scope: &InstanceScope, profile: &CertificateProfile) -> Result<(Self, PrivateKey), IssuerError>`.
+- `service_k8s::certificate::projection::read_state(data, annotations) -> ProjectedState`.
+
+After:
+- `IssuanceRequest::build(scope: &InstanceScope, profile: &CertificateProfile, keys: &dyn KeyAndCsrGenerator) -> Result<(Self, PrivateKey), IssuerError>`.
+- `read_state(data: &BTreeMap<String, Vec<u8>>, annotations: &BTreeMap<String, String>, leaves: &dyn LeafParser) -> ProjectedState`.
+
+Both are re-exported under `service_k8s::certificate`, so a call without the new argument no longer compiles.
+
+Migration: pass `&RcgenCsrGenerator` to `IssuanceRequest::build` and `&X509LeafParser` to `read_state`, or your own `KeyAndCsrGenerator` / `LeafParser` implementation.
+
 ### service-backup: `BackupDestination::from_uri` returns `DestinationError`
 
 Before: `from_uri(raw) -> anyhow::Result<Self>`.
