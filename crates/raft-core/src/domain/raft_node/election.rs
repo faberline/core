@@ -1,4 +1,5 @@
 use super::RaftNode;
+use crate::domain::entry::{EntryKind, RaftEntry};
 use crate::domain::ids::{Index, NodeId, Term};
 use crate::domain::message::{RaftMsg, VoteReq, VoteResp};
 use crate::domain::role::Role;
@@ -73,7 +74,17 @@ impl RaftNode {
         self.heartbeat_elapsed = 0;
         self.transfer_in_flight = None;
         self.transfer_elapsed = 0;
+        if self.leader_noop {
+            let index = self.last_index().next();
+            self.log.push(RaftEntry {
+                term: self.current_term,
+                index,
+                command: Vec::new(),
+                kind: EntryKind::Noop,
+            });
+        }
         self.broadcast_append();
+        self.maybe_commit();
         if self.is_joint() {
             self.check_leave_joint();
         }
