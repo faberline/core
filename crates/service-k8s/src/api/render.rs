@@ -24,8 +24,8 @@ pub use crate::infrastructure::manifest::{
     owner_ref, pdb, requested_resources, restricted_container_security_context,
     restricted_pod_security_context, service_account, service_statefulset,
     service_statefulset_with_service_links, sharded_statefulset, token_registry_mount,
-    token_registry_volume, BackupJobPlan, ClusterRoleBindingPlan, ContainerPlan, CronJob,
-    CronJobPlan, DaemonSetPlan, DeploymentPlan, FailureDomainPlacement, FqdnMatchPlan,
+    token_registry_volume, BackupCronJobPlan, BackupJobPlan, ClusterRoleBindingPlan, ContainerPlan,
+    CronJob, CronJobPlan, DaemonSetPlan, DeploymentPlan, FailureDomainPlacement, FqdnMatchPlan,
     FqdnNetworkPolicyPlan, HorizontalPodAutoscaler, HostSeparation, LabelSet, NetworkPeerPlan,
     NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan, PersistentVolumeClaimPlan, PlacementError,
     PlacementPlan, PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy, RbacRulePlan, RenderCtx,
@@ -76,11 +76,11 @@ pub mod stateful_instance {
 
 pub mod workload_plan {
     pub use crate::infrastructure::manifest::workload_plan::{
-        BackupJobPlan, ClusterRoleBindingPlan, ContainerPlan, CronJobPlan, DaemonSetPlan,
-        DeploymentPlan, FqdnMatchPlan, FqdnNetworkPolicyPlan, LabelSet, NetworkPeerPlan,
-        NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan, PersistentVolumeClaimPlan,
-        PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy, RbacRulePlan, RoleBindingPlan,
-        RolePlan, ServiceAccountPlan, ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan,
-        StatefulSetPlan, WorkloadPlan, WorkloadPlanError,
+        BackupCronJobPlan, BackupJobPlan, ClusterRoleBindingPlan, ContainerPlan, CronJobPlan,
+        DaemonSetPlan, DeploymentPlan, FqdnMatchPlan, FqdnNetworkPolicyPlan, LabelSet,
+        NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
+        PersistentVolumeClaimPlan, PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy,
+        RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountPlan, ServiceAccountSubjectPlan,
+        ServicePlan, ServicePortPlan, StatefulSetPlan, WorkloadPlan, WorkloadPlanError,
     };
 }
