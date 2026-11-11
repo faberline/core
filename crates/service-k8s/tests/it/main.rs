@@ -1,5 +1,6 @@
 mod support;
 
+mod backup_cronjob;
 mod backup_job;
 mod certificate_kubernetes_store;
 mod certificate_lifecycle;
