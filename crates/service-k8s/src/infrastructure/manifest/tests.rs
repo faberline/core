@@ -1,6 +1,7 @@
 use super::*;
 
 mod children;
+mod monitoring;
 mod statefulset;
 
 fn cx() -> RenderCtx<'static> {

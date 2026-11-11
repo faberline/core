@@ -4,9 +4,8 @@ use super::*;
 /// Spec: import-resolution.md#acceptance-criteria
 #[test]
 fn test_resolve_local_module_from_src() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_local_import");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Create project with src directory
     let src_dir = temp_dir.join("src");
@@ -42,18 +41,14 @@ fn test_resolve_local_module_from_src() {
         "Expected utils.py, got: {:?}",
         resolved_path
     );
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 /// Acceptance Criteria: WHEN library imported THEN resolve from site-packages
 /// Spec: import-resolution.md#acceptance-criteria
 #[test]
 fn test_resolve_library_from_site_packages() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_site_pkg_import");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Simulate a venv with site-packages
     let site_packages = temp_dir.join("site-packages");
@@ -90,17 +85,13 @@ fn test_resolve_library_from_site_packages() {
     let resolved_path = resolver.resolve_module_path("requests");
     assert!(resolved_path.is_some());
     assert!(resolved_path.as_ref().unwrap().ends_with("__init__.py"));
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 /// Test get_or_resolve_module for lazy loading
 #[test]
 fn test_get_or_resolve_module_lazy_loading() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_lazy_load");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Create a module
     fs::write(temp_dir.join("mymodule.py"), "x = 42").unwrap();
@@ -117,9 +108,6 @@ fn test_get_or_resolve_module_lazy_loading() {
 
     // Now it should be registered
     assert!(resolver.has_module("mymodule"));
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 /// Test wildcard import resolution
@@ -197,9 +185,8 @@ fn test_module_import_with_alias() {
 /// Test indexing skips hidden and excluded directories
 #[test]
 fn test_index_skips_excluded_directories() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_skip_excluded");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Create normal module
     fs::write(temp_dir.join("normal.py"), "").unwrap();
@@ -227,17 +214,13 @@ fn test_index_skips_excluded_directories() {
     assert!(!module_paths.iter().any(|p| p.contains("cached")));
     assert!(!module_paths.iter().any(|p| p.contains("secret")));
     assert!(!module_paths.iter().any(|p| p.contains("nodemod")));
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 /// R6: `from .utils import helper` resolves within package directory.
 #[test]
 fn test_relative_import_resolution() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_relative_import");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Create a package with two modules
     let pkg_dir = temp_dir.join("mypackage");
@@ -274,7 +257,4 @@ fn test_relative_import_resolution() {
         resolved_utils.unwrap().ends_with("utils.py"),
         "Relative import .utils should resolve to utils.py within the package"
     );
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
