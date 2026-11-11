@@ -5,3 +5,4 @@ pub mod gcp;
 pub mod k8s;
 pub mod llm;
 pub mod reload;
+pub mod static_token;
