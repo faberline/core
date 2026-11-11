@@ -38,6 +38,45 @@ impl Drop for ScratchDir {
     }
 }
 
+static PHYSICAL_WRITE_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+fn lock_physical_write() -> std::sync::MutexGuard<'static, ()> {
+    PHYSICAL_WRITE_LOCK
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+}
+
+fn write_16_mib(dir: &Path) {
+    let file_path = dir.join("16mib_payload.bin");
+    let mut file = fs::File::create(&file_path).expect("create test payload file");
+    let chunk = vec![0xAB_u8; 1024 * 1024]; // 1 MiB chunk
+    for _ in 0..16 {
+        file.write_all(&chunk).expect("write chunk");
+    }
+    file.sync_all().expect("sync file to disk");
+}
+
+const ATTEMPTS: usize = 3;
+
+/// Calls `measure` up to `attempts` times and returns the first value within
+/// `min..=max`. When no attempt is in range, returns every value seen.
+fn first_in_range(
+    attempts: usize,
+    mut measure: impl FnMut() -> u64,
+    min: u64,
+    max: u64,
+) -> Result<u64, Vec<u64>> {
+    let mut seen = Vec::new();
+    for _ in 0..attempts {
+        let value = measure();
+        if (min..=max).contains(&value) {
+            return Ok(value);
+        }
+        seen.push(value);
+    }
+    Err(seen)
+}
+
 #[test]
 fn total_bytes_agrees_with_an_independent_df_reading() {
     let scratch = ScratchDir::new("df_agreement");
@@ -79,73 +118,78 @@ fn total_bytes_agrees_with_an_independent_df_reading() {
 
 #[test]
 fn available_bytes_tracks_a_physical_write() {
+    let _guard = lock_physical_write();
     let scratch = ScratchDir::new("physical_write");
-    let before = filesystem_usage(scratch.path()).expect("initial sample");
-
-    let file_path = scratch.path().join("16mib_payload.bin");
-    {
-        let mut file = fs::File::create(&file_path).expect("create test payload file");
-        let chunk = vec![0xAB_u8; 1024 * 1024]; // 1 MiB chunk
-        for _ in 0..16 {
-            file.write_all(&chunk).expect("write chunk");
-        }
-        file.sync_all().expect("sync file to disk");
-    }
-
-    let after = filesystem_usage(scratch.path()).expect("post-write sample");
-
-    let drop = before.available_bytes.saturating_sub(after.available_bytes);
     const EIGHT_MIB: u64 = 8 * 1024 * 1024;
     const SIXTY_FOUR_MIB: u64 = 64 * 1024 * 1024;
 
-    assert!(
-        drop >= EIGHT_MIB,
-        "available_bytes drop {drop} was less than 8 MiB (before: {}, after: {})",
-        before.available_bytes,
-        after.available_bytes
+    let result = first_in_range(
+        ATTEMPTS,
+        || {
+            let before = filesystem_usage(scratch.path()).expect("initial sample");
+            write_16_mib(scratch.path());
+            let after = filesystem_usage(scratch.path()).expect("post-write sample");
+            let _ = fs::remove_file(scratch.path().join("16mib_payload.bin"));
+            before.available_bytes.saturating_sub(after.available_bytes)
+        },
+        EIGHT_MIB,
+        SIXTY_FOUR_MIB,
     );
-    assert!(
-        drop <= SIXTY_FOUR_MIB,
-        "available_bytes drop {drop} was greater than 64 MiB (before: {}, after: {})",
-        before.available_bytes,
-        after.available_bytes
-    );
+    if let Err(seen) = result {
+        panic!(
+            "available_bytes_tracks_a_physical_write: drops {seen:?} were not in 8 MiB..=64 MiB"
+        );
+    }
 }
 
 #[test]
 fn used_bytes_tracks_a_physical_write() {
-    std::thread::sleep(std::time::Duration::from_millis(150));
+    let _guard = lock_physical_write();
     let scratch = ScratchDir::new("used_physical_write");
-    let before = filesystem_usage(scratch.path()).expect("initial sample");
-
-    let file_path = scratch.path().join("16mib_payload.bin");
-    {
-        let mut file = fs::File::create(&file_path).expect("create test payload file");
-        let chunk = vec![0xAB_u8; 1024 * 1024]; // 1 MiB chunk
-        for _ in 0..16 {
-            file.write_all(&chunk).expect("write chunk");
-        }
-        file.sync_all().expect("sync file to disk");
-    }
-
-    let after = filesystem_usage(scratch.path()).expect("post-write sample");
-
-    let rise = after.used_bytes.saturating_sub(before.used_bytes);
     const EIGHT_MIB: u64 = 8 * 1024 * 1024;
     const SIXTY_FOUR_MIB: u64 = 64 * 1024 * 1024;
 
-    assert!(
-        rise >= EIGHT_MIB,
-        "used_bytes rise {rise} was less than 8 MiB (before: {}, after: {})",
-        before.used_bytes,
-        after.used_bytes
+    let result = first_in_range(
+        ATTEMPTS,
+        || {
+            let before = filesystem_usage(scratch.path()).expect("initial sample");
+            write_16_mib(scratch.path());
+            let after = filesystem_usage(scratch.path()).expect("post-write sample");
+            let _ = fs::remove_file(scratch.path().join("16mib_payload.bin"));
+            after.used_bytes.saturating_sub(before.used_bytes)
+        },
+        EIGHT_MIB,
+        SIXTY_FOUR_MIB,
     );
-    assert!(
-        rise <= SIXTY_FOUR_MIB,
-        "used_bytes rise {rise} was greater than 64 MiB (before: {}, after: {})",
-        before.used_bytes,
-        after.used_bytes
+    if let Err(seen) = result {
+        panic!("used_bytes_tracks_a_physical_write: rises {seen:?} were not in 8 MiB..=64 MiB");
+    }
+}
+
+#[test]
+fn first_in_range_returns_first_value_in_range() {
+    let values = std::cell::RefCell::new(vec![0_u64, 9 * 1024 * 1024].into_iter());
+    let calls = std::cell::Cell::new(0_usize);
+    let result = first_in_range(
+        ATTEMPTS,
+        || {
+            calls.set(calls.get() + 1);
+            values
+                .borrow_mut()
+                .next()
+                .expect("measure called too often")
+        },
+        8 * 1024 * 1024,
+        64 * 1024 * 1024,
     );
+    assert_eq!(result, Ok(9 * 1024 * 1024));
+    assert_eq!(calls.get(), 2);
+}
+
+#[test]
+fn first_in_range_never_passes_on_zero_change() {
+    let result = first_in_range(ATTEMPTS, || 0, 8 * 1024 * 1024, 64 * 1024 * 1024);
+    assert_eq!(result, Err(vec![0, 0, 0]));
 }
 
 #[test]

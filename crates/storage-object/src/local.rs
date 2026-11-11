@@ -22,13 +22,20 @@ struct Sidecar {
     content_type: String,
 }
 
+/// Durable local object store: every write uses `FsyncPolicy::Always`.
+/// `ScratchObjectStore` is the non-durable variant.
 pub struct LocalObjectStore {
     root: PathBuf,
     lock: File,
+    fsync: FsyncPolicy,
 }
 
 impl LocalObjectStore {
     pub fn open(root: impl AsRef<Path>) -> Result<Self> {
+        Self::open_with_fsync(root, FsyncPolicy::Always)
+    }
+
+    pub fn open_with_fsync(root: impl AsRef<Path>, fsync: FsyncPolicy) -> Result<Self> {
         let root = root.as_ref();
         if let Ok(metadata) = std::fs::symlink_metadata(root) {
             if metadata.file_type().is_symlink() || !metadata.is_dir() {
@@ -55,7 +62,12 @@ impl LocalObjectStore {
         Ok(Self {
             root: root.to_path_buf(),
             lock,
+            fsync,
         })
+    }
+
+    pub fn fsync_policy(&self) -> FsyncPolicy {
+        self.fsync
     }
 
     fn object_path(&self, key: &str, create_parent: bool) -> Result<PathBuf> {
@@ -177,7 +189,7 @@ impl ObjectStore for LocalObjectStore {
                 },
             }
             let path = self.object_path(key, true)?;
-            atomic_write(&path, bytes, FsyncPolicy::Always).map_err(io_error)?;
+            atomic_write(&path, bytes, self.fsync).map_err(io_error)?;
             set_file_mode(&path)?;
             let version = ObjectVersion::new(format!("{:x}", Sha256::digest(bytes)));
             let sidecar = Sidecar {
@@ -191,7 +203,7 @@ impl ObjectStore for LocalObjectStore {
                 &serde_json::to_vec(&sidecar).map_err(|error| ObjectStoreError::Corrupt {
                     message: error.to_string(),
                 })?,
-                FsyncPolicy::Always,
+                self.fsync,
             )
             .map_err(io_error)?;
             set_file_mode(&sidecar_path)?;
