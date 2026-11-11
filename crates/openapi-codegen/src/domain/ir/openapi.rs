@@ -130,6 +130,8 @@ pub struct Response {
 pub struct MediaType {
     #[serde(default)]
     pub schema: Option<RefOr<Schema>>,
+    #[serde(default, rename = "itemSchema", alias = "item_schema")]
+    pub item_schema: Option<RefOr<Schema>>,
 }
 
 /// Either a JSON Reference (`{"$ref": "..."}`) or an inline value `T`.

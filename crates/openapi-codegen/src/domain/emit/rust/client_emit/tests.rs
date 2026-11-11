@@ -122,3 +122,17 @@ fn an_undeclared_status_falls_back_to_error_for_status() {
     assert!(out.contains("expect_err(\"4xx or 5xx status\")"), "{out}");
     assert!(!out.contains("Default("), "{out}");
 }
+
+#[test]
+fn ndjson_operation_is_not_emitted_as_json() {
+    let out = render_spec(
+        r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs",
+  "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
+  "responses":{"200":{"description":"ok","content":{"application/x-ndjson":{"schema":{"type":"string"}}}}}}}}}"##,
+    );
+    let sig_start = out.find("fn upload_logs(").expect("method is emitted");
+    let sig_end = out[sig_start..].find('{').unwrap() + sig_start;
+    let sig = &out[sig_start..sig_end];
+    assert!(!sig.contains("body"), "{sig}");
+    assert!(sig.ends_with("-> ClientResult<()> "), "{sig}");
+}

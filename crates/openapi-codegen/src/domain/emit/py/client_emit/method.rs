@@ -2,7 +2,7 @@ use super::literal::esc;
 use crate::domain::emit::py::pymap;
 use crate::domain::ir::names::{to_snake, NameRegistry};
 use crate::domain::ir::openapi::RefOr;
-use crate::domain::ir::operations::{OperationIR, ParamIR};
+use crate::domain::ir::operations::{MediaKind, OperationIR, ParamIR};
 use crate::domain::ir::typemap::TypeMap;
 use crate::domain::PythonTarget;
 
@@ -68,6 +68,7 @@ pub(super) fn emit_method(
     let body_ty = ir
         .body
         .as_ref()
+        .filter(|b| b.media_kind == MediaKind::Json)
         .map(|b| pymap::type_expr(&b.schema, tm, target));
     if let Some(ty) = &body_ty {
         let required = ir.body.as_ref().map(|b| b.required).unwrap_or(false);
@@ -174,17 +175,19 @@ pub(super) fn emit_method(
 /// `(return annotation, return statement)` for the operation's response.
 fn response(ir: &OperationIR, tm: &TypeMap, target: Option<PythonTarget>) -> (String, String) {
     match &ir.response {
-        None => ("None".to_string(), "return None".to_string()),
-        Some(RefOr::Ref(r)) => match tm.resolve_ref(&r.reference) {
-            Some(model) => (
-                model.clone(),
-                format!("return {model}.model_validate(_resp.json())"),
+        Some(resp) if resp.media_kind == MediaKind::Json => match &resp.schema {
+            RefOr::Ref(r) => match tm.resolve_ref(&r.reference) {
+                Some(model) => (
+                    model.clone(),
+                    format!("return {model}.model_validate(_resp.json())"),
+                ),
+                None => ("Any".to_string(), "return _resp.json()".to_string()),
+            },
+            node @ RefOr::Item(_) => (
+                pymap::type_expr(node, tm, target),
+                "return _resp.json()".to_string(),
             ),
-            None => ("Any".to_string(), "return _resp.json()".to_string()),
         },
-        Some(node @ RefOr::Item(_)) => (
-            pymap::type_expr(node, tm, target),
-            "return _resp.json()".to_string(),
-        ),
+        _ => ("None".to_string(), "return None".to_string()),
     }
 }
