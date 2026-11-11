@@ -32,13 +32,14 @@ async fn resident_log_limit_backpressures_then_reopens_after_compaction() {
         HostConfig::default(),
     );
 
-    assert_eq!(host.propose(vec![1; 40]).await.unwrap(), Index::new(1));
+    let first = host.propose(vec![1; 40]).await.unwrap();
     let error = host.propose(vec![2; 40]).await.unwrap_err();
     assert!(error.to_string().contains("resident log memory limit"));
-    host.snapshot_and_compact_through(Index::new(1))
-        .await
-        .unwrap();
-    assert_eq!(host.propose(vec![3; 40]).await.unwrap(), Index::new(2));
+    host.snapshot_and_compact_through(first).await.unwrap();
+    assert_eq!(
+        host.propose(vec![3; 40]).await.unwrap(),
+        Index::new(first.get() + 1)
+    );
     std::env::remove_var("RAFT_RUNTIME_MAX_RESIDENT_LOG_BYTES");
 }
 

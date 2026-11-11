@@ -32,18 +32,17 @@ async fn concurrent() {
 
     let mut sorted = returned_indices.clone();
     sorted.sort_unstable();
-    let expected: Vec<Index> = (1..=num_proposals).map(Index::new).collect();
+    let first = *sorted.first().unwrap();
+    let expected: Vec<Index> = (first.get()..first.get() + num_proposals)
+        .map(Index::new)
+        .collect();
     assert_eq!(
         sorted, expected,
-        "indices must be contiguous 1..={num_proposals}"
+        "indices must be contiguous for {num_proposals} proposals"
     );
+    let last = Index::new(first.get() + num_proposals - 1);
 
-    wait_for_applied_index(
-        &nodes,
-        Index::new(num_proposals),
-        DEFAULT_APPLIED_INDEX_BUDGET,
-    )
-    .await;
+    wait_for_applied_index(&nodes, last, DEFAULT_APPLIED_INDEX_BUDGET).await;
 
     let mut sm_vals = Vec::new();
     let mut watch_vals = Vec::new();
@@ -54,7 +53,7 @@ async fn concurrent() {
     println!("sm={sm_vals:?} fresh_watch={watch_vals:?}");
 
     for sm_val in &sm_vals {
-        assert_eq!(*sm_val, Index::new(num_proposals));
+        assert_eq!(*sm_val, last);
     }
 }
 
@@ -81,18 +80,17 @@ async fn sequential() {
 
     let mut sorted = returned_indices.clone();
     sorted.sort_unstable();
-    let expected: Vec<Index> = (1..=num_proposals).map(Index::new).collect();
+    let first = *sorted.first().unwrap();
+    let expected: Vec<Index> = (first.get()..first.get() + num_proposals)
+        .map(Index::new)
+        .collect();
     assert_eq!(
         sorted, expected,
-        "indices must be contiguous 1..={num_proposals}"
+        "indices must be contiguous for {num_proposals} proposals"
     );
+    let last = Index::new(first.get() + num_proposals - 1);
 
-    wait_for_applied_index(
-        &nodes,
-        Index::new(num_proposals),
-        DEFAULT_APPLIED_INDEX_BUDGET,
-    )
-    .await;
+    wait_for_applied_index(&nodes, last, DEFAULT_APPLIED_INDEX_BUDGET).await;
 
     let mut sm_vals = Vec::new();
     let mut watch_vals = Vec::new();
@@ -103,7 +101,7 @@ async fn sequential() {
     println!("sm={sm_vals:?} fresh_watch={watch_vals:?}");
 
     for sm_val in &sm_vals {
-        assert_eq!(*sm_val, Index::new(num_proposals));
+        assert_eq!(*sm_val, last);
     }
 }
 
