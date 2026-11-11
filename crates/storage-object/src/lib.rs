@@ -8,6 +8,7 @@ mod local;
 mod object;
 #[cfg(feature = "s3")]
 mod s3;
+mod scratch;
 mod store;
 
 pub use error::{ObjectStoreError, Result};
@@ -18,4 +19,5 @@ pub use local::LocalObjectStore;
 pub use object::{Object, ObjectMeta, ObjectVersion, PutCondition};
 #[cfg(feature = "s3")]
 pub use s3::S3ObjectStore;
+pub use scratch::ScratchObjectStore;
 pub use store::ObjectStore;
