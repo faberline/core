@@ -1,17 +1,21 @@
 mod support;
 
+mod backup_job;
 mod certificate_kubernetes_store;
 mod certificate_lifecycle;
 mod certificate_ownership;
 mod certificate_rbac_least_privilege;
 mod certificate_rotation;
 mod certificate_status;
+mod fleet_plan;
 mod lifecycle_render;
+mod placement;
 mod prune_unserved_api_is_scoped;
 mod reconcile_once_does_not_assume_leadership;
 mod stateful_adapter_equivalence;
 mod stateful_instance_render;
 mod status_conditions_survive_the_recovery_pass;
 mod status_patch_golden;
+mod trust_bundle_convergence;
 mod wire_golden;
 mod workload_plan;

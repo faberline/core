@@ -15,6 +15,10 @@ pub struct GeneratedOutput {
     pub target: Option<TargetProfile>,
     /// The minimum requirements for consuming explicitly targeted `files`.
     pub requirements: Option<TargetRequirements>,
+    pub openapi_sha256: Option<String>,
+    pub service_compatibility: Option<String>,
+    /// Non-fatal generator warnings (for example a union that stays free-form).
+    pub(crate) warnings: Vec<String>,
 }
 
 /// Sidecar filename emitted with explicitly targeted generated clients.
@@ -25,6 +29,9 @@ pub const MANIFEST_FILE: &str = ".openapi-codegen.json";
 pub struct GenerationManifest {
     pub schema_version: u8,
     pub generator: String,
+    pub generator_version: String,
+    pub openapi_sha256: String,
+    pub service_compatibility: Option<String>,
     pub compiler: String,
     pub target: String,
     pub language: String,
@@ -43,6 +50,9 @@ impl GeneratedOutput {
             files,
             target: None,
             requirements: None,
+            openapi_sha256: None,
+            service_compatibility: None,
+            warnings: Vec::new(),
         }
     }
 
@@ -51,7 +61,25 @@ impl GeneratedOutput {
             files,
             target: Some(target),
             requirements: Some(target.requirements()),
+            openapi_sha256: None,
+            service_compatibility: None,
+            warnings: Vec::new(),
         }
+    }
+
+    /// The SHA-256 hash of the OpenAPI spec bytes, if recorded.
+    pub fn openapi_sha256(&self) -> Option<&str> {
+        self.openapi_sha256.as_deref()
+    }
+
+    /// Non-fatal generator warnings, one per affected schema.
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
+    }
+
+    /// The caller-supplied service compatibility label, if recorded.
+    pub fn service_compatibility(&self) -> Option<&str> {
+        self.service_compatibility.as_deref()
     }
 
     /// Build the sidecar manifest which makes the target contract inspectable
@@ -59,8 +87,11 @@ impl GeneratedOutput {
     pub fn manifest(&self) -> Option<GenerationManifest> {
         let requirements = self.requirements?;
         Some(GenerationManifest {
-            schema_version: 1,
+            schema_version: 2,
             generator: "openapi-codegen".to_string(),
+            generator_version: env!("CARGO_PKG_VERSION").to_string(),
+            openapi_sha256: self.openapi_sha256.clone().unwrap_or_default(),
+            service_compatibility: self.service_compatibility.clone(),
             compiler: requirements.compiler.to_string(),
             target: requirements.target.to_string(),
             language: requirements.language.id().to_string(),

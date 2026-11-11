@@ -64,10 +64,14 @@ fn generate_impl(
     let ops = operations::build(&spec);
 
     let mut files = Vec::new();
+    let mut warnings = Vec::new();
     if opts.emit_types() {
+        let (contents, model_warnings) =
+            models_emit::emit_with_warnings(&spec, &tm, target.unwrap_or(RustTarget::Rust2021));
+        warnings = model_warnings;
         files.push(GeneratedFile {
             rel_path: "models.rs".to_string(),
-            contents: models_emit::emit(&spec, &tm, target.unwrap_or(RustTarget::Rust2021)),
+            contents,
         });
     }
     if opts.emit_client() {
@@ -80,10 +84,12 @@ fn generate_impl(
         rel_path: "mod.rs".to_string(),
         contents: emit_mod(opts),
     });
-    Ok(match target {
+    let mut out = match target {
         Some(target) => GeneratedOutput::for_target(files, crate::TargetProfile::Rust(target)),
         None => GeneratedOutput::legacy(files),
-    })
+    };
+    out.warnings = warnings;
+    Ok(out)
 }
 
 fn emit_mod(opts: &GenOptions) -> String {
@@ -232,5 +238,33 @@ mod tests {
         for (fa, fb) in a.files.iter().zip(b.files.iter()) {
             assert_eq!(fa.contents, fb.contents);
         }
+    }
+
+    #[test]
+    fn emits_string_enum_component_model() {
+        const SPEC_ENUM: &str = r##"{
+          "openapi": "3.0.0",
+          "info": { "title": "Mini", "version": "1.0.0" },
+          "paths": {},
+          "components": { "schemas": {
+            "Status": { "type": "string", "enum": ["active", "inactive"] },
+            "Item": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "integer" },
+                "status": { "$ref": "#/components/schemas/Status" }
+              },
+              "required": ["id", "status"]
+            }
+          } }
+        }"##;
+        let out = generate(SPEC_ENUM, &opts()).unwrap();
+        let models = file(&out, "models.rs");
+        assert!(models.contains("#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]"));
+        assert!(models.contains("pub enum Status {"));
+        assert!(models.contains("    #[serde(rename = \"active\")]\n    Active,"));
+        assert!(models.contains("    #[serde(rename = \"inactive\")]\n    Inactive,"));
+        assert!(models.contains("pub struct Item {"));
+        assert!(models.contains("    pub status: Status,"));
     }
 }

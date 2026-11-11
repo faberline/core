@@ -16,5 +16,7 @@ pub mod metrics;
 pub mod render;
 #[cfg(feature = "controller")]
 pub mod resize;
+pub mod rollout;
 pub mod service;
 pub mod stateful;
+pub mod trust_bundle;

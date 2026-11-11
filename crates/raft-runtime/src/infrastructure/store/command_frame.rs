@@ -172,6 +172,7 @@ fn command_frames_from_encoded(
         let kind = match entry.read_u8()? {
             0 => EntryKind::Command,
             1 => EntryKind::Config,
+            2 => EntryKind::Noop,
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,

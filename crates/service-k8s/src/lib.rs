@@ -34,8 +34,10 @@ pub use api::metrics;
 pub use api::render;
 #[cfg(feature = "controller")]
 pub use api::resize;
+pub use api::rollout;
 pub use api::service;
 pub use api::stateful;
+pub use api::trust_bundle;
 
 #[cfg(feature = "controller")]
 pub use app::operator::run;
@@ -44,6 +46,10 @@ pub use application::certificate::reconcile::Reconciler;
 #[cfg(feature = "controller")]
 pub use application::operator::managed_service::{
     ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
+};
+pub use domain::backup_job::{
+    backup_job_name, plan_backup_job, BackupJobDecision, BackupJobError, BackupJobPhase,
+    BackupJobPolicy, ObservedBackupJob,
 };
 pub use domain::capacity::{
     plan_replica_layer, plan_shard_split, ObservedShardUsage, ObservedUtilization,
@@ -61,6 +67,13 @@ pub use domain::certificate::secret_layout::LeafParser;
 pub use domain::certificate::status::CertificateFacts;
 #[cfg(feature = "controller")]
 pub use domain::condition::{Condition, ConditionFact, ConditionStatus};
+#[cfg(feature = "controller")]
+pub use domain::fleet;
+#[cfg(feature = "controller")]
+pub use domain::fleet::{
+    canonicalize_json, desired_hash, plan_fleet, AdoptionPolicy, ChildKey, DesiredChild,
+    FleetAction, FleetPlan, FleetPlanError, ObservedChild, Ownership, PrunePolicy,
+};
 #[cfg(feature = "controller")]
 pub use domain::leadership::Election;
 pub use domain::lifecycle::{
