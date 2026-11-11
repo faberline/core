@@ -11,6 +11,7 @@ use thiserror::Error;
 use super::RenderCtx;
 
 mod access;
+mod backup_cronjob;
 mod backup_job;
 mod network;
 mod pod;
@@ -20,6 +21,7 @@ mod workload;
 pub use access::{
     ClusterRoleBindingPlan, RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountSubjectPlan,
 };
+pub use backup_cronjob::BackupCronJobPlan;
 pub use backup_job::BackupJobPlan;
 pub use network::{
     FqdnMatchPlan, FqdnNetworkPolicyPlan, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan,
@@ -63,6 +65,8 @@ pub enum WorkloadPlanError {
     ZeroReplicas(String),
     #[error("workload {0} {1} must not be negative")]
     NegativeValue(String, &'static str),
+    #[error("workload {0} must have a non-empty command")]
+    EmptyCommand(String),
 }
 
 /// One ordered set of typed Kubernetes children for a managed service.
