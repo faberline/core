@@ -159,6 +159,15 @@ pub enum AdditionalProperties {
     Schema(Box<RefOr<Schema>>),
 }
 
+/// `discriminator` object on a `oneOf` / `anyOf` schema.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Discriminator {
+    #[serde(rename = "propertyName")]
+    pub property_name: String,
+    #[serde(default)]
+    pub mapping: BTreeMap<String, String>,
+}
+
 /// JSON-Schema subset used for TypeScript type mapping.
 ///
 #[derive(Debug, Default, Clone, Deserialize)]
@@ -181,6 +190,8 @@ pub struct Schema {
     pub any_of: Vec<RefOr<Schema>>,
     #[serde(default, rename = "allOf")]
     pub all_of: Vec<RefOr<Schema>>,
+    #[serde(default)]
+    pub discriminator: Option<Discriminator>,
     /// OpenAPI 3.0 nullability. 3.1 expresses this via a `"null"` type entry.
     #[serde(default)]
     pub nullable: Option<bool>,
@@ -235,6 +246,17 @@ impl<'de> Deserialize<'de> for TypeField {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn discriminator_parses() {
+        let s: Schema = serde_json::from_str(
+            r##"{"oneOf":[{"$ref":"#/components/schemas/A"}],"discriminator":{"propertyName":"kind","mapping":{"a":"#/components/schemas/A"}}}"##,
+        )
+        .unwrap();
+        let d = s.discriminator.expect("discriminator parsed");
+        assert_eq!(d.property_name, "kind");
+        assert_eq!(d.mapping["a"], "#/components/schemas/A");
+    }
 
     #[test]
     fn ref_or_picks_ref_when_dollar_ref_present() {

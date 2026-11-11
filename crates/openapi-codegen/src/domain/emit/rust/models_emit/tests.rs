@@ -282,3 +282,99 @@ fn serde_round_trip_rejects_undeclared_value() {
     assert!(!block.contains("untagged"));
     assert!(!block.contains("(String)"));
 }
+
+const UNIONS: &str = r##"{
+    "openapi": "3.1.0",
+    "info": { "title": "Test", "version": "1.0.0" },
+    "paths": {},
+    "components": { "schemas": {
+        "Cat": { "type": "object", "properties": { "name": { "type": "string" } }, "required": ["name"] },
+        "Dog": { "type": "object", "properties": { "bark": { "type": "boolean" } }, "required": ["bark"] },
+        "Pet": {
+            "oneOf": [ { "$ref": "#/components/schemas/Cat" }, { "$ref": "#/components/schemas/Dog" } ],
+            "discriminator": { "propertyName": "kind", "mapping": { "cat": "#/components/schemas/Cat" } }
+        },
+        "Shape": { "oneOf": [ { "$ref": "#/components/schemas/Cat" }, { "$ref": "#/components/schemas/Dog" } ] },
+        "Id": { "anyOf": [ { "type": "string" }, { "type": "integer" } ] },
+        "Blob": { "oneOf": [ { "type": "object" }, { "type": "object" } ] },
+        "Twin": { "oneOf": [ { "type": "string" }, { "type": "string" } ] },
+        "Owner": {
+            "type": "object",
+            "properties": { "pet": { "$ref": "#/components/schemas/Pet" } },
+            "required": ["pet"]
+        }
+    } }
+}"##;
+
+#[test]
+fn tagged_union_emits_internally_tagged_enum() {
+    let spec = parse_spec(UNIONS);
+    let tm = build_type_map(&spec);
+    let (out, warnings) = emit_with_warnings(&spec, &tm, RustTarget::Rust2021);
+    assert!(out.contains("#[serde(tag = \"kind\")]\npub enum Pet {"));
+    assert!(out.contains("    #[serde(rename = \"cat\")]\n    Cat(Cat),"));
+    assert!(out.contains("    #[serde(rename = \"Dog\")]\n    Dog(Dog),"));
+    assert!(warnings.iter().all(|w| !w.contains("`Pet`")));
+}
+
+#[test]
+fn untagged_union_of_refs_and_primitives() {
+    let spec = parse_spec(UNIONS);
+    let tm = build_type_map(&spec);
+    let (out, _) = emit_with_warnings(&spec, &tm, RustTarget::Rust2021);
+    assert!(out.contains("#[serde(untagged)]\npub enum Shape {"));
+    assert!(out.contains("    Cat(Cat),\n    Dog(Dog),\n}"));
+    assert!(out.contains("#[serde(untagged)]\npub enum Id {"));
+    assert!(out.contains("    String(String),\n    Integer(i64),\n}"));
+}
+
+#[test]
+fn ambiguous_union_stays_value_with_warning() {
+    let spec = parse_spec(UNIONS);
+    let tm = build_type_map(&spec);
+    let (out, warnings) = emit_with_warnings(&spec, &tm, RustTarget::Rust2021);
+    assert!(out.contains("pub type Blob = serde_json::Value;"));
+    assert!(out.contains("pub type Twin = serde_json::Value;"));
+    assert_eq!(warnings.len(), 2);
+    assert!(warnings.iter().any(|w| w.contains("`Blob`")));
+    assert!(warnings.iter().any(|w| w.contains("`Twin`")));
+}
+
+#[test]
+fn tagged_union_with_tag_field_in_variant_is_ambiguous() {
+    let spec = parse_spec(
+        r##"{
+        "openapi": "3.1.0",
+        "info": { "title": "Test", "version": "1.0.0" },
+        "paths": {},
+        "components": { "schemas": {
+            "Cat": { "type": "object", "properties": { "kind": { "type": "string" } } },
+            "Dog": { "type": "object", "properties": { "bark": { "type": "boolean" } } },
+            "Pet": {
+                "oneOf": [ { "$ref": "#/components/schemas/Cat" }, { "$ref": "#/components/schemas/Dog" } ],
+                "discriminator": { "propertyName": "kind" }
+            }
+        } }
+    }"##,
+    );
+    let tm = build_type_map(&spec);
+    let (out, warnings) = emit_with_warnings(&spec, &tm, RustTarget::Rust2021);
+    assert!(out.contains("pub type Pet = serde_json::Value;"));
+    assert!(warnings.iter().any(|w| w.contains("`Pet`")));
+}
+
+#[test]
+fn union_property_ref_uses_enum_name() {
+    let spec = parse_spec(UNIONS);
+    let tm = build_type_map(&spec);
+    let out = emit(&spec, &tm, RustTarget::Rust2021);
+    assert!(out.contains("    pub pet: Pet,"));
+}
+
+#[test]
+fn forcing_value_would_break_round_trip_guard() {
+    let spec = parse_spec(UNIONS);
+    let tm = build_type_map(&spec);
+    let out = emit(&spec, &tm, RustTarget::Rust2021);
+    assert!(!out.contains("pub type Pet = serde_json::Value;"));
+}

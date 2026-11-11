@@ -1,5 +1,7 @@
 //! Emit serde structs / aliases for the spec's component schemas.
 
+use std::collections::BTreeSet;
+
 use crate::domain::emit::rust::rsmap;
 use crate::domain::ir::names::{to_pascal, to_snake, NameRegistry};
 use crate::domain::ir::openapi::{RefOr, Schema, Spec};
@@ -30,34 +32,221 @@ pub fn field_name(key: &str, target: RustTarget) -> (String, Option<String>) {
 }
 
 pub fn emit(spec: &Spec, tm: &TypeMap, target: RustTarget) -> String {
+    emit_with_warnings(spec, tm, target).0
+}
+
+/// Like [`emit`], and also returns one warning per schema that stays `serde_json::Value`.
+pub fn emit_with_warnings(spec: &Spec, tm: &TypeMap, target: RustTarget) -> (String, Vec<String>) {
     let mut out = String::from(HEADER);
     out.push_str("use serde::{Deserialize, Serialize};\n");
 
-    let blocks: Vec<String> = spec
-        .components
-        .schemas
-        .iter()
-        .map(|(key, node)| {
-            let name = tm.names.get(key).cloned().unwrap_or_else(|| to_pascal(key));
-            emit_schema(&name, node, tm, target)
-        })
-        .collect();
+    let mut warnings = Vec::new();
+    let mut blocks: Vec<String> = Vec::new();
+    for (key, node) in &spec.components.schemas {
+        let name = tm.names.get(key).cloned().unwrap_or_else(|| to_pascal(key));
+        blocks.push(emit_schema(
+            key,
+            &name,
+            node,
+            spec,
+            tm,
+            target,
+            &mut warnings,
+        ));
+    }
     if !blocks.is_empty() {
         out.push('\n');
         out.push_str(&blocks.join("\n"));
     }
-    out
+    (out, warnings)
 }
 
-fn emit_schema(name: &str, node: &RefOr<Schema>, tm: &TypeMap, target: RustTarget) -> String {
+fn emit_schema(
+    key: &str,
+    name: &str,
+    node: &RefOr<Schema>,
+    spec: &Spec,
+    tm: &TypeMap,
+    target: RustTarget,
+    warnings: &mut Vec<String>,
+) -> String {
     match node {
         RefOr::Ref(_) => format!("pub type {name} = {};\n", rsmap::type_expr(node, tm)),
         RefOr::Item(schema) if is_string_enum(schema) => emit_enum(name, schema),
+        RefOr::Item(schema) if is_union(schema) => {
+            emit_union(key, name, schema, spec, tm, warnings)
+        }
         RefOr::Item(schema) if schema.properties.is_empty() => {
             format!("pub type {name} = {};\n", rsmap::type_expr(node, tm))
         }
         RefOr::Item(schema) => emit_struct(name, schema, tm, target),
     }
+}
+
+const SCHEMAS_PREFIX: &str = "#/components/schemas/";
+
+/// A component `oneOf` / `anyOf` with no own properties, enum or `allOf`.
+fn is_union(schema: &Schema) -> bool {
+    (!schema.one_of.is_empty() || !schema.any_of.is_empty())
+        && schema.properties.is_empty()
+        && schema.all_of.is_empty()
+        && schema.enum_values.is_empty()
+}
+
+fn is_null_branch(branch: &RefOr<Schema>) -> bool {
+    matches!(branch, RefOr::Item(s) if s.ty.0.as_slice() == ["null"])
+}
+
+/// The struct component a `$ref` points to (not a string enum, has properties).
+fn struct_component<'a>(spec: &'a Spec, reference: &str) -> Option<&'a Schema> {
+    let key = reference.strip_prefix(SCHEMAS_PREFIX)?;
+    match spec.components.schemas.get(key)? {
+        RefOr::Item(s) if !s.properties.is_empty() && !is_string_enum(s) => Some(&**s),
+        _ => None,
+    }
+}
+
+/// `(json type, Rust variant, payload type)` for a single-type primitive branch.
+fn primitive_branch(s: &Schema) -> Option<(&'static str, &'static str, &'static str)> {
+    if !s.enum_values.is_empty()
+        || !s.properties.is_empty()
+        || !s.one_of.is_empty()
+        || !s.any_of.is_empty()
+        || !s.all_of.is_empty()
+    {
+        return None;
+    }
+    match s.type_names().as_slice() {
+        [t] => match t.as_str() {
+            "string" => Some(("string", "String", "String")),
+            "integer" => Some(("integer", "Integer", "i64")),
+            "number" => Some(("number", "Number", "f64")),
+            "boolean" => Some(("boolean", "Boolean", "bool")),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+enum UnionPlan {
+    /// Internally tagged by the discriminator property.
+    Tagged(String),
+    /// Untagged: serde tries each variant in declared order.
+    Untagged,
+    /// Cannot be told apart: stays `serde_json::Value`.
+    Ambiguous,
+}
+
+fn union_plan(schema: &Schema, branches: &[&RefOr<Schema>], spec: &Spec) -> UnionPlan {
+    if branches.len() < 2 {
+        return UnionPlan::Ambiguous;
+    }
+    if let Some(d) = &schema.discriminator {
+        // serde removes the tag before it reads the variant, so a variant that
+        // declares the tag property itself cannot be read back.
+        let tagged = branches.iter().all(|b| match b {
+            RefOr::Ref(r) => struct_component(spec, &r.reference)
+                .is_some_and(|s| !s.properties.contains_key(&d.property_name)),
+            RefOr::Item(_) => false,
+        });
+        return if tagged {
+            UnionPlan::Tagged(d.property_name.clone())
+        } else {
+            UnionPlan::Ambiguous
+        };
+    }
+    let mut refs = BTreeSet::new();
+    let mut json_types = BTreeSet::new();
+    for b in branches {
+        let distinct = match b {
+            RefOr::Ref(r) => {
+                struct_component(spec, &r.reference).is_some() && refs.insert(r.reference.as_str())
+            }
+            RefOr::Item(s) => {
+                primitive_branch(s).is_some_and(|(json, _, _)| json_types.insert(json))
+            }
+        };
+        if !distinct {
+            return UnionPlan::Ambiguous;
+        }
+    }
+    if json_types.contains(&"integer") && json_types.contains(&"number") {
+        return UnionPlan::Ambiguous;
+    }
+    UnionPlan::Untagged
+}
+
+/// The tag value for a variant: the mapping key whose value names the branch,
+/// or the bare schema key when no mapping entry does.
+fn variant_tag(schema: &Schema, reference: &str) -> String {
+    let bare = reference.strip_prefix(SCHEMAS_PREFIX).unwrap_or(reference);
+    schema
+        .discriminator
+        .as_ref()
+        .and_then(|d| {
+            d.mapping
+                .iter()
+                .find(|(_, v)| v.as_str() == reference || v.as_str() == bare)
+                .map(|(k, _)| k.clone())
+        })
+        .unwrap_or_else(|| bare.to_string())
+}
+
+fn emit_union(
+    key: &str,
+    name: &str,
+    schema: &Schema,
+    spec: &Spec,
+    tm: &TypeMap,
+    warnings: &mut Vec<String>,
+) -> String {
+    let source = if schema.one_of.is_empty() {
+        &schema.any_of
+    } else {
+        &schema.one_of
+    };
+    let branches: Vec<&RefOr<Schema>> = source.iter().filter(|b| !is_null_branch(b)).collect();
+    let plan = union_plan(schema, &branches, spec);
+    let header = match &plan {
+        UnionPlan::Ambiguous => {
+            warnings.push(format!(
+                "schema `{key}` is a oneOf/anyOf that cannot be told apart; generated as serde_json::Value"
+            ));
+            return format!("pub type {name} = serde_json::Value;\n");
+        }
+        UnionPlan::Tagged(tag) => format!("#[serde(tag = \"{}\")]\n", esc(tag)),
+        UnionPlan::Untagged => "#[serde(untagged)]\n".to_string(),
+    };
+    let tagged = matches!(plan, UnionPlan::Tagged(_));
+
+    let mut s = String::from("#[derive(Debug, Clone, Serialize, Deserialize)]\n");
+    s.push_str(&header);
+    s.push_str(&format!("pub enum {name} {{\n"));
+    let mut reg = NameRegistry::new();
+    for branch in &branches {
+        match branch {
+            RefOr::Ref(r) => {
+                let Some(ty) = tm.resolve_ref(&r.reference) else {
+                    continue;
+                };
+                let variant = reg.unique(&ty);
+                if tagged {
+                    let tag = variant_tag(schema, &r.reference);
+                    s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(&tag)));
+                }
+                s.push_str(&format!("    {variant}({ty}),\n"));
+            }
+            RefOr::Item(p) => {
+                let Some((_, variant, ty)) = primitive_branch(p) else {
+                    continue;
+                };
+                let variant = reg.unique(variant);
+                s.push_str(&format!("    {variant}({ty}),\n"));
+            }
+        }
+    }
+    s.push_str("}\n");
+    s
 }
 
 /// True when a component schema is a string enum eligible for a Rust enum definition.

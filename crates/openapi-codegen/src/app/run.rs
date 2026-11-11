@@ -23,6 +23,9 @@ pub fn run(opts: &GenOptions) -> i32 {
             return 1;
         }
     };
+    for warning in output.warnings() {
+        eprintln!("openapi-codegen: warning: {warning}");
+    }
     if let Err(e) = output.write_to_dir(opts.out_dir()) {
         eprintln!(
             "openapi-codegen: cannot write generated output to {}: {e}",

@@ -17,6 +17,8 @@ pub struct GeneratedOutput {
     pub requirements: Option<TargetRequirements>,
     pub openapi_sha256: Option<String>,
     pub service_compatibility: Option<String>,
+    /// Non-fatal generator warnings (for example a union that stays free-form).
+    pub(crate) warnings: Vec<String>,
 }
 
 /// Sidecar filename emitted with explicitly targeted generated clients.
@@ -50,6 +52,7 @@ impl GeneratedOutput {
             requirements: None,
             openapi_sha256: None,
             service_compatibility: None,
+            warnings: Vec::new(),
         }
     }
 
@@ -60,12 +63,18 @@ impl GeneratedOutput {
             requirements: Some(target.requirements()),
             openapi_sha256: None,
             service_compatibility: None,
+            warnings: Vec::new(),
         }
     }
 
     /// The SHA-256 hash of the OpenAPI spec bytes, if recorded.
     pub fn openapi_sha256(&self) -> Option<&str> {
         self.openapi_sha256.as_deref()
+    }
+
+    /// Non-fatal generator warnings, one per affected schema.
+    pub fn warnings(&self) -> &[String] {
+        &self.warnings
     }
 
     /// The caller-supplied service compatibility label, if recorded.
