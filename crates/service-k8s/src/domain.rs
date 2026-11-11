@@ -10,5 +10,5 @@ pub mod fleet;
 #[cfg(feature = "controller")]
 pub(crate) mod leadership;
 pub(crate) mod lifecycle;
-pub mod trust_bundle;
 pub(crate) mod rollout;
+pub mod trust_bundle;
