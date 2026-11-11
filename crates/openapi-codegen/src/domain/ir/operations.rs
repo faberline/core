@@ -5,7 +5,9 @@
 //! `crate::emit::<lang>` maps an [`OperationIR`] to its own naming (camelCase /
 //! snake_case) and type syntax (TS / pydantic / serde).
 
-use crate::domain::ir::openapi::{Operation, Parameter, RefOr, Response, Schema, Spec};
+use std::collections::BTreeMap;
+
+use crate::domain::ir::openapi::{MediaType, Operation, Parameter, RefOr, Response, Schema, Spec};
 
 /// A parameter (path / query / header). `schema == None` means an untyped
 /// parameter, which emitters default to a string.
@@ -16,11 +18,36 @@ pub struct ParamIR {
     pub required: bool,
 }
 
-/// The JSON request body, if any.
+/// The media kind of a request body or success response.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MediaKind {
+    Json,
+    Ndjson,
+}
+
+impl MediaKind {
+    pub fn is_json(&self) -> bool {
+        matches!(self, MediaKind::Json)
+    }
+
+    pub fn is_ndjson(&self) -> bool {
+        matches!(self, MediaKind::Ndjson)
+    }
+}
+
+/// The request body, if any.
 #[derive(Debug, Clone)]
 pub struct BodyIR {
+    pub media_kind: MediaKind,
     pub schema: RefOr<Schema>,
     pub required: bool,
+}
+
+/// The success response: its media kind and item or document schema.
+#[derive(Debug, Clone)]
+pub struct ResponseIR {
+    pub media_kind: MediaKind,
+    pub schema: RefOr<Schema>,
 }
 
 /// Service-supplied retry classification carried via the `x-retry-class` vendor extension.
@@ -64,8 +91,8 @@ pub struct OperationIR {
     pub query_params: Vec<ParamIR>,
     pub header_params: Vec<ParamIR>,
     pub body: Option<BodyIR>,
-    /// The success-response JSON schema, or `None` for a no-content response.
-    pub response: Option<RefOr<Schema>>,
+    /// The success response, or `None` for a no-content response.
+    pub response: Option<ResponseIR>,
     /// Declared non-success responses modeled in deterministic order:
     /// numeric ascending, range keys (4XX, 5XX), then default.
     pub error_responses: Vec<ErrorResponseIR>,
@@ -152,22 +179,18 @@ fn build_one(
     }
 
     let body = op.request_body.as_ref().and_then(|rb| match rb {
-        RefOr::Item(rb) => rb
-            .content
-            .get("application/json")
-            .and_then(|mt| mt.schema.as_ref())
-            .map(|schema| BodyIR {
-                schema: schema.clone(),
-                required: rb.required,
-            }),
+        RefOr::Item(rb) => pick_media(&rb.content).map(|(media_kind, schema)| BodyIR {
+            media_kind,
+            schema,
+            required: rb.required,
+        }),
         RefOr::Ref(_) => None,
     });
 
     let response = pick_response(op).and_then(|r| match r {
-        RefOr::Item(resp) => resp
-            .content
-            .get("application/json")
-            .and_then(|mt| mt.schema.clone()),
+        RefOr::Item(resp) => {
+            pick_media(&resp.content).map(|(media_kind, schema)| ResponseIR { media_kind, schema })
+        }
         RefOr::Ref(_) => None,
     });
 
@@ -244,6 +267,28 @@ fn inline_params(params: &[RefOr<Parameter>]) -> impl Iterator<Item = &Parameter
     params.iter().filter_map(|p| match p {
         RefOr::Item(p) => Some(p.as_ref()),
         RefOr::Ref(_) => None, // component-parameter refs are out of subset
+    })
+}
+
+const NDJSON_MIMES: &[&str] = &[
+    "application/x-ndjson",
+    "application/jsonl",
+    "application/ndjson",
+];
+
+/// Pick the schema of a body or response. `application/json` wins when both
+/// are declared. Otherwise an NDJSON media type gives its `itemSchema`, or
+/// else its `schema`. Any other media type is ignored.
+fn pick_media(content: &BTreeMap<String, MediaType>) -> Option<(MediaKind, RefOr<Schema>)> {
+    if let Some(mt) = content.get("application/json") {
+        return mt.schema.clone().map(|schema| (MediaKind::Json, schema));
+    }
+    NDJSON_MIMES.iter().find_map(|mime| {
+        let mt = content.get(*mime)?;
+        mt.item_schema
+            .as_ref()
+            .or(mt.schema.as_ref())
+            .map(|schema| (MediaKind::Ndjson, schema.clone()))
     })
 }
 
@@ -529,5 +574,88 @@ mod tests {
         let err = &op.error_responses[0];
         assert_eq!(err.status, "404");
         assert!(err.schema.is_none());
+    }
+
+    fn item_type(schema: &RefOr<Schema>) -> Vec<String> {
+        match schema {
+            RefOr::Item(s) => s.ty.0.clone(),
+            RefOr::Ref(_) => panic!("expected an inline schema"),
+        }
+    }
+
+    #[test]
+    fn ndjson_request_body() {
+        let s = spec(
+            r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs",
+              "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
+              "responses":{"200":{"description":"ok"}}}}}}"##,
+        );
+        let ops = build(&s);
+        let body = ops[0].body.as_ref().expect("ndjson body is read");
+        assert_eq!(body.media_kind, MediaKind::Ndjson);
+        assert!(body.required);
+        assert_eq!(item_type(&body.schema), vec!["object".to_string()]);
+    }
+
+    #[test]
+    fn ndjson_success_response() {
+        let s = spec(
+            r##"{"paths":{"/events":{"get":{"operationId":"streamEvents",
+              "responses":{"200":{"description":"ok","content":{"application/x-ndjson":{"schema":{"type":"string"}}}}}}}}}"##,
+        );
+        let ops = build(&s);
+        let resp = ops[0].response.as_ref().expect("ndjson response is read");
+        assert_eq!(resp.media_kind, MediaKind::Ndjson);
+        assert_eq!(item_type(&resp.schema), vec!["string".to_string()]);
+    }
+
+    #[test]
+    fn mixed_json_and_ndjson_picks_json() {
+        let s = spec(
+            r##"{"paths":{"/items":{"post":{"operationId":"createItems",
+              "requestBody":{"required":true,"content":{
+                "application/json":{"schema":{"type":"object"}},
+                "application/x-ndjson":{"schema":{"type":"string"}}}},
+              "responses":{"200":{"description":"ok","content":{
+                "application/json":{"schema":{"type":"array"}},
+                "application/x-ndjson":{"schema":{"type":"string"}}}}}}}}}"##,
+        );
+        let ops = build(&s);
+        let body = ops[0].body.as_ref().unwrap();
+        assert_eq!(body.media_kind, MediaKind::Json);
+        assert_eq!(item_type(&body.schema), vec!["object".to_string()]);
+        let resp = ops[0].response.as_ref().unwrap();
+        assert_eq!(resp.media_kind, MediaKind::Json);
+        assert_eq!(item_type(&resp.schema), vec!["array".to_string()]);
+    }
+
+    #[test]
+    fn ndjson_with_itemschema() {
+        let s = spec(
+            r##"{"paths":{"/batch":{"post":{"operationId":"batch",
+              "requestBody":{"required":false,"content":{"application/x-ndjson":{
+                "schema":{"type":"array"},"itemSchema":{"type":"integer"}}}},
+              "responses":{"200":{"description":"ok","content":{"application/jsonl":{
+                "itemSchema":{"type":"boolean"}}}}}}}}}"##,
+        );
+        let ops = build(&s);
+        let body = ops[0].body.as_ref().unwrap();
+        assert_eq!(body.media_kind, MediaKind::Ndjson);
+        assert_eq!(item_type(&body.schema), vec!["integer".to_string()]);
+        let resp = ops[0].response.as_ref().unwrap();
+        assert_eq!(resp.media_kind, MediaKind::Ndjson);
+        assert_eq!(item_type(&resp.schema), vec!["boolean".to_string()]);
+    }
+
+    #[test]
+    fn unknown_media_type_such_as_text_csv_is_ignored() {
+        let s = spec(
+            r##"{"paths":{"/csv":{"post":{"operationId":"uploadCsv",
+              "requestBody":{"required":true,"content":{"text/csv":{"schema":{"type":"string"}}}},
+              "responses":{"200":{"description":"ok","content":{"text/csv":{"schema":{"type":"string"}}}}}}}}}"##,
+        );
+        let ops = build(&s);
+        assert!(ops[0].body.is_none());
+        assert!(ops[0].response.is_none());
     }
 }

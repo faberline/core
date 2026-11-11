@@ -104,3 +104,19 @@ fn non_query_operation_has_no_fallback_branch() {
         "_resp = self._client.request(\"GET\", self._base_url + _path, params=_params, headers=_headers)"
     ));
 }
+
+#[test]
+fn ndjson_operation_is_not_emitted_as_json() {
+    let s = spec(
+        r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs",
+  "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
+  "responses":{"200":{"description":"ok","content":{"application/x-ndjson":{"schema":{"type":"string"}}}}}}}}}"##,
+    );
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    let sig_start = out.find("def upload_logs(").expect("method is emitted");
+    let sig_end = out[sig_start..].find("):").expect("signature ends") + sig_start;
+    let sig = &out[sig_start..sig_end];
+    assert!(!sig.contains("body"), "{sig}");
+    assert!(out.contains("-> None"), "{out}");
+}

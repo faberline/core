@@ -22,7 +22,7 @@ pub mod openapi {
 
 pub mod operations {
     pub use crate::domain::ir::operations::{
-        build, BodyIR, ErrorResponseIR, OperationIR, ParamIR, RetryClassIR,
+        build, BodyIR, ErrorResponseIR, MediaKind, OperationIR, ParamIR, ResponseIR, RetryClassIR,
     };
 }
 

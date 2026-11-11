@@ -6,7 +6,7 @@
 use crate::domain::emit::ts::tsmap::{type_expr, TypeMap};
 use crate::domain::ir::names::{to_camel, to_pascal, NameRegistry};
 use crate::domain::ir::openapi::Spec;
-use crate::domain::ir::operations::{self, OperationIR, ParamIR};
+use crate::domain::ir::operations::{self, MediaKind, OperationIR, ParamIR};
 
 /// One named field inside a grouped request sub-object (`path`/`query`/`headers`).
 #[derive(Debug)]
@@ -93,18 +93,25 @@ fn build_one(
         .map(|p| param_field(p, tm))
         .collect();
 
-    let body = ir.body.as_ref().map(|b| BodyField {
-        ts_type: type_expr(&b.schema, tm),
-        required: b.required,
+    let body = ir.body.as_ref().and_then(|b| {
+        (b.media_kind == MediaKind::Json).then(|| BodyField {
+            ts_type: type_expr(&b.schema, tm),
+            required: b.required,
+        })
     });
 
     let response_type = match &ir.response {
-        Some(schema) => type_expr(schema, tm),
-        None => "void".to_string(),
+        Some(resp) if resp.media_kind == MediaKind::Json => type_expr(&resp.schema, tm),
+        _ => "void".to_string(),
     };
 
     let pascal = to_pascal(&fn_name);
-    let data_type_name = if ir.has_inputs() {
+    // An NDJSON body is not emitted, so it does not count as an input.
+    let has_inputs = !ir.path_params.is_empty()
+        || !ir.query_params.is_empty()
+        || !ir.header_params.is_empty()
+        || body.is_some();
+    let data_type_name = if has_inputs {
         Some(type_reg.unique(&format!("{pascal}Data")))
     } else {
         None
@@ -228,5 +235,19 @@ mod tests {
             Some("GetThingData")
         );
         assert_eq!(plans[0].data_type_name.as_deref(), Some("GetThingData_2"));
+    }
+
+    #[test]
+    fn ndjson_operation_is_not_emitted_as_json() {
+        let s = spec(
+            r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs",
+  "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
+  "responses":{"200":{"description":"ok","content":{"application/x-ndjson":{"schema":{"type":"string"}}}}}}}}}"##,
+        );
+        let tm = build_type_map(&s);
+        let plans = build(&s, &tm);
+        assert!(plans[0].body.is_none());
+        assert_eq!(plans[0].response_type, "void");
+        assert!(plans[0].data_type_name.is_none());
     }
 }
