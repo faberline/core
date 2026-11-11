@@ -55,7 +55,11 @@ fn single_voter_is_deterministic_and_persists_before_reopen() {
         host.tick().unwrap();
     }
     assert_eq!(host.view().role, ConformanceRole::Leader);
-    assert_eq!(host.try_propose(vec![7].into()).unwrap(), Index::new(1));
+    let base = host.view().last_index.get();
+    assert_eq!(
+        host.try_propose(vec![7].into()).unwrap(),
+        Index::new(base + 1)
+    );
     let store = RaftStore::open(
         dir.path().to_str().unwrap(),
         NodeId::new(0),
@@ -71,7 +75,7 @@ fn single_voter_is_deterministic_and_persists_before_reopen() {
         after.clone(),
     )
     .unwrap();
-    assert_eq!(after.applied_index(), Index::new(1));
+    assert_eq!(after.applied_index(), Index::new(base + 1));
     assert_eq!(reopened.view().membership.voters(), vec![NodeId::new(0)]);
 }
 
