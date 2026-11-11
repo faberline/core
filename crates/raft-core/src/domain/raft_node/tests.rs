@@ -1,6 +1,7 @@
 use super::*;
 use crate::domain::entry::EntryKind;
 use crate::domain::membership::auto_membership;
+use crate::domain::message::{AppendResp, RaftMsg, VoteResp};
 use crate::domain::timing::HEARTBEAT_INTERVAL_TICKS;
 
 #[test]
@@ -183,4 +184,131 @@ fn committed_noop_identity_finishes_without_effect() {
     assert_eq!(node.last_applied, Index::new(3));
     assert_eq!(node.conf_state(), &conf_before);
     assert_eq!(node.peek_next_committed_identity(), None);
+}
+
+/// Node 1 of voters {1,2,3} holding an uncommitted term-1 entry at index 1,
+/// elected leader of term 2 with the vote of node 2.
+fn elected_with_old_entry(noop: bool) -> RaftNode {
+    let membership = Membership::new(
+        vec![NodeId::new(1), NodeId::new(2), NodeId::new(3)],
+        Vec::new(),
+    );
+    let mut node = RaftNode::new(NodeId::new(1), &membership);
+    node.set_leader_noop(noop);
+    node.current_term = Term::new(1);
+    node.log.push(RaftEntry {
+        term: Term::new(1),
+        index: Index::new(1),
+        command: vec![7],
+        kind: EntryKind::Command,
+    });
+    node.start_election();
+    node.handle(
+        NodeId::new(2),
+        RaftMsg::VoteResp(VoteResp {
+            term: Term::new(2),
+            granted: true,
+        }),
+    );
+    assert_eq!(node.role(), Role::Leader);
+    node
+}
+
+#[test]
+fn leader_noop_is_off_by_default() {
+    let mut node = RaftNode::new(NodeId::new(1), &auto_membership(3));
+    assert!(!node.leader_noop());
+    node.set_leader_noop(true);
+    assert!(node.leader_noop());
+}
+
+#[test]
+fn leader_noop_appends_one_noop_for_the_new_term() {
+    let node = elected_with_old_entry(true);
+    assert_eq!(node.last_index(), Index::new(2));
+    assert_eq!(node.log.len(), 2);
+    assert_eq!(node.log[1].kind, EntryKind::Noop);
+    assert_eq!(node.log[1].term, Term::new(2));
+    assert_eq!(node.log[1].index, Index::new(2));
+    assert!(node.log[1].command.is_empty());
+}
+
+#[test]
+fn leader_noop_sends_the_noop_to_both_peers() {
+    let mut node = elected_with_old_entry(true);
+    let appends: Vec<_> = node
+        .take_outgoing()
+        .into_iter()
+        .filter_map(|out| match out.msg {
+            RaftMsg::Append(req) => Some((out.to, req)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(appends.len(), 2, "one append to each peer");
+    for (to, req) in &appends {
+        assert!(
+            req.entries
+                .iter()
+                .any(|e| e.kind == EntryKind::Noop && e.index == Index::new(2)),
+            "append to {to:?} carries the no-op at index 2"
+        );
+    }
+}
+
+#[test]
+fn leader_noop_commits_previous_term_entries_without_a_proposal() {
+    let mut node = elected_with_old_entry(true);
+    assert_eq!(node.commit_index(), Index::new(0));
+
+    node.handle(
+        NodeId::new(2),
+        RaftMsg::AppendResp(AppendResp {
+            term: Term::new(2),
+            success: true,
+            match_index: Index::new(2),
+            read_round: 0,
+        }),
+    );
+    assert_eq!(node.commit_index(), Index::new(2));
+
+    let applied = node.take_committed();
+    assert_eq!(applied.len(), 1, "the no-op is withheld from the consumer");
+    assert_eq!(applied[0].index, Index::new(1));
+    assert_eq!(applied[0].command, vec![7]);
+    assert_eq!(applied[0].kind, EntryKind::Command);
+    assert_eq!(node.last_applied, Index::new(2));
+}
+
+#[test]
+fn without_leader_noop_previous_term_entries_stay_uncommitted() {
+    let mut node = elected_with_old_entry(false);
+    assert_eq!(node.last_index(), Index::new(1));
+
+    node.handle(
+        NodeId::new(2),
+        RaftMsg::AppendResp(AppendResp {
+            term: Term::new(2),
+            success: true,
+            match_index: Index::new(1),
+            read_round: 0,
+        }),
+    );
+    assert_eq!(
+        node.commit_index(),
+        Index::new(0),
+        "an earlier-term entry cannot commit by counting replicas"
+    );
+}
+
+#[test]
+fn sole_voter_commits_its_leader_noop_at_once() {
+    let membership = Membership::new(vec![NodeId::new(1)], Vec::new());
+    let mut node = RaftNode::new(NodeId::new(1), &membership);
+    node.set_leader_noop(true);
+    node.become_leader();
+
+    assert_eq!(node.last_index(), Index::new(1));
+    assert_eq!(node.commit_index(), Index::new(1));
+    assert!(node.take_committed().is_empty());
+    assert_eq!(node.propose(vec![5]), Some(Index::new(2)));
 }

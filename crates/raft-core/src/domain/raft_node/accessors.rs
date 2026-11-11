@@ -25,6 +25,14 @@ impl RaftNode {
     pub fn is_voter(&self) -> bool {
         self.is_voter
     }
+    /// Whether `become_leader` appends a leader `Noop` entry (default `false`).
+    pub fn leader_noop(&self) -> bool {
+        self.leader_noop
+    }
+    /// Enable or disable the leader `Noop` entry for later elections.
+    pub fn set_leader_noop(&mut self, enabled: bool) {
+        self.leader_noop = enabled;
+    }
     pub fn current_term(&self) -> Term {
         self.current_term
     }

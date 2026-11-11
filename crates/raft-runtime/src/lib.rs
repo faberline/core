@@ -41,8 +41,8 @@ pub use application::{
 pub use application::{
     AdmissionRefused, ChunkHandler, ChunkSink, HostShutdownReport, LeadershipHandoff,
     MembershipPhase, PeerMatch, PhaseRecord, PhaseStatus, ProposalBackpressure, ProposalOutcome,
-    RaftHost, RaftStatus, ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome, StorageFailed,
-    SNAPSHOT_CHUNK_SIZE,
+    RaftHost, RaftStatus, ReadIndexError, ShutdownCaller, ShutdownPhase, SnapshotCompactionOutcome,
+    StorageFailed, SNAPSHOT_CHUNK_SIZE,
 };
 pub use application::{GroupRegistry, RaftRegistry, RegistryError};
 pub use application::{HostConfig, SnapshotPolicy};
