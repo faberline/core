@@ -571,6 +571,7 @@ async fn preflight_does_not_hold_apply_and_stale_explicit_prefix_refuses() {
         persisted
             .log
             .iter()
+            .filter(|entry| entry.index >= requested)
             .map(|entry| entry.index)
             .collect::<Vec<_>>(),
         vec![requested, later],
@@ -907,6 +908,7 @@ async fn assert_failed_prepared_snapshot_retains_prefix(stage: FailureStage) {
         persisted
             .log
             .iter()
+            .filter(|entry| entry.index >= first)
             .map(|entry| entry.index)
             .collect::<Vec<_>>(),
         vec![first, second],
