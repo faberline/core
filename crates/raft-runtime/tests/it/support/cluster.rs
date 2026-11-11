@@ -190,6 +190,19 @@ pub async fn cluster_with_config(n: u64, cfg: HostConfig) -> Vec<Node> {
     nodes
 }
 
+/// `last_index` of a node right after it became leader: 0 when no leader
+/// no-op is appended, 1 when it is. Waits up to 10 s for leadership.
+pub async fn leader_base(host: &RaftHost) -> u64 {
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while !host.is_leader().await {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("the node becomes leader");
+    host.status().await.last_index
+}
+
 pub async fn await_leader(nodes: &[Node]) -> Option<usize> {
     await_leader_with_tick(nodes, HostConfig::default().tick()).await
 }

@@ -41,6 +41,7 @@ async fn failed_state_machine_restore_keeps_the_old_snapshot_and_log() {
         }
     });
 
+    let base = leader_base(&host).await;
     host.propose(vec![1]).await.unwrap();
     state_machine.fail_restore.store(true, Ordering::Release);
     let response: serde_json::Value = transport_h2c::h2c_client_with(None, None)
@@ -52,7 +53,7 @@ async fn failed_state_machine_restore_keeps_the_old_snapshot_and_log() {
             "req": {
                 "term": 2,
                 "leader": 1,
-                "snapshot_index": 2,
+                "snapshot_index": base + 2,
                 "snapshot_term": 2,
                 "data": [9, 9, 9]
             }
@@ -69,7 +70,7 @@ async fn failed_state_machine_restore_keeps_the_old_snapshot_and_log() {
 
     let persisted = host.store().load().unwrap().unwrap();
     assert_eq!(persisted.snapshot_index, Index::new(0));
-    assert_eq!(persisted.log.len(), 1);
+    assert_eq!(persisted.log.len(), (base + 1) as usize);
     assert_eq!(persisted.log[0].index, Index::new(1));
     server.abort();
 }
@@ -194,6 +195,7 @@ async fn raft_save_failure_happens_before_state_machine_restore() {
         }
     });
 
+    let base = leader_base(&host).await;
     host.propose(vec![1]).await.unwrap();
     let before = host.store().load().unwrap().unwrap();
     host.store()
@@ -207,7 +209,7 @@ async fn raft_save_failure_happens_before_state_machine_restore() {
             "req": {
                 "term": before.term.next(),
                 "leader": 1,
-                "snapshot_index": 2,
+                "snapshot_index": base + 2,
                 "snapshot_term": before.term.next(),
                 "data": [8, 8, 8]
             }
@@ -219,7 +221,7 @@ async fn raft_save_failure_happens_before_state_machine_restore() {
         .await
         .unwrap();
     assert_eq!(response["accepted"], false);
-    assert_eq!(state_machine.applied.load(Ordering::Acquire), 1);
+    assert_eq!(state_machine.applied.load(Ordering::Acquire), base + 1);
     assert_eq!(state_machine.restore_attempts.load(Ordering::Acquire), 1);
     assert_eq!(host.store().load().unwrap().unwrap(), before);
     server.abort();
@@ -229,11 +231,12 @@ async fn raft_save_failure_happens_before_state_machine_restore() {
 async fn coordinated_compaction_reaches_every_voter_and_keeps_the_suffix() {
     let nodes = cluster(3).await;
     let leader = await_leader(&nodes).await.expect("a leader is elected");
+    let base = leader_base(&nodes[leader].host).await;
     for value in 1_u8..=10 {
         nodes[leader].host.propose(vec![value]).await.unwrap();
     }
     for node in &nodes {
-        while node.sm.applied.load(Ordering::Acquire) < 10 {
+        while node.sm.applied.load(Ordering::Acquire) < base + 10 {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
     }
@@ -241,10 +244,10 @@ async fn coordinated_compaction_reaches_every_voter_and_keeps_the_suffix() {
     assert_eq!(
         nodes[leader]
             .host
-            .snapshot_and_compact_through(Index::new(6))
+            .snapshot_and_compact_through(Index::new(base + 6))
             .await
             .unwrap(),
-        Index::new(6)
+        Index::new(base + 6)
     );
 
     let client = transport_h2c::h2c_client_with(None, None).unwrap();
@@ -257,8 +260,8 @@ async fn coordinated_compaction_reaches_every_voter_and_keeps_the_suffix() {
             .json()
             .await
             .unwrap();
-        assert_eq!(status.snapshot_index, 6);
-        assert_eq!(status.last_index, 10);
+        assert_eq!(status.snapshot_index, base + 6);
+        assert_eq!(status.last_index, base + 10);
     }
 }
 
@@ -296,6 +299,7 @@ async fn coordinated_compaction_reports_an_already_installed_prefix_as_a_noop() 
 async fn quorum_compaction_bounds_the_log_while_one_voter_is_offline() {
     let nodes = cluster(3).await;
     let leader = await_leader(&nodes).await.expect("a leader is elected");
+    let base = leader_base(&nodes[leader].host).await;
     let offline = (0..nodes.len()).find(|index| *index != leader).unwrap();
     nodes[offline]
         .sm
@@ -307,26 +311,26 @@ async fn quorum_compaction_bounds_the_log_while_one_voter_is_offline() {
     let live = (0..nodes.len())
         .find(|index| *index != leader && *index != offline)
         .unwrap();
-    while nodes[live].sm.applied.load(Ordering::Acquire) < 8 {
+    while nodes[live].sm.applied.load(Ordering::Acquire) < base + 8 {
         tokio::time::sleep(std::time::Duration::from_millis(10)).await;
     }
 
     let all_voter_error = nodes[leader]
         .host
-        .snapshot_and_compact_through_outcome(Index::new(8))
+        .snapshot_and_compact_through_outcome(Index::new(base + 8))
         .await
         .expect_err("an offline voter must block the all-voter barrier");
     assert!(all_voter_error.to_string().contains("voter"));
 
     let compacted = nodes[leader]
         .host
-        .snapshot_and_compact_through_quorum_outcome(Index::new(8))
+        .snapshot_and_compact_through_quorum_outcome(Index::new(base + 8))
         .await
         .unwrap();
     assert!(compacted.installed);
-    assert_eq!(compacted.snapshot_index, Index::new(8));
+    assert_eq!(compacted.snapshot_index, Index::new(base + 8));
     let persisted = nodes[leader].host.store().load().unwrap().unwrap();
-    assert_eq!(persisted.snapshot_index, Index::new(8));
+    assert_eq!(persisted.snapshot_index, Index::new(base + 8));
     assert!(persisted.log.is_empty());
 }
 
@@ -407,11 +411,12 @@ async fn all_voter_applied_barrier_refuses_a_lagging_replica() {
 async fn coordinated_compaction_waits_for_every_voter_snapshot_capability() {
     let nodes = cluster(3).await;
     let leader = await_leader(&nodes).await.expect("a leader is elected");
+    let base = leader_base(&nodes[leader].host).await;
     for value in 1_u8..=6 {
         nodes[leader].host.propose(vec![value]).await.unwrap();
     }
     for node in &nodes {
-        while node.sm.applied.load(Ordering::Acquire) < 6 {
+        while node.sm.applied.load(Ordering::Acquire) < base + 6 {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
     }
@@ -430,7 +435,7 @@ async fn coordinated_compaction_waits_for_every_voter_snapshot_capability() {
 
     let error = nodes[leader]
         .host
-        .snapshot_and_compact_through(Index::new(4))
+        .snapshot_and_compact_through(Index::new(base + 4))
         .await
         .expect_err("mixed snapshot decoders must block coordinated compaction");
     assert!(error.to_string().contains("snapshot capability"));
@@ -446,7 +451,7 @@ async fn coordinated_compaction_waits_for_every_voter_snapshot_capability() {
             .await
             .unwrap();
         assert_eq!(status.snapshot_index, 0);
-        assert_eq!(status.last_index, 6);
+        assert_eq!(status.last_index, base + 6);
     }
 }
 
@@ -454,11 +459,12 @@ async fn coordinated_compaction_waits_for_every_voter_snapshot_capability() {
 async fn capability_disappearance_between_probe_and_install_fails_before_restore() {
     let nodes = cluster(3).await;
     let leader = await_leader(&nodes).await.expect("a leader is elected");
+    let base = leader_base(&nodes[leader].host).await;
     for value in 1_u8..=6 {
         nodes[leader].host.propose(vec![value]).await.unwrap();
     }
     for node in &nodes {
-        while node.sm.applied.load(Ordering::Acquire) < 6 {
+        while node.sm.applied.load(Ordering::Acquire) < base + 6 {
             tokio::time::sleep(std::time::Duration::from_millis(10)).await;
         }
     }
@@ -475,7 +481,7 @@ async fn capability_disappearance_between_probe_and_install_fails_before_restore
 
     let error = nodes[leader]
         .host
-        .snapshot_and_compact_through(Index::new(4))
+        .snapshot_and_compact_through(Index::new(base + 4))
         .await
         .expect_err("capability must still be present on the install request");
     assert!(error.to_string().contains("capable snapshot"));
@@ -505,11 +511,11 @@ async fn capability_disappearance_between_probe_and_install_fails_before_restore
             );
         } else {
             assert!(
-                status.snapshot_index <= 4,
+                status.snapshot_index <= base + 4,
                 "a concurrently installed peer snapshot must not exceed the requested prefix"
             );
         }
-        assert_eq!(status.last_index, 6);
+        assert_eq!(status.last_index, base + 6);
     }
 }
 
