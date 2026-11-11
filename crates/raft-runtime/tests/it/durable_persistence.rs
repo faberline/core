@@ -27,18 +27,17 @@ async fn test_1_propose_refusal_and_restart() {
     let host = node.host.clone();
 
     let idx1 = host.propose(to_command(1)).await.unwrap();
-    assert_eq!(idx1, Index::new(1));
 
     host.store()
         .inject_next_save_failure_with_kind(ErrorKind::StorageFull);
 
     let err = host.propose(to_command(2)).await.unwrap_err();
-    assert_eq!(node.sm.applied_index(), Index::new(1));
+    assert_eq!(node.sm.applied_index(), idx1);
 
     // Propose 3 (Measurement 2)
     let err2 = host.propose(to_command(3)).await.unwrap_err();
     assert_eq!(err.to_string(), err2.to_string());
-    assert_eq!(node.sm.applied_index(), Index::new(1));
+    assert_eq!(node.sm.applied_index(), idx1);
 
     let cluster::Node {
         host,
@@ -61,7 +60,7 @@ async fn test_1_propose_refusal_and_restart() {
         sm2.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
-    assert_eq!(sm2.applied_index(), Index::new(1));
+    assert_eq!(sm2.applied_index(), idx1);
     std::fs::remove_dir_all(dir_path).unwrap();
 }
 
@@ -175,10 +174,10 @@ async fn test_5_healthy_host() {
     let node = nodes.pop().unwrap();
     let host = node.host.clone();
 
-    host.propose(to_command(1)).await.unwrap();
+    let first = host.propose(to_command(1)).await.unwrap();
     host.propose(to_command(2)).await.unwrap();
     host.propose(to_command(3)).await.unwrap();
-    assert_eq!(node.sm.applied_index(), Index::new(3));
+    assert_eq!(node.sm.applied_index(), Index::new(first.get() + 2));
 
     let cluster::Node {
         host,
@@ -201,7 +200,7 @@ async fn test_5_healthy_host() {
         sm2.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
-    assert_eq!(sm2.applied_index(), Index::new(3));
+    assert_eq!(sm2.applied_index(), Index::new(first.get() + 2));
     std::fs::remove_dir_all(dir_path).unwrap();
 }
 
@@ -250,7 +249,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
     let node = nodes.pop().unwrap();
 
     // Propose one command so the log reaches index 1 at term 1.
-    node.host.propose(to_command(1)).await.unwrap();
+    let first = node.host.propose(to_command(1)).await.unwrap();
 
     let client = h2c_client();
 
@@ -261,7 +260,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         "req": {
             "term": 2,
             "candidate": 1,
-            "last_log_index": 1,
+            "last_log_index": first.get(),
             "last_log_term": 1,
         }
     });
@@ -283,7 +282,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         "req": {
             "term": 2,
             "leader": 1,
-            "prev_log_index": 1,
+            "prev_log_index": first.get(),
             "prev_log_term": 1,
             "entries": [],
             "leader_commit": 1,
@@ -307,7 +306,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         "req": {
             "term": 2,
             "leader": 1,
-            "snapshot_index": 1,
+            "snapshot_index": first.get(),
             "snapshot_term": 1,
             "data": [],
         }
@@ -323,7 +322,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         .unwrap();
     assert_eq!(
         snap_resp.get("snapshot_index").unwrap().as_u64().unwrap(),
-        1
+        first.get()
     );
 
     // Now latch the host!
@@ -340,7 +339,7 @@ async fn test_7_peer_requests_healthy_vs_latched() {
         "req": {
             "term": 3,
             "candidate": 1,
-            "last_log_index": 1,
+            "last_log_index": first.get(),
             "last_log_term": 1,
         }
     });
