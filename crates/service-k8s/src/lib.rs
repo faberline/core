@@ -34,6 +34,7 @@ pub use api::metrics;
 pub use api::render;
 #[cfg(feature = "controller")]
 pub use api::resize;
+pub use api::rollout;
 pub use api::service;
 pub use api::stateful;
 pub use api::trust_bundle;
@@ -66,6 +67,13 @@ pub use domain::certificate::secret_layout::LeafParser;
 pub use domain::certificate::status::CertificateFacts;
 #[cfg(feature = "controller")]
 pub use domain::condition::{Condition, ConditionFact, ConditionStatus};
+#[cfg(feature = "controller")]
+pub use domain::fleet;
+#[cfg(feature = "controller")]
+pub use domain::fleet::{
+    canonicalize_json, desired_hash, plan_fleet, AdoptionPolicy, ChildKey, DesiredChild,
+    FleetAction, FleetPlan, FleetPlanError, ObservedChild, Ownership, PrunePolicy,
+};
 #[cfg(feature = "controller")]
 pub use domain::leadership::Election;
 pub use domain::lifecycle::{

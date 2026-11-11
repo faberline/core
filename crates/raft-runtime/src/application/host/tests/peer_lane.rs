@@ -9,6 +9,7 @@ fn append(marker: u64) -> RaftMsg {
         prev_log_term: Term::new(0),
         entries: vec![],
         leader_commit: Index::new(marker),
+        read_round: 0,
     })
 }
 
@@ -133,6 +134,7 @@ fn peer_lane_keeps_every_non_append_message_lossless_and_fifo() {
             term: Term::new(30),
             success: true,
             match_index: Index::new(4),
+            read_round: 0,
         }),
         RaftMsg::InstallSnapshot(InstallSnapshotReq {
             term: Term::new(40),

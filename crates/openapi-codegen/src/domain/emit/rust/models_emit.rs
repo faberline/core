@@ -1,5 +1,7 @@
 //! Emit serde structs / aliases for the spec's component schemas.
 
+use std::collections::BTreeSet;
+
 use crate::domain::emit::rust::rsmap;
 use crate::domain::ir::names::{to_pascal, to_snake, NameRegistry};
 use crate::domain::ir::openapi::{RefOr, Schema, Spec};
@@ -30,34 +32,221 @@ pub fn field_name(key: &str, target: RustTarget) -> (String, Option<String>) {
 }
 
 pub fn emit(spec: &Spec, tm: &TypeMap, target: RustTarget) -> String {
+    emit_with_warnings(spec, tm, target).0
+}
+
+/// Like [`emit`], and also returns one warning per schema that stays `serde_json::Value`.
+pub fn emit_with_warnings(spec: &Spec, tm: &TypeMap, target: RustTarget) -> (String, Vec<String>) {
     let mut out = String::from(HEADER);
     out.push_str("use serde::{Deserialize, Serialize};\n");
 
-    let blocks: Vec<String> = spec
-        .components
-        .schemas
-        .iter()
-        .map(|(key, node)| {
-            let name = tm.names.get(key).cloned().unwrap_or_else(|| to_pascal(key));
-            emit_schema(&name, node, tm, target)
-        })
-        .collect();
+    let mut warnings = Vec::new();
+    let mut blocks: Vec<String> = Vec::new();
+    for (key, node) in &spec.components.schemas {
+        let name = tm.names.get(key).cloned().unwrap_or_else(|| to_pascal(key));
+        blocks.push(emit_schema(
+            key,
+            &name,
+            node,
+            spec,
+            tm,
+            target,
+            &mut warnings,
+        ));
+    }
     if !blocks.is_empty() {
         out.push('\n');
         out.push_str(&blocks.join("\n"));
     }
-    out
+    (out, warnings)
 }
 
-fn emit_schema(name: &str, node: &RefOr<Schema>, tm: &TypeMap, target: RustTarget) -> String {
+fn emit_schema(
+    key: &str,
+    name: &str,
+    node: &RefOr<Schema>,
+    spec: &Spec,
+    tm: &TypeMap,
+    target: RustTarget,
+    warnings: &mut Vec<String>,
+) -> String {
     match node {
         RefOr::Ref(_) => format!("pub type {name} = {};\n", rsmap::type_expr(node, tm)),
         RefOr::Item(schema) if is_string_enum(schema) => emit_enum(name, schema),
+        RefOr::Item(schema) if is_union(schema) => {
+            emit_union(key, name, schema, spec, tm, warnings)
+        }
         RefOr::Item(schema) if schema.properties.is_empty() => {
             format!("pub type {name} = {};\n", rsmap::type_expr(node, tm))
         }
         RefOr::Item(schema) => emit_struct(name, schema, tm, target),
     }
+}
+
+const SCHEMAS_PREFIX: &str = "#/components/schemas/";
+
+/// A component `oneOf` / `anyOf` with no own properties, enum or `allOf`.
+fn is_union(schema: &Schema) -> bool {
+    (!schema.one_of.is_empty() || !schema.any_of.is_empty())
+        && schema.properties.is_empty()
+        && schema.all_of.is_empty()
+        && schema.enum_values.is_empty()
+}
+
+fn is_null_branch(branch: &RefOr<Schema>) -> bool {
+    matches!(branch, RefOr::Item(s) if s.ty.0.as_slice() == ["null"])
+}
+
+/// The struct component a `$ref` points to (not a string enum, has properties).
+fn struct_component<'a>(spec: &'a Spec, reference: &str) -> Option<&'a Schema> {
+    let key = reference.strip_prefix(SCHEMAS_PREFIX)?;
+    match spec.components.schemas.get(key)? {
+        RefOr::Item(s) if !s.properties.is_empty() && !is_string_enum(s) => Some(&**s),
+        _ => None,
+    }
+}
+
+/// `(json type, Rust variant, payload type)` for a single-type primitive branch.
+fn primitive_branch(s: &Schema) -> Option<(&'static str, &'static str, &'static str)> {
+    if !s.enum_values.is_empty()
+        || !s.properties.is_empty()
+        || !s.one_of.is_empty()
+        || !s.any_of.is_empty()
+        || !s.all_of.is_empty()
+    {
+        return None;
+    }
+    match s.type_names().as_slice() {
+        [t] => match t.as_str() {
+            "string" => Some(("string", "String", "String")),
+            "integer" => Some(("integer", "Integer", "i64")),
+            "number" => Some(("number", "Number", "f64")),
+            "boolean" => Some(("boolean", "Boolean", "bool")),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+enum UnionPlan {
+    /// Internally tagged by the discriminator property.
+    Tagged(String),
+    /// Untagged: serde tries each variant in declared order.
+    Untagged,
+    /// Cannot be told apart: stays `serde_json::Value`.
+    Ambiguous,
+}
+
+fn union_plan(schema: &Schema, branches: &[&RefOr<Schema>], spec: &Spec) -> UnionPlan {
+    if branches.len() < 2 {
+        return UnionPlan::Ambiguous;
+    }
+    if let Some(d) = &schema.discriminator {
+        // serde removes the tag before it reads the variant, so a variant that
+        // declares the tag property itself cannot be read back.
+        let tagged = branches.iter().all(|b| match b {
+            RefOr::Ref(r) => struct_component(spec, &r.reference)
+                .is_some_and(|s| !s.properties.contains_key(&d.property_name)),
+            RefOr::Item(_) => false,
+        });
+        return if tagged {
+            UnionPlan::Tagged(d.property_name.clone())
+        } else {
+            UnionPlan::Ambiguous
+        };
+    }
+    let mut refs = BTreeSet::new();
+    let mut json_types = BTreeSet::new();
+    for b in branches {
+        let distinct = match b {
+            RefOr::Ref(r) => {
+                struct_component(spec, &r.reference).is_some() && refs.insert(r.reference.as_str())
+            }
+            RefOr::Item(s) => {
+                primitive_branch(s).is_some_and(|(json, _, _)| json_types.insert(json))
+            }
+        };
+        if !distinct {
+            return UnionPlan::Ambiguous;
+        }
+    }
+    if json_types.contains(&"integer") && json_types.contains(&"number") {
+        return UnionPlan::Ambiguous;
+    }
+    UnionPlan::Untagged
+}
+
+/// The tag value for a variant: the mapping key whose value names the branch,
+/// or the bare schema key when no mapping entry does.
+fn variant_tag(schema: &Schema, reference: &str) -> String {
+    let bare = reference.strip_prefix(SCHEMAS_PREFIX).unwrap_or(reference);
+    schema
+        .discriminator
+        .as_ref()
+        .and_then(|d| {
+            d.mapping
+                .iter()
+                .find(|(_, v)| v.as_str() == reference || v.as_str() == bare)
+                .map(|(k, _)| k.clone())
+        })
+        .unwrap_or_else(|| bare.to_string())
+}
+
+fn emit_union(
+    key: &str,
+    name: &str,
+    schema: &Schema,
+    spec: &Spec,
+    tm: &TypeMap,
+    warnings: &mut Vec<String>,
+) -> String {
+    let source = if schema.one_of.is_empty() {
+        &schema.any_of
+    } else {
+        &schema.one_of
+    };
+    let branches: Vec<&RefOr<Schema>> = source.iter().filter(|b| !is_null_branch(b)).collect();
+    let plan = union_plan(schema, &branches, spec);
+    let header = match &plan {
+        UnionPlan::Ambiguous => {
+            warnings.push(format!(
+                "schema `{key}` is a oneOf/anyOf that cannot be told apart; generated as serde_json::Value"
+            ));
+            return format!("pub type {name} = serde_json::Value;\n");
+        }
+        UnionPlan::Tagged(tag) => format!("#[serde(tag = \"{}\")]\n", esc(tag)),
+        UnionPlan::Untagged => "#[serde(untagged)]\n".to_string(),
+    };
+    let tagged = matches!(plan, UnionPlan::Tagged(_));
+
+    let mut s = String::from("#[derive(Debug, Clone, Serialize, Deserialize)]\n");
+    s.push_str(&header);
+    s.push_str(&format!("pub enum {name} {{\n"));
+    let mut reg = NameRegistry::new();
+    for branch in &branches {
+        match branch {
+            RefOr::Ref(r) => {
+                let Some(ty) = tm.resolve_ref(&r.reference) else {
+                    continue;
+                };
+                let variant = reg.unique(&ty);
+                if tagged {
+                    let tag = variant_tag(schema, &r.reference);
+                    s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(&tag)));
+                }
+                s.push_str(&format!("    {variant}({ty}),\n"));
+            }
+            RefOr::Item(p) => {
+                let Some((_, variant, ty)) = primitive_branch(p) else {
+                    continue;
+                };
+                let variant = reg.unique(variant);
+                s.push_str(&format!("    {variant}({ty}),\n"));
+            }
+        }
+    }
+    s.push_str("}\n");
+    s
 }
 
 /// True when a component schema is a string enum eligible for a Rust enum definition.
@@ -101,7 +290,13 @@ fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) ->
         if let Some(orig) = rename {
             s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(&orig)));
         }
-        if !required {
+        if !required && rsmap::is_free_form(&ty) {
+            // `Value` is not wrapped in `Option`: a missing key and `null` both
+            // decode to `Value::Null`, and `is_null` omits it on output.
+            s.push_str(
+                "    #[serde(default, skip_serializing_if = \"serde_json::Value::is_null\")]\n",
+            );
+        } else if !required {
             s.push_str("    #[serde(skip_serializing_if = \"Option::is_none\")]\n");
         }
         s.push_str(&format!("    pub {field}: {ty},\n"));
@@ -115,217 +310,4 @@ fn esc(s: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::domain::ir::build_type_map;
-
-    fn parse_spec(json: &str) -> Spec {
-        serde_json::from_str(json).unwrap()
-    }
-
-    #[test]
-    fn declared_order() {
-        let spec = parse_spec(
-            r##"{
-            "openapi": "3.0.0",
-            "info": { "title": "Test", "version": "1.0.0" },
-            "paths": {},
-            "components": {
-                "schemas": {
-                    "Status": {
-                        "type": "string",
-                        "enum": ["active", "pending", "inactive"]
-                    }
-                }
-            }
-        }"##,
-        );
-        let tm = build_type_map(&spec);
-        let out = emit(&spec, &tm, RustTarget::Rust2021);
-        assert!(out.contains(
-            "#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\npub enum Status {"
-        ));
-        let pos_active = out.find("Active,").unwrap();
-        let pos_pending = out.find("Pending,").unwrap();
-        let pos_inactive = out.find("Inactive,").unwrap();
-        assert!(pos_active < pos_pending);
-        assert!(pos_pending < pos_inactive);
-    }
-
-    #[test]
-    fn rename_non_identifier_values() {
-        let spec = parse_spec(
-            r##"{
-            "openapi": "3.0.0",
-            "info": { "title": "Test", "version": "1.0.0" },
-            "paths": {},
-            "components": {
-                "schemas": {
-                    "Special": {
-                        "type": "string",
-                        "enum": ["", "123", "kebab-case", "with space"]
-                    }
-                }
-            }
-        }"##,
-        );
-        let tm = build_type_map(&spec);
-        let out = emit(&spec, &tm, RustTarget::Rust2021);
-        assert!(out.contains("    #[serde(rename = \"\")]\n    Anonymous,"));
-        assert!(out.contains("    #[serde(rename = \"123\")]\n    _123,"));
-        assert!(out.contains("    #[serde(rename = \"kebab-case\")]\n    KebabCase,"));
-        assert!(out.contains("    #[serde(rename = \"with space\")]\n    WithSpace,"));
-    }
-
-    #[test]
-    fn collision_disambiguation() {
-        let spec = parse_spec(
-            r##"{
-            "openapi": "3.0.0",
-            "info": { "title": "Test", "version": "1.0.0" },
-            "paths": {},
-            "components": {
-                "schemas": {
-                    "Collision": {
-                        "type": "string",
-                        "enum": ["foo_bar", "foo-bar", "FooBar"]
-                    }
-                }
-            }
-        }"##,
-        );
-        let tm = build_type_map(&spec);
-        let out = emit(&spec, &tm, RustTarget::Rust2021);
-        assert!(out.contains("    #[serde(rename = \"foo_bar\")]\n    FooBar,"));
-        assert!(out.contains("    #[serde(rename = \"foo-bar\")]\n    FooBar_2,"));
-        assert!(out.contains("    #[serde(rename = \"FooBar\")]\n    FooBar_3,"));
-    }
-
-    #[test]
-    fn nullable_enum_emits_same_enum() {
-        let spec = parse_spec(
-            r##"{
-            "openapi": "3.0.0",
-            "info": { "title": "Test", "version": "1.0.0" },
-            "paths": {},
-            "components": {
-                "schemas": {
-                    "NullableStatus": {
-                        "type": "string",
-                        "enum": ["active", "inactive"],
-                        "nullable": true
-                    }
-                }
-            }
-        }"##,
-        );
-        let tm = build_type_map(&spec);
-        let out = emit(&spec, &tm, RustTarget::Rust2021);
-        assert!(out.contains("#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]\npub enum NullableStatus {"));
-        assert!(out.contains("    #[serde(rename = \"active\")]\n    Active,"));
-        assert!(out.contains("    #[serde(rename = \"inactive\")]\n    Inactive,"));
-    }
-
-    #[test]
-    fn struct_property_refs_enum() {
-        let spec = parse_spec(
-            r##"{
-            "openapi": "3.0.0",
-            "info": { "title": "Test", "version": "1.0.0" },
-            "paths": {},
-            "components": {
-                "schemas": {
-                    "Status": {
-                        "type": "string",
-                        "enum": ["active", "inactive"]
-                    },
-                    "User": {
-                        "type": "object",
-                        "properties": {
-                            "status": { "$ref": "#/components/schemas/Status" },
-                            "opt_status": { "$ref": "#/components/schemas/Status" },
-                            "statuses": {
-                                "type": "array",
-                                "items": { "$ref": "#/components/schemas/Status" }
-                            }
-                        },
-                        "required": ["status"]
-                    }
-                }
-            }
-        }"##,
-        );
-        let tm = build_type_map(&spec);
-        let out = emit(&spec, &tm, RustTarget::Rust2021);
-        assert!(out.contains("pub enum Status {"));
-        assert!(out.contains("pub struct User {"));
-        assert!(out.contains("    pub status: Status,"));
-        assert!(out.contains("    pub opt_status: Option<Status>,"));
-        assert!(out.contains("    pub statuses: Option<Vec<Status>>,"));
-    }
-
-    #[test]
-    fn non_string_enum_left_as_string() {
-        let spec = parse_spec(
-            r##"{
-            "openapi": "3.0.0",
-            "info": { "title": "Test", "version": "1.0.0" },
-            "paths": {},
-            "components": {
-                "schemas": {
-                    "IntEnum": {
-                        "type": "integer",
-                        "enum": [1, 2]
-                    },
-                    "UntypedEnum": {
-                        "enum": ["a", "b"]
-                    },
-                    "MixedEnum": {
-                        "type": "string",
-                        "enum": ["a", 1]
-                    }
-                }
-            }
-        }"##,
-        );
-        let tm = build_type_map(&spec);
-        let out = emit(&spec, &tm, RustTarget::Rust2021);
-        assert!(out.contains("pub type IntEnum = String;"));
-        assert!(out.contains("pub type UntypedEnum = String;"));
-        assert!(out.contains("pub type MixedEnum = String;"));
-    }
-
-    #[test]
-    fn serde_round_trip_rejects_undeclared_value() {
-        // The emitted enum has no catch-all variant, so serde rejects any value
-        // that is not declared. Assert on the emitter's own output.
-        let spec = parse_spec(
-            r##"{
-            "openapi": "3.0.0",
-            "info": { "title": "Test", "version": "1.0.0" },
-            "paths": {},
-            "components": {
-                "schemas": {
-                    "Status": {
-                        "type": "string",
-                        "enum": ["active", "inactive"]
-                    }
-                }
-            }
-        }"##,
-        );
-        let tm = build_type_map(&spec);
-        let out = emit(&spec, &tm, RustTarget::Rust2021);
-        let block = out
-            .split("pub enum Status {")
-            .nth(1)
-            .and_then(|rest| rest.split("\n}\n").next())
-            .expect("emitted Status enum");
-        assert_eq!(block.matches("#[serde(rename = ").count(), 2);
-        assert!(block.contains("    #[serde(rename = \"active\")]\n    Active,\n"));
-        assert!(block.ends_with("    #[serde(rename = \"inactive\")]\n    Inactive,"));
-        assert!(!block.contains("serde(other"));
-        assert!(!block.contains("untagged"));
-        assert!(!block.contains("(String)"));
-    }
-}
+mod tests;
