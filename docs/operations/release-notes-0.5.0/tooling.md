@@ -94,6 +94,25 @@ in the regenerated code.
 Migration: regenerate the client, then handle the typed error variant at each
 call site that matched a raw status or a generic error before.
 
+### openapi-codegen: generated Rust oneOf/anyOf schemas are serde enums, not serde_json::Value
+
+Commit `42c4adb3` (#143) changes the generated Rust models for component schemas:
+
+- A `oneOf`/`anyOf` schema with a `discriminator` becomes
+  `#[serde(tag = "<propertyName>")] pub enum <Name> { ... }`. It was
+  `pub type <Name> = serde_json::Value;`.
+- A union whose members can be told apart (distinct struct `$ref`s or distinct
+  primitives) becomes `#[serde(untagged)] pub enum <Name> { ... }`.
+- A union that cannot be told apart, and an inline union, stay `serde_json::Value`.
+  Inline string enums stay `String`. See `crates/openapi-codegen/STATUS.md`, row
+  `rust-schema-type-parity`.
+- `ir::Schema` has a new public field `discriminator: Option<Discriminator>`. A
+  struct literal of `ir::Schema` without `..Default::default()` no longer compiles.
+
+Migration: after you regenerate, match on the generated enum variants instead of
+reading `serde_json::Value`. Code that builds `ir::Schema` with a struct literal
+adds `discriminator: None` or `..Default::default()`.
+
 ### compass: root modules `checker`, `format`, `outline`, `refactoring`, `search` and `watch` removed
 
 The compat facades for `checker`, `outline` and `watch` were deleted (commit
@@ -270,7 +289,7 @@ becomes `id.get()`, which returns `u64`. `debug_snapshot_hooks(n)` becomes
 
 ## New
 
-- `openapi-codegen`: `SpecParseError`, `FileBearerAuthError`, `UnknownTargetProfile`, `TargetPolicyError` and `ServiceCompatibilityError` at the root; QUERY fallback, operation retry classification (`b329b335`) and complete manifests (`e3b970db`) in the generator.
+- `openapi-codegen`: `SpecParseError`, `FileBearerAuthError`, `UnknownTargetProfile`, `TargetPolicyError` and `ServiceCompatibilityError` at the root; QUERY fallback, operation retry classification (`b329b335`) and complete manifests (`e3b970db`) in the generator; `emit::rust::emit_with_warnings(spec, tm, target) -> (String, Vec<String>)`, `GeneratedOutput::warnings() -> &[String]` (one warning for each schema that stays `serde_json::Value`) and `ir::Discriminator { property_name, mapping }`.
 - `compass`: `RuleCode`, `NodeRange`, `RejectedRule` and `SourceParser` at the root; `ScopeId::get` and `SymbolId::get` (`const fn`).
 - `cli-std`: `IssueNumberError` at the root; `ToolInfo` is now re-exported from `application`; `llm::assert_snapshot_matches(committed, generated, regen_hint)` (snapshot parity helper for generated `llms.txt`, commit `edec7b57`).
 - `ui-runtime`: `FiberId::new` and `FiberId::get` (`const fn`); `debug_snapshot_fibers` and `debug_snapshot_hooks` are re-exported from the root with their debug types.
