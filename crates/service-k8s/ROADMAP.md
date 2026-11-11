@@ -37,7 +37,7 @@ phase table orders the outcomes.
   capability outside the closed set is refused. Lumen's `operator_render`
   tests prove its rendered children do not change when it moves onto the
   engine.
-- Tracking: Not assigned.
+- Tracking: [#204](https://github.com/faberline/core/issues/204).
 
 ### Per-shard topology
 
@@ -54,7 +54,7 @@ phase table orders the outcomes.
   Migration tests prove that recreating the shard-0 StatefulSet with the shard
   label keeps its PVCs and data. A runtime test proves a joiner stays not
   ready until the controller adds it.
-- Tracking: Not assigned.
+- Tracking: [#205](https://github.com/faberline/core/issues/205).
 
 ### Membership controller
 
@@ -76,7 +76,7 @@ phase table orders the outcomes.
   1→3→1 under publish load without losing a committed message or restarting a
   surviving member. Lumen's HPA scales learners 3→5→3 without interrupting
   search.
-- Tracking: Not assigned.
+- Tracking: [#206](https://github.com/faberline/core/issues/206).
 
 ### Bucketed resharding
 
@@ -93,7 +93,7 @@ phase table orders the outcomes.
   leader failover mid-flow, and rebuilding a lost shard-map ConfigMap from pod
   reports. Lumen splits once at three replicas per shard and every document
   stays findable.
-- Tracking: Not assigned.
+- Tracking: [#207](https://github.com/faberline/core/issues/207).
 
 ### Shard routing
 
@@ -111,7 +111,7 @@ phase table orders the outcomes.
   split maps, bucket moves, no forwarding loops, scatter with an app merge,
   the write fence, refusal of a stale map version, and acceptance of both
   header names. Lumen's sharding tests pass against the shared crate.
-- Tracking: Not assigned.
+- Tracking: [#208](https://github.com/faberline/core/issues/208).
 
 ### Shared Fleet controller
 
