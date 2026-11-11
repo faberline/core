@@ -623,6 +623,7 @@ async fn uncommitted_proposal_superseded_by_leader_change_returns_ambiguous() {
 /// Keep the proposal future unpolled while a newer leader commits two entries
 /// and the ordered applier compacts them. No scheduler timing determines whether
 /// the waiter observes the resident log or the compacted prefix.
+/// The policy is every entry: with the leader no-op on, the no-op shifts the snapshot trigger by one.
 async fn proposal_outcome_after_compaction(replaced: bool) -> (ProposalOutcome, u64) {
     use raft_core::VoteResp;
     use raft_runtime::SnapshotPolicy;
@@ -645,7 +646,7 @@ async fn proposal_outcome_after_compaction(replaced: bool) -> (ProposalOutcome, 
         sm.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default()
             .with_propose_timeout(Duration::from_secs(10))
-            .with_snapshot(SnapshotPolicy::EveryEntries(2)),
+            .with_snapshot(SnapshotPolicy::EveryEntries(1)),
     );
     tokio::time::timeout(Duration::from_secs(3), async {
         loop {
@@ -925,10 +926,12 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
         }
     })
     .await
-    .expect(&format!(
-        "node 0 must append forwarded proposal at index {}",
-        base + 1
-    ));
+    .unwrap_or_else(|_| {
+        panic!(
+            "node 0 must append forwarded proposal at index {}",
+            base + 1
+        )
+    });
 
     // Leader change: node 2 takes over in term leader_term + 1 and replicates a conflicting entry
     // that commits at index 1, truncating node 0's uncommitted proposal.

@@ -385,7 +385,7 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
         .expect("released follower proposal must complete");
 
     assert!(
-        first_status.last_index >= base + 1 && first_status.commit_index >= base + 1,
+        first_status.last_index > base && first_status.commit_index > base,
         "the first callback starts only after its durable commit"
     );
     assert!(
@@ -502,7 +502,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
     let after_error = status_after_error.expect("/raftz must stay live after an apply Err");
 
     assert!(
-        first_status.last_index >= base + 1 && first_status.commit_index >= base + 1,
+        first_status.last_index > base && first_status.commit_index > base,
         "the first callback starts after durable commit"
     );
     assert!(
