@@ -19,7 +19,7 @@ use sha2::{Digest, Sha256};
 use tempfile::TempDir;
 
 const SEEDS: [u64; 2] = [1, 0x9e37_79b9_7f4a_7c15];
-const MAX_ACTIONS: usize = 192;
+const MAX_ACTIONS: usize = 256;
 const MAX_PENDING: usize = 128;
 const MAX_RESTARTS: usize = 2;
 const MAX_COMPACTIONS: usize = 2;
