@@ -484,6 +484,19 @@ fn host_current_term(host: &RaftHost) -> u64 {
         .unwrap_or(0)
 }
 
+/// `base` no-op entries at indexes 1..=base in `term`: the prefix a replacing
+/// leader sends so that its first command lands at `base + 1`, like the proposal.
+fn noop_prefix(base: u64, term: u64) -> Vec<RaftEntry> {
+    (1..=base)
+        .map(|index| RaftEntry {
+            term: Term::new(term),
+            index: Index::new(index),
+            command: Vec::new(),
+            kind: EntryKind::Noop,
+        })
+        .collect()
+}
+
 /// Truncating a proposal's uncommitted entry through a leader change must not report Completed.
 ///
 /// In a multi-voter cluster, a proposal on node 0 is appended at (index, term 1) but
@@ -538,6 +551,7 @@ async fn uncommitted_proposal_superseded_by_leader_change_returns_ambiguous() {
 
     let leader_term = host_current_term(&host);
     assert!(leader_term > 0);
+    let base = host.status().await.last_index;
 
     // Propose on leader node 0. Because voter 1 has not acknowledged it,
     // the proposal is appended at index 1 but cannot commit.
@@ -554,18 +568,20 @@ async fn uncommitted_proposal_superseded_by_leader_change_returns_ambiguous() {
     // Leader change: node 1 takes over in term leader_term + 1 and replicates a conflicting entry
     // that commits at index 1, truncating node 0's uncommitted proposal.
     let replacing_term = leader_term + 1;
+    let mut entries = noop_prefix(base, replacing_term);
+    entries.push(RaftEntry {
+        term: Term::new(replacing_term),
+        index: Index::new(base + 1),
+        command: vec![42],
+        kind: EntryKind::Command,
+    });
     let supersede_req = AppendReq {
         term: Term::new(replacing_term),
         leader: NodeId::new(1),
         prev_log_index: Index::new(0),
         prev_log_term: Term::new(0),
-        entries: vec![RaftEntry {
-            term: Term::new(replacing_term),
-            index: Index::new(1),
-            command: vec![42],
-            kind: EntryKind::Command,
-        }],
-        leader_commit: Index::new(1),
+        entries,
+        leader_commit: Index::new(base + 1),
         read_round: 0,
     };
 
@@ -582,13 +598,14 @@ async fn uncommitted_proposal_superseded_by_leader_change_returns_ambiguous() {
         .expect("propose task did not panic");
 
     let expected_reason = format!(
-        "raft: proposal at index 1 (term {leader_term}) superseded by entry of term {replacing_term}"
+        "raft: proposal at index {} (term {leader_term}) superseded by entry of term {replacing_term}",
+        base + 1
     );
     match outcome {
         ProposalOutcome::Ambiguous { index, reason } => {
             assert_eq!(
                 index,
-                Some(Index::new(1)),
+                Some(Index::new(base + 1)),
                 "ambiguous outcome must identify the proposal index"
             );
             assert_eq!(
@@ -606,7 +623,7 @@ async fn uncommitted_proposal_superseded_by_leader_change_returns_ambiguous() {
 /// Keep the proposal future unpolled while a newer leader commits two entries
 /// and the ordered applier compacts them. No scheduler timing determines whether
 /// the waiter observes the resident log or the compacted prefix.
-async fn proposal_outcome_after_compaction(replaced: bool) -> ProposalOutcome {
+async fn proposal_outcome_after_compaction(replaced: bool) -> (ProposalOutcome, u64) {
     use raft_core::VoteResp;
     use raft_runtime::SnapshotPolicy;
     use std::future::{poll_fn, Future};
@@ -652,6 +669,7 @@ async fn proposal_outcome_after_compaction(replaced: bool) -> ProposalOutcome {
     .await
     .expect("host elects a leader");
     let original_term = host_current_term(&host);
+    let base = host.status().await.last_index;
     let command = b"proposal-before-compaction".to_vec();
     let mut proposal = Box::pin(host.propose_outcome(command.clone()));
     poll_fn(|cx| {
@@ -662,12 +680,29 @@ async fn proposal_outcome_after_compaction(replaced: bool) -> ProposalOutcome {
     let persisted_after_propose = host.store().load().unwrap().unwrap();
     assert_eq!(
         persisted_after_propose.log.last().map(|e| e.index),
-        Some(Index::new(1)),
+        Some(Index::new(base + 1)),
         "proposal was appended"
     );
 
     let applied_term = original_term + u64::from(replaced);
     let boundary_term = applied_term + 1;
+    let mut entries = noop_prefix(base, applied_term);
+    entries.push(RaftEntry {
+        index: Index::new(base + 1),
+        term: Term::new(applied_term),
+        command: if replaced {
+            b"replacement".to_vec()
+        } else {
+            command.clone()
+        },
+        kind: EntryKind::Command,
+    });
+    entries.push(RaftEntry {
+        index: Index::new(base + 2),
+        term: Term::new(boundary_term),
+        command: b"later-term-command".to_vec(),
+        kind: EntryKind::Command,
+    });
     let response = host
         .step_append_entries(
             NodeId::new(1),
@@ -676,60 +711,45 @@ async fn proposal_outcome_after_compaction(replaced: bool) -> ProposalOutcome {
                 leader: NodeId::new(1),
                 prev_log_index: Index::new(0),
                 prev_log_term: Term::new(0),
-                entries: vec![
-                    RaftEntry {
-                        index: Index::new(1),
-                        term: Term::new(applied_term),
-                        command: if replaced {
-                            b"replacement".to_vec()
-                        } else {
-                            command.clone()
-                        },
-                        kind: EntryKind::Command,
-                    },
-                    RaftEntry {
-                        index: Index::new(2),
-                        term: Term::new(boundary_term),
-                        command: b"later-term-command".to_vec(),
-                        kind: EntryKind::Command,
-                    },
-                ],
-                leader_commit: Index::new(2),
+                entries,
+                leader_commit: Index::new(base + 2),
                 read_round: 0,
             },
         )
         .await;
     assert!(response.success);
     tokio::time::timeout(Duration::from_secs(2), async {
-        while host.snapshot_index().await < Index::new(2) {
+        while host.snapshot_index().await < Index::new(base + 2) {
             tokio::task::yield_now().await;
         }
     })
     .await
     .expect("applier compacts both entries before proposal resumes");
-    assert_eq!(sm.applied_index(), Index::new(2));
+    assert_eq!(sm.applied_index(), Index::new(base + 2));
     let persisted = host.store().load().unwrap().unwrap();
     assert_eq!(persisted.snapshot_term, Term::new(boundary_term));
     assert!(persisted.log.is_empty());
-    tokio::time::timeout(Duration::from_secs(1), proposal)
+    let outcome = tokio::time::timeout(Duration::from_secs(1), proposal)
         .await
-        .expect("proposal resolves promptly after compaction")
+        .expect("proposal resolves promptly after compaction");
+    (outcome, base)
 }
 
 #[tokio::test]
 async fn applied_proposal_remains_completed_after_later_term_compaction() {
-    let outcome = proposal_outcome_after_compaction(false).await;
+    let (outcome, base) = proposal_outcome_after_compaction(false).await;
     assert!(
-        matches!(outcome, ProposalOutcome::Completed { index } if index == Index::new(1)),
+        matches!(outcome, ProposalOutcome::Completed { index } if index == Index::new(base + 1)),
         "expected original proposal to remain completed, got {outcome:?}"
     );
 }
 
 #[tokio::test]
 async fn compacted_superseded_proposal_names_actual_replacing_term() {
-    match proposal_outcome_after_compaction(true).await {
+    let (outcome, base) = proposal_outcome_after_compaction(true).await;
+    match outcome {
         ProposalOutcome::Ambiguous { index, reason } => {
-            assert_eq!(index, Some(Index::new(1)));
+            assert_eq!(index, Some(Index::new(base + 1)));
             assert!(reason.contains("superseded by entry of term 2"), "{reason}");
         }
         other => panic!("expected superseded outcome, got {other:?}"),
@@ -868,6 +888,7 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
 
     let leader_term = host_current_term(&host0);
     assert!(leader_term > 0);
+    let base = host0.status().await.last_index;
 
     // Node 1 learns that node 0 is the leader for leader_term.
     host1
@@ -896,7 +917,7 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
     tokio::time::timeout(Duration::from_secs(2), async {
         loop {
             if let Ok(Some(persisted)) = host0.store().load() {
-                if persisted.log.last().map(|e| e.index) == Some(Index::new(1)) {
+                if persisted.log.last().map(|e| e.index) == Some(Index::new(base + 1)) {
                     break;
                 }
             }
@@ -904,24 +925,29 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
         }
     })
     .await
-    .expect("node 0 must append forwarded proposal at index 1");
+    .expect(&format!(
+        "node 0 must append forwarded proposal at index {}",
+        base + 1
+    ));
 
     // Leader change: node 2 takes over in term leader_term + 1 and replicates a conflicting entry
     // that commits at index 1, truncating node 0's uncommitted proposal.
     let replacing_term = leader_term + 1;
     let replacing_cmd = b"replacing-superseding-command".to_vec();
+    let mut entries = noop_prefix(base, replacing_term);
+    entries.push(RaftEntry {
+        term: Term::new(replacing_term),
+        index: Index::new(base + 1),
+        command: replacing_cmd.clone(),
+        kind: EntryKind::Command,
+    });
     let supersede_req = AppendReq {
         term: Term::new(replacing_term),
         leader: NodeId::new(2),
         prev_log_index: Index::new(0),
         prev_log_term: Term::new(0),
-        entries: vec![RaftEntry {
-            term: Term::new(replacing_term),
-            index: Index::new(1),
-            command: replacing_cmd.clone(),
-            kind: EntryKind::Command,
-        }],
-        leader_commit: Index::new(1),
+        entries,
+        leader_commit: Index::new(base + 1),
         read_round: 0,
     };
 
@@ -939,7 +965,7 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
 
     // Ensure the follower's state machine has applied index 1.
     tokio::time::timeout(Duration::from_secs(2), async {
-        while follower_sm.applied_index() < Index::new(1) {
+        while follower_sm.applied_index() < Index::new(base + 1) {
             tokio::task::yield_now().await;
         }
     })
@@ -957,7 +983,7 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
     // generic routing timeout.
     match outcome {
         ProposalOutcome::Ambiguous { index, reason } => {
-            assert_eq!(index, Some(Index::new(1)));
+            assert_eq!(index, Some(Index::new(base + 1)));
             assert!(
                 reason.contains(&format!("superseded by entry of term {replacing_term}")),
                 "{reason}"
@@ -968,7 +994,7 @@ async fn forwarded_proposal_superseded_by_leader_change_does_not_complete() {
 
     // Verify that the command applied at index 1 is indeed the replacing command.
     assert_eq!(
-        follower_sm.applied_command(Index::new(1)),
+        follower_sm.applied_command(Index::new(base + 1)),
         Some(replacing_cmd),
         "follower applied the replacing command at index 1"
     );
