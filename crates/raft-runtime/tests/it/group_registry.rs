@@ -617,9 +617,9 @@ async fn row5_registry_status_surface() {
     let client = h2c_client();
 
     // Propose 2 commands to alpha, 1 command to beta
-    host1.propose(100u64.to_le_bytes().to_vec()).await.unwrap();
-    host1.propose(101u64.to_le_bytes().to_vec()).await.unwrap();
-    host2.propose(200u64.to_le_bytes().to_vec()).await.unwrap();
+    let _a1 = host1.propose(100u64.to_le_bytes().to_vec()).await.unwrap();
+    let a2 = host1.propose(101u64.to_le_bytes().to_vec()).await.unwrap();
+    let b1 = host2.propose(200u64.to_le_bytes().to_vec()).await.unwrap();
 
     let statuses: BTreeMap<String, RaftStatus> = client
         .get(format!("{}/raftz", url))
@@ -631,8 +631,8 @@ async fn row5_registry_status_surface() {
         .unwrap();
 
     assert_eq!(statuses.len(), 2);
-    assert_eq!(statuses.get("alpha").unwrap().applied_index, 2);
-    assert_eq!(statuses.get("beta").unwrap().applied_index, 1);
+    assert_eq!(statuses.get("alpha").unwrap().applied_index, a2.get());
+    assert_eq!(statuses.get("beta").unwrap().applied_index, b1.get());
 
     serve.abort();
 }
