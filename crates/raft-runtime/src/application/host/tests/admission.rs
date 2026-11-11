@@ -25,6 +25,7 @@ struct AdmissionSm {
     gate_entered: AtomicBool,
     gate_release: AtomicBool,
     early_watermark_then_fail: AtomicBool,
+    index_base: AtomicU64,
 }
 
 impl AdmissionSm {
@@ -38,6 +39,7 @@ impl AdmissionSm {
             gate_entered: AtomicBool::new(false),
             gate_release: AtomicBool::new(true),
             early_watermark_then_fail: AtomicBool::new(false),
+            index_base: AtomicU64::new(0),
         })
     }
 
@@ -54,6 +56,7 @@ impl AdmissionSm {
             gate_entered: AtomicBool::new(false),
             gate_release: AtomicBool::new(true),
             early_watermark_then_fail: AtomicBool::new(false),
+            index_base: AtomicU64::new(0),
         })
     }
 }
@@ -83,7 +86,11 @@ impl RaftStateMachine for AdmissionSm {
         let permit =
             permit.map(|permit| permit.downcast::<TestPermit>().expect("test permit type"));
         if let Some(permit) = &permit {
-            assert_eq!(permit.id, index.get(), "permit identity follows Raft index");
+            assert_eq!(
+                permit.id,
+                index.get() - self.index_base.load(Ordering::SeqCst),
+                "permit identity follows Raft index"
+            );
         }
         if self.early_watermark_then_fail.load(Ordering::SeqCst) {
             self.applied.store(index.get(), Ordering::SeqCst);
@@ -140,7 +147,7 @@ async fn elected_single_host(sm: Arc<AdmissionSm>) -> AdmissionTestHost {
             crate::FsyncPolicy::Os,
         )
         .unwrap(),
-        sm as Arc<dyn RaftStateMachine>,
+        sm.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
     {
@@ -148,6 +155,8 @@ async fn elected_single_host(sm: Arc<AdmissionSm>) -> AdmissionTestHost {
         for _ in 0..raft_core::ELECTION_TIMEOUT_FLOOR_TICKS {
             node.tick();
         }
+        let base = node.last_index().get();
+        sm.index_base.store(base, Ordering::SeqCst);
     }
     AdmissionTestHost {
         host,
@@ -165,6 +174,9 @@ async fn proposal_ack_waits_for_callback_completion_not_an_early_watermark() {
     }
     let sm = AdmissionSm::accepting();
     let host = Arc::new(elected_single_host(sm.clone()).await);
+    let base = sm.index_base.load(Ordering::SeqCst);
+    // The leader no-op is not a callback, so the applied head it leaves is not `base`.
+    let applied_before_proposal = host_status(&host.shared).await.applied_index;
     sm.early_watermark_then_fail.store(true, Ordering::SeqCst);
     sm.gate_release.store(false, Ordering::SeqCst);
     let release = ReleaseGate(sm.clone());
@@ -193,16 +205,16 @@ async fn proposal_ack_waits_for_callback_completion_not_an_early_watermark() {
     );
     assert_eq!(
         before.unwrap().applied_index,
-        0,
+        applied_before_proposal,
         "public applied head requires callback completion"
     );
     assert!(matches!(
         joined.unwrap().unwrap(),
-        ProposalOutcome::DurabilityFailure { index: Some(index), .. } if index == Index::new(1)
+        ProposalOutcome::DurabilityFailure { index: Some(index), .. } if index == Index::new(base + 1)
     ));
     assert_eq!(
         after.unwrap().applied_index,
-        0,
+        applied_before_proposal,
         "failed callback must not publish an applied head"
     );
 }
@@ -210,11 +222,12 @@ async fn proposal_ack_waits_for_callback_completion_not_an_early_watermark() {
 #[tokio::test]
 async fn proposal_admission_rejects_before_raft_append() {
     let sm = AdmissionSm::rejecting("test budget full", 7);
-    let host = elected_single_host(sm).await;
+    let host = elected_single_host(sm.clone()).await;
+    let base = sm.index_base.load(Ordering::SeqCst);
     let error = host.propose(b"full".to_vec()).await.unwrap_err();
     let backpressure = error.downcast_ref::<ProposalBackpressure>().unwrap();
     assert_eq!(backpressure.retry_after_seconds, 7);
-    assert_eq!(host.shared.node.lock().await.last_index(), Index::new(0));
+    assert_eq!(host.shared.node.lock().await.last_index(), Index::new(base));
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -229,6 +242,7 @@ async fn indexed_permit_survives_cancelled_producer_until_apply_returns() {
     sm.gate_release.store(false, Ordering::SeqCst);
     let release = ReleaseGate(sm.clone());
     let host = Arc::new(elected_single_host(sm.clone()).await);
+    let base = sm.index_base.load(Ordering::SeqCst);
     let mut submit = tokio::spawn({
         let host = host.clone();
         async move { host.propose(vec![1]).await }
@@ -248,7 +262,7 @@ async fn indexed_permit_survives_cancelled_producer_until_apply_returns() {
     let applied = tokio::time::timeout(Duration::from_secs(2), async {
         // The SM floor can precede callback return and permit drop.
         // Observe the host publication, which follows both.
-        while host.shared.completed_applied_index() < Index::new(1) {
+        while host.shared.completed_applied_index() < Index::new(base + 1) {
             tokio::task::yield_now().await;
         }
     })
@@ -271,8 +285,9 @@ async fn indexed_permit_survives_cancelled_producer_until_apply_returns() {
 async fn identical_commands_get_distinct_index_permits() {
     let sm = AdmissionSm::accepting();
     let host = elected_single_host(sm.clone()).await;
-    assert_eq!(host.propose(vec![9]).await.unwrap(), Index::new(1));
-    assert_eq!(host.propose(vec![9]).await.unwrap(), Index::new(2));
+    let base = sm.index_base.load(Ordering::SeqCst);
+    assert_eq!(host.propose(vec![9]).await.unwrap(), Index::new(base + 1));
+    assert_eq!(host.propose(vec![9]).await.unwrap(), Index::new(base + 2));
     assert_eq!(sm.admitted.load(Ordering::SeqCst), 2);
     assert_eq!(sm.drops.load(Ordering::SeqCst), 2);
 }
@@ -281,10 +296,14 @@ async fn identical_commands_get_distinct_index_permits() {
 async fn persistence_failure_after_index_keeps_the_host_owned_permit() {
     let sm = AdmissionSm::accepting();
     let host = elected_single_host(sm.clone()).await;
+    let base = sm.index_base.load(Ordering::SeqCst);
     host.store()
         .inject_next_save_failure_with_kind(std::io::ErrorKind::Other);
     assert!(host.propose(vec![4]).await.is_err());
-    assert_eq!(host.shared.node.lock().await.last_index(), Index::new(1));
+    assert_eq!(
+        host.shared.node.lock().await.last_index(),
+        Index::new(base + 1)
+    );
     assert_eq!(
         host.shared.pending_admission.lock().unwrap().len(),
         1,
