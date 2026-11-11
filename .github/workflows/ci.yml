@@ -234,13 +234,13 @@ jobs:
           cache-on-failure: true
           cache-workspace-crates: false
       - name: Create disposable kind cluster
+        uses: faberline/aw/.github/actions/kind@5a04bb391f9c6df1df7b34a532874a86d783801d
+        with:
+          name: core-contracts
+      - name: Verify the disposable kind context
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail --location --silent --show-error --retry 5 --retry-connrefused -o "$RUNNER_TEMP/kind" https://github.com/kubernetes-sigs/kind/releases/download/v0.29.0/kind-linux-amd64
-          echo "c72eda46430f065fb45c5f70e7c957cc9209402ef309294821978677c8fb3284  $RUNNER_TEMP/kind" | sha256sum --check --strict
-          chmod +x "$RUNNER_TEMP/kind"
-          "$RUNNER_TEMP/kind" create cluster --name core-contracts --wait 120s
           kubectl config current-context
           test "$(kubectl config current-context)" = kind-core-contracts
           kubectl get nodes
@@ -249,7 +249,7 @@ jobs:
       - name: Remove disposable kind cluster
         if: always()
         shell: bash
-        run: '"$RUNNER_TEMP/kind" delete cluster --name core-contracts'
+        run: 'kind delete cluster --name core-contracts'
 
   gate:
     name: gate
