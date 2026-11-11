@@ -251,7 +251,7 @@ service-k8s [roadmap](../../crates/service-k8s/ROADMAP.md).
   | 4 | `shard-routing`, the bucket hooks, the shard-map child with hot reload, the reshard controller. | lumen splits at any replica count. lumen adds per-bucket byte accounting; it balances by bucket count today. |
   | 5 | lumen's remaining background controllers: Fleet, rollout, certificate rotation, client trust, retention, capacity catalog. | lumen deletes `lumen-operator`. |
   | 6 | — | defer, then relay, then keep move onto the engine and delete their `-operator` crates; keep replaces `ShardHosts` with `RaftRegistry`. This needs only Phases 1–3. |
-  | Later | Multi-workload and Deployment profiles. | loom, sift and pgpool. tape and defer switch to `Bucketed` when they deliver their multi-shard outcomes. |
+  | Later | Multi-workload and Deployment profiles. Sift needs a StatefulSet profile with two fixed 3-voter Raft groups (store and control), a collector workload, a GCS archive, and `PrometheusRule` and `ServiceMonitor` children; see `multi-workload-service-profile` and `prometheus-monitoring-children` in the service-k8s roadmap, `archive-lifecycle-primitives` in the storage-segment roadmap, `scratch-object-store` in the storage-object roadmap and `backup-cronjob-render-helper`. | loom, sift and pgpool. tape and defer switch to `Bucketed` when they deliver their multi-shard outcomes. |
 
 ### Migration
 
@@ -302,6 +302,7 @@ service-k8s [roadmap](../../crates/service-k8s/ROADMAP.md).
 - The aw S5 checker changes in Phase 3, not now. Before the engine exists, no
   repo could pass the new checks.
 - pgpool and sift keep using `ManagedService` directly until the engine has a
-  profile for a Deployment or for several workloads.
+  profile for a Deployment or for several workloads. Sift's needs are tracked as
+  the Later outcomes named in D20.
 - Defects found while surveying the operators are tracked as separate issues.
   They do not depend on this ADR.

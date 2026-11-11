@@ -249,7 +249,47 @@ phase table orders the outcomes.
 
 ## Later outcomes
 
-No items.
+### Backup CronJob render helper
+
+- ID: `backup-cronjob-render-helper`
+- Outcome: An app renders its scheduled backup CronJob through one public
+  helper instead of its own copy. Relay and Sift each keep one today.
+- Boundary: Core owns the CronJob name, schedule, concurrency policy,
+  ServiceAccount wiring, labels, and ownership. The app supplies the command
+  and arguments of its backup. The helper may land before any adoption.
+- Completion evidence: Render tests prove the name, schedule,
+  `concurrencyPolicy`, labels, and owner reference, and that an empty command
+  is refused.
+- Tracking: Not assigned.
+
+### Multi-workload service profile
+
+- ID: `multi-workload-service-profile`
+- Outcome: A `ServiceProfile` declares one StatefulSet plus extra workloads.
+  Sift needs two fixed 3-voter Raft groups (store and control), a collector
+  workload, and a GCS archive.
+- Boundary: Core owns the render, the reconcile order, RBAC derivation, and
+  the conditions for every declared workload. The app supplies each extra
+  workload's image, args, and domain readiness. Order: after
+  `service-profile-engine`, and after keep has moved (ADR 0002 D20 "Later" row;
+  rollout order lumen -> tape -> defer -> relay -> keep -> sift).
+- Completion evidence: Render tests with two workloads, a condition per
+  workload, and refusal of a workload name that collides with a core child.
+- Tracking: Not assigned.
+
+### Prometheus monitoring children
+
+- ID: `prometheus-monitoring-children`
+- Outcome: The engine renders `ServiceMonitor` and `PrometheusRule` children
+  from the profile's monitoring block and alert rules. Today `service-k8s`
+  only maps these kinds in `interfaces/operator/children.rs`; lumen and tape
+  render their own.
+- Boundary: Core owns the objects, selectors, labels, and ownership. The app
+  supplies alert rules as data, already in `service-profile-engine`. Order:
+  part of the engine's render layer, so after `service-profile-engine`.
+- Completion evidence: Render tests for both kinds, a selector that matches
+  the client Service, and owner references.
+- Tracking: Not assigned.
 
 ## Non-goals
 
