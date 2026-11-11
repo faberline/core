@@ -2,9 +2,8 @@ use super::*;
 
 #[test]
 fn test_build_index_with_modules() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_import_index");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Create module files
     fs::write(temp_dir.join("utils.py"), "def helper(): pass").unwrap();
@@ -28,16 +27,12 @@ fn test_build_index_with_modules() {
     assert!(modules
         .iter()
         .any(|m| m.module_path == "mypackage.submodule"));
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_stub_file_priority() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_stub_priority");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Create both .py and .pyi
     fs::write(temp_dir.join("mymod.py"), "def foo(): pass").unwrap();
@@ -50,16 +45,12 @@ fn test_stub_file_priority() {
     let entry = resolver.get_index_entry("mymod");
     assert!(entry.is_some());
     assert!(entry.unwrap().is_stub);
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_list_modules_with_prefix() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_list_prefix");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Create Django-like structure
     fs::create_dir_all(temp_dir.join("django")).unwrap();
@@ -78,16 +69,12 @@ fn test_list_modules_with_prefix() {
     assert!(django_modules
         .iter()
         .any(|m| m.module_path == "django.db.models"));
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_resolve_module_path() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_resolve_path");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::tempdir().unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     fs::write(temp_dir.join("mymod.py"), "").unwrap();
     fs::create_dir_all(temp_dir.join("pkg")).unwrap();
@@ -109,9 +96,6 @@ fn test_resolve_module_path() {
     // Non-existent module
     let none_path = resolver.resolve_module_path("nonexistent");
     assert!(none_path.is_none());
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
