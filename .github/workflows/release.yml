@@ -1,0 +1,93 @@
+# Release qualification: runs on an RC tag or a final tag.
+# It runs every job of ci.yml (workflow_call) and the performance gate.
+# See docs/operations/release-pipeline.md. The tag itself is created elsewhere (#147).
+name: release
+
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_INCREMENTAL: "0"
+
+jobs:
+  preflight:
+    name: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the tag
+        env:
+          TAG: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$REF_TYPE" = "tag"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$ ]]
+          test "$(git rev-parse "refs/tags/${TAG}^{commit}")" = "$GITHUB_SHA"
+          count=$(gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/heads/${TAG}" --jq "[.[] | select(.ref == \"refs/heads/${TAG}\")] | length")
+          test "$count" = "0"
+
+  ci:
+    name: ci
+    needs: preflight
+    uses: ./.github/workflows/ci.yml
+
+  perf-thresholds:
+    name: "perf: thresholds"
+    needs: preflight
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Supply the workspace root to legacy EC contract probes
+        run: mkdir -p .aw
+      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
+        with:
+          shared-key: release-perf
+          cache-on-failure: true
+          cache-workspace-crates: false
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+      - name: Require external compiler and runtime tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          npm --version
+          uv --version
+          python3 -m venv "$RUNNER_TEMP/ci-python"
+          "$RUNNER_TEMP/ci-python/bin/python" -m pip install 'pydantic>=2,<3'
+          echo "$RUNNER_TEMP/ci-python/bin" >> "$GITHUB_PATH"
+          cp -R ci/generated-rust-dependencies "$RUNNER_TEMP/generated-rust-dependencies"
+          cargo fetch --locked --manifest-path "$RUNNER_TEMP/generated-rust-dependencies/Cargo.toml"
+      - name: Measure the performance thresholds
+        run: python3 ci/measure-performance.py --root .
+
+  gate:
+    name: gate
+    if: always()
+    needs: [preflight, ci, perf-thresholds]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' > /dev/null
+      - name: Fail on a failed, cancelled or skipped job
+        run: test "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" = "false"
