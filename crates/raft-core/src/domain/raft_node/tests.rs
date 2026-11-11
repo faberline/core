@@ -140,3 +140,47 @@ fn public_timing_constants_are_nonzero_and_ordered() {
         assert!(HEARTBEAT_INTERVAL_TICKS < ELECTION_TIMEOUT_FLOOR_TICKS);
     }
 }
+
+#[test]
+fn committed_noop_is_not_returned_by_take_committed() {
+    let mut node = committed_pair();
+    let term = node.current_term();
+    node.log.push(RaftEntry {
+        index: Index::new(3),
+        term,
+        kind: EntryKind::Noop,
+        command: Vec::new(),
+    });
+    node.commit_index = Index::new(3);
+
+    let out = node.take_committed();
+    let indexes: Vec<Index> = out.iter().map(|e| e.index).collect();
+    assert_eq!(indexes, vec![Index::new(1), Index::new(2)]);
+    assert!(out.iter().all(|e| e.kind == EntryKind::Command));
+    assert_eq!(node.last_applied, Index::new(3));
+}
+
+#[test]
+fn committed_noop_identity_finishes_without_effect() {
+    let mut node = committed_pair();
+    let term = node.current_term();
+    node.log.push(RaftEntry {
+        index: Index::new(3),
+        term,
+        kind: EntryKind::Noop,
+        command: Vec::new(),
+    });
+    node.commit_index = Index::new(3);
+
+    assert!(node.finish_committed_identity(Index::new(1), term));
+    assert!(node.finish_committed_identity(Index::new(2), term));
+    assert_eq!(
+        node.peek_next_committed_identity(),
+        Some((Index::new(3), term, EntryKind::Noop))
+    );
+    let conf_before = node.conf_state().clone();
+    assert!(node.finish_committed_identity(Index::new(3), term));
+    assert_eq!(node.last_applied, Index::new(3));
+    assert_eq!(node.conf_state(), &conf_before);
+    assert_eq!(node.peek_next_committed_identity(), None);
+}

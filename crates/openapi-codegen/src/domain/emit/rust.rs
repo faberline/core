@@ -64,10 +64,14 @@ fn generate_impl(
     let ops = operations::build(&spec);
 
     let mut files = Vec::new();
+    let mut warnings = Vec::new();
     if opts.emit_types() {
+        let (contents, model_warnings) =
+            models_emit::emit_with_warnings(&spec, &tm, target.unwrap_or(RustTarget::Rust2021));
+        warnings = model_warnings;
         files.push(GeneratedFile {
             rel_path: "models.rs".to_string(),
-            contents: models_emit::emit(&spec, &tm, target.unwrap_or(RustTarget::Rust2021)),
+            contents,
         });
     }
     if opts.emit_client() {
@@ -80,10 +84,12 @@ fn generate_impl(
         rel_path: "mod.rs".to_string(),
         contents: emit_mod(opts),
     });
-    Ok(match target {
+    let mut out = match target {
         Some(target) => GeneratedOutput::for_target(files, crate::TargetProfile::Rust(target)),
         None => GeneratedOutput::legacy(files),
-    })
+    };
+    out.warnings = warnings;
+    Ok(out)
 }
 
 fn emit_mod(opts: &GenOptions) -> String {

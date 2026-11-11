@@ -16,5 +16,6 @@ mod stateful_adapter_equivalence;
 mod stateful_instance_render;
 mod status_conditions_survive_the_recovery_pass;
 mod status_patch_golden;
+mod trust_bundle_convergence;
 mod wire_golden;
 mod workload_plan;

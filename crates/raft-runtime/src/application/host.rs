@@ -41,6 +41,7 @@ mod outcome;
 mod peer_calls;
 mod peer_lane;
 mod propose;
+mod read_index;
 mod shutdown;
 mod shutdown_report;
 mod snapshot_compaction;
@@ -52,6 +53,7 @@ pub use backpressure::ProposalBackpressure;
 pub use chunk_sink::{ChunkHandler, ChunkSink, SNAPSHOT_CHUNK_SIZE};
 pub use membership_ops::AdmissionRefused;
 pub use outcome::{ProposalOutcome, SnapshotCompactionOutcome, StorageFailed};
+pub use read_index::ReadIndexError;
 pub use shutdown_report::{
     HostShutdownReport, LeadershipHandoff, PhaseRecord, PhaseStatus, ShutdownCaller, ShutdownPhase,
 };

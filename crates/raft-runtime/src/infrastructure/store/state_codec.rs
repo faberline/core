@@ -137,6 +137,7 @@ impl RaftStore {
                 let kind = match kind_tag {
                     0 => EntryKind::Command,
                     1 => EntryKind::Config,
+                    2 => EntryKind::Noop,
                     _ => {
                         return Err(io::Error::new(
                             io::ErrorKind::InvalidData,

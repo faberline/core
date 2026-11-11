@@ -169,6 +169,7 @@ fn validate_pinned_frame(map: &[u8], frame: CommandFrame) -> io::Result<()> {
     let kind = match entry.read_u8()? {
         0 => EntryKind::Command,
         1 => EntryKind::Config,
+        2 => EntryKind::Noop,
         _ => {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,

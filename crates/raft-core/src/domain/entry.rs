@@ -2,12 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use super::ids::{Index, Term};
 
-/// Discriminator distinguishing client commands from internal configuration entries.
+/// Discriminator distinguishing client commands, internal configuration entries and leader no-op entries.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EntryKind {
     #[default]
     Command,
     Config,
+    Noop,
 }
 
 /// One replicated command entry.
