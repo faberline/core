@@ -43,23 +43,25 @@ impl RaftNode {
     }
 
     /// Newly committed entries (in index order); advances `last_applied`.
-    /// Configuration entries are adopted into force and withheld from the
-    /// consumer.
+    /// Configuration and no-op entries are withheld from the consumer.
+    /// Configuration entries are adopted into force.
     pub fn take_committed(&mut self) -> Vec<RaftEntry> {
         let mut out = Vec::new();
         while self.last_applied < self.commit_index {
             let idx = self.last_applied.next();
             let pos = (idx.get() - self.snapshot_index.get() - 1) as usize;
             let entry = &self.log[pos];
-            if entry.kind == EntryKind::Config {
-                if let Some(conf) = ConfState::decode(&entry.command) {
-                    self.adopt_conf(conf);
-                    if self.role == Role::Leader && self.is_joint() {
-                        self.check_leave_joint();
+            match entry.kind {
+                EntryKind::Config => {
+                    if let Some(conf) = ConfState::decode(&entry.command) {
+                        self.adopt_conf(conf);
+                        if self.role == Role::Leader && self.is_joint() {
+                            self.check_leave_joint();
+                        }
                     }
                 }
-            } else {
-                out.push(entry.clone());
+                EntryKind::Noop => {}
+                EntryKind::Command => out.push(entry.clone()),
             }
             self.last_applied = idx;
         }
