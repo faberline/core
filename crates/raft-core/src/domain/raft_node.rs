@@ -69,6 +69,9 @@ pub struct RaftNode {
     // leadership transfer
     transfer_in_flight: Option<NodeId>,
     transfer_elapsed: u64,
+    /// When true, `become_leader` appends a `Noop` entry for the new term
+    /// (Raft §5.4.2) so earlier-term entries commit without a proposal.
+    leader_noop: bool,
 
     outbox: Vec<Outgoing>,
 }
@@ -122,6 +125,7 @@ impl RaftNode {
             leader_id: None,
             transfer_in_flight: None,
             transfer_elapsed: 0,
+            leader_noop: false,
             outbox: Vec::new(),
         }
     }
