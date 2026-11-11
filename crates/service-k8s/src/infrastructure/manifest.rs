@@ -37,6 +37,7 @@ pub const ENV_VOTER_COUNT: &str = "VOTER_COUNT";
 
 pub mod common;
 pub mod deployment;
+pub mod monitoring;
 pub mod placement;
 pub mod projected_token;
 pub mod rbac;
@@ -45,6 +46,7 @@ pub mod stateful_instance;
 pub mod workload_plan;
 mod workloads;
 
+pub use monitoring::{prometheus_rule, service_monitor, AlertRule, PrometheusRule, ServiceMonitor};
 pub use placement::{
     FailureDomainPlacement, HostSeparation, PlacementError, PlacementPlan, Toleration, ZoneSpread,
 };
