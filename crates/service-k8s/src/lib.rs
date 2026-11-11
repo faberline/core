@@ -37,6 +37,7 @@ pub use api::resize;
 pub use api::rollout;
 pub use api::service;
 pub use api::stateful;
+pub use api::trust_bundle;
 
 #[cfg(feature = "controller")]
 pub use app::operator::run;

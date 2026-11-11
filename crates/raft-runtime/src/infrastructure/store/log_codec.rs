@@ -21,6 +21,7 @@ fn encode_log_entry(entry: &RaftEntry) -> Vec<u8> {
     payload.push(match entry.kind {
         EntryKind::Command => 0,
         EntryKind::Config => 1,
+        EntryKind::Noop => 2,
     });
     payload.extend_from_slice(&(entry.command.len() as u64).to_le_bytes());
     payload.extend_from_slice(&entry.command);
@@ -58,6 +59,7 @@ pub(super) fn decode_log_artifact(bytes: &[u8], layout: LogLayout) -> io::Result
         let kind = match entry.read_u8()? {
             0 => EntryKind::Command,
             1 => EntryKind::Config,
+            2 => EntryKind::Noop,
             _ => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,

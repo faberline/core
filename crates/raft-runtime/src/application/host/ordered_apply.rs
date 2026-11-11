@@ -79,7 +79,7 @@ impl Shared {
                 {
                     *committed_term = Some(term);
                 }
-                if kind == EntryKind::Config {
+                if kind != EntryKind::Command {
                     if !node.finish_committed_identity(index, term) {
                         anyhow::bail!("committed configuration identity changed at {index}");
                     }
