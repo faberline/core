@@ -3,6 +3,7 @@ use crate::StateMachineError;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 mod peer_wire_golden;
 mod peer_wire_split;
@@ -91,6 +92,24 @@ fn default_apply_admitted_preserves_incomplete_infrastructure_error() {
     assert_eq!(sm.applied_index(), Index::new(0));
 }
 
+/// Waits until `host` is leader and returns the last index it holds then.
+/// With `leader_noop` on, that index is the leader's no-op entry.
+async fn wait_leader_base(host: &RaftHost) -> u64 {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            {
+                let node = host.shared.node.lock().await;
+                if node.is_leader() {
+                    return node.last_index().get();
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("host became leader")
+}
+
 #[tokio::test]
 async fn single_node_propose_applies_read_your_write() {
     let tmp = std::env::temp_dir().join(format!("raft-runtime-{}", std::process::id()));
@@ -104,16 +123,21 @@ async fn single_node_propose_applies_read_your_write() {
         sm.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
+    let base = wait_leader_base(&host).await;
     // propose returns only after the SM has applied the entry (RYW).
     for v in 1..=3u64 {
         let idx = host.propose(v.to_le_bytes().to_vec()).await.unwrap();
-        assert_eq!(idx, Index::new(v));
+        assert_eq!(idx, Index::new(base + v));
         assert!(sm.applied_index() >= idx, "applied before propose returned");
     }
     let log = sm.log.lock().unwrap().clone();
     assert_eq!(
         log,
-        vec![(Index::new(1), 1), (Index::new(2), 2), (Index::new(3), 3)]
+        vec![
+            (Index::new(base + 1), 1),
+            (Index::new(base + 2), 2),
+            (Index::new(base + 3), 3)
+        ]
     );
     let _ = std::fs::remove_dir_all(&tmp);
 }
@@ -133,28 +157,36 @@ async fn restart_replays_committed_log_into_a_fresh_sm() {
             HostConfig::default(),
         )
     };
+    let base1;
     {
         let sm = CounterSm::new();
         let host = mk(sm.clone());
+        base1 = wait_leader_base(&host).await;
         host.propose(7u64.to_le_bytes().to_vec()).await.unwrap();
         host.propose(8u64.to_le_bytes().to_vec()).await.unwrap();
-        assert_eq!(sm.applied_index(), Index::new(2));
+        assert_eq!(sm.applied_index(), Index::new(base1 + 2));
     } // host dropped → tasks aborted (simulated restart)
       // The persisted commit watermark lets a fresh in-memory state machine
       // replay before it serves reads or accepts another proposal.
     let sm2 = CounterSm::new();
     let host2 = mk(sm2.clone());
-    assert_eq!(sm2.applied_index(), Index::new(2));
+    assert_eq!(sm2.applied_index(), Index::new(base1 + 2));
     assert_eq!(
         sm2.log.lock().unwrap().clone(),
-        vec![(Index::new(1), 7), (Index::new(2), 8)]
+        vec![(Index::new(base1 + 1), 7), (Index::new(base1 + 2), 8)]
     );
+    // The new term appends its own no-op, so read the base after the restart.
+    let base2 = wait_leader_base(&host2).await;
     let idx = host2.propose(9u64.to_le_bytes().to_vec()).await.unwrap();
-    assert_eq!(idx, Index::new(3));
-    assert_eq!(sm2.applied_index(), Index::new(3));
+    assert_eq!(idx, Index::new(base2 + 1));
+    assert_eq!(sm2.applied_index(), Index::new(base2 + 1));
     assert_eq!(
         sm2.log.lock().unwrap().clone(),
-        vec![(Index::new(1), 7), (Index::new(2), 8), (Index::new(3), 9)],
+        vec![
+            (Index::new(base1 + 1), 7),
+            (Index::new(base1 + 2), 8),
+            (Index::new(base2 + 1), 9)
+        ],
         "the cold replay and new command remain in order"
     );
     let _ = std::fs::remove_dir_all(&tmp);
