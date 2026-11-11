@@ -13,6 +13,8 @@ use raft_runtime::{
     StateMachineError,
 };
 
+use crate::support::cluster::leader_base;
+
 struct IndexedSnapshotStateMachine {
     applied: AtomicU64,
     requested: Mutex<Vec<Index>>,
@@ -80,19 +82,20 @@ async fn external_compaction_uses_the_requested_applied_prefix() {
         state_machine.clone() as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
+    let base = leader_base(&host).await;
 
     for value in 1_u8..=10 {
         host.propose(vec![value]).await.unwrap();
     }
     assert_eq!(
-        host.snapshot_and_compact_through(Index::new(6))
+        host.snapshot_and_compact_through(Index::new(base + 6))
             .await
             .unwrap(),
-        Index::new(6)
+        Index::new(base + 6)
     );
     assert_eq!(
         *state_machine.requested.lock().unwrap(),
-        vec![Index::new(6)]
+        vec![Index::new(base + 6)]
     );
 
     host.shutdown().await.unwrap();
@@ -106,9 +109,9 @@ async fn external_compaction_uses_the_requested_applied_prefix() {
     .load()
     .unwrap()
     .unwrap();
-    assert_eq!(persisted.snapshot_index, Index::new(6));
+    assert_eq!(persisted.snapshot_index, Index::new(base + 6));
     assert_eq!(persisted.log.len(), 4);
-    assert_eq!(persisted.snapshot, 6_u64.to_le_bytes());
+    assert_eq!(persisted.snapshot, (base + 6).to_le_bytes());
 }
 
 #[tokio::test]
@@ -128,9 +131,10 @@ async fn external_compaction_rejects_an_unapplied_target() {
         state_machine as Arc<dyn RaftStateMachine>,
         HostConfig::default(),
     );
+    let base = leader_base(&host).await;
     host.propose(vec![1]).await.unwrap();
     let error = host
-        .snapshot_and_compact_through(Index::new(2))
+        .snapshot_and_compact_through(Index::new(base + 2))
         .await
         .expect_err("unapplied snapshot target must fail closed");
     assert!(error.to_string().contains("applied"));

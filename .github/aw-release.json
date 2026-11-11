@@ -10,7 +10,7 @@
       "tag": "v0.5.0",
       "goal": "Shared correctness, truthful observability and bounded service foundations",
       "goal_sha256": "ee15452ef357fd7f11f19ea5e9b7f1b3091c276210428aa27ab04f3470e14df0",
-      "issues": [2, 7, 8, 14, 20, 21, 22, 23, 24, 40, 42, 43, 44, 45, 47, 48, 49, 73, 80, 88, 90, 92, 96, 97, 99],
+      "issues": [2, 7, 8, 14, 20, 21, 22, 23, 24, 40, 42, 43, 44, 45, 47, 48, 49, 73, 80, 88, 90, 92, 97, 99],
       "landed_prs": {
         "23": [107],
         "40": [103],
