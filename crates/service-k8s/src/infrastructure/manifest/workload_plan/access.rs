@@ -265,3 +265,72 @@ impl ClusterRoleBindingPlan {
         })
     }
 }
+
+/// Render access grants as Role and RoleBinding objects, one pair per grant,
+/// in (namespace, name) order regardless of the input order.
+///
+/// Each grant gives a Role with its rules, then a RoleBinding to its
+/// ServiceAccount subjects, both named after the grant in its namespace.
+#[cfg(feature = "controller")]
+pub fn render_access_grants(grants: &[crate::domain::access::AccessGrant]) -> Vec<Value> {
+    fn strs(values: &[String]) -> Vec<&str> {
+        values.iter().map(String::as_str).collect()
+    }
+
+    type RuleFields<'a> = (Vec<&'a str>, Vec<&'a str>, Vec<&'a str>, Vec<&'a str>);
+
+    let mut sorted: Vec<&crate::domain::access::AccessGrant> = grants.iter().collect();
+    sorted.sort_by(|a, b| (&a.namespace, &a.name).cmp(&(&b.namespace, &b.name)));
+
+    let mut out = Vec::with_capacity(sorted.len() * 2);
+    for grant in sorted {
+        let rule_fields: Vec<RuleFields<'_>> = grant
+            .rules
+            .iter()
+            .map(|r| {
+                (
+                    strs(&r.api_groups),
+                    strs(&r.resources),
+                    strs(&r.resource_names),
+                    strs(&r.verbs),
+                )
+            })
+            .collect();
+        let named_rules: Vec<rbac::NamedRule<'_>> = rule_fields
+            .iter()
+            .map(
+                |(api_groups, resources, resource_names, verbs)| rbac::NamedRule {
+                    api_groups,
+                    resources,
+                    resource_names,
+                    verbs,
+                },
+            )
+            .collect();
+        let subjects: Vec<rbac::RoleSubject<'_>> = grant
+            .subjects
+            .iter()
+            .map(|s| {
+                rbac::RoleSubject::ServiceAccount(rbac::ServiceAccountSubject {
+                    namespace: &s.namespace,
+                    name: &s.name,
+                })
+            })
+            .collect();
+
+        out.push(rbac::role(rbac::Role {
+            name: &grant.name,
+            namespace: &grant.namespace,
+            labels: json!({}),
+            rules: &named_rules,
+        }));
+        out.push(rbac::role_binding(rbac::RoleBinding {
+            name: &grant.name,
+            namespace: &grant.namespace,
+            labels: json!({}),
+            role: &grant.name,
+            subjects: &subjects,
+        }));
+    }
+    out
+}
