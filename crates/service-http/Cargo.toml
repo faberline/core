@@ -48,6 +48,8 @@ tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true, features = ["util"] }
 futures-util = "0.3"
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter", "registry"] }
+raft-runtime = { path = "../raft-runtime" }
+service-auth = { path = "../service-auth" }
 
 [lints]
 workspace = true
