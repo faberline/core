@@ -23,7 +23,7 @@ GATES_JSON = ".github/aw-release-gates.json"
 CONTRACT_JSON = ".github/aw-release.json"
 DOC = "docs/operations/release-pipeline.md"
 
-GOAL_SHA256 = "ee15452ef357fd7f11f19ea5e9b7f1b3091c276210428aa27ab04f3470e14df0"
+GOAL_SHA256 = "f6dbdbcd0580925139de1bf18f1626c057fbb073663d638d7ab25aa9666c200e"
 MILESTONE_8_ISSUES = {
     2, 7, 8, 14, 20, 21, 22, 23, 24, 40, 42, 43, 44, 45, 47, 48, 49,
     73, 80, 88, 90, 92, 97, 99, 156, 157, 158, 159, 160, 161, 162, 163, 164,
