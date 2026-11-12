@@ -1,7 +1,8 @@
 # Operations
 
 How core is released, how downstream repos consume a release, how to check a
-core change against them, and how to run the architecture checker.
+core change against them, and how to run the architecture checker. The design
+for shared e2e test code is in [shared test tooling](shared-test-tooling.md).
 
 ## Releasing
 
