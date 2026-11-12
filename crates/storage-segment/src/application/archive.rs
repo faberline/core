@@ -1,7 +1,8 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use crate::domain::{
-    ArchiveCommit, ArchiveObject, ArchivedObject, ImmutableObjectStore, Result, SegmentError,
+    staging_object_key, ArchiveCommit, ArchiveObject, ArchivedObject, ImmutableObjectStore, Result,
+    SegmentError, StagingMarker, StagingState,
 };
 
 /// Starts manifest-last archive transactions. The public constructor that
@@ -23,6 +24,45 @@ impl ArchiveCoordinator {
             keys: BTreeSet::new(),
             failed: false,
         }
+    }
+
+    /// Start staging one segment in the `Intent` state, or resume the stored
+    /// state. A second call never writes a second marker.
+    pub fn begin_staging(&self, segment_key: &str) -> Result<StagingMarker> {
+        let marker = StagingMarker::new(segment_key);
+        if self
+            .objects
+            .create_marker(&marker.object_key(), &marker.encode()?)?
+        {
+            return Ok(marker);
+        }
+        self.staging_marker(segment_key)?
+            .ok_or_else(|| SegmentError::StagingMarkerMissing {
+                segment_key: segment_key.to_string(),
+            })
+    }
+
+    /// The stored staging marker, or `None`.
+    pub fn staging_marker(&self, segment_key: &str) -> Result<Option<StagingMarker>> {
+        match self.objects.read_marker(&staging_object_key(segment_key))? {
+            Some((bytes, _)) => Ok(Some(StagingMarker::decode(&bytes)?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Move the marker to `next` when the transition is legal. An illegal
+    /// transition is refused before any write.
+    pub fn advance_staging(&self, segment_key: &str, next: StagingState) -> Result<StagingMarker> {
+        let key = staging_object_key(segment_key);
+        let Some((bytes, version)) = self.objects.read_marker(&key)? else {
+            return Err(SegmentError::StagingMarkerMissing {
+                segment_key: segment_key.to_string(),
+            });
+        };
+        let moved = StagingMarker::decode(&bytes)?.move_to(next)?;
+        self.objects
+            .replace_marker(&key, &moved.encode()?, &version)?;
+        Ok(moved)
     }
 }
 

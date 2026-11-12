@@ -11,6 +11,7 @@ pub use application::{
 pub use domain::{
     ArchiveCommit, ArchiveObject, ArchivedObject, ArchivedObjectVersion, CatalogEntry,
     CatalogMutation, CatalogPageRef, CatalogRoot, Partitioner, RecordCodec, Result, SegmentError,
-    StreamingCatalogAbort, StreamingCatalogBuild, DEFAULT_CATALOG_PAGE_BYTES,
-    MAX_ABORT_TRACKED_CATALOG_PAGES,
+    StagingMarker, StagingState, StreamingCatalogAbort, StreamingCatalogBuild,
+    DEFAULT_CATALOG_PAGE_BYTES, MAX_ABORT_TRACKED_CATALOG_PAGES, STAGING_MARKER_FORMAT_VERSION,
+    STAGING_MARKER_PREFIX,
 };
