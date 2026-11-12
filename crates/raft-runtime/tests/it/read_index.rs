@@ -208,11 +208,20 @@ async fn single_voter_returns_at_once() {
         HostConfig::default(),
     );
 
+    tokio::time::timeout(Duration::from_secs(10), async {
+        while !host.is_leader().await {
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    })
+    .await
+    .expect("the node becomes leader");
+    let base = host.status().await.last_index;
+
     let idx = host.propose(vec![1]).await.unwrap();
-    assert_eq!(idx, Index::new(1));
+    assert_eq!(idx, Index::new(base + 1));
 
     let read = tokio::time::timeout(Duration::from_secs(2), host.read_index())
         .await
         .expect("single voter answers within 2 seconds");
-    assert_eq!(read, Ok(Index::new(1)));
+    assert_eq!(read, Ok(Index::new(base + 1)));
 }
