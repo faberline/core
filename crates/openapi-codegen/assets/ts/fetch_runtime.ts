@@ -205,3 +205,154 @@ export async function request<T>(config: ClientConfig, args: RequestArgs): Promi
     release();
   }
 }
+
+export type NdjsonItem<S> = S extends AsyncIterable<infer U> ? U : never;
+
+export interface NdjsonOptions {
+  /** Abort the request and the stream. */
+  signal?: AbortSignal;
+}
+
+export interface NdjsonRequestArgs extends RequestArgs {
+  /** Request body sent as NDJSON, one record per line, pulled lazily. */
+  ndjsonBody?: AsyncIterable<unknown>;
+}
+
+export class NdjsonParseError extends Error {
+  readonly line: number;
+  constructor(line: number) {
+    super(`malformed NDJSON record at line ${line}`);
+    this.name = "NdjsonParseError";
+    this.line = line;
+  }
+}
+
+async function* encodeNdjson(items: AsyncIterable<unknown>): AsyncGenerator<Uint8Array> {
+  const encoder = new TextEncoder();
+  for await (const item of items) {
+    yield encoder.encode(JSON.stringify(item) + "\n");
+  }
+}
+
+async function* decodeNdjson<T>(chunks: AsyncIterable<Uint8Array>): AsyncGenerator<T> {
+  const decoder = new TextDecoder();
+  let pending = "";
+  let line = 0;
+  const parse = (text: string): T => {
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new NdjsonParseError(line);
+    }
+  };
+  for await (const chunk of chunks) {
+    pending += decoder.decode(chunk, { stream: true });
+    let end = pending.indexOf("\n");
+    while (end >= 0) {
+      const text = pending.slice(0, end).trim();
+      pending = pending.slice(end + 1);
+      line += 1;
+      if (text) yield parse(text);
+      end = pending.indexOf("\n");
+    }
+  }
+  pending += decoder.decode();
+  const rest = pending.trim();
+  if (rest) {
+    line += 1;
+    yield parse(rest);
+  }
+}
+
+async function* readChunks(body: ReadableStream<Uint8Array>): AsyncGenerator<Uint8Array> {
+  const reader = body.getReader();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) return;
+      if (value) yield value;
+    }
+  } finally {
+    reader.cancel().catch(() => undefined);
+  }
+}
+
+function toReadableStream(chunks: AsyncGenerator<Uint8Array>): ReadableStream<Uint8Array> {
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const { done, value } = await chunks.next();
+      if (done) controller.close();
+      else controller.enqueue(value);
+    },
+    async cancel() {
+      await chunks.return(undefined);
+    },
+  });
+}
+
+async function sendNdjson(
+  config: ClientConfig,
+  args: NdjsonRequestArgs,
+  options: NdjsonOptions,
+  accept: string,
+): Promise<{ response: Response; release: () => void }> {
+  const doFetch = config.fetch ?? fetch;
+  assertTrustIsHonoured(config, config.fetch);
+  const url = new URL(config.baseUrl + args.path);
+  if (args.query) {
+    for (const [key, value] of Object.entries(args.query)) {
+      if (value !== undefined && value !== null) {
+        url.searchParams.set(key, String(value));
+      }
+    }
+  }
+  const headers = { "Content-Type": args.ndjsonBody ? "application/x-ndjson" : "application/json", Accept: accept, ...config.headers, ...args.headers };
+  const release = await acquireAdmission(config, url);
+  try {
+    const init: Record<string, unknown> = { method: args.method, headers, signal: options.signal };
+    if (args.ndjsonBody) {
+      init.body = toReadableStream(encodeNdjson(args.ndjsonBody));
+      init.duplex = "half";
+    } else if (args.body !== undefined) {
+      init.body = JSON.stringify(args.body);
+    }
+    const response = await doFetch(url.toString(), init as RequestInit);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    return { response, release };
+  } catch (error) {
+    release();
+    throw error;
+  }
+}
+
+export async function requestNdjsonUpload<T>(
+  config: ClientConfig,
+  args: NdjsonRequestArgs,
+  options: NdjsonOptions = {},
+): Promise<T> {
+  const { response, release } = await sendNdjson(config, args, options, "application/json");
+  try {
+    if (args.expectBody === false || response.status === 204) {
+      return undefined as T;
+    }
+    return (await response.json()) as T;
+  } finally {
+    release();
+  }
+}
+
+export async function* requestNdjsonStream<T>(
+  config: ClientConfig,
+  args: NdjsonRequestArgs,
+  options: NdjsonOptions = {},
+): AsyncGenerator<T> {
+  const { response, release } = await sendNdjson(config, args, options, "application/x-ndjson");
+  try {
+    if (!response.body) throw new Error("response has no body");
+    yield* decodeNdjson<T>(readChunks(response.body));
+  } finally {
+    release();
+  }
+}

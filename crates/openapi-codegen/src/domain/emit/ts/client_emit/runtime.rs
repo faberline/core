@@ -105,6 +105,12 @@ async function attachFileBearer(
             "  constructor(private readonly maxInFlight: number) {}",
             "  private readonly maxInFlight: number;\n  constructor(maxInFlight: number) { this.maxInFlight = maxInFlight; }",
             1,
+        )
+        // The NDJSON helper sends its request with the same file bearer.
+        .replacen(
+            "  const headers = { \"Content-Type\": args.ndjsonBody ? \"application/x-ndjson\" : \"application/json\", Accept: accept, ...config.headers, ...args.headers };",
+            "  const headers = await attachFileBearer(config.baseUrl, { \"Content-Type\": args.ndjsonBody ? \"application/x-ndjson\" : \"application/json\", Accept: accept, ...config.headers, ...args.headers });",
+            1,
         );
 
     match http_client {
