@@ -4,7 +4,7 @@
   "milestones": {
     "8": {
       "version": "0.5.0",
-      "goal_sha256": "ee15452ef357fd7f11f19ea5e9b7f1b3091c276210428aa27ab04f3470e14df0",
+      "goal_sha256": "f6dbdbcd0580925139de1bf18f1626c057fbb073663d638d7ab25aa9666c200e",
       "acceptance": [
         {
           "goal": "Raft runtime correctness: a new leader commits a no-op, ReadIndex serves linearizable reads, propose reports only the entry it proposed, and the status and replica-lag accessors are public",
