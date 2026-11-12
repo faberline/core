@@ -82,6 +82,7 @@ jobs:
     if: always()
     needs: [preflight, ci, perf-thresholds]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Require every job to succeed
         env:

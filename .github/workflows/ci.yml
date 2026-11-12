@@ -244,6 +244,7 @@ jobs:
     if: always()
     needs: [lint, test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows, e2e-service-k8s]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       # The guideline (docs/standards/ci.md) accepts a skipped stage; the spec does not.
       # The first step is the guideline check. The second step keeps the spec rule:
