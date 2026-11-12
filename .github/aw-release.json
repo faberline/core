@@ -1,26 +1,43 @@
 {
   "version": 1,
   "repo": "faberline/core",
-  "ready_rule": "all-milestone-issues-closed",
-  "full_test_gate": "qualification",
   "milestones": {
     "8": {
-      "title": "core@0.5.0",
       "version": "0.5.0",
-      "tag": "v0.5.0",
-      "goal": "Shared correctness, truthful observability and bounded service foundations",
       "goal_sha256": "ee15452ef357fd7f11f19ea5e9b7f1b3091c276210428aa27ab04f3470e14df0",
-      "issues": [2, 7, 8, 14, 20, 21, 22, 23, 24, 40, 42, 43, 44, 45, 47, 48, 49, 73, 80, 88, 90, 92, 97, 99],
-      "landed_prs": {
-        "23": [107],
-        "40": [103],
-        "42": [69],
-        "47": [102],
-        "49": [71],
-        "73": [75],
-        "90": [91],
-        "99": [106]
-      }
+      "acceptance": [
+        {
+          "goal": "Raft runtime correctness: a new leader commits a no-op, ReadIndex serves linearizable reads, propose reports only the entry it proposed, and the status and replica-lag accessors are public",
+          "issues": [22, 24, 40, 42, 43, 44, 45, 47, 48, 49],
+          "checks": ["ci / test: workspace"]
+        },
+        {
+          "goal": "Truthful observability and bounded service foundations: admission config, body limits, efficiency and stability dimensions, phase-stable soak sampling, and an honest process-sampling promise",
+          "issues": [2, 7, 8, 14, 23],
+          "checks": ["ci / test: workspace", "perf: thresholds"]
+        },
+        {
+          "goal": "peer-tls: distinct refusals for an anchorless bundle and a foreign issuer, and the mTLS config service calls plan_server and plan_client",
+          "issues": [20, 21],
+          "checks": ["ci / test: workspace"]
+        },
+        {
+          "goal": "service-k8s: core-owned service operations are recorded, and a zero-replica stateful plan returns an error instead of panicking",
+          "issues": [97, 99],
+          "checks": ["ci / test: service-k8s"]
+        },
+        {
+          "goal": "Reviewed CI and release gates: unit checks run before integration and performance, failure reasons are reviewed, legacy delivery entrypoints are retired, and the release contract is reviewed before tagging",
+          "issues": [73, 80, 88, 90, 92],
+          "checks": ["preflight", "ci / gate", "gate"]
+        },
+        {
+          "goal": "The workspace version is 0.5.0 and the 0.5.0 release notes cover every crate",
+          "issues": [156, 157, 158, 159, 160, 161, 162, 163, 164],
+          "checks": ["ci / lint: fmt and clippy"]
+        }
+      ],
+      "publication": "github-release"
     }
   }
 }
