@@ -1,7 +1,8 @@
 # ADR 0002: Core-owned service operations
 
-- **Status:** Proposed. Phase 0 (this ADR and the boundary rewrite in the
-  service-k8s documents) changes documentation only. No code has changed.
+- **Status:** Accepted on 2026-11-11. Phase 0 (this ADR and the boundary
+  rewrite in the service-k8s documents) changes documentation only. No code
+  has changed.
 - **Date:** 2026-11-05
 - **Applies to:** `crates/service-k8s`, `crates/raft-runtime`, a new
   `crates/shard-routing`, and the downstream operators built on them. The S5
