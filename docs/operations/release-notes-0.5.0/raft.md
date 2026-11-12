@@ -130,6 +130,13 @@ Commit: `8806fd92`.
 
 Migration: add `peer_match_index: Vec::new()` to `RaftStatus` struct literals, or use `..` in patterns.
 
+### raft-runtime: a new leader appends a no-op entry; upgrade all nodes of a group together
+
+Before: a new leader appended no entry for its term, so entries from an older term stayed uncommitted until the first proposal.
+After: `raft-runtime` turns on `RaftNode::set_leader_noop(true)` for every host node (`spawn.rs` and the deterministic host). A new leader appends one `EntryKind::Noop` entry for its term and commits the older entries with it (#193, part 5 of #113).
+
+Migration: upgrade all nodes of a group together. Mixed-version replication across the leader no-op is not supported: a node that runs the old version does not know the no-op entry. Do not run old and new nodes in one group.
+
 ## Fixes apps must take
 
 ### raft-runtime: `propose` no longer reports `Completed` for a superseded entry
