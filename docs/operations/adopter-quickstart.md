@@ -33,14 +33,30 @@ jieba-rs = { path = "vendor/jieba-rs" }
 
 ## Step 1: an empty crate with HTTP
 
-Use `service-http` for the probe routes, tracing and the serve loop, and
-`server-http` for the HTTP runtime it composes. The crate's
-[README](../../crates/service-http/README.md) has the full contract.
+Start a crate and add the two HTTP dependency lines:
+
+```sh
+cargo new my-service
+cd my-service
+```
+
+```toml
+[dependencies]
+service-http = { git = "https://github.com/faberline/core", tag = "v0.5.0" }
+server-http = { git = "https://github.com/faberline/core", tag = "v0.5.0" }
+```
+
+Use `service-http` for the probe routes, tracing and the serve loop. It runs
+`server-http`'s `serve_h2c_with_lifecycle` underneath, the HTTP runtime that
+serves cleartext h2c and HTTP/1.1 on one listener. The crate's
+[README](../../crates/service-http/README.md) has the full contract, and
+[`server-http`'s README](../../crates/server-http/README.md) has the listener
+contract.
 
 - `standard_probe_routes`: the probe and documentation routes.
 - `trace_layer`: request tracing.
 - `serve` and `shutdown_with_drain`: serve until a signal, then drain readiness
-  before stopping.
+  before stopping. `serve` passes to `serve_h2c_with_lifecycle`.
 
 ## Step 2: auth
 
@@ -200,6 +216,18 @@ replica count is fixed at three: set `REPLICAS_PER_SHARD=3` and
 `ClusterTopology::from_env_with_scheme`. Read the
 [README](../../crates/service-k8s/README.md) for the reconcile loop and the
 resources it renders.
+
+The three-replica host replaces the single-node `RaftStore::open` and
+`RaftHost::spawn` of the wiring. Build it with `ReplicaHostBuilder`, which reads
+the topology from the environment through `ClusterTopology::from_env_with_scheme`.
+The topology needs `SHARD_COUNT`, `REPLICAS_PER_SHARD=3`, `VOTER_COUNT=3` and
+`POD_NAME` (the pod's StatefulSet name ending in `-<ordinal>`). Call
+`build_secure(data_dir, state_machine, peer_tls_env_prefix, fsync_policy, host_config)`:
+it starts peers over required mutual TLS and never falls back to cleartext, and
+it needs an `https` peer URL scheme. It returns a `ReplicaHostRuntime`; use `runtime.host`, an
+`Arc<RaftHost>`, wherever the wiring uses the host. Read
+[`crates/raft-runtime/src/app/replica_host.rs`](../../crates/raft-runtime/src/app/replica_host.rs)
+for the exact order of startup.
 
 ## Compatibility
 

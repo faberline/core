@@ -38,6 +38,27 @@ fn quickstart_doc_has_the_numbered_steps() {
 }
 
 #[test]
+fn quickstart_names_the_first_step_and_the_three_replica_path() {
+    let doc = include_str!("../../../../docs/operations/adopter-quickstart.md");
+    for needle in [
+        "cargo new",
+        "serve_h2c_with_lifecycle",
+        "ReplicaHostBuilder",
+        "build_secure",
+        "runtime.host",
+        "SHARD_COUNT",
+        "REPLICAS_PER_SHARD=3",
+        "VOTER_COUNT=3",
+        "POD_NAME",
+    ] {
+        assert!(
+            doc.contains(needle),
+            "docs/operations/adopter-quickstart.md is missing {needle:?}"
+        );
+    }
+}
+
+#[test]
 fn readme_links_the_quickstart() {
     let readme = include_str!("../../../../README.md");
     assert!(
