@@ -50,6 +50,7 @@ pub use application::{MembershipError, StateMachineError};
 pub use application::{MembershipPolicy, ReplicaHostBuilder};
 pub use application::{OutcomeWindow, OUTCOME_WINDOW_DEFAULT_CAPACITY};
 pub use application::{ProposalCache, DEFAULT_PROPOSAL_CACHE_CAPACITY};
+pub use application::{ProposalSession, ProposalStamp};
 pub use application::{ReadConsistency, READ_CONSISTENCY_HEADER};
 pub use domain::{GroupId, LEGACY_GROUP_ID};
 pub use infrastructure::AppliedIndexStore;
