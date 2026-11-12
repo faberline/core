@@ -311,4 +311,6 @@ EC Dimensions:
 | Independent accounting agreement | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- filesystem_usage_is_physical::`; total bytes matches independent df block accounting on the same path |
 | Errors instead of zeroed samples | change | - | implemented | verified | smoke | `cargo test -p service-observability --test it -- filesystem_usage_is_physical::`; a missing or unreadable path is an error, so a capacity controller cannot mistake a failure for a full volume |
 
+OTLP: the exporter now uses opentelemetry 0.33 and tonic 0.14, so hyper 0.14 and h2 0.3.27 are gone from this chain. Services get this fix with the next core tag.
+
 <!-- HANDWRITE-END -->
