@@ -2,10 +2,17 @@ use crate::domain::emit::ts::plan::OperationPlan;
 use crate::domain::ir::names::{self, is_ident};
 
 pub(super) fn emit_method(p: &OperationPlan) -> String {
-    let sig = match &p.data_type_name {
-        Some(name) => format!("(data: {name})"),
-        None => "()".to_string(),
-    };
+    let ndjson_body = p.body.as_ref().is_some_and(|b| b.ndjson);
+    // NDJSON methods take an optional `options` (the abort signal) last.
+    let options = ndjson_body || p.response_stream;
+    let mut params: Vec<String> = Vec::new();
+    if let Some(name) = &p.data_type_name {
+        params.push(format!("data: {name}"));
+    }
+    if options {
+        params.push("options?: NdjsonOptions".to_string());
+    }
+    let sig = format!("({})", params.join(", "));
 
     let mut args = match &p.post_twin_path {
         // OpenAPI 3.2 `QUERY` operation with a POST-twin fallback target:
@@ -57,7 +64,9 @@ pub(super) fn emit_method(p: &OperationPlan) -> String {
             .join(", ");
         args.push(format!("headers: {{ {entries} }}"));
     }
-    if p.body.is_some() {
+    if ndjson_body {
+        args.push("ndjsonBody: data.body".to_string());
+    } else if p.body.is_some() {
         args.push("body: data.body".to_string());
     }
     if p.response_type == "void" {
@@ -65,12 +74,26 @@ pub(super) fn emit_method(p: &OperationPlan) -> String {
     }
 
     let resp = &p.response_type_name;
+    let args = args.join(", ");
+    let (ret, call) = if p.response_stream {
+        (
+            resp.to_string(),
+            format!("requestNdjsonStream<NdjsonItem<{resp}>>(config, {{ {args} }}, options)"),
+        )
+    } else if ndjson_body {
+        (
+            format!("Promise<{resp}>"),
+            format!("requestNdjsonUpload<{resp}>(config, {{ {args} }}, options)"),
+        )
+    } else {
+        (
+            format!("Promise<{resp}>"),
+            format!("request<{resp}>(config, {{ {args} }})"),
+        )
+    };
     format!(
-        "    {name}{sig}: Promise<{resp}> {{\n      return request<{resp}>(config, {{ {args} }});\n    }},\n",
+        "    {name}{sig}: {ret} {{\n      return {call};\n    }},\n",
         name = p.fn_name,
-        sig = sig,
-        resp = resp,
-        args = args.join(", "),
     )
 }
 

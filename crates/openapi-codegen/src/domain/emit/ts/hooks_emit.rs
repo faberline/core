@@ -4,7 +4,7 @@
 //! `@tanstack/react-query` is a peer dependency of the *generated output*, not
 //! of jet — only `import` statements reference it.
 
-use crate::domain::emit::ts::client_emit::type_import;
+use crate::domain::emit::ts::client_emit::hook_type_import;
 use crate::domain::emit::ts::plan::OperationPlan;
 use crate::domain::ir::names::to_pascal;
 
@@ -17,12 +17,12 @@ pub fn emit(plans: &[OperationPlan]) -> String {
         "import type { UseMutationOptions, UseQueryOptions } from \"@tanstack/react-query\";\n",
     );
     out.push_str("import type { ApiClient } from \"./client\";\n");
-    out.push_str(&type_import(plans));
+    out.push_str(&hook_type_import(plans));
     out.push('\n');
 
     out.push_str("export function createHooks(client: ApiClient) {\n");
     out.push_str("  return {\n");
-    for p in plans {
+    for p in plans.iter().filter(|p| !p.response_stream) {
         out.push_str(&emit_hook(p));
     }
     out.push_str("  };\n");
@@ -113,5 +113,21 @@ mod tests {
         assert!(out.contains("useHealthQuery(options?: Omit<UseQueryOptions<HealthResponse>"));
         assert!(out.contains("queryKey: [\"health\"]"));
         assert!(out.contains("queryFn: () => client.health()"));
+    }
+
+    #[test]
+    fn streaming_response_operation_has_no_hook() {
+        let s: Spec = serde_json::from_str(
+            r##"{"paths":{"/items":{
+              "get":{"operationId":"listItems","responses":{"200":{"content":{"application/x-ndjson":{"schema":{"type":"object","properties":{"id":{"type":"integer"}}}}}}}},
+              "post":{"operationId":"uploadItems","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"}}}},"responses":{"200":{"content":{"application/json":{"schema":{"type":"string"}}}}}}}}}"##,
+        )
+        .unwrap();
+        let tm = build_type_map(&s);
+        let plans = plan::build(&s, &tm);
+        let out = emit(&plans);
+        assert!(!out.contains("useListItems"));
+        assert!(!out.contains("ListItemsResponse"));
+        assert!(out.contains("useUploadItems"));
     }
 }
