@@ -18,7 +18,7 @@ anyhow = { workspace = true }
 # Domain errors (DestinationError, PolicyError) are typed; callers still convert with `?`.
 thiserror = { workspace = true }
 aws-config = { version = "1", optional = true }
-aws-sdk-s3 = { version = "1", optional = true }
+aws-sdk-s3 = { version = "1", optional = true, default-features = false, features = ["default-https-client", "rt-tokio", "http-1x"] }
 cli-std = { path = "../cli-std", default-features = false }
 storage-durable = { path = "../storage-durable" }
 storage-object = { path = "../storage-object" }
