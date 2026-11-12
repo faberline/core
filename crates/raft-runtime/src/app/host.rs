@@ -13,6 +13,22 @@ use crate::domain::{GroupId, LEGACY_GROUP_ID};
 use crate::infrastructure::{HttpPeerClient, PeerTransport, RaftStore};
 
 impl RaftHost {
+    /// Spawn with the shared peer transport when there is one, else with the default client.
+    pub fn spawn_with_optional_peer_transport(
+        id: NodeId,
+        membership: Membership,
+        peers: HashMap<NodeId, String>,
+        store: RaftStore,
+        sm: Arc<dyn RaftStateMachine>,
+        cfg: HostConfig,
+        peer_transport: Option<PeerTransport>,
+    ) -> RaftHost {
+        match peer_transport {
+            Some(t) => Self::spawn_with_peer_transport(id, membership, peers, store, sm, cfg, t),
+            None => Self::spawn(id, membership, peers, store, sm, cfg),
+        }
+    }
+
     /// Build a host for node `id`, recovering persisted state + replaying the
     /// resident committed log into the state machine, and start the tick + pump.
     /// `peers` maps the other members to base URLs (empty ⇒ single-node).
