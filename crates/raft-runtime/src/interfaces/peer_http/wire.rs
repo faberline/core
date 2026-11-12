@@ -57,6 +57,16 @@ pub(crate) struct PublishEnvelope {
     pub(crate) group_id: String,
     pub(crate) command: Vec<u8>,
 }
+#[allow(dead_code)] // used by the read-index handler and client of #187 parts 2 and 3
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct ReadIndexEnvelope {
+    pub(crate) group_id: String,
+}
+#[allow(dead_code)] // used by the read-index handler and client of #187 parts 2 and 3
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct ReadIndexResp {
+    pub(crate) index: u64,
+}
 #[derive(Serialize, Deserialize)]
 pub(crate) struct NotLeader {
     pub(crate) error: &'static str,
