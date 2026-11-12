@@ -70,7 +70,23 @@ pub(super) fn emit_method(
         .as_ref()
         .filter(|b| b.media_kind == MediaKind::Json)
         .map(|b| pymap::type_expr(&b.schema, tm, target));
-    if let Some(ty) = &body_ty {
+    // An NDJSON body is an iterable of records, streamed one line each.
+    let body_sig_ty = match ir
+        .body
+        .as_ref()
+        .filter(|b| b.media_kind == MediaKind::Ndjson)
+    {
+        Some(b) => {
+            let item = pymap::type_expr(&b.schema, tm, target);
+            Some(if is_async {
+                format!("AsyncIterable[{item}] | Iterable[{item}]")
+            } else {
+                format!("Iterable[{item}]")
+            })
+        }
+        None => body_ty.clone(),
+    };
+    if let Some(ty) = &body_sig_ty {
         let required = ir.body.as_ref().map(|b| b.required).unwrap_or(false);
         if required {
             sig.push(format!("body: {ty}"));
@@ -79,7 +95,7 @@ pub(super) fn emit_method(
         }
     }
 
-    let (ret_ann, ret_stmt) = response(ir, tm, target);
+    let (ret_ann, ret_stmt) = response(ir, tm, target, is_async);
     let sig_str = if sig.is_empty() {
         String::new()
     } else {
@@ -158,6 +174,18 @@ pub(super) fn emit_method(
         None => format!("\"{}\"", ir.http_method),
     };
 
+    if is_ndjson(ir) {
+        m.push_str(&stream_request(
+            ir,
+            tm,
+            target,
+            is_async,
+            &method_expr,
+            body_ty.is_some(),
+        ));
+        return m;
+    }
+
     if is_async {
         m.push_str(&format!(
             "        _resp = await self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg})\n"
@@ -172,9 +200,24 @@ pub(super) fn emit_method(
     m
 }
 
-/// `(return annotation, return statement)` for the operation's response.
-fn response(ir: &OperationIR, tm: &TypeMap, target: Option<PythonTarget>) -> (String, String) {
+/// `(return annotation, return statement)` for the operation's response. An
+/// NDJSON response is a generator, so it has no return statement.
+fn response(
+    ir: &OperationIR,
+    tm: &TypeMap,
+    target: Option<PythonTarget>,
+    is_async: bool,
+) -> (String, String) {
     match &ir.response {
+        Some(resp) if resp.media_kind == MediaKind::Ndjson => {
+            let item = pymap::type_expr(&resp.schema, tm, target);
+            let ann = if is_async {
+                format!("AsyncIterator[{item}]")
+            } else {
+                format!("Iterator[{item}]")
+            };
+            (ann, String::new())
+        }
         Some(resp) if resp.media_kind == MediaKind::Json => match &resp.schema {
             RefOr::Ref(r) => match tm.resolve_ref(&r.reference) {
                 Some(model) => (
@@ -190,4 +233,120 @@ fn response(ir: &OperationIR, tm: &TypeMap, target: Option<PythonTarget>) -> (St
         },
         _ => ("None".to_string(), "return None".to_string()),
     }
+}
+
+/// True when the operation sends or receives NDJSON (the method then uses `client.stream`).
+pub(super) fn is_ndjson(ir: &OperationIR) -> bool {
+    ir.body
+        .as_ref()
+        .is_some_and(|b| b.media_kind == MediaKind::Ndjson)
+        || ir
+            .response
+            .as_ref()
+            .is_some_and(|r| r.media_kind == MediaKind::Ndjson)
+}
+
+/// Model class to validate each streamed record with, when the item schema is a known `$ref`.
+fn item_model(schema: &RefOr<crate::domain::ir::openapi::Schema>, tm: &TypeMap) -> Option<String> {
+    match schema {
+        RefOr::Ref(r) => tm.resolve_ref(&r.reference),
+        RefOr::Item(_) => None,
+    }
+}
+
+/// The body of an NDJSON method: headers, then `client.stream` opened in a
+/// `with` block, so closing the generator closes the stream.
+fn stream_request(
+    ir: &OperationIR,
+    tm: &TypeMap,
+    target: Option<PythonTarget>,
+    is_async: bool,
+    method_expr: &str,
+    json_body: bool,
+) -> String {
+    let body_ndjson = ir
+        .body
+        .as_ref()
+        .is_some_and(|b| b.media_kind == MediaKind::Ndjson);
+    let body_required = ir.body.as_ref().is_some_and(|b| b.required);
+    let resp_ndjson = ir
+        .response
+        .as_ref()
+        .is_some_and(|r| r.media_kind == MediaKind::Ndjson);
+    let aw = if is_async { "await " } else { "" };
+    let mut m = String::new();
+
+    if body_ndjson {
+        m.push_str("        _headers[\"Content-Type\"] = \"application/x-ndjson\"\n");
+    } else if json_body {
+        m.push_str("        _headers[\"Content-Type\"] = \"application/json\"\n");
+    }
+    if resp_ndjson {
+        m.push_str("        _headers[\"Accept\"] = \"application/x-ndjson\"\n");
+    }
+    let open = if is_async { "async with" } else { "with" };
+    m.push_str(&format!(
+        "        {open} self._client.stream({method_expr}, self._base_url + _path, params=_params, headers=_headers) as _stream:  # type: ignore[attr-defined]\n"
+    ));
+
+    if body_ndjson {
+        // Lines of the record loop at the body's own indent (12 spaces inside `with`).
+        let mut lines: Vec<&str> = Vec::new();
+        if is_async {
+            lines.extend([
+                "if hasattr(body, \"__aiter__\"):",
+                "    async for _item in body:",
+                "        await _stream.send_data(_ndjson_line(_item))",
+                "else:",
+                "    for _item in body:",
+                "        await _stream.send_data(_ndjson_line(_item))",
+            ]);
+        } else {
+            lines.extend([
+                "for _item in body:",
+                "    _stream.send_data(_ndjson_line(_item))",
+            ]);
+        }
+        if !body_required {
+            m.push_str("            if body is not None:\n");
+            for line in &lines {
+                m.push_str(&format!("                {line}\n"));
+            }
+        } else {
+            for line in &lines {
+                m.push_str(&format!("            {line}\n"));
+            }
+        }
+        m.push_str(&format!("            {aw}_stream.end_request()\n"));
+    } else if json_body {
+        m.push_str(&format!(
+            "            {aw}_stream.send_json(_json, end_stream=True)\n"
+        ));
+    } else {
+        m.push_str(&format!("            {aw}_stream.end_request()\n"));
+    }
+
+    match ir.response.as_ref() {
+        Some(resp) if resp.media_kind == MediaKind::Ndjson => {
+            let model = item_model(&resp.schema, tm).unwrap_or_else(|| "None".to_string());
+            if is_async {
+                m.push_str(&format!(
+                    "            async for _rec in _ndjson_arecords(_stream, {model}):\n                yield _rec\n"
+                ));
+            } else {
+                m.push_str(&format!(
+                    "            yield from _ndjson_records(_stream, {model})\n"
+                ));
+            }
+        }
+        _ => {
+            m.push_str(&format!(
+                "            _resp = {aw}_stream.read_response()\n"
+            ));
+            m.push_str("            _resp.raise_for_status()\n");
+            let (_, ret_stmt) = response(ir, tm, target, is_async);
+            m.push_str(&format!("            {ret_stmt}\n"));
+        }
+    }
+    m
 }
