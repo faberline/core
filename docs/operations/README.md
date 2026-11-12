@@ -42,6 +42,42 @@ service-k8s = { git = "https://github.com/faberline/core", tag = "v0.4.14" }
   matches nothing passes with zero tests, so renaming or moving one of these
   silently disables lumen's check. Tell lumen before doing either.
 
+## Compatibility and pinning
+
+This section is the rule for service repos. A service can follow it without asking.
+
+### Which tag a service pins
+
+- A service pins the newest core tag, or the newest patch tag of the previous minor version (one release behind). `v0.6.2` and `v0.5.9` are both allowed while `v0.6.2` is the newest tag. `v0.4.14` is not.
+- One workspace pins one tag for every core crate (see above).
+- A tag that is more than one minor version behind is unsupported: a fix lands on `main` and in a new tag, not in an old line.
+
+### Moving to a new tag
+
+1. Read the release notes page `docs/operations/release-notes-<version>.md` and the pages in `docs/migration/` for every version between the old and the new tag.
+2. Change every core dependency to the new tag in one commit.
+3. Run the service's own tests and its release-candidate checks.
+4. If a breaking change in the notes touches the service, do its migration step in the same pull request.
+
+### What a breaking change is
+
+A change is breaking when it does any of these:
+
+- Rust API: it removes, renames or moves a public item of any core crate; changes a public signature, field or enum variant; makes a public field private; or adds a required method to a public trait (a method without a default body).
+- Wire and persisted formats: it changes any byte or field that a `wire_golden` test pins (`raft-core`, `raft-runtime`, `service-auth`, `service-backup` and `service-k8s` each have `tests/it/wire_golden.rs`), or makes a node fail to read data that an older tag wrote.
+- Kubernetes: in `service-k8s`, it removes or renames a resource kind, a CRD field, a label, an annotation or an owner reference; adds a required CRD field; or changes the rendered output of an existing instance.
+
+### What a breaking change needs
+
+- A minor version bump (before 1.0 the minor version is the breaking one: `0.6.x` to `0.7.0`).
+- A note under "Breaking changes" in the release notes page `docs/operations/release-notes-<version>.md`.
+- A migration step in `docs/migration/` that names the code or resource to change.
+- A golden test is never edited to make a break pass. If a golden file must change, the pull request has the three items above, and the review checks them.
+
+### Renames of pinned tests
+
+The three lumen release-candidate checks (`stateful_instance_render`, `stateful_adapter_equivalence`, `adversarial_recovery`; see above) stay by name. A rename or a move of one of them is a breaking change for lumen: tell lumen first, and list it in the release notes.
+
 ## Checking a change against downstream repos
 
 A change that claims to keep the public API should be checked against the
