@@ -117,3 +117,30 @@ fn nonleaders_report_not_leader_for_all_admission_paths() {
         Err(StepError::NotLeader)
     ));
 }
+
+#[test]
+fn deterministic_host_turns_the_leader_noop_on() {
+    let dir = TempDir::new().unwrap();
+    let store = RaftStore::open(
+        dir.path().to_str().unwrap(),
+        NodeId::new(0),
+        crate::FsyncPolicy::Always,
+    )
+    .unwrap();
+    let sm = Arc::new(CountingSm(AtomicU64::new(0)));
+    let mut host = DeterministicHost::open(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
+        store,
+        sm,
+    )
+    .unwrap();
+    for _ in 0..50 {
+        host.tick().unwrap();
+    }
+    assert_eq!(host.view().role, ConformanceRole::Leader);
+    assert!(
+        host.view().last_index.get() >= 1,
+        "the leader must hold its no-op entry"
+    );
+}

@@ -1,4 +1,5 @@
 mod access_log;
+mod adopter_quickstart;
 mod body_limit;
 mod detailed_error;
 mod ingest_runtime;

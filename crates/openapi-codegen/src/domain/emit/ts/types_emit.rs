@@ -196,4 +196,14 @@ mod tests {
             "{out}"
         );
     }
+
+    #[test]
+    fn ndjson_types_use_async_iterable() {
+        let out = render(
+            r##"{"paths":{"/items":{"post":{"operationId":"uploadItems",
+              "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object","properties":{"id":{"type":"integer"}}}}}},
+              "responses":{"200":{"content":{"application/json":{"schema":{"type":"string"}}}}}}}}}"##,
+        );
+        assert!(out.contains("export type UploadItemsData = { body: AsyncIterable<"));
+    }
 }
