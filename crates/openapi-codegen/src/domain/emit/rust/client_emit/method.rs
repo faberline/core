@@ -39,9 +39,24 @@ struct ErrorVariant {
     is_text: bool,
 }
 
+/// True when the operation sends or receives NDJSON.
+pub(super) fn is_ndjson(ir: &OperationIR) -> bool {
+    ir.body
+        .as_ref()
+        .is_some_and(|b| b.media_kind == MediaKind::Ndjson)
+        || ir
+            .response
+            .as_ref()
+            .is_some_and(|r| r.media_kind == MediaKind::Ndjson)
+}
+
 /// Variants for the declared error responses this emitter can name.
 /// Keys that are neither a status code, `4XX`/`5XX` nor `default` get none.
+/// An NDJSON operation has none: it returns `ClientResult` and `error_for_status`.
 fn error_variants(ir: &OperationIR, tm: &TypeMap) -> Vec<ErrorVariant> {
+    if is_ndjson(ir) {
+        return Vec::new();
+    }
     let mut out = Vec::new();
     for e in &ir.error_responses {
         let key = e.status.as_str();
@@ -123,6 +138,11 @@ pub(super) fn emit_method(
         .as_ref()
         .filter(|b| b.media_kind == MediaKind::Json)
         .map(|b| rsmap::type_expr(&b.schema, tm));
+    let ndjson_body = ir
+        .body
+        .as_ref()
+        .filter(|b| b.media_kind == MediaKind::Ndjson)
+        .map(|b| rsmap::type_expr(&b.schema, tm));
     if let Some(t) = &body_ty {
         let req = ir.body.as_ref().map(|b| b.required).unwrap_or(false);
         sig.push(format!(
@@ -130,6 +150,17 @@ pub(super) fn emit_method(
             if req { t.clone() } else { rsmap::optional(t) }
         ));
     }
+    // An NDJSON body is always taken as an iterator: its records are streamed
+    // lazily, so an optional body has no meaning here.
+    if let Some(item) = &ndjson_body {
+        sig.push(format!(
+            "body: impl Iterator<Item = {item}> + Send + 'static"
+        ));
+    }
+    let ndjson_resp = ir
+        .response
+        .as_ref()
+        .is_some_and(|r| r.media_kind == MediaKind::Ndjson);
 
     let (ret, ret_stmt) = response(ir, tm);
     let result_ty = match &error_enum {
@@ -240,8 +271,16 @@ pub(super) fn emit_method(
     if body_ty.is_some() {
         m.push_str("        req = req.json(&body);\n");
     }
+    if ndjson_body.is_some() {
+        m.push_str("        req = req.header(\"Content-Type\", \"application/x-ndjson\").body(reqwest::blocking::Body::new(NdjsonBodyReader::new(body)));\n");
+    }
+    if ndjson_resp {
+        m.push_str("        req = req.header(\"Accept\", \"application/x-ndjson\");\n");
+    }
 
-    m.push_str("        let _slot = self.acquire_slot()?;\n");
+    // An NDJSON response keeps the admission slot for as long as its iterator lives.
+    let slot = if ndjson_resp { "slot" } else { "_slot" };
+    m.push_str(&format!("        let {slot} = self.acquire_slot()?;\n"));
     match &error_enum {
         None => m.push_str("        let resp = req.send()?.error_for_status()?;\n"),
         Some(enum_name) => {
@@ -286,6 +325,18 @@ pub(super) fn emit_method(
 /// `(return type, return statement)` for the operation's response.
 fn response(ir: &OperationIR, tm: &TypeMap) -> (String, String) {
     match &ir.response {
+        Some(resp) if resp.media_kind == MediaKind::Ndjson => {
+            let item = match &resp.schema {
+                RefOr::Ref(r) => tm
+                    .resolve_ref(&r.reference)
+                    .unwrap_or_else(|| "serde_json::Value".to_string()),
+                node @ RefOr::Item(_) => rsmap::type_expr(node, tm),
+            };
+            (
+                format!("NdjsonRecords<{item}>"),
+                "Ok(NdjsonRecords::new(resp, slot))".to_string(),
+            )
+        }
         Some(resp) if resp.media_kind == MediaKind::Json => match &resp.schema {
             RefOr::Ref(r) => {
                 let ty = tm
