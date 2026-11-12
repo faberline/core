@@ -182,3 +182,19 @@ fn publish_envelope_matches() {
         },
     );
 }
+
+#[test]
+fn read_index_envelope_and_reply_match() {
+    same_bytes(
+        &client::ReadIndexEnvelope {
+            group_id: "orders".into(),
+        },
+        &server::ReadIndexEnvelope {
+            group_id: "orders".into(),
+        },
+    );
+    same_bytes(
+        &client::ReadIndexResp { index: 7 },
+        &server::ReadIndexResp { index: 7 },
+    );
+}
