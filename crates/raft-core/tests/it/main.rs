@@ -1,3 +1,4 @@
+mod compat_policy_doc;
 mod consensus;
 mod demotion_removal;
 mod driver_ports;

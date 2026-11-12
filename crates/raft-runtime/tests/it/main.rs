@@ -7,6 +7,7 @@ mod conf_state_durability;
 mod durable_layout;
 mod durable_persistence;
 mod fenced_assignment;
+mod full_group_restart;
 mod group_identity;
 mod group_membership_isolation;
 mod group_registry;
