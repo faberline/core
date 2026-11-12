@@ -16,7 +16,7 @@ s3 = ["dep:aws-config", "dep:aws-sdk-s3", "dep:tokio"]
 [dependencies]
 anyhow = { workspace = true }
 aws-config = { version = "1", optional = true }
-aws-sdk-s3 = { version = "1", optional = true }
+aws-sdk-s3 = { version = "1", optional = true, default-features = false, features = ["default-https-client", "rt-tokio", "http-1x"] }
 chrono = { workspace = true }
 fs2 = "0.4"
 reqwest = { workspace = true, features = ["blocking"], optional = true }

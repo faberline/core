@@ -34,3 +34,5 @@ validated conversion to obtain the tagged runtime `BackupPolicy`.
 |---|---|---:|---|
 | shared-service-backup-contract | epic | - | `cargo test -p service-backup`; crates/service-backup/src/lib.rs |
 | crd-safe-scheduled-backup-policy | change | #1778 | `cargo test -p service-backup`; operator schema/render suites for Lumen, Keep, and Relay |
+
+S3 feature: the aws SDK no longer uses the legacy rustls 0.21 connector. Services get this fix with the next core tag.
