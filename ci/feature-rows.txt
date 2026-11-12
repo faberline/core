@@ -1,0 +1,31 @@
+index-text|all-features|--all-features
+index-text|feature:jieba|--no-default-features --features jieba
+index-text|no-default|--no-default-features
+service-auth|all-features|--all-features
+service-auth|feature:k8s|--no-default-features --features k8s
+service-auth|no-default|--no-default-features
+service-backup|all-features|--all-features
+service-backup|feature:s3|--no-default-features --features s3
+service-backup|no-default|--no-default-features
+service-http|all-features|--all-features
+service-http|feature:otlp|--no-default-features --features otlp
+service-http|no-default|--no-default-features
+service-observability|all-features|--all-features
+service-observability|feature:otlp|--no-default-features --features otlp
+service-observability|no-default|--no-default-features
+storage-object|all-features|--all-features
+storage-object|feature:gcs|--no-default-features --features gcs
+storage-object|feature:s3|--no-default-features --features s3
+storage-object|no-default|--no-default-features
+transport-h2c|all-features|--all-features
+transport-h2c|feature:server|--no-default-features --features server
+transport-h2c|no-default|--no-default-features
+ui-runtime|all-features|--all-features
+ui-runtime|feature:debug|--no-default-features --features debug
+ui-runtime|feature:serde_json|--no-default-features --features serde_json
+ui-runtime|no-default|--no-default-features
+cli-std|all-features|--all-features
+cli-std|feature:k8s|--no-default-features --features k8s
+cli-std|feature:online|--no-default-features --features online
+cli-std|feature:registry|--no-default-features --features registry
+cli-std|no-default|--no-default-features

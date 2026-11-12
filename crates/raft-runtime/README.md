@@ -37,6 +37,11 @@ newtypes (`NodeId`, `Term`, `Index`, `AssignmentEpoch`: `new` / `get`;
 `GroupId`: `new` / `as_str`), and `HostConfig` and `ClusterDims` are built
 through constructors and `with_*` methods rather than struct literals.
 
+`RaftHost::spawn_with_optional_peer_transport` takes an `Option<PeerTransport>`
+and picks the shared transport or the default client. `ProposalSession` hands
+out `ProposalStamp`s (`node`, `session`, `sequence`), so two proposals from one
+process never share an id.
+
 - Root WI: none; this capability predates the tracker.
 - Surfaces: Rust API: `raft_runtime`.
 - Gate — behavior: `cargo test -p raft-runtime` - host, config, store, and read
