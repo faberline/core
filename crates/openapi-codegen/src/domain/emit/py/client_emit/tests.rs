@@ -106,7 +106,7 @@ fn non_query_operation_has_no_fallback_branch() {
 }
 
 #[test]
-fn ndjson_operation_is_not_emitted_as_json() {
+fn ndjson_operation_is_emitted_as_stream() {
     let s = spec(
         r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs",
   "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
@@ -114,9 +114,116 @@ fn ndjson_operation_is_not_emitted_as_json() {
     );
     let tm = build_type_map(&s);
     let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
-    let sig_start = out.find("def upload_logs(").expect("method is emitted");
-    let sig_end = out[sig_start..].find("):").expect("signature ends") + sig_start;
-    let sig = &out[sig_start..sig_end];
-    assert!(!sig.contains("body"), "{sig}");
-    assert!(out.contains("-> None"), "{out}");
+    assert!(
+        out.contains(
+            "    def upload_logs(self, *, body: Iterable[dict[str, Any]]) -> Iterator[str]:\n"
+        ),
+        "{out}"
+    );
+    assert!(
+        out.contains("    async def upload_logs(self, *, body: AsyncIterable[dict[str, Any]] | Iterable[dict[str, Any]]) -> AsyncIterator[str]:\n"),
+        "{out}"
+    );
+}
+
+const NDJSON_ITEM_SCHEMA: &str = r##""components":{"schemas":{"Item":{"type":"object","properties":{"id":{"type":"integer"}},"required":["id"]}}}"##;
+
+#[test]
+fn ndjson_upload_method_streams_body_lines() {
+    let s = spec(&format!(
+        r##"{{"paths":{{"/items":{{"post":{{"operationId":"uploadItems",
+  "requestBody":{{"required":true,"content":{{"application/x-ndjson":{{"schema":{{"$ref":"#/components/schemas/Item"}}}}}}}},
+  "responses":{{"200":{{"description":"ok","content":{{"application/json":{{"schema":{{"$ref":"#/components/schemas/Item"}}}}}}}}}}}}}}}},{NDJSON_ITEM_SCHEMA}}}"##
+    ));
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    assert!(
+        out.contains("def upload_items(self, *, body: Iterable[Item]) -> Item:"),
+        "{out}"
+    );
+    assert!(
+        out.contains(
+            "async def upload_items(self, *, body: AsyncIterable[Item] | Iterable[Item]) -> Item:"
+        ),
+        "{out}"
+    );
+    assert!(
+        out.contains("_headers[\"Content-Type\"] = \"application/x-ndjson\""),
+        "{out}"
+    );
+    assert!(
+        out.contains("with self._client.stream(\"POST\", self._base_url + _path, params=_params, headers=_headers) as _stream:"),
+        "{out}"
+    );
+    assert!(out.contains("async with self._client.stream("), "{out}");
+    assert!(
+        out.contains("_stream.send_data(_ndjson_line(_item))"),
+        "{out}"
+    );
+    assert!(out.contains("_stream.end_request()"), "{out}");
+    assert!(out.contains("_resp = _stream.read_response()"), "{out}");
+    assert!(out.contains("import json"), "{out}");
+}
+
+#[test]
+fn ndjson_response_method_is_a_generator() {
+    let s = spec(&format!(
+        r##"{{"paths":{{"/items":{{"get":{{"operationId":"listItems",
+  "responses":{{"200":{{"description":"ok","content":{{"application/x-ndjson":{{"schema":{{"$ref":"#/components/schemas/Item"}}}}}}}}}}}}}}}},{NDJSON_ITEM_SCHEMA}}}"##
+    ));
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    assert!(
+        out.contains("def list_items(self) -> Iterator[Item]:"),
+        "{out}"
+    );
+    assert!(
+        out.contains("async def list_items(self) -> AsyncIterator[Item]:"),
+        "{out}"
+    );
+    assert!(
+        out.contains("yield from _ndjson_records(_stream, Item)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("async for _rec in _ndjson_arecords(_stream, Item):"),
+        "{out}"
+    );
+    assert!(
+        out.contains("_headers[\"Accept\"] = \"application/x-ndjson\""),
+        "{out}"
+    );
+}
+
+#[test]
+fn ndjson_helpers_report_malformed_lines_and_bad_status() {
+    let s = spec(&format!(
+        r##"{{"paths":{{"/items":{{"get":{{"operationId":"listItems",
+  "responses":{{"200":{{"description":"ok","content":{{"application/x-ndjson":{{"schema":{{"$ref":"#/components/schemas/Item"}}}}}}}}}}}}}}}},{NDJSON_ITEM_SCHEMA}}}"##
+    ));
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    assert!(out.contains("class NdjsonParseError(ValueError):"), "{out}");
+    assert!(
+        out.contains("raise NdjsonParseError(line) from None"),
+        "{out}"
+    );
+    assert!(
+        out.contains("class NdjsonStatusError(RuntimeError):"),
+        "{out}"
+    );
+    assert!(out.contains("async def _ndjson_arecords("), "{out}");
+}
+
+#[test]
+fn json_only_client_has_no_ndjson_output() {
+    let s = spec(
+        r##"{"paths":{"/pets":{"get":{"operationId":"listPets","responses":{"200":{"description":"ok","content":{"application/json":{"schema":{"type":"array","items":{"type":"string"}}}}}}}}}}"##,
+    );
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    assert!(!out.contains("Ndjson"), "{out}");
+    assert!(!out.contains("import json"), "{out}");
+    assert!(!out.contains(".stream("), "{out}");
+    assert!(!out.contains("AsyncIterable"), "{out}");
 }
