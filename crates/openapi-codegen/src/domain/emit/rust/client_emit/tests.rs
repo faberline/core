@@ -124,7 +124,7 @@ fn an_undeclared_status_falls_back_to_error_for_status() {
 }
 
 #[test]
-fn ndjson_operation_is_not_emitted_as_json() {
+fn ndjson_operation_is_emitted_as_stream() {
     let out = render_spec(
         r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs",
   "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
@@ -133,6 +133,77 @@ fn ndjson_operation_is_not_emitted_as_json() {
     let sig_start = out.find("fn upload_logs(").expect("method is emitted");
     let sig_end = out[sig_start..].find('{').unwrap() + sig_start;
     let sig = &out[sig_start..sig_end];
-    assert!(!sig.contains("body"), "{sig}");
-    assert!(sig.ends_with("-> ClientResult<()> "), "{sig}");
+    assert!(sig.contains("body: impl Iterator<Item = "), "{sig}");
+    assert!(
+        sig.ends_with("-> ClientResult<NdjsonRecords<String>> "),
+        "{sig}"
+    );
+}
+
+const NDJSON_ITEM: &str = r##""components":{"schemas":{"Item":{"type":"object","properties":{"id":{"type":"integer"}},"required":["id"]}}}"##;
+
+#[test]
+fn ndjson_upload_method_takes_an_iterator() {
+    let out = render_spec(&format!(
+        r##"{{"paths":{{"/items":{{"post":{{"operationId":"uploadItems",
+  "requestBody":{{"required":true,"content":{{"application/x-ndjson":{{"schema":{{"$ref":"#/components/schemas/Item"}}}}}}}},
+  "responses":{{"200":{{"description":"ok","content":{{"application/json":{{"schema":{{"$ref":"#/components/schemas/Item"}}}}}}}}}}}}}}}},{NDJSON_ITEM}}}"##
+    ));
+    assert!(
+        out.contains("pub fn upload_items(&self, body: impl Iterator<Item = Item> + Send + 'static) -> ClientResult<Item> {"),
+        "{out}"
+    );
+    assert!(
+        out.contains("req = req.header(\"Content-Type\", \"application/x-ndjson\").body(reqwest::blocking::Body::new(NdjsonBodyReader::new(body)));"),
+        "{out}"
+    );
+    assert!(
+        out.contains("struct NdjsonBodyReader<I: Iterator> {"),
+        "{out}"
+    );
+}
+
+#[test]
+fn ndjson_response_method_returns_a_record_iterator() {
+    let out = render_spec(&format!(
+        r##"{{"paths":{{"/items":{{"get":{{"operationId":"listItems",
+  "responses":{{"200":{{"description":"ok","content":{{"application/x-ndjson":{{"schema":{{"$ref":"#/components/schemas/Item"}}}}}}}}}}}}}}}},{NDJSON_ITEM}}}"##
+    ));
+    assert!(
+        out.contains("pub fn list_items(&self) -> ClientResult<NdjsonRecords<Item>> {"),
+        "{out}"
+    );
+    assert!(out.contains("let slot = self.acquire_slot()?;"), "{out}");
+    assert!(out.contains("Ok(NdjsonRecords::new(resp, slot))"), "{out}");
+    assert!(
+        out.contains("req = req.header(\"Accept\", \"application/x-ndjson\");"),
+        "{out}"
+    );
+    assert!(out.contains("pub struct NdjsonRecords<T> {"), "{out}");
+}
+
+#[test]
+fn ndjson_adds_a_typed_parse_error() {
+    let out = render_spec(&format!(
+        r##"{{"paths":{{"/items":{{"get":{{"operationId":"listItems",
+  "responses":{{"200":{{"description":"ok","content":{{"application/x-ndjson":{{"schema":{{"$ref":"#/components/schemas/Item"}}}}}}}}}}}}}}}},{NDJSON_ITEM}}}"##
+    ));
+    assert!(
+        out.contains("Ndjson { line: usize, reason: String },"),
+        "{out}"
+    );
+    assert!(
+        out.contains("Self::Trust(_) | Self::Ndjson { .. } => None,"),
+        "{out}"
+    );
+}
+
+#[test]
+fn json_only_client_has_no_ndjson_output() {
+    let out = render_spec(
+        r##"{"paths":{"/pets":{"get":{"operationId":"listPets","responses":{"200":{"description":"ok","content":{"application/json":{"schema":{"type":"array","items":{"type":"string"}}}}}}}}}}"##,
+    );
+    assert!(!out.contains("Ndjson"), "{out}");
+    assert!(!out.contains("NdjsonRecords"), "{out}");
+    assert!(!out.contains("NdjsonBodyReader"), "{out}");
 }
