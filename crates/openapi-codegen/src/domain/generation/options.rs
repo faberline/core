@@ -1,5 +1,6 @@
 use std::path::{Path, PathBuf};
 
+use super::OperationSelection;
 use crate::domain::TargetProfile;
 
 /// Target language for the generated client.
@@ -60,6 +61,7 @@ pub struct GenOptions {
     emit_types: bool,
     emit_client: bool,
     emit_hooks: bool,
+    operations: Option<OperationSelection>,
 }
 
 impl GenOptions {
@@ -83,7 +85,21 @@ impl GenOptions {
             emit_types: true,
             emit_client: true,
             emit_hooks: lang == Lang::Ts,
+            operations: None,
         }
+    }
+
+    /// Generate only the selected operations, and the component schemas that
+    /// they reach through `$ref`. Without a selection every operation is
+    /// generated.
+    pub fn with_operations(mut self, selection: OperationSelection) -> Self {
+        self.operations = Some(selection);
+        self
+    }
+
+    /// The operation selection of this run, if any.
+    pub fn operations(&self) -> Option<&OperationSelection> {
+        self.operations.as_ref()
     }
 
     /// Set the versioned language/toolchain contract. Without one, the legacy
@@ -199,5 +215,20 @@ impl GenOptions {
     /// Whether TanStack Query hooks are emitted.
     pub fn emit_hooks(&self) -> bool {
         self.emit_hooks
+    }
+}
+
+#[cfg(test)]
+mod operation_selection_tests {
+    use super::{GenOptions, Lang, OperationSelection};
+
+    #[test]
+    fn no_selection_by_default_and_selection_once_set() {
+        let opts = GenOptions::new(Lang::Rust, "spec.json", "out", "client");
+        assert_eq!(opts.operations(), None);
+
+        let sel = OperationSelection::new(vec!["getTask".into()]).unwrap();
+        let opts = opts.with_operations(sel.clone());
+        assert_eq!(opts.operations(), Some(&sel));
     }
 }
