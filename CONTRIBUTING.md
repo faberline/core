@@ -174,7 +174,7 @@ tests/
 └── governance/            meta-gates over manifests, profiles, CI policy, inventory shape
 ```
 
-(`apps/mamba/tests/` is the reference adopter: `cpython/` pins the
+(the downstream app `mamba` (`tests/`) is the reference adopter: `cpython/` pins the
 CPython-replacement contract, `mambalibs/` the native-library contracts,
 `pkgmgr/` the CLI, `governance/` the meta-gates. The same first-split-by-domain
 shape applies to specs, configs, and generated trees.)
@@ -254,7 +254,7 @@ The mechanics that make a tree fully tooled — its layout spec, the
 conventions (hermetic per-file headers, oracle verification, performance
 baselines) — belong **with the tree**, not in this general guide. For the mamba
 CPython suite that source of truth is
-`apps/mamba/tests/cpython/conventions/FIXTURE-LAYOUT.md`: the six-dimension
+`tests/cpython/conventions/FIXTURE-LAYOUT.md` in the downstream app `mamba`: the six-dimension
 table, the `fixture_gen` → fill → `fixture_lint` loop, PEP 723 `[tool.mamba]`
 headers, the CPython oracle, and the perf-baseline flow.
 
@@ -656,7 +656,7 @@ like once it has. Skip any one and the other two stop being checkable.
 It had a validator, `assert_semantic_names.sh`, which is deleted with the crate
 that ran it; nothing checks the grammar now.)*
 
-`libs/<name>` must expose both the library's stable responsibility and its
+`crates/<name>` must expose both the library's stable responsibility and its
 abstraction level before an agent opens `Cargo.toml`. A shared library is named
 for what it owns, not for an implementation accident (`h2c`), an ambiguous
 role (`host`, `operator`), or an outcome broader than its actual mechanism
@@ -704,7 +704,7 @@ mandatory** — a service that re-implements any of these is a defect, not a
 variation. `lumen`, `keep`, `relay`, and `loom` may be at different adoption
 stages, but new work moves them toward this common kit. If the common kit is
 missing a hook, extend the shared lib first; do not fork the pattern into one
-project. Shared service capabilities live in `libs/*`; projects supply only
+project. Shared service capabilities live in `crates/*`; projects supply only
 domain-specific state machines, schemas, request classification and result
 merging, route wiring, and their service profile.
 
@@ -761,9 +761,9 @@ opening a file. Today they cannot: the HTTP shell is called `server` in `tape`,
 `lumen`; the OpenAPI module is `spec` in some and `openapi` in others, and
 `tape` carries both.
 
-**The rule.** `apps/<svc>/src/` holds exactly three kinds of thing: the
+**The rule.** A downstream app's `src/` holds exactly three kinds of thing: the
 **entry point**, the **external contract**, and the **domain state machine**.
-Everything else is thin wiring over a `libs/` crate. Wiring that has grown
+Everything else is thin wiring over a `crates/` crate. Wiring that has grown
 *body* is the signal that the shared lib is missing a hook — extend the lib,
 do not let the app keep the logic.
 
@@ -1122,7 +1122,7 @@ HA** (#2602). For the next adopter those four are no longer authoring work —
 Rows still open everywhere: **SLO-shaped latency alerting**, **both scaling
 axes**, and **verifiable release artifacts**.
 
-`sift` (in `projects/sift`, not `apps/`) sits late in that order for a
+`sift` (a downstream project, not an app) sits late in that order for a
 structural reason, not a priority one. Like `lumen` it is something other
 services integrate *with*, but the coupling is a **one-way versioned schema** —
 emitters write `axiom.service.log.v1` to stdout
@@ -1332,7 +1332,7 @@ advice:
   path, examples, README/HA docs, perf modes, and EC gates must all name the
   same active data plane. Retired backends must not remain in active gates.
 - **Shared capability before service-local code.** Cross-service mechanics
-  belong in `libs/*`, not inside one project's `src/`: h2c transport, probe and
+  belong in `crates/*`, not inside one project's `src/`: h2c transport, probe and
   metrics routes, auth extraction and role maps, raft hosting, backup
   destination/policy runners, operator rendering, build stamping, CLI
   conventions, and generated client codegen. A service may own product-specific
@@ -1473,14 +1473,14 @@ them with `crates/build-stamp`'s `stamp("<PREFIX>")`, not a hand-rolled
 provides only its clap surface, that `ToolInfo`, and (for `llm`) its topic list;
 the crate does the rest. The network paths (`upgrade` install, `issue`
 search/view/create) sit behind cli-std's `online` feature — enable it in release
-builds. Reference adopters: `apps/jet` and `apps/lumen`.
+builds. Reference adopters: the downstream apps `jet` and `lumen`.
 
 - **`llm`** — `cli_std::llm::render(project, version, topics, topic, format)`. The
   tool supplies `&[cli_std::llm::Topic]` (`Topic::new(id, summary, body)` — the
   one in-code source of truth) and cli-std renders the `outline` topic map + the
   standard-command footer. Pure offline; always builds.
 - **`upgrade`** — `cli_std::upgrade::run(&tool, opts)`: the in-binary form of
-  `projects/<project>/install.sh` — detect target (`<arch>-<os>`) → download the
+  the downstream project's `install.sh` — detect target (`<arch>-<os>`) → download the
   matching `*.tar.gz` → verify `.sha256` → **atomically** replace the binary.
   Fail loudly on checksum mismatch; never leave a half-written binary.
 - **`issue`** — `cli_std::issue::{search, view, create}`. `search`/`view` are
@@ -1507,7 +1507,7 @@ resolution chain (`cr_tokens_secret`, `resolve_cr_tokens_secret`,
 `select_token`, `resolve_token`) are universal to any k8s-native service CLI — a tool adopts
 `connect` by supplying only its own flag surface, its CR-kind lookup
 convention (the `resource_kind` string passed to `resolve_cr_tokens_secret`),
-and a role mapping into `cli_std::connect::Role`. `apps/lumen`
+and a role mapping into `cli_std::connect::Role`. The downstream app `lumen`
 (`lumen connect`, extracted #1321/#1376) is the reference adopter; keep/relay/
 loom/beam adopting `connect` is tracked as follow-up work per project, not
 required by this convention alone.
@@ -1602,7 +1602,7 @@ Gate expectations:
   its underlying convention (`connect`'s port-forward lifecycle, etc.)
   rather than inventing a new one.
 
-`apps/lumen` is the reference instantiation: `### Developer & Agent
+The downstream app `lumen` is the reference instantiation: `### Developer & Agent
 Experience` (`developer-agent-experience`, `AgentFirst`) with
 `offline-contract` (`clients/openapi.json` byte-diff-tested against
 `lumen spec --format openapi`), `agent-onboarding` (`lumen llm` topics
@@ -1661,7 +1661,7 @@ The project row lost a sibling for the same reason. `<project>/CAPABILITIES.md`
 was its own META-doc until 2026-08-17, when all 62 of them were deleted and the
 five that carried content merged into their project's `README.md`. The doc type
 failed on its own evidence: 57 of the 62 were the identical empty template with
-a zero-row Capability Index, the two largest (`apps/relay`, `apps/mamba`)
+a zero-row Capability Index, the two largest (the downstream apps `relay` and `mamba`)
 had bypassed the template entirely, and `crates/service-http/CAPABILITIES.md`
 stated in its own prose that the real contract lived in the README. Nothing
 mechanical had ever read one — a repo-wide grep of `plugins/`, `.claude/`, and
@@ -1681,8 +1681,8 @@ layer. `LICENSE` remains the legal text and the only root uppercase meta file
 without a `.md` extension.
 
 The project/app layer owns one deliverable's product contract and scoped local
-conventions. `apps/<name>` is for app-facing binaries/services; legacy and
-library-like deliverables may still live under `projects/<name>`. Scoped
+conventions. A downstream app (`<name>`) is for app-facing binaries/services; legacy and
+library-like deliverables may still live in a downstream project (`<name>`). Scoped
 convention docs remain allowed only next to the tree they govern; generated
 evidence/docs require an explicit producer, validator, or policy-only marker.
 
@@ -1691,8 +1691,8 @@ this project promising?", "where is the source of truth?", "what am I allowed
 to edit?", and "how do I prove the change?" without making the agent read a
 full design book.
 
-`apps/<name>/README.md`, `libs/<name>/README.md`, and a surviving
-`projects/<name>/README.md` are the product contract as well as the front door.
+The `README.md` of a downstream app or project, and `crates/<name>/README.md`,
+are the product contract as well as the front door.
 They lead with the task a user came to perform. Architecture and ownership do
 not come before the product purpose, the primary workflow, or the main public
 operations.
@@ -1729,8 +1729,8 @@ flat `### <Capability>` section in the same order. The detail carries:
   contribution;
 - `Gate` — one or more verbatim consumer verification commands.
 
-Sources use three forms. `apps/<name>` supplies app-specific behavior and
-composition. `libs/<name>` supplies a reusable mechanism.
+Sources use three forms. A downstream app (`<name>`) supplies app-specific behavior and
+composition. `crates/<name>` supplies a reusable mechanism.
 `external:<name>` supplies an outside runtime, authority, or provisioned
 contract. A capability can name several sources, and a source can support
 several capabilities. The source list is not an ownership class.
@@ -1838,7 +1838,7 @@ Verification is a review step by a person or the review stage: give only the exa
 adopted files to one context-free reader when meaning or contradictions, which no
 script decides, need checking.
 
-`apps/<name>/CONTRIBUTING.md` / `projects/<name>/CONTRIBUTING.md` is the local
+A downstream app's or project's `CONTRIBUTING.md` is the local
 operating guide. It does not restate root authoring rules and does not carry
 the product promises that belong in the README. It explains how an agent safely
 changes this deliverable. The required shape is:
@@ -1886,8 +1886,7 @@ What still enforces any of this, and what does not:
   rows above. No one script enforces every row in this chapter.
 - **Policy, unenforced.** The root carries only the doc files this contract
   names; a stray root doc is a defect, not a new home.
-- **Policy, unenforced.** `apps/**/{CLAUDE,AGENTS}.md` and
-  `projects/**/{CLAUDE,AGENTS}.md` are forbidden except for declared
+- **Policy, unenforced.** `crates/**/{CLAUDE,AGENTS}.md` are forbidden except for declared
   template-source files. Measured on 2026-08-17: zero violations, by hand.
 - **Retracted.** CLAUDE and AGENTS were held to one document in two runtime
   flavors by a mirror test. They now diverge on purpose — see the two root rows
@@ -1914,8 +1913,8 @@ Every project `build.sh` must use the same two-mode contract. The per-project
 sift, keep, relay, and defer, and its first step is the release mode below. A
 plain compile is `cargo build -p <crate>` directly; `build-debug` is a local
 kind cluster run for keep/defer/relay/loom and not this contract. The
-versioned debug/release modes below run the project's own
-`apps/<name>/build.sh` from the repository root.
+versioned debug/release modes below run the downstream app's own
+`build.sh` from that app's repository root.
 
 ### Debug builds
 
