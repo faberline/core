@@ -42,6 +42,7 @@ impl DeterministicHost {
             Some(state) => RaftNode::from_persisted(id, &membership, state),
             None => RaftNode::new(id, &membership),
         };
+        node.set_leader_noop(true);
         cold_start(&mut node, sm.as_ref(), true).map_err(|e| StepError::StateMachine {
             operation: "cold-start",
             message: e.to_string(),
