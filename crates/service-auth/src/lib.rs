@@ -138,7 +138,7 @@ mod domain;
 mod infrastructure;
 mod interfaces;
 
-pub use api::{gcp, k8s, llm, reload};
+pub use api::{gcp, k8s, llm, reload, static_token};
 pub use application::google::{Credential, GoogleVerifier, JwksSource};
 pub use application::http::{
     async_auth_middleware, auth_middleware, bearer_token, AsAsync, AsyncVerifier, AuthError,

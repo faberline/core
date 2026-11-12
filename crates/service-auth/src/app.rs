@@ -7,4 +7,5 @@
 
 mod delegated_authenticator;
 mod google_verifier;
+pub(crate) mod static_token_auth;
 mod token_source;
