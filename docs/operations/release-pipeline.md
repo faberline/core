@@ -1,40 +1,47 @@
-# Core release entry
+# Core release procedure
 
-Since #140, this repository's `.github/workflows/ci.yml` runs no release preflight
-and no performance threshold. Both come back with the release workflow, which is follow-up work.
+## What runs
 
-Release uses `.github/workflows/ci.yml` (#140 replaced the old development workflow).
-Every `v*` RC or formal tag must pass AW's immutable tag/milestone preflight
-and select `all`. It executes every Core-owned required test and original
-numeric threshold. Independent legacy main/tag/manual gates remain intact.
+A tag push `vX.Y.Z-rc.N` or `vX.Y.Z` starts `.github/workflows/release.yml`.
+It runs these jobs:
 
-The shared [release contract](https://github.com/faberline/aw/blob/4223a4534f0197e1ea23004b9388ffd1eea34639/docs/standards/release-pipeline.md)
-defines the lifecycle. Issue-plan checks the user-defined milestone, closed
-issues, landed PRs and actual goal evidence. It fills real gaps before an RC.
-Full-test failure creates a same-milestone backlog repair with evidence. The
-planner adds exact affected unit commands before guarded todo admission.
-Repair and merge precede the next RC. Preserve tags and all test thresholds.
+- `preflight`: checks the tag against its commit and the reviewed contract.
+- `ci`: every job of `ci.yml`, called through `workflow_call`. Each job shows
+  as `ci / <job name>`.
+- `perf: thresholds`: runs `ci/measure-performance.py` with the original thresholds.
+- `gate`: passes only when every job above passed.
 
-Only the exact passing RC commit may receive the final tag. That tag also runs
-all tests. Publication must succeed before milestone closure. A formal-tag
-code repair needs a new reviewed SemVer version. Cloud CI reviews or merges
-no PR and closes no issue.
+## The two reviewed files
 
-`.github/aw-release.json` holds the reviewed contract for milestone 8:
-`core@0.5.0` is version `0.5.0`, tag `v0.5.0`, and a milestone is ready when
-all its issues are closed. The release-contract check script was removed by
-#140, so no command prints the holds. The workspace version is `0.5.0` (bumped
-by #156), which matches the milestone version. The tag still waits for the
-closed milestone and a user decision. This change creates no tag and starts no
-release.
+- `.github/aw-release-gates.json` is the policy. It names the workflow, its
+  id, its blob hash (`definition_sha`) and each job name that counts, with its kind.
+- `.github/aw-release.json` is the contract per milestone. It holds the
+  acceptance goals, the closed issues and the checks for each goal.
 
-Use the installed shared skill's absolute `scripts/plan.sh` path for
-`release-status --milestone 8`. Only a fresh matching assessment permits its
-guarded `release-advance` operation. Reconcile unknown provider responses
-before retry. A tag alone is not proof that full tests ran.
+A change to `release.yml` changes its blob hash. The same pull request must
+update `definition_sha`. `ci/check-release-policy.py`, run by the `lint` job,
+fails otherwise.
 
-A frozen passing RC can proceed after unrelated main work advances. Its exact
-commit must still be in main ancestry and include every related milestone PR
-and the current reviewed version/goal contract. Tag preflight uses that tagged
-source and plan. A child PR counts only once its merge commit actually lands
-in main through its parent. This does not remove the empty-mapping hold.
+## Release core@0.5.0 (milestone 8)
+
+1. Run `aw release-status --milestone 8`. Read `state`, `action` and `fingerprint`.
+2. Run `aw release-advance --milestone 8 --expected <fingerprint>`. This creates
+   the RC tag `v0.5.0-rc.1` on the commit it names.
+3. The tag push runs `release.yml` as full qualification on the RC commit.
+4. Run `aw release-preflight --tag <tag> --commit <sha>`. This checks the tag
+   against its commit and the contract.
+5. Only when every required job of the RC run succeeded, `aw release-status --milestone 8`
+   allows the final tag. Then `aw release-advance --milestone 8 --expected <fingerprint>`
+   creates `v0.5.0` on the same commit, and the same workflow runs again.
+6. A person publishes the GitHub release and closes the milestone.
+
+The commands `aw release-status`, `aw release-advance` and `aw release-preflight`
+come from faberline/aw#284. Check `aw --help` before you use them.
+
+## Rules
+
+- A missing, skipped, cancelled, stale or unknown check is not a pass.
+- Do not lower a test, a matrix row or a threshold. A change to any of them
+  needs a new reviewed version.
+- A job that is skipped on a tag kind can never pass for that kind.
+- Creating a tag, an RC or a release is a person's decision. This document does not start one.
