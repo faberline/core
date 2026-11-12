@@ -29,6 +29,8 @@ jobs:
           persist-credentials: false
       - name: Check ci.yml shape
         run: bash ci/check-ci-shape.sh
+      - name: Test ci.yml shape check
+        run: bash ci/test-check-ci-shape.sh
       - name: Check release.yml shape
         run: |
           bash ci/check-release-shape.sh
