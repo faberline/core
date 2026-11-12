@@ -143,6 +143,28 @@ async fn single_node_propose_applies_read_your_write() {
 }
 
 #[tokio::test]
+async fn spawn_with_optional_peer_transport_none_matches_spawn() {
+    let tmp = std::env::temp_dir().join(format!("raft-runtime-optional-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&tmp);
+    let sm = CounterSm::new();
+    let host = RaftHost::spawn_with_optional_peer_transport(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
+        std::collections::HashMap::new(),
+        store(&tmp, NodeId::new(0)),
+        sm.clone() as Arc<dyn RaftStateMachine>,
+        HostConfig::default(),
+        None,
+    );
+    let _ = wait_leader_base(&host).await;
+    let idx = host.propose(7u64.to_le_bytes().to_vec()).await.unwrap();
+    assert!(sm.applied_index() >= idx, "applied before propose returned");
+    let log = sm.log.lock().unwrap().clone();
+    assert_eq!(log.last().map(|(_, v)| *v), Some(7));
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
+#[tokio::test]
 async fn restart_replays_committed_log_into_a_fresh_sm() {
     let tmp = std::env::temp_dir().join(format!("raft-runtime-replay-{}", std::process::id()));
     let _ = std::fs::create_dir_all(&tmp);

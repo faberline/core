@@ -9,6 +9,7 @@ mod host;
 mod outcome_window;
 mod port_error;
 mod proposal_cache;
+mod proposal_session;
 mod read_consistency;
 mod registry;
 mod replica_host;
@@ -28,6 +29,7 @@ pub use host::{
 pub use outcome_window::{OutcomeWindow, DEFAULT_CAPACITY as OUTCOME_WINDOW_DEFAULT_CAPACITY};
 pub use port_error::{MembershipError, StateMachineError};
 pub use proposal_cache::{ProposalCache, DEFAULT_PROPOSAL_CACHE_CAPACITY};
+pub use proposal_session::{ProposalSession, ProposalStamp};
 pub use read_consistency::{ReadConsistency, READ_CONSISTENCY_HEADER};
 pub use registry::{GroupRegistry, RaftRegistry, RegistryError};
 pub use replica_host::{MembershipPolicy, ReplicaHostBuilder};
