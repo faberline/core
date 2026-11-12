@@ -213,3 +213,25 @@ async fn restart_replays_committed_log_into_a_fresh_sm() {
     );
     let _ = std::fs::remove_dir_all(&tmp);
 }
+
+#[tokio::test]
+async fn host_spawn_turns_the_leader_noop_on() {
+    let tmp = std::env::temp_dir().join(format!("raft-runtime-noop-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&tmp);
+    let sm = CounterSm::new();
+    let host = RaftHost::spawn(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0)], vec![]),
+        std::collections::HashMap::new(),
+        store(&tmp, NodeId::new(0)),
+        sm.clone() as Arc<dyn RaftStateMachine>,
+        HostConfig::default(),
+    );
+    let base = wait_leader_base(&host).await;
+    assert!(
+        base >= 1,
+        "the leader must hold its no-op entry, base was {base}"
+    );
+    assert!(host.shared.node.lock().await.leader_noop());
+    let _ = std::fs::remove_dir_all(&tmp);
+}
