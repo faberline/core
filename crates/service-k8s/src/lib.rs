@@ -47,6 +47,11 @@ pub use application::certificate::reconcile::Reconciler;
 pub use application::operator::managed_service::{
     ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
 };
+#[cfg(feature = "controller")]
+pub use domain::access::{
+    access_policy_condition, validate_policy, AccessGrant, AccessGrantError, AccessRule,
+    AccessSubject, GrantOutcome, ACCESS_POLICY_READY_CONDITION,
+};
 pub use domain::backup_job::{
     backup_job_name, plan_backup_job, BackupJobDecision, BackupJobError, BackupJobPhase,
     BackupJobPolicy, ObservedBackupJob,
@@ -83,6 +88,8 @@ pub use domain::lifecycle::{
 pub use infrastructure::certificate::csr::RcgenCsrGenerator;
 #[cfg(feature = "certificate")]
 pub use infrastructure::certificate::leaf_parser::X509LeafParser;
+#[cfg(feature = "controller")]
+pub use infrastructure::manifest::render_access_grants;
 #[cfg(feature = "controller")]
 pub use interfaces::cluster_spec::{ClusterSpec, ResourceSpec};
 #[cfg(feature = "controller")]
