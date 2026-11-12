@@ -26,6 +26,10 @@ pub enum SegmentError {
     CorruptCatalog { message: String },
     #[error("catalog serialization failed: {message}")]
     Serialization { message: String },
+    #[error("archive intent is corrupt: {message}")]
+    CorruptArchiveIntent { message: String },
+    #[error("archive intent format version {version} is not supported")]
+    UnsupportedArchiveIntentVersion { version: u64 },
     /// The object store failed. Infrastructure wraps storage-object's
     /// `ObjectStoreError` here, and the message is that error's own.
     #[error(transparent)]
