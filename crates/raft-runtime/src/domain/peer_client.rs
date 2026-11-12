@@ -10,6 +10,9 @@ use std::pin::Pin;
 /// follower forward client all use this one path.
 pub(crate) const PUBLISH_PATH: &str = "/raft/publish";
 
+/// The leader-side linearizable read-index target (#187 part 2).
+pub(crate) const READ_INDEX_PATH: &str = "/raft/read-index";
+
 /// What a leader answered to a forwarded proposal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ForwardReply {
