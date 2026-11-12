@@ -55,6 +55,7 @@ impl RaftHost {
             Some(state) => RaftNode::from_persisted(id, &membership, state),
             None => RaftNode::new(id, &membership),
         };
+        node.set_leader_noop(true);
         cold_start(&mut node, sm.as_ref(), true).unwrap_or_else(|error| {
             panic!("raft: refuse to start node {id}; committed replay failed: {error}")
         });
