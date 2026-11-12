@@ -232,7 +232,7 @@ for the exact order of startup.
 ## Compatibility
 
 Which core tag a service may pin, and what a breaking change needs, is the
-compatibility policy in #227. This page links it when #227 merges.
+[compatibility and pinning policy](README.md#compatibility-and-pinning).
 
 ## Runbook
 
