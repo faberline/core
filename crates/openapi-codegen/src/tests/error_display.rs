@@ -95,6 +95,38 @@ fn file_bearer_auth_non_utf8_path_error_is_pinned() {
 }
 
 #[test]
+fn managed_auth_errors_are_pinned() {
+    for (error, message) in [
+        (
+            ManagedAuthError::EmptyCaPath,
+            "managed auth CA path must not be empty",
+        ),
+        (
+            ManagedAuthError::NoSchemes,
+            "managed auth needs the https scheme",
+        ),
+        (
+            ManagedAuthError::NonHttpsScheme,
+            "managed auth accepts only the https scheme",
+        ),
+    ] {
+        assert_eq!(chain(error), pair(message, message));
+    }
+    let message = "file bearer auth and managed auth cannot be set together";
+    assert_eq!(chain(GenerationAuthError::Conflict), pair(message, message));
+}
+
+#[cfg(unix)]
+#[test]
+fn managed_auth_non_utf8_ca_path_error_is_pinned() {
+    use std::os::unix::ffi::OsStrExt;
+    let path = PathBuf::from(std::ffi::OsStr::from_bytes(b"/etc/\xff"));
+    let error = ManagedAuth::new(path, [FileBearerScheme::Https]).unwrap_err();
+    let message = "managed auth CA path must be valid UTF-8";
+    assert_eq!(chain(error), pair(message, message));
+}
+
+#[test]
 fn unknown_target_profile_error_is_pinned() {
     let message = format!("unknown target profile \"python-2.7\"; {EXPECTED_PROFILES}");
     assert_eq!(

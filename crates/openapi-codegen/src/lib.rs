@@ -39,15 +39,15 @@ mod interfaces;
 pub use api::{emit, ir, llm};
 pub use app::run;
 pub use application::{
-    generate, generate_for_target, generate_for_target_with_file_bearer_auth,
+    generate, generate_for_target, generate_for_target_with_file_bearer_auth, generate_with_auth,
     generate_with_file_bearer_auth,
 };
 pub use domain::ir::{build_type_map, TypeMap};
 pub use domain::SpecParseError;
 pub use domain::{
     FileBearerAuth, FileBearerAuthError, FileBearerScheme, GenOptions, GeneratedFile,
-    GeneratedOutput, GenerationManifest, HttpClient, Lang, ServiceCompatibilityError,
-    MANIFEST_FILE,
+    GeneratedOutput, GenerationAuth, GenerationAuthError, GenerationManifest, HttpClient, Lang,
+    ManagedAuth, ManagedAuthError, ServiceCompatibilityError, MANAGED_TOKEN_PATH, MANIFEST_FILE,
 };
 pub use domain::{
     PythonTarget, RustTarget, TargetPolicy, TargetPolicyError, TargetProfile, TargetRequirements,
