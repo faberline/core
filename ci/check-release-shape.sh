@@ -23,8 +23,14 @@ done
 grep -qxF 'name: release' "$release" || report "workflow name is not release"
 
 # Both tag patterns must be present, as literal text.
-grep -qF '"v[0-9]+.[0-9]+.[0-9]+"' "$release" || report "final tag pattern is missing"
-grep -qF '"v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"' "$release" || report "RC tag pattern is missing"
+grep -qF '"v[0-9]*.[0-9]*.[0-9]*"' "$release" || report "final tag pattern is missing"
+grep -qF '"v[0-9]*.[0-9]*.[0-9]*-rc.[0-9]*"' "$release" || report "RC tag pattern is missing"
+
+# aw refuses a tag filter with ?, + or a backslash (aw release-status: "tag is not accepted by full tests").
+tag_lines=$(awk '/^    tags:/{on=1; next} on && /^      - /{print; next} on{on=0}' "$release")
+if grep -qE '[?+\\]' <<<"$tag_lines"; then
+  report "a tag filter has ?, + or a backslash"
+fi
 
 # No filter that would narrow the tag trigger.
 for key in 'paths:' 'paths-ignore:' 'tags-ignore:' 'branches:'; do
