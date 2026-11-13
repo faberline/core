@@ -10,7 +10,43 @@ fn marker_in(state: StagingState) -> StagingMarker {
         format_version: 1,
         segment_key: "a".into(),
         state,
+        committed_at: None,
+        gc_pending_at: None,
     }
+}
+
+#[test]
+fn move_to_at_records_the_time_for_committed_and_gc_pending() {
+    let uploaded = marker_in(StagingState::Uploaded);
+    let committed = uploaded.move_to_at(StagingState::Committed, 50).unwrap();
+    assert_eq!(committed.state, StagingState::Committed);
+    assert_eq!(committed.committed_at, Some(50));
+    assert_eq!(committed.gc_pending_at, None);
+
+    let gc = marker_in(StagingState::Uploaded)
+        .move_to_at(StagingState::GcPending, 70)
+        .unwrap();
+    assert_eq!(gc.gc_pending_at, Some(70));
+    assert_eq!(gc.committed_at, None);
+}
+
+#[test]
+fn timestamps_are_left_out_of_the_json_when_absent() {
+    assert_eq!(
+        StagingMarker::new(SEGMENT).encode().unwrap(),
+        MARKER_JSON.as_bytes()
+    );
+    let gc = StagingMarker::new(SEGMENT)
+        .move_to_at(StagingState::GcPending, 70)
+        .unwrap();
+    assert_eq!(
+        String::from_utf8(gc.encode().unwrap()).unwrap(),
+        r#"{"format_version":1,"segment_key":"archive/segment-0001.parquet","state":"gc_pending","gc_pending_at":70}"#
+    );
+    assert_eq!(StagingMarker::decode(&gc.encode().unwrap()).unwrap(), gc);
+    let old = StagingMarker::decode(MARKER_JSON.as_bytes()).unwrap();
+    assert_eq!(old.committed_at, None);
+    assert_eq!(old.gc_pending_at, None);
 }
 
 #[test]

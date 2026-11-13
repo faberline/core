@@ -15,6 +15,9 @@ pub(crate) trait ImmutableObjectStore: Send + Sync {
     /// Delete the object stored under `key`.
     fn delete(&self, key: &str) -> Result<()>;
 
+    /// Delete the object under `key`. `true` when it existed, `false` when it was already absent.
+    fn delete_if_present(&self, key: &str) -> Result<bool>;
+
     /// Keys of the objects under `prefix`, sorted.
     fn list_keys(&self, prefix: &str) -> Result<Vec<String>>;
 

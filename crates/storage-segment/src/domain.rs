@@ -26,5 +26,5 @@ pub use segment::{Partitioner, RecordCodec};
 pub use segment_error::{Result, SegmentError};
 pub(crate) use staging_marker::staging_object_key;
 pub use staging_marker::{
-    StagingMarker, StagingState, STAGING_MARKER_FORMAT_VERSION, STAGING_MARKER_PREFIX,
+    GcReport, StagingMarker, StagingState, STAGING_MARKER_FORMAT_VERSION, STAGING_MARKER_PREFIX,
 };
