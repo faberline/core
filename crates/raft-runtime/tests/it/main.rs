@@ -31,5 +31,6 @@ mod snapshot_at_index;
 mod snapshot_generations;
 mod snapshot_install_safety;
 mod snapshot_preflight_release;
+mod three_voter_stop_and_return;
 mod undeliverable_messages;
 mod wire_golden;
