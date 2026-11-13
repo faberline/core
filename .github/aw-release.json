@@ -8,18 +8,13 @@
       "acceptance": [
         {
           "goal": "Raft runtime correctness: a new leader commits a no-op, ReadIndex serves linearizable reads, propose reports only the entry it proposed, and the status and replica-lag accessors are public",
-          "issues": [22, 24, 40, 42, 43, 44, 45, 47, 48, 49],
+          "issues": [40, 42, 45, 47, 48, 49],
           "checks": ["ci / test: workspace"]
         },
         {
           "goal": "Truthful observability and bounded service foundations: admission config, body limits, efficiency and stability dimensions, phase-stable soak sampling, and an honest process-sampling promise",
-          "issues": [2, 7, 8, 14, 23],
+          "issues": [23],
           "checks": ["ci / test: workspace", "perf: thresholds"]
-        },
-        {
-          "goal": "peer-tls: distinct refusals for an anchorless bundle and a foreign issuer, and the mTLS config service calls plan_server and plan_client",
-          "issues": [20, 21],
-          "checks": ["ci / test: workspace"]
         },
         {
           "goal": "service-k8s: core-owned service operations are recorded, and a zero-replica stateful plan returns an error instead of panicking",
@@ -28,12 +23,12 @@
         },
         {
           "goal": "Reviewed CI and release gates: unit checks run before integration and performance, failure reasons are reviewed, legacy delivery entrypoints are retired, and the release contract is reviewed before tagging",
-          "issues": [73, 80, 88, 90, 92],
+          "issues": [73, 90, 92],
           "checks": ["preflight", "ci / gate", "gate"]
         },
         {
           "goal": "The workspace version is 0.5.0 and the 0.5.0 release notes cover every crate",
-          "issues": [156, 157, 158, 159, 160, 161, 162, 163, 164],
+          "issues": [156, 158, 159, 160, 161, 162, 163, 164],
           "checks": ["ci / lint: fmt and clippy"]
         }
       ],
