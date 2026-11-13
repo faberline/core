@@ -96,3 +96,10 @@ pub use interfaces::cluster_spec::{ClusterSpec, ResourceSpec};
 pub use interfaces::metrics::ControllerMetrics;
 #[cfg(feature = "controller")]
 pub use interfaces::operator::Error;
+
+#[cfg(feature = "controller")]
+pub use application::access_reconcile::{reconcile_access, AccessReport};
+#[cfg(feature = "controller")]
+pub use domain::access::{AccessObjectKind, AccessOutcome, AccessStore};
+#[cfg(feature = "controller")]
+pub use infrastructure::access_store::InMemoryAccessStore;
