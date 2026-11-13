@@ -45,6 +45,17 @@ impl ImmutableObjectStore for ObjectStoreAdapter {
         Ok(self.store.delete(key)?)
     }
 
+    fn list_keys(&self, prefix: &str) -> Result<Vec<String>> {
+        let mut keys: Vec<String> = self
+            .store
+            .list(prefix)?
+            .iter()
+            .map(|meta| meta.key().to_string())
+            .collect();
+        keys.sort();
+        Ok(keys)
+    }
+
     fn put_object(&self, object: ArchiveObject) -> Result<ArchivedObject> {
         put_immutable(self.store.as_ref(), object)
     }

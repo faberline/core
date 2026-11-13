@@ -3,12 +3,14 @@
 //! and receipts, and the write-once object store port.
 
 mod archive;
+mod archive_intent;
 mod catalog;
 mod immutable_object_store;
 mod segment;
 mod segment_error;
 
 pub use archive::{ArchiveCommit, ArchiveObject, ArchivedObject, ArchivedObjectVersion};
+pub use archive_intent::{ArchiveIntent, ARCHIVE_INTENT_FORMAT_VERSION, ARCHIVE_INTENT_PREFIX};
 pub(crate) use catalog::{
     child_index, encode_page, hex_sha256, lexicographic_successor, page_bounds,
     validate_catalog_key, validate_page_body, CatalogPage, CatalogPageBody, CATALOG_FORMAT_VERSION,

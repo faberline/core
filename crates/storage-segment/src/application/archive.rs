@@ -1,7 +1,8 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use crate::domain::{
-    ArchiveCommit, ArchiveObject, ArchivedObject, ImmutableObjectStore, Result, SegmentError,
+    ArchiveCommit, ArchiveIntent, ArchiveObject, ArchivedObject, ImmutableObjectStore, Result,
+    SegmentError, ARCHIVE_INTENT_PREFIX,
 };
 
 /// Starts manifest-last archive transactions. The public constructor that
@@ -23,6 +24,25 @@ impl ArchiveCoordinator {
             keys: BTreeSet::new(),
             failed: false,
         }
+    }
+
+    /// Write the intent record before the upload starts.
+    pub fn write_intent(&self, intent: &ArchiveIntent) -> Result<ArchivedObject> {
+        self.objects.put_object(ArchiveObject::new(
+            intent.object_key(),
+            intent.encode()?,
+            "application/json",
+        ))
+    }
+
+    /// Every intent record under the reserved prefix. This issue never removes
+    /// an intent; the staging issue (#267) decides when one stops being pending.
+    pub fn pending_intents(&self) -> Result<Vec<ArchiveIntent>> {
+        let mut intents = Vec::new();
+        for key in self.objects.list_keys(ARCHIVE_INTENT_PREFIX)? {
+            intents.push(ArchiveIntent::decode(&self.objects.get(&key)?)?);
+        }
+        Ok(intents)
     }
 }
 
