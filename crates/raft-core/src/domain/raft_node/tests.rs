@@ -2,10 +2,13 @@ use super::*;
 use crate::domain::entry::EntryKind;
 use crate::domain::membership::auto_membership;
 use crate::domain::message::{AppendResp, RaftMsg, VoteResp};
-use crate::domain::timing::HEARTBEAT_INTERVAL_TICKS;
+use crate::domain::timing::{
+    base_election_timeout_ticks, ELECTION_STAGGER_TICKS, ELECTION_TIMEOUT_FLOOR_TICKS,
+    HEARTBEAT_INTERVAL_TICKS,
+};
 
 #[test]
-fn new_derives_election_timeout_from_public_floor_and_node_id() {
+fn new_derives_election_timeout_from_floor_node_id_and_stagger() {
     let membership = auto_membership(3);
     let id = NodeId::new(7);
 
@@ -13,7 +16,7 @@ fn new_derives_election_timeout_from_public_floor_and_node_id() {
 
     assert_eq!(
         node.election_timeout,
-        ELECTION_TIMEOUT_FLOOR_TICKS + id.get()
+        ELECTION_TIMEOUT_FLOOR_TICKS + id.get() * ELECTION_STAGGER_TICKS
     );
 }
 
@@ -320,7 +323,10 @@ fn first_election_keeps_the_base_timeout() {
 
     node.start_election();
 
-    assert_eq!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+    assert_eq!(
+        node.election_timeout,
+        base_election_timeout_ticks(NodeId::new(1))
+    );
     assert_eq!(node.role(), Role::Candidate);
 }
 
@@ -332,7 +338,7 @@ fn retry_election_uses_the_jittered_timeout() {
     node.start_election();
     node.start_election();
 
-    assert_eq!(node.election_timeout, 91);
+    assert_eq!(node.election_timeout, 95);
 }
 
 #[test]
@@ -346,8 +352,8 @@ fn adjacent_ids_get_different_retry_timeouts() {
     two.start_election();
     two.start_election();
 
-    assert_eq!(one.election_timeout, 91);
-    assert_eq!(two.election_timeout, 98);
+    assert_eq!(one.election_timeout, 95);
+    assert_eq!(two.election_timeout, 106);
 }
 
 #[test]
@@ -357,11 +363,17 @@ fn step_down_restores_the_base_timeout() {
 
     node.start_election();
     node.start_election();
-    assert_ne!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+    assert_ne!(
+        node.election_timeout,
+        base_election_timeout_ticks(NodeId::new(1))
+    );
 
     node.step_down(node.current_term().next());
 
-    assert_eq!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+    assert_eq!(
+        node.election_timeout,
+        base_election_timeout_ticks(NodeId::new(1))
+    );
 }
 
 #[test]
@@ -371,9 +383,63 @@ fn become_leader_restores_the_base_timeout() {
 
     node.start_election();
     node.start_election();
-    assert_ne!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+    assert_ne!(
+        node.election_timeout,
+        base_election_timeout_ticks(NodeId::new(1))
+    );
 
     node.become_leader();
 
-    assert_eq!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+    assert_eq!(
+        node.election_timeout,
+        base_election_timeout_ticks(NodeId::new(1))
+    );
+}
+
+#[test]
+fn adjacent_node_ids_time_out_at_least_a_stagger_apart() {
+    let membership = auto_membership(3);
+    let n0 = RaftNode::new(NodeId::new(0), &membership);
+    let n1 = RaftNode::new(NodeId::new(1), &membership);
+    let n2 = RaftNode::new(NodeId::new(2), &membership);
+
+    assert!(n1.election_timeout - n0.election_timeout >= ELECTION_STAGGER_TICKS);
+    assert!(n2.election_timeout - n1.election_timeout >= ELECTION_STAGGER_TICKS);
+}
+
+#[test]
+fn base_election_timeout_ticks_is_floor_plus_id_times_stagger() {
+    assert_eq!(base_election_timeout_ticks(NodeId::new(0)), 50);
+    assert_eq!(base_election_timeout_ticks(NodeId::new(1)), 55);
+    assert_eq!(base_election_timeout_ticks(NodeId::new(2)), 60);
+    assert_eq!(base_election_timeout_ticks(NodeId::new(u64::MAX)), u64::MAX);
+}
+
+#[test]
+fn a_second_candidate_cannot_split_the_vote_within_a_stagger() {
+    let membership = auto_membership(3);
+    let mut first = RaftNode::new(NodeId::new(1), &membership);
+    let mut second = RaftNode::new(NodeId::new(2), &membership);
+
+    for _ in 0..54 {
+        second.tick();
+    }
+    assert_eq!(second.role(), Role::Follower);
+
+    for _ in 0..55 {
+        first.tick();
+    }
+    assert_eq!(first.role(), Role::Candidate);
+    let vote = first
+        .take_outgoing()
+        .into_iter()
+        .find(|o| o.to == NodeId::new(2))
+        .expect("first candidate sends Vote to node 2");
+    second.handle(NodeId::new(1), vote.msg);
+
+    let replies = second.take_outgoing();
+    assert!(replies.iter().any(|o| {
+        o.to == NodeId::new(1) && matches!(&o.msg, RaftMsg::VoteResp(r) if r.granted)
+    }));
+    assert_eq!(second.role(), Role::Follower);
 }
