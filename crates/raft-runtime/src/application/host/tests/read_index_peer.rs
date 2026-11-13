@@ -111,3 +111,41 @@ async fn http_peer_client_read_index_fails_when_nothing_listens() {
         "a closed port must map to Failed, got {reply:?}"
     );
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn follower_without_a_leader_fails_with_no_leader() {
+    let dir = tempfile::tempdir().unwrap();
+    let sm = Arc::new(ReadIndexSm {
+        applied: AtomicU64::new(0),
+    });
+    let host = RaftHost::spawn(
+        NodeId::new(0),
+        Membership::new(vec![NodeId::new(0), NodeId::new(1), NodeId::new(2)], vec![]),
+        HashMap::new(),
+        RaftStore::open(
+            dir.path().to_str().unwrap(),
+            NodeId::new(0),
+            crate::FsyncPolicy::Os,
+        )
+        .unwrap(),
+        sm as Arc<dyn RaftStateMachine>,
+        HostConfig::default().with_propose_timeout(Duration::from_millis(300)),
+    );
+    let res = host.read_index().await;
+    assert_eq!(res, Err(ReadIndexError::NoLeader));
+}
+
+#[test]
+fn leader_refusal_text_maps_back_to_the_error() {
+    for e in [
+        ReadIndexError::NoCommitInTerm,
+        ReadIndexError::LeadershipLost,
+        ReadIndexError::TimedOut,
+    ] {
+        assert_eq!(ReadIndexError::from_leader_reason(&e.to_string()), e);
+    }
+    assert_eq!(
+        ReadIndexError::from_leader_reason("boom"),
+        ReadIndexError::ForwardFailed
+    );
+}
