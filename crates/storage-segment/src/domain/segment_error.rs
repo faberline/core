@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use super::StagingState;
+
 #[derive(Debug, Error)]
 pub enum SegmentError {
     #[error("segment codec failed: {message}")]
@@ -30,6 +32,19 @@ pub enum SegmentError {
     CorruptArchiveIntent { message: String },
     #[error("archive intent format version {version} is not supported")]
     UnsupportedArchiveIntentVersion { version: u64 },
+    #[error("staging transition {from:?} to {to:?} is not allowed")]
+    IllegalStagingTransition {
+        from: StagingState,
+        to: StagingState,
+    },
+    #[error("no staging marker exists for segment {segment_key}")]
+    StagingMarkerMissing { segment_key: String },
+    #[error("staging marker {key} was changed by another writer")]
+    StagingConflict { key: String },
+    #[error("staging marker is corrupt: {message}")]
+    CorruptStagingMarker { message: String },
+    #[error("staging marker format version {version} is not supported")]
+    UnsupportedStagingMarkerVersion { version: u64 },
     /// The object store failed. Infrastructure wraps storage-object's
     /// `ObjectStoreError` here, and the message is that error's own.
     #[error(transparent)]
