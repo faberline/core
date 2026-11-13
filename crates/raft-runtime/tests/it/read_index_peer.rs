@@ -139,6 +139,12 @@ async fn registry_read_index_endpoint_routes_by_group_and_404s_unknown() {
     let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
         .expect("a leader is elected");
+    // The read-index route answers 503 until the leader commits in its own term (#300).
+    nodes[leader]
+        .host
+        .propose(vec![1])
+        .await
+        .expect("first proposal commits, so the leader has committed in its own term");
     let group_id = nodes[leader].host.group_id().as_str().to_owned();
 
     let registry = RaftRegistry::new();

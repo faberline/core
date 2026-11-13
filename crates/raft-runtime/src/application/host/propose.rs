@@ -326,7 +326,7 @@ impl RaftHost {
     pub const READ_INDEX_PATH: &'static str = READ_INDEX_PATH;
 }
 
-enum Route {
+pub(super) enum Route {
     Local,
     Remote(String),
     Unknown,

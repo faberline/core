@@ -39,7 +39,7 @@ tape use its types through raft-runtime's re-exports.
   `TransferRefused` say why a leader refused a membership or leadership change.
 - **Timing** — `ELECTION_TIMEOUT_FLOOR_TICKS` (50) and
   `HEARTBEAT_INTERVAL_TICKS` (3). A node's election timeout is the floor plus
-  its node id, in ticks.
+  its node id times the stagger (`ELECTION_STAGGER_TICKS`, 5), in ticks.
 
 ## Ports
 

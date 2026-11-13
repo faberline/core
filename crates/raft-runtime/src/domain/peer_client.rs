@@ -36,7 +36,6 @@ pub(crate) enum ForwardReply {
 }
 
 /// What a leader answered to a forwarded read-index request.
-#[allow(dead_code)] // used by #110 part 2
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ReadIndexReply {
     /// The leader confirmed leadership; the caller waits for `index` to apply.
@@ -83,7 +82,6 @@ pub(crate) trait PeerClient<Id>: Send + Sync {
     ) -> Pin<Box<dyn Future<Output = ForwardReply> + Send + 'a>>;
 
     /// Ask the leader at `leader_url` for its read index.
-    #[allow(dead_code)] // used by #110 part 2
     fn read_index<'a>(
         &'a self,
         leader_url: &'a str,
