@@ -5,7 +5,7 @@ use axum::Router;
 
 use super::{
     append_entries, install_snapshot, install_snapshot_capable, publish_handler, raftz,
-    request_vote, timeout_now,
+    read_index_handler, request_vote, timeout_now,
 };
 use crate::application::RaftHost;
 
@@ -23,6 +23,7 @@ impl RaftHost {
             )
             .route("/raft/timeout-now", post(timeout_now))
             .route(Self::PUBLISH_PATH, post(publish_handler))
+            .route(Self::READ_INDEX_PATH, post(read_index_handler))
             .route("/raftz", get(raftz))
             .with_state(Arc::clone(&self.shared))
     }
