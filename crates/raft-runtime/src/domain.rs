@@ -5,4 +5,4 @@ mod group;
 mod peer_client;
 
 pub use group::{GroupId, LEGACY_GROUP_ID};
-pub(crate) use peer_client::{ForwardReply, PeerClient, PUBLISH_PATH};
+pub(crate) use peer_client::{ForwardReply, PeerClient, PUBLISH_PATH, READ_INDEX_PATH};

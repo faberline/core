@@ -39,8 +39,18 @@ impl RaftHost {
     /// confirmed this node is still leader. The caller then waits for
     /// `applied_watch()` to reach the returned index. No log entry is appended.
     pub async fn read_index(&self) -> std::result::Result<Index, ReadIndexError> {
+        self.shared.read_index_leader().await
+    }
+}
+
+impl Shared {
+    /// The leader path of [`RaftHost::read_index`]. The peer read-index route
+    /// (#187 part 2) calls it too, so both share one quorum round.
+    pub(crate) async fn read_index_leader(
+        self: &Arc<Self>,
+    ) -> std::result::Result<Index, ReadIndexError> {
         let (round, index) = {
-            let mut node = self.shared.node.lock().await;
+            let mut node = self.node.lock().await;
             let index = node.commit_index();
             match node.start_read_round() {
                 Ok(round) => (round, index),
@@ -48,11 +58,11 @@ impl RaftHost {
                 Err(ReadRefused::NoCommitInTerm) => return Err(ReadIndexError::NoCommitInTerm),
             }
         };
-        self.shared.flush().await;
-        let deadline = Instant::now() + self.shared.cfg.propose_timeout();
+        self.flush().await;
+        let deadline = Instant::now() + self.cfg.propose_timeout();
         loop {
             {
-                let node = self.shared.node.lock().await;
+                let node = self.node.lock().await;
                 if node.read_round_acked(round) {
                     return Ok(index);
                 }
@@ -63,7 +73,7 @@ impl RaftHost {
             if Instant::now() >= deadline {
                 return Err(ReadIndexError::TimedOut);
             }
-            tokio::time::sleep(self.shared.cfg.pump()).await;
+            tokio::time::sleep(self.cfg.pump()).await;
         }
     }
 }

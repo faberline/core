@@ -18,6 +18,8 @@ mod pod;
 mod service;
 mod workload;
 
+#[cfg(feature = "controller")]
+pub use access::render_access_grants;
 pub use access::{
     ClusterRoleBindingPlan, RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountSubjectPlan,
 };

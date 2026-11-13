@@ -58,6 +58,8 @@ same patch (and a copy of `vendor/jieba-rs`) in its own root manifest:
 jieba-rs = { path = "vendor/jieba-rs" }
 ```
 
+New service? Start at [docs/operations/adopter-quickstart.md](docs/operations/adopter-quickstart.md).
+
 ## Working here
 
 ```sh
