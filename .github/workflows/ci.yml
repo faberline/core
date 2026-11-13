@@ -41,6 +41,8 @@ jobs:
           bash ci/test-check-release-shape.sh
       - name: Check feature rows
         run: bash ci/test-feature-rows.sh
+      - name: Test the job selection
+        run: bash ci/test-select-jobs.sh
       - name: Check release policy
         run: |
           python3 ci/check-release-policy.py
