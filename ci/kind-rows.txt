@@ -1,0 +1,11 @@
+# kind rows of e2e-service-k8s (issue #313): profile|cargo args.
+# ci/run-kind-rows.sh reads these lines. The args are empty for default.
+default|
+all-features|--all-features
+no-default|--no-default-features
+feature:certificate|--no-default-features --features certificate
+feature:controller|--no-default-features --features controller
+feature:full|--no-default-features --features full
+feature:gcp-cas|--no-default-features --features gcp-cas
+feature:gcp-cas-client|--no-default-features --features gcp-cas-client
+feature:render-only|--no-default-features --features render-only

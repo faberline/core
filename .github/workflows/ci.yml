@@ -41,6 +41,8 @@ jobs:
           bash ci/test-check-release-shape.sh
       - name: Check feature rows
         run: bash ci/test-feature-rows.sh
+      - name: Test the kind rows runner
+        run: bash ci/test-run-kind-rows.sh
       - name: Check release policy
         run: |
           python3 ci/check-release-policy.py
@@ -187,7 +189,7 @@ jobs:
         run: bash ci/run-feature-group.sh ${{ matrix.packages }}
 
   e2e-service-k8s:
-    name: "e2e: service-k8s kind (${{ matrix.profile }})"
+    name: "e2e: service-k8s kind (${{ matrix.group }})"
     needs: [test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows]
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -197,15 +199,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { profile: "default", args: "" }
-          - { profile: "all-features", args: "--all-features" }
-          - { profile: "no-default", args: "--no-default-features" }
-          - { profile: "feature:certificate", args: "--no-default-features --features certificate" }
-          - { profile: "feature:controller", args: "--no-default-features --features controller" }
-          - { profile: "feature:full", args: "--no-default-features --features full" }
-          - { profile: "feature:gcp-cas", args: "--no-default-features --features gcp-cas" }
-          - { profile: "feature:gcp-cas-client", args: "--no-default-features --features gcp-cas-client" }
-          - { profile: "feature:render-only", args: "--no-default-features --features render-only" }
+          - { group: group-a, profiles: "default all-features no-default" }
+          - { group: group-b, profiles: "feature:certificate feature:controller feature:full" }
+          - { group: group-c, profiles: "feature:gcp-cas feature:gcp-cas-client feature:render-only" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -231,8 +227,8 @@ jobs:
           kubectl config current-context
           test "$(kubectl config current-context)" = kind-core-contracts
           kubectl get nodes
-      - run: cargo test --release --locked -p service-k8s ${{ matrix.args }} -- --include-ignored --test-threads 1
-      - run: cargo clippy --locked -p service-k8s ${{ matrix.args }} --all-targets -- -D warnings
+      - name: Run the kind rows of ${{ matrix.group }}
+        run: bash ci/run-kind-rows.sh ${{ matrix.profiles }}
       - name: Remove disposable kind cluster
         if: always()
         shell: bash
