@@ -36,6 +36,25 @@ impl GrantOutcome {
     }
 }
 
+/// What one reconcile pass did for one grant (or one stale candidate).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AccessOutcome {
+    Applied,
+    Adopted,
+    Pruned,
+    ForeignRetained,
+    OwnerConflict { foreign_owner: String },
+    AdoptionRefusedUnowned,
+    Failed { error: String },
+}
+
+impl AccessOutcome {
+    /// `true` for `Applied` and `Adopted` only.
+    pub fn is_applied(&self) -> bool {
+        matches!(self, Self::Applied | Self::Adopted)
+    }
+}
+
 /// Compute the `AccessPolicyReady` condition for `grants` and their `outcomes`.
 ///
 /// An empty `grants` is a deny-all and is ready. A policy that fails
