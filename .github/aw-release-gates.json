@@ -5,7 +5,7 @@
     {
       "path": ".github/workflows/release.yml",
       "id": 415128254,
-      "definition_sha": "c89622bdbed2000e299e44dbbcae683c2a38d476",
+      "definition_sha": "d540f53d3b68191f861be52d041822fc455e54cc",
       "jobs": {
         "preflight": "policy",
         "ci / lint: fmt and clippy": "policy",
