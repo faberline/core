@@ -82,14 +82,25 @@ fn generate_with_managed_auth(
             attach_provenance(&mut output, spec_json, opts);
             Ok(output)
         }
-        // The Rust Managed runtime arrives in #273.
-        Lang::Rust => generate(spec_json, opts),
+        Lang::Rust => {
+            validate_options(opts)?;
+            let mut output = match opts.target() {
+                Some(TargetProfile::Rust(target)) => {
+                    emit::rust::generate_for_target_with_managed_auth(
+                        spec_json, opts, target, auth,
+                    )?
+                }
+                _ => emit::rust::generate_with_managed_auth(spec_json, opts, auth)?,
+            };
+            attach_provenance(&mut output, spec_json, opts);
+            Ok(output)
+        }
     }
 }
 
 /// Generate with an explicit auth selection. A file-bearer selection generates
 /// exactly like [`generate_with_file_bearer_auth`]. A Managed selection changes
-/// the TypeScript and Python runtimes; Rust is unchanged until #273.
+/// the runtime of every language: TypeScript, Python and Rust.
 pub fn generate_with_auth(
     spec_json: &str,
     opts: &GenOptions,
