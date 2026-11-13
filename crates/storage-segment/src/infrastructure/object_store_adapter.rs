@@ -45,6 +45,19 @@ impl ImmutableObjectStore for ObjectStoreAdapter {
         Ok(self.store.delete(key)?)
     }
 
+    fn delete_if_present(&self, key: &str) -> Result<bool> {
+        // storage-object's `delete` treats a missing key as success, so ask
+        // `head` first to learn whether the object existed.
+        match self.store.head(key) {
+            Ok(_) => {
+                self.store.delete(key)?;
+                Ok(true)
+            }
+            Err(ObjectStoreError::NotFound { .. }) => Ok(false),
+            Err(error) => Err(error.into()),
+        }
+    }
+
     fn list_keys(&self, prefix: &str) -> Result<Vec<String>> {
         let mut keys: Vec<String> = self
             .store

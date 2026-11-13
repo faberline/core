@@ -42,6 +42,18 @@ pub struct StagingMarker {
     pub format_version: u32,
     pub segment_key: String,
     pub state: StagingState,
+    /// Caller-supplied seconds when the marker became `Committed`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub committed_at: Option<u64>,
+    /// Caller-supplied seconds when the marker became `GcPending`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gc_pending_at: Option<u64>,
+}
+
+/// Segment keys that one GC pass deleted, in marker-key order.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct GcReport {
+    pub deleted: Vec<String>,
 }
 
 impl StagingMarker {
@@ -51,7 +63,21 @@ impl StagingMarker {
             format_version: STAGING_MARKER_FORMAT_VERSION,
             segment_key: segment_key.into(),
             state: StagingState::Intent,
+            committed_at: None,
+            gc_pending_at: None,
         }
+    }
+
+    /// A copy of this marker in `next` that also records `at` (caller seconds)
+    /// when `next` is `Committed` or `GcPending`.
+    pub fn move_to_at(&self, next: StagingState, at: u64) -> Result<StagingMarker> {
+        let mut moved = self.move_to(next)?;
+        match next {
+            StagingState::Committed => moved.committed_at = Some(at),
+            StagingState::GcPending => moved.gc_pending_at = Some(at),
+            StagingState::Intent | StagingState::Uploaded => {}
+        }
+        Ok(moved)
     }
 
     /// The object key of this marker.
