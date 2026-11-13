@@ -59,7 +59,7 @@ use raft_runtime::{
 };
 
 use crate::support::cluster;
-use cluster::{await_leader, bind, cluster, TestSm};
+use cluster::{await_leader, bind, cluster, Node, TestSm};
 
 fn h2c_client() -> reqwest::Client {
     reqwest::Client::builder()
@@ -88,6 +88,21 @@ async fn group_statuses(client: &reqwest::Client, url: &str) -> BTreeMap<String,
         .json()
         .await
         .expect("the multi-group status is the published shape")
+}
+
+/// One line per node: what each one believes when a wait gives up. A timeout
+/// that prints no state cannot separate a delayed message from an election the
+/// bystander won.
+async fn describe_nodes(client: &reqwest::Client, nodes: &[Node]) -> String {
+    let mut lines = Vec::new();
+    for (i, node) in nodes.iter().enumerate() {
+        let s = status(client, &node.url).await;
+        lines.push(format!(
+            "node {i} ({}): role={} term={} leader={:?} last_index={}",
+            node.url, s.role, s.term, s.leader, s.last_index
+        ));
+    }
+    lines.join("\n")
 }
 
 /// The item. A running host hands the group to a peer it names, the message
@@ -166,11 +181,14 @@ async fn a_running_host_hands_leadership_to_the_peer_it_names() {
         if nodes[target].host.is_leader().await {
             break;
         }
-        assert!(
-            Instant::now() < deadline,
-            "leadership never arrived at the named peer; a host that queues \
-             the handoff and never posts it leaves the group exactly where it was"
-        );
+        if Instant::now() >= deadline {
+            let states = describe_nodes(&client, &nodes).await;
+            panic!(
+                "leadership never arrived at the named peer; a host that queues \
+                 the handoff and never posts it leaves the group exactly where it was\n\
+                 named target = node {target}, old leader = node {leader}, bystander = node {bystander}\n{states}"
+            );
+        }
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
     assert!(
