@@ -45,6 +45,10 @@ pub enum SegmentError {
     CorruptStagingMarker { message: String },
     #[error("staging marker format version {version} is not supported")]
     UnsupportedStagingMarkerVersion { version: u64 },
+    #[error("segment {segment_key} is inside its retention window until {until}")]
+    InsideRetentionWindow { segment_key: String, until: u64 },
+    #[error("segment {segment_key} is not in the Committed staging state")]
+    SegmentNotCommitted { segment_key: String },
     /// The object store failed. Infrastructure wraps storage-object's
     /// `ObjectStoreError` here, and the message is that error's own.
     #[error(transparent)]
