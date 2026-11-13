@@ -8,7 +8,6 @@ use crate::infrastructure::peer_wire::{ReadIndexEnvelope, ReadIndexResp};
 
 impl HttpPeerClient {
     /// POST to the leader's read-index endpoint and classify the reply.
-    #[allow(dead_code)] // used by #110 part 2
     pub(super) async fn read_index_from_leader(&self, leader_url: &str) -> ReadIndexReply {
         let resp = match self
             .http_client()
