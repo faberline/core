@@ -353,6 +353,7 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
     let sm = nodes[leader].sm.clone();
     let release = ReleaseApplyGate(sm.clone());
 
+    let base = nodes[leader].host.status().await.last_index;
     let first = hold_leader_apply(&nodes, leader, b"first".to_vec()).await;
     let first_committed =
         tokio::time::timeout(OBSERVE_LIMIT, status(&client, &nodes[leader].url)).await;
@@ -361,7 +362,7 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
     let follower_host = nodes[follower].host.clone();
     let second = tokio::spawn(async move { follower_host.propose(b"second".to_vec()).await });
     let second_committed =
-        status_with_committed_index(&client, &nodes[leader].url, 2, OBSERVE_LIMIT).await;
+        status_with_committed_index(&client, &nodes[leader].url, base + 2, OBSERVE_LIMIT).await;
     let applied_while_blocked = sm.applied_index();
     let callbacks_while_blocked = sm.callback_indices();
 
@@ -384,15 +385,15 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
         .expect("released follower proposal must complete");
 
     assert!(
-        first_status.last_index >= 1 && first_status.commit_index >= 1,
+        first_status.last_index > base && first_status.commit_index > base,
         "the first callback starts only after its durable commit"
     );
-    assert_eq!(
-        first_status.applied_index, 0,
+    assert!(
+        first_status.applied_index <= base,
         "a blocked callback must not publish an applied index"
     );
     assert!(
-        second_status.last_index >= 2 && second_status.commit_index >= 2,
+        second_status.last_index >= base + 2 && second_status.commit_index >= base + 2,
         "the follower-routed proposal must allocate and commit its own index"
     );
     assert_eq!(
@@ -402,11 +403,11 @@ async fn blocked_apply_keeps_status_and_follower_route_live() {
     );
     assert_eq!(
         callbacks_while_blocked,
-        vec![1],
+        vec![base + 1],
         "a single worker must not begin the second callback before the first releases"
     );
-    assert_eq!(first_index, Index::new(1));
-    assert_eq!(second_index, Index::new(2));
+    assert_eq!(first_index, Index::new(base + 1));
+    assert_eq!(second_index, Index::new(base + 2));
 }
 
 /// A callback Err is an explicit failed apply, not a normal domain outcome.
@@ -424,6 +425,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
     let sm = nodes[leader].sm.clone();
     let restart_dir = nodes[leader]._dir.path().to_path_buf();
     sm.arm_to_fail_once();
+    let base = nodes[leader].host.status().await.last_index;
     let release = ReleaseApplyGate(sm.clone());
 
     let first_host = nodes[leader].host.clone();
@@ -435,7 +437,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
     let second_host = nodes[leader].host.clone();
     let second = tokio::spawn(async move { second_host.propose(b"second".to_vec()).await });
     let two_committed =
-        status_with_committed_index(&client, &nodes[leader].url, 2, OBSERVE_LIMIT).await;
+        status_with_committed_index(&client, &nodes[leader].url, base + 2, OBSERVE_LIMIT).await;
     let applied_while_blocked = sm.applied_index();
     let callbacks_while_blocked = sm.callback_indices();
 
@@ -485,7 +487,7 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
             HostConfig::default().with_tick(Duration::from_millis(10)),
         );
         restart_applied = tokio::time::timeout(JOIN_LIMIT, async {
-            while sm.applied_index() < Index::new(2) {
+            while sm.applied_index() < Index::new(base + 2) {
                 tokio::task::yield_now().await;
             }
         })
@@ -500,30 +502,30 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
     let after_error = status_after_error.expect("/raftz must stay live after an apply Err");
 
     assert!(
-        first_status.last_index >= 1 && first_status.commit_index >= 1,
+        first_status.last_index > base && first_status.commit_index > base,
         "the first callback starts after durable commit"
     );
     assert!(
-        two_status.last_index >= 2 && two_status.commit_index >= 2,
+        two_status.last_index >= base + 2 && two_status.commit_index >= base + 2,
         "the second command commits before the first callback returns Err"
     );
     assert_eq!(applied_while_blocked, Index::new(0));
-    assert_eq!(callbacks_while_blocked, vec![1]);
+    assert_eq!(callbacks_while_blocked, vec![base + 1]);
     assert!(
         failure_observed,
         "the first callback must return the injected Err"
     );
     assert!(
-        after_error.last_index >= 2 && after_error.commit_index >= 2,
+        after_error.last_index >= base + 2 && after_error.commit_index >= base + 2,
         "the durable source still contains both committed commands"
     );
     assert!(
-        after_error.applied_index < 1 && applied_before_restart < Index::new(1),
+        after_error.applied_index < base + 1 && applied_before_restart < Index::new(base + 1),
         "an Err must not falsely publish the failed head as applied"
     );
     assert_eq!(
         callbacks_before_restart,
-        vec![1],
+        vec![base + 1],
         "the second callback must not run after the first callback Err"
     );
     assert!(
@@ -544,10 +546,10 @@ async fn failed_apply_retains_the_head_and_replays_it_before_later_entries() {
     );
     assert_eq!(
         callbacks_after_restart,
-        vec![1, 1, 2],
+        vec![base + 1, base + 1, base + 2],
         "restart must retry the failed head before it applies the later command"
     );
-    assert_eq!(sm.applied_index(), Index::new(2));
+    assert_eq!(sm.applied_index(), Index::new(base + 2));
 }
 
 /// A three-voter cluster's leader shut down under a generous deadline records

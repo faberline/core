@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "repo": "faberline/core",
+  "workflows": [
+    {
+      "path": ".github/workflows/release.yml",
+      "id": 415128254,
+      "definition_sha": "c89622bdbed2000e299e44dbbcae683c2a38d476",
+      "jobs": {
+        "preflight": "policy",
+        "ci / lint: fmt and clippy": "policy",
+        "ci / test: workspace": "unit",
+        "ci / test: service-backup": "unit",
+        "ci / test: service-k8s": "unit",
+        "ci / test: openapi-codegen": "unit",
+        "ci / test: feature rows (index-text)": "unit",
+        "ci / test: feature rows (service-auth)": "unit",
+        "ci / test: feature rows (service-backup)": "unit",
+        "ci / test: feature rows (service-http)": "unit",
+        "ci / test: feature rows (service-observability)": "unit",
+        "ci / test: feature rows (storage-object)": "unit",
+        "ci / test: feature rows (transport-h2c)": "unit",
+        "ci / test: feature rows (ui-runtime)": "unit",
+        "ci / test: feature rows (cli-std)": "unit",
+        "ci / e2e: service-k8s kind (default)": "functional_e2e",
+        "ci / e2e: service-k8s kind (all-features)": "functional_e2e",
+        "ci / e2e: service-k8s kind (no-default)": "functional_e2e",
+        "ci / e2e: service-k8s kind (feature:certificate)": "functional_e2e",
+        "ci / e2e: service-k8s kind (feature:controller)": "functional_e2e",
+        "ci / e2e: service-k8s kind (feature:full)": "functional_e2e",
+        "ci / e2e: service-k8s kind (feature:gcp-cas)": "functional_e2e",
+        "ci / e2e: service-k8s kind (feature:gcp-cas-client)": "functional_e2e",
+        "ci / e2e: service-k8s kind (feature:render-only)": "functional_e2e",
+        "ci / gate": "policy",
+        "perf: thresholds": "performance",
+        "gate": "policy"
+      }
+    }
+  ]
+}

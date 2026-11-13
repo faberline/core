@@ -1,5 +1,7 @@
 //! Application layer.
 
+#[cfg(feature = "controller")]
+pub(crate) mod access_reconcile;
 #[cfg(feature = "certificate")]
 pub(crate) mod certificate;
 pub(crate) mod condition;

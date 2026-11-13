@@ -1,7 +1,8 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use crate::domain::{
-    ArchiveCommit, ArchiveObject, ArchivedObject, ImmutableObjectStore, Result, SegmentError,
+    staging_object_key, ArchiveCommit, ArchiveIntent, ArchiveObject, ArchivedObject,
+    ImmutableObjectStore, Result, SegmentError, StagingMarker, StagingState, ARCHIVE_INTENT_PREFIX,
 };
 
 /// Starts manifest-last archive transactions. The public constructor that
@@ -23,6 +24,64 @@ impl ArchiveCoordinator {
             keys: BTreeSet::new(),
             failed: false,
         }
+    }
+
+    /// Start staging one segment in the `Intent` state, or resume the stored
+    /// state. A second call after a crash never writes a second marker.
+    pub fn begin_staging(&self, segment_key: &str) -> Result<StagingMarker> {
+        let marker = StagingMarker::new(segment_key);
+        if self
+            .objects
+            .create_marker(&marker.object_key(), &marker.encode()?)?
+        {
+            return Ok(marker);
+        }
+        self.staging_marker(segment_key)?
+            .ok_or_else(|| SegmentError::StagingMarkerMissing {
+                segment_key: segment_key.to_string(),
+            })
+    }
+
+    /// The stored staging marker of a segment, or `None`.
+    pub fn staging_marker(&self, segment_key: &str) -> Result<Option<StagingMarker>> {
+        match self.objects.read_marker(&staging_object_key(segment_key))? {
+            Some((bytes, _)) => Ok(Some(StagingMarker::decode(&bytes)?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Move the marker of a segment to `next` when the transition is legal.
+    /// An illegal pair is refused before any write.
+    pub fn advance_staging(&self, segment_key: &str, next: StagingState) -> Result<StagingMarker> {
+        let key = staging_object_key(segment_key);
+        let Some((bytes, version)) = self.objects.read_marker(&key)? else {
+            return Err(SegmentError::StagingMarkerMissing {
+                segment_key: segment_key.to_string(),
+            });
+        };
+        let moved = StagingMarker::decode(&bytes)?.move_to(next)?;
+        self.objects
+            .replace_marker(&key, &moved.encode()?, &version)?;
+        Ok(moved)
+    }
+
+    /// Write the intent record before the upload starts.
+    pub fn write_intent(&self, intent: &ArchiveIntent) -> Result<ArchivedObject> {
+        self.objects.put_object(ArchiveObject::new(
+            intent.object_key(),
+            intent.encode()?,
+            "application/json",
+        ))
+    }
+
+    /// Every intent record under the reserved prefix. This issue never removes
+    /// an intent; the staging issue (#267) decides when one stops being pending.
+    pub fn pending_intents(&self) -> Result<Vec<ArchiveIntent>> {
+        let mut intents = Vec::new();
+        for key in self.objects.list_keys(ARCHIVE_INTENT_PREFIX)? {
+            intents.push(ArchiveIntent::decode(&self.objects.get(&key)?)?);
+        }
+        Ok(intents)
     }
 }
 

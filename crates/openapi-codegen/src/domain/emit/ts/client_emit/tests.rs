@@ -190,3 +190,82 @@ fn runtime_fetch_and_axios() {
     assert!(axios.contains("if (args.expectBody === false)"));
     assert!(axios.contains("return response.data;"));
 }
+
+#[test]
+fn ndjson_upload_method_takes_async_iterable() {
+    let out = render(
+        r##"{"paths":{"/items":{"post":{"operationId":"uploadItems",
+          "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object","properties":{"id":{"type":"integer"}}}}}},
+          "responses":{"200":{"content":{"application/json":{"schema":{"type":"string"}}}}}}}}}"##,
+    );
+    assert!(out.contains(
+        "uploadItems(data: UploadItemsData, options?: NdjsonOptions): Promise<UploadItemsResponse> {"
+    ));
+    assert!(out.contains(
+        "return requestNdjsonUpload<UploadItemsResponse>(config, { method: \"POST\", path: `/items`, ndjsonBody: data.body }, options);"
+    ));
+    assert!(out.contains("import { requestNdjsonUpload } from \"./runtime\";"));
+    assert!(!out.contains(", body: data.body"));
+}
+
+#[test]
+fn ndjson_response_method_returns_async_iterable() {
+    let out = render(
+        r##"{"paths":{"/items":{"get":{"operationId":"listItems",
+          "responses":{"200":{"content":{"application/x-ndjson":{"schema":{"type":"object","properties":{"id":{"type":"integer"}}}}}}}}}}}"##,
+    );
+    assert!(out.contains("listItems(options?: NdjsonOptions): ListItemsResponse {"));
+    assert!(out.contains(
+        "return requestNdjsonStream<NdjsonItem<ListItemsResponse>>(config, { method: \"GET\", path: `/items` }, options);"
+    ));
+    assert!(out.contains("import { requestNdjsonStream } from \"./runtime\";"));
+    assert!(out.contains("import type { NdjsonItem, NdjsonOptions } from \"./runtime\";"));
+}
+
+#[test]
+fn json_only_client_has_no_ndjson_imports() {
+    let out = render(
+        r##"{"paths":{"/pets":{
+          "get":{"operationId":"listPets","parameters":[{"name":"limit","in":"query","required":false,"schema":{"type":"integer"}}],"responses":{"200":{"content":{"application/json":{"schema":{"type":"array","items":{"type":"string"}}}}}}},
+          "post":{"operationId":"createPet","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"}}}},"responses":{"201":{"content":{"application/json":{"schema":{"type":"string"}}}}}}}}}"##,
+    );
+    assert!(!out.contains("Ndjson"));
+    assert!(out.contains("import { request } from \"./runtime\";"));
+}
+
+#[test]
+fn fetch_runtime_has_ndjson_helpers() {
+    let fetch = emit_runtime(HttpClient::Fetch, None);
+    assert!(fetch.contains("export async function* requestNdjsonStream<T>("));
+    assert!(fetch.contains("export async function requestNdjsonUpload<T>("));
+    assert!(fetch.contains("export class NdjsonParseError extends Error"));
+    assert!(fetch.contains("signal: options.signal"));
+    assert!(fetch.contains("init.duplex = \"half\""));
+}
+
+#[test]
+fn axios_runtime_has_ndjson_helpers() {
+    let axios = emit_runtime(HttpClient::Axios, None);
+    assert!(axios.contains("export async function* requestNdjsonStream<T>("));
+    assert!(axios.contains("export async function requestNdjsonUpload<T>("));
+    assert!(axios.contains("export class NdjsonParseError extends Error"));
+    assert!(axios.contains("responseType"));
+}
+
+#[test]
+fn file_bearer_runtime_covers_ndjson_helpers() {
+    let auth = FileBearerAuth::new(
+        "/private/tmp/token",
+        ".example.internal",
+        [FileBearerScheme::Http, FileBearerScheme::Https],
+    )
+    .unwrap();
+    for runtime in [
+        emit_runtime(HttpClient::Fetch, Some(&auth)),
+        emit_runtime(HttpClient::Axios, Some(&auth)),
+    ] {
+        assert!(runtime.contains(
+            "await attachFileBearer(config.baseUrl, { \"Content-Type\": args.ndjsonBody ? \"application/x-ndjson\""
+        ));
+    }
+}

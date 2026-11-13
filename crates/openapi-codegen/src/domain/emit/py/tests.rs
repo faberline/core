@@ -100,6 +100,27 @@ const RECURSIVE_UNION_SPEC: &str = r##"{
       } }
     }"##;
 
+/// OpenAPI 3.2 fixture: one NDJSON upload (`uploadItems`) and one NDJSON
+/// response (`listItems`) operation of `Item` (#178).
+const SPEC_NDJSON: &str = r##"{
+  "openapi": "3.2.0",
+  "info": { "title": "Ndjson", "version": "1.0.0" },
+  "paths": {
+    "/items": {
+      "post": {
+        "operationId": "uploadItems",
+        "requestBody": { "required": true, "content": { "application/x-ndjson": { "schema": { "$ref": "#/components/schemas/Item" } } } },
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Item" } } } } }
+      },
+      "get": {
+        "operationId": "listItems",
+        "responses": { "200": { "description": "ok", "content": { "application/x-ndjson": { "schema": { "$ref": "#/components/schemas/Item" } } } } }
+      }
+    }
+  },
+  "components": { "schemas": { "Item": { "type": "object", "properties": { "id": { "type": "integer" } }, "required": ["id"] } } }
+}"##;
+
 /// OpenAPI 3.2 fixture: a `query` operation (RFC 10008 HTTP QUERY) with a
 /// sibling `post` twin on the same path — the default POST-twin fallback
 /// convention (epic #1296).

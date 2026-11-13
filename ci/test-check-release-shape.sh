@@ -57,5 +57,10 @@ m="$tmp/m7.yml"; cp "$ci_src" "$m"
 sed -i '/^  workflow_call:$/d' "$m"
 expect_fail "workflow_call lost in ci.yml" "$release_src" "$m"
 
+# 8. a tag filter uses + (aw refuses it)
+m="$tmp/m8.yml"; cp "$release_src" "$m"
+sed -i 's/^      - "v\[0-9\]\*\.\[0-9\]\*\.\[0-9\]\*"$/      - "v[0-9]+.[0-9]+.[0-9]+"/' "$m"
+expect_fail "tag filter with +" "$m" "$ci_src"
+
 rm -rf "$tmp"
 echo "check-release-shape tests ok"

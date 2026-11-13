@@ -2,7 +2,9 @@ use anyhow::Result;
 use sha2::{Digest, Sha256};
 
 use crate::domain::emit;
-use crate::domain::{FileBearerAuth, GenOptions, GeneratedOutput, Lang, TargetProfile};
+use crate::domain::{
+    FileBearerAuth, GenOptions, GeneratedOutput, GenerationAuth, Lang, TargetProfile,
+};
 
 fn validate_options(opts: &GenOptions) -> Result<()> {
     opts.validate()?;
@@ -50,6 +52,20 @@ pub fn generate_with_file_bearer_auth(
     };
     attach_provenance(&mut output, spec_json, opts);
     Ok(output)
+}
+
+/// Generate with an explicit auth selection. A file-bearer selection generates
+/// exactly like [`generate_with_file_bearer_auth`]. A Managed-only selection
+/// generates like [`generate`] for now; its emitters change in #271-#273.
+pub fn generate_with_auth(
+    spec_json: &str,
+    opts: &GenOptions,
+    auth: &GenerationAuth,
+) -> Result<GeneratedOutput> {
+    match auth.file_bearer() {
+        Some(file) => generate_with_file_bearer_auth(spec_json, opts, file),
+        None => generate(spec_json, opts),
+    }
 }
 
 /// Pure core with an explicit versioned target profile. The profile must match

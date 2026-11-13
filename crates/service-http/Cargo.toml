@@ -35,8 +35,8 @@ futures-util = "0.3"
 http-body-util = "0.1"
 reqwest = { workspace = true }
 url = { workspace = true }
-opentelemetry = { version = "0.21", optional = true }
-tracing-opentelemetry = { version = "0.22", optional = true }
+opentelemetry = { version = "0.33", optional = true }
+tracing-opentelemetry = { version = "0.34", optional = true }
 
 # The HTTP runtime (HTTP/1.1 + h2c on one port) is composed, not re-implemented.
 server-http = { path = "../server-http" }
@@ -48,6 +48,8 @@ tokio = { workspace = true, features = ["full"] }
 tower = { workspace = true, features = ["util"] }
 futures-util = "0.3"
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter", "registry"] }
+raft-runtime = { path = "../raft-runtime" }
+service-auth = { path = "../service-auth" }
 
 [lints]
 workspace = true
