@@ -13,10 +13,12 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 
 use super::wire::{
-    AppendEnvelope, PublishEnvelope, SnapEnvelope, TimeoutNowEnvelope, VoteEnvelope,
+    AppendEnvelope, PublishEnvelope, ReadIndexEnvelope, SnapEnvelope, TimeoutNowEnvelope,
+    VoteEnvelope,
 };
 use super::{
-    append_entries, host_status, install_snapshot, publish_handler, request_vote, timeout_now,
+    append_entries, host_status, install_snapshot, publish_handler, read_index_handler,
+    request_vote, timeout_now,
 };
 use crate::application::{RaftHost, RaftRegistry, RaftStatus};
 
@@ -32,6 +34,7 @@ impl RaftRegistry {
             .route("/raft/install-snapshot", post(install_snapshot_demux))
             .route("/raft/timeout-now", post(timeout_now_demux))
             .route(RaftHost::PUBLISH_PATH, post(publish_demux))
+            .route(RaftHost::READ_INDEX_PATH, post(read_index_demux))
             .route("/raftz", get(raftz_demux))
             .with_state(self.clone())
     }
@@ -77,6 +80,16 @@ async fn timeout_now_demux(
     let host = reg.host(&env.group_id);
     match host {
         Some(h) => timeout_now(State(Arc::clone(&h.shared)), Json(env)).await,
+        None => (StatusCode::NOT_FOUND, "group not found").into_response(),
+    }
+}
+
+async fn read_index_demux(
+    State(reg): State<RaftRegistry>,
+    Json(env): Json<ReadIndexEnvelope>,
+) -> axum::response::Response {
+    match reg.host(&env.group_id) {
+        Some(h) => read_index_handler(State(Arc::clone(&h.shared)), Json(env)).await,
         None => (StatusCode::NOT_FOUND, "group not found").into_response(),
     }
 }

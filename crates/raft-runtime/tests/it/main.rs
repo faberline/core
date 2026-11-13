@@ -23,6 +23,7 @@ mod proposal_admission_boundary;
 mod proposal_outcomes;
 mod publish_preflight;
 mod read_index;
+mod read_index_peer;
 mod replica_host_builder;
 mod shutdown_handoff;
 mod shutdown_idempotency;
