@@ -39,7 +39,7 @@ class ExpandNames(unittest.TestCase):
         self.assertEqual(
             EXP["ci / test: feature rows (index-text)"], "unit"
         )
-        self.assertEqual(EXP["ci / e2e: service-k8s kind (default)"], "functional_e2e")
+        self.assertEqual(EXP["ci / e2e: service-k8s kind (group-a)"], "functional_e2e")
         self.assertEqual(EXP["perf: thresholds"], "performance")
         self.assertEqual(EXP["gate"], "policy")
         names = crp.expand_names(REL, CI)
