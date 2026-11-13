@@ -26,8 +26,6 @@ impl GenerationAuth {
         self.file_bearer.as_ref()
     }
 
-    // The emitters read this in #271-#273; no caller reads it yet.
-    #[allow(dead_code)]
     pub(crate) fn managed(&self) -> Option<&ManagedAuth> {
         self.managed.as_ref()
     }
