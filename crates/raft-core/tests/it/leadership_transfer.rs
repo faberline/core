@@ -223,6 +223,24 @@ fn settled_group() -> (Bus, NodeId, NodeId) {
     (bus, leader, target)
 }
 
+/// Deliver one message to its addressee, as the bus would.
+fn deliver(bus: &mut Bus, from: NodeId, out: raft_core::Outgoing) {
+    bus.nodes.get_mut(&out.to).unwrap().handle(from, out.msg);
+}
+
+/// The ids of every node that believes it leads. More than one is a split that
+/// the assertions below must not read as success.
+fn leaders(bus: &Bus) -> Vec<NodeId> {
+    let mut ids: Vec<NodeId> = bus
+        .nodes
+        .iter()
+        .filter(|(_, node)| node.is_leader())
+        .map(|(id, _)| *id)
+        .collect();
+    ids.sort();
+    ids
+}
+
 /// A single lost control message must not strand an otherwise healthy handoff.
 /// Tick only the old leader, so the followers cannot elect on their own.
 #[test]
@@ -261,6 +279,188 @@ fn a_lost_first_handoff_is_retried_at_the_next_heartbeat() {
     );
     assert_eq!(bus.nodes[&target].current_term().get(), term.get() + 1);
     assert!(!bus.nodes[&leader].is_leader());
+}
+
+/// The third voter in a group: neither the old leader nor the named target.
+fn bystander_of(leader: NodeId, target: NodeId) -> NodeId {
+    *[NodeId::new(0), NodeId::new(1), NodeId::new(2)]
+        .iter()
+        .find(|id| **id != leader && **id != target)
+        .expect("a three-voter group has a third voter")
+}
+
+/// The campaign the target starts on `TimeoutNow`: one vote request per peer,
+/// at the next term, naming the target as the candidate.
+fn campaign_votes(bus: &mut Bus, target: NodeId, term: Term) -> Vec<raft_core::Outgoing> {
+    let votes = bus.nodes.get_mut(&target).unwrap().take_outgoing();
+    assert_eq!(
+        votes.len(),
+        2,
+        "the named target campaigns to both peers at once"
+    );
+    for out in &votes {
+        match &out.msg {
+            RaftMsg::Vote(request) => {
+                assert_eq!(
+                    request.term.get(),
+                    term.get() + 1,
+                    "the campaign runs at the term after the one it was handed"
+                );
+                assert_eq!(request.candidate, target, "the target campaigns for itself");
+            }
+            other => panic!("a handed-off target sends vote requests; got {other:?}"),
+        }
+    }
+    votes
+}
+
+/// The target holds the group alone, at the next term, and the old leader has
+/// let it go.
+fn assert_target_leads_alone(
+    bus: &Bus,
+    leader: NodeId,
+    target: NodeId,
+    bystander: NodeId,
+    term: Term,
+) {
+    assert_eq!(
+        leaders(bus),
+        vec![target],
+        "the named target must end up the only leader"
+    );
+    assert_eq!(
+        bus.nodes[&target].current_term().get(),
+        term.get() + 1,
+        "the target leads at the term it campaigned in"
+    );
+    assert_eq!(
+        bus.nodes[&bystander].current_term().get(),
+        term.get() + 1,
+        "the bystander must learn the new term"
+    );
+    assert!(
+        !bus.nodes[&leader].is_leader(),
+        "the host that handed off must not still consider itself leader"
+    );
+}
+
+/// A handoff is a campaign, and a campaign survives a lost vote request: the
+/// target plus the old leader is already a majority of three.
+#[test]
+fn a_transfer_survives_a_lost_vote_request() {
+    let (mut bus, leader, target) = settled_group();
+    let bystander = bystander_of(leader, target);
+    let term = bus.nodes[&leader].current_term();
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .transfer_leadership(target)
+        .unwrap();
+
+    let first = bus.nodes.get_mut(&leader).unwrap().take_outgoing();
+    deliver(&mut bus, leader, first.into_iter().next().unwrap());
+    let votes = campaign_votes(&mut bus, target, term);
+
+    for out in votes {
+        if out.to == leader {
+            deliver(&mut bus, target, out);
+        }
+        // The request addressed to the bystander is lost.
+    }
+    bus.pump();
+    assert_eq!(
+        bus.leader(),
+        Some(target),
+        "the old leader's grant alone is a majority of three"
+    );
+
+    bus.settle();
+    assert_target_leads_alone(&bus, leader, target, bystander, term);
+}
+
+/// An append from the term the target was handed away from must not pull it
+/// out of its campaign. A stale leader's heartbeat is not news.
+#[test]
+fn a_stale_append_after_the_target_campaigns_does_not_lift_it() {
+    let (mut bus, leader, target) = settled_group();
+    let bystander = bystander_of(leader, target);
+    let term = bus.nodes[&leader].current_term();
+
+    for _ in 0..raft_core::HEARTBEAT_INTERVAL_TICKS {
+        bus.nodes.get_mut(&leader).unwrap().tick();
+    }
+    let stale = bus.nodes.get_mut(&leader).unwrap().take_outgoing();
+    let stale_append = stale
+        .into_iter()
+        .find(|o| o.to == target && matches!(o.msg, RaftMsg::Append(_)))
+        .expect("a heartbeat interval produces an append for the target");
+
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .transfer_leadership(target)
+        .unwrap();
+    let first = bus.nodes.get_mut(&leader).unwrap().take_outgoing();
+    deliver(&mut bus, leader, first.into_iter().next().unwrap());
+    let votes = campaign_votes(&mut bus, target, term);
+
+    deliver(&mut bus, leader, stale_append);
+    assert_eq!(
+        bus.nodes[&target].role(),
+        Role::Candidate,
+        "an append at the old term must not lift the candidate back to follower"
+    );
+
+    for out in votes {
+        deliver(&mut bus, target, out);
+    }
+    bus.pump();
+    bus.settle();
+    assert_target_leads_alone(&bus, leader, target, bystander, term);
+}
+
+/// The old leader can step down before the vote request addressed to it ever
+/// arrives. The late request must not unseat the target it helped elect.
+#[test]
+fn a_transfer_completes_when_the_old_leader_steps_down_before_the_vote_arrives() {
+    let (mut bus, leader, target) = settled_group();
+    let bystander = bystander_of(leader, target);
+    let term = bus.nodes[&leader].current_term();
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .transfer_leadership(target)
+        .unwrap();
+
+    let first = bus.nodes.get_mut(&leader).unwrap().take_outgoing();
+    deliver(&mut bus, leader, first.into_iter().next().unwrap());
+    let votes = campaign_votes(&mut bus, target, term);
+    let (to_leader, to_bystander): (Vec<_>, Vec<_>) =
+        votes.into_iter().partition(|out| out.to == leader);
+
+    for out in to_bystander {
+        deliver(&mut bus, target, out);
+    }
+    let reply = bus.nodes.get_mut(&bystander).unwrap().take_outgoing();
+    for out in reply {
+        deliver(&mut bus, bystander, out);
+    }
+
+    let appends = bus.nodes.get_mut(&target).unwrap().take_outgoing();
+    for out in appends {
+        deliver(&mut bus, target, out);
+    }
+    assert!(
+        !bus.nodes[&leader].is_leader(),
+        "the new leader's append at the higher term steps the old one down"
+    );
+
+    for out in to_leader {
+        deliver(&mut bus, target, out);
+    }
+    bus.pump();
+    bus.settle();
+    assert_target_leads_alone(&bus, leader, target, bystander, term);
 }
 
 /// The whole item. Leadership moves to the node that was named, and it moves
