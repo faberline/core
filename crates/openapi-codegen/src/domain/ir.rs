@@ -8,6 +8,9 @@
 pub mod names;
 pub mod openapi;
 pub mod operations;
+// Part 1 of #128 has no caller outside the tests; part 2 wires it into generation.
+#[allow(dead_code)]
+pub mod select;
 pub mod typemap;
 
 pub use typemap::{build_type_map, TypeMap};
