@@ -147,7 +147,7 @@ phase table orders the outcomes.
   subjects, exact named rules, explicit deny-all as an empty desired grant set,
   create and update, ownership refusal, adoption, stale RoleBinding prune,
   per-object failure isolation, status projection, wildcard refusal, and no
-  Secret rendering. App tests prove their operation-to-verb mapping without
+  Secret rendering (`tests/it/access_reconcile.rs`, `tests/it/access_kubernetes_store.rs`). App tests prove their operation-to-verb mapping without
   adding it to the shared library.
 - Tracking: Not assigned.
 
