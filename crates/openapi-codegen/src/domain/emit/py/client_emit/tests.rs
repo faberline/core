@@ -1,7 +1,7 @@
 use super::*;
 use crate::ir::openapi::Spec;
 use crate::ir::operations;
-use crate::{build_type_map, PythonTarget};
+use crate::{build_type_map, FileBearerScheme, ManagedAuth, PythonTarget};
 
 fn spec(json: &str) -> Spec {
     serde_json::from_str(json).unwrap()
@@ -226,4 +226,110 @@ fn json_only_client_has_no_ndjson_output() {
     assert!(!out.contains("import json"), "{out}");
     assert!(!out.contains(".stream("), "{out}");
     assert!(!out.contains("AsyncIterable"), "{out}");
+}
+
+fn managed_out() -> String {
+    let s = spec(
+        r##"{"paths":{"/ping":{"get":{"operationId":"ping","responses":{"204":{"description":"ok"}}}}}}"##,
+    );
+    let tm = build_type_map(&s);
+    let managed = ManagedAuth::new("/etc/ca/ca.crt", [FileBearerScheme::Https]).unwrap();
+    emit_with(
+        &operations::build(&s),
+        &tm,
+        Some(PythonTarget::Py311),
+        None,
+        Some(&managed),
+    )
+}
+
+#[test]
+fn managed_client_takes_a_ca_path_input() {
+    let out = managed_out();
+    assert!(out.contains("_MANAGED_CA_PATH = \"/etc/ca/ca.crt\""));
+    assert_eq!(out.matches("ca_path: str | None = None").count(), 2);
+    assert!(out.contains("self._ca_path = ca_path if ca_path is not None else _MANAGED_CA_PATH"));
+}
+
+#[test]
+fn managed_client_refuses_non_https_before_transport() {
+    let out = managed_out();
+    assert!(out.contains("if urlsplit(base_url).scheme != \"https\":"));
+    assert!(out.contains("managed clients accept only https: URLs"));
+    assert_eq!(
+        out.matches("_managed_headers(self._base_url, self._ca_path, _headers)")
+            .count(),
+        2
+    );
+    assert!(
+        out.find("_managed_headers(self._base_url, self._ca_path, _headers)")
+            .unwrap()
+            < out.find("self._client.request(").unwrap()
+    );
+}
+
+#[test]
+fn managed_client_uses_the_fixed_token_path() {
+    let out = managed_out();
+    assert!(out
+        .contains("_MANAGED_TOKEN_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/token\""));
+    assert!(out.contains("_managed_read(_MANAGED_TOKEN_PATH, \"token\")"));
+    assert!(!out.contains("auth_token"));
+    assert!(!out.contains("token_path:"));
+    assert!(!out.contains("_FILE_BEARER"));
+}
+
+#[test]
+fn managed_client_fails_before_transport_on_an_empty_token_or_ca() {
+    let out = managed_out();
+    assert!(out.contains("managed {what} is unavailable"));
+    assert!(out.contains("managed {what} is empty"));
+    assert_eq!(
+        out.matches("_managed_read(ca_path, \"CA bundle\")").count(),
+        2
+    );
+}
+
+#[test]
+fn managed_client_never_retries_without_the_token() {
+    let out = managed_out();
+    assert_eq!(out.matches("self._client.request(").count(), 2);
+    assert!(out.contains("result[\"Authorization\"] = f\"Bearer {token}\""));
+    assert!(out.contains("if str(name).casefold() != \"authorization\""));
+}
+
+#[test]
+fn managed_client_keeps_the_no_skip_verification_rule() {
+    let out = managed_out();
+    assert!(out.contains("ssl.create_default_context(cafile=ca_path)"));
+    assert!(out.contains("context.check_hostname = True"));
+    assert!(out.contains("context.verify_mode = ssl.CERT_REQUIRED"));
+    for weakening in [
+        "CERT_NONE",
+        "check_hostname = False",
+        "verify=False",
+        "_create_unverified_context",
+    ] {
+        assert!(
+            !out.contains(weakening),
+            "managed client must not ship {weakening}"
+        );
+    }
+}
+
+#[test]
+fn non_managed_client_is_unchanged() {
+    let s = spec(
+        r##"{"paths":{"/ping":{"get":{"operationId":"ping","responses":{"204":{"description":"ok"}}}}}}"##,
+    );
+    let tm = build_type_map(&s);
+    let ops = operations::build(&s);
+    let plain = emit(&ops, &tm, Some(PythonTarget::Py311), None);
+    assert_eq!(
+        plain,
+        emit_with(&ops, &tm, Some(PythonTarget::Py311), None, None)
+    );
+    assert!(!plain.contains("_MANAGED_"));
+    assert!(!plain.contains("_managed_headers"));
+    assert!(!plain.contains("ca_path"));
 }

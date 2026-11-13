@@ -4,6 +4,7 @@
 
 mod handlers;
 mod publish;
+mod read_index;
 mod registry;
 mod router;
 mod status;
@@ -15,4 +16,5 @@ use handlers::{
     append_entries, install_snapshot, install_snapshot_capable, request_vote, timeout_now,
 };
 use publish::publish_handler;
+use read_index::read_index_handler;
 use status::raftz;

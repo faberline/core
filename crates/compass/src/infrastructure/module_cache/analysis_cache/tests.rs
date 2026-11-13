@@ -1,7 +1,6 @@
 use super::*;
 use crate::domain::module_cache::content_hash::ContentHash;
 use crate::domain::modules::import::ModuleInfo;
-use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -171,9 +170,11 @@ fn test_cache_stats() {
 
 #[test]
 fn test_file_hash() {
-    let temp_dir = env::temp_dir().join("cclab_lens_cache_test");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::Builder::new()
+        .prefix("compass_test_")
+        .tempdir()
+        .unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     let file_path = temp_dir.join("test.py");
     fs::write(&file_path, "print('hello')").unwrap();
@@ -189,9 +190,6 @@ fn test_file_hash() {
     fs::write(&file_path, "print('world')").unwrap();
     let hash3 = ContentHash::from_file(&file_path);
     assert_ne!(hash1, hash3);
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 /// R3: After propagation, cache entries can be marked with propagation_valid=true.
@@ -291,4 +289,27 @@ fn test_invalidation_on_dependency_change() {
         !cache.get("c").unwrap().propagation_valid,
         "C should be invalidated transitively through B"
     );
+}
+
+#[test]
+fn no_fixed_temp_dir_names_in_compass_unit_tests() {
+    for (name, src) in [
+        (
+            "python_env/detect/tests.rs",
+            include_str!("../../python_env/detect/tests.rs"),
+        ),
+        (
+            "project/analyzer/tests.rs",
+            include_str!("../../project/analyzer/tests.rs"),
+        ),
+        (
+            "module_cache/analysis_cache/tests.rs",
+            include_str!("tests.rs"),
+        ),
+    ] {
+        assert!(
+            !src.contains(concat!("env::temp_dir()", ".join(")),
+            "{name} uses a fixed directory under the shared temp dir; use tempfile::tempdir()"
+        );
+    }
 }

@@ -1,5 +1,4 @@
 use super::*;
-use std::env;
 
 #[test]
 fn test_extract_imports() {
@@ -34,8 +33,11 @@ fn test_project_analyzer_creation() {
 #[test]
 fn test_discover_files_in_temp() {
     // Create a temp directory structure
-    let temp_dir = env::temp_dir().join("cclab_lens_test_project");
-    let _ = fs::remove_dir_all(&temp_dir); // Clean up if exists
+    let temp_guard = tempfile::Builder::new()
+        .prefix("compass_test_")
+        .tempdir()
+        .unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
     fs::create_dir_all(temp_dir.join("src")).unwrap();
     fs::create_dir_all(temp_dir.join("venv")).unwrap();
 
@@ -53,17 +55,16 @@ fn test_discover_files_in_temp() {
     assert!(files.iter().any(|p| p.ends_with("main.py")));
     assert!(files.iter().any(|p| p.ends_with("utils.py")));
     assert!(!files.iter().any(|p| p.to_string_lossy().contains("venv")));
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_build_graph_with_imports() {
     // Create a temp directory with files that import each other
-    let temp_dir = env::temp_dir().join("cclab_lens_test_graph");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::Builder::new()
+        .prefix("compass_test_")
+        .tempdir()
+        .unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // main.py imports utils
     fs::write(
@@ -85,16 +86,15 @@ fn test_build_graph_with_imports() {
     let main = graph.get_module("main");
     assert!(main.is_some());
     assert!(main.unwrap().imports.contains("utils"));
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }
 
 #[test]
 fn test_circular_import_detection() {
-    let temp_dir = env::temp_dir().join("cclab_lens_test_circular");
-    let _ = fs::remove_dir_all(&temp_dir);
-    fs::create_dir_all(&temp_dir).unwrap();
+    let temp_guard = tempfile::Builder::new()
+        .prefix("compass_test_")
+        .tempdir()
+        .unwrap();
+    let temp_dir = temp_guard.path().to_path_buf();
 
     // Create circular imports: a -> b -> c -> a
     fs::write(temp_dir.join("a.py"), "from b import foo").unwrap();
@@ -107,7 +107,4 @@ fn test_circular_import_detection() {
 
     let cycles = analyzer.circular_imports();
     assert!(!cycles.is_empty(), "Should detect circular imports");
-
-    // Cleanup
-    let _ = fs::remove_dir_all(&temp_dir);
 }

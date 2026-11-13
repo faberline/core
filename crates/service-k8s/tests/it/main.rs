@@ -1,6 +1,8 @@
 mod support;
 
 mod access_grants;
+mod access_kubernetes_store;
+mod access_reconcile;
 mod backup_cronjob;
 mod backup_job;
 mod certificate_kubernetes_store;

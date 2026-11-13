@@ -3,9 +3,24 @@ use crate::domain::entry::{EntryKind, RaftEntry};
 use crate::domain::ids::{Index, NodeId, Term};
 use crate::domain::message::{RaftMsg, VoteReq, VoteResp};
 use crate::domain::role::Role;
+use crate::domain::timing::{base_election_timeout_ticks, ELECTION_TIMEOUT_FLOOR_TICKS};
 
 impl RaftNode {
+    fn base_election_timeout(&self) -> u64 {
+        base_election_timeout_ticks(self.id)
+    }
+
+    fn retry_election_timeout(&self) -> u64 {
+        let mut x = self.current_term.get().wrapping_mul(0x9E37_79B9_7F4A_7C15)
+            ^ self.id.get().wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        x ^= x >> 31;
+        x = x.wrapping_mul(0x94D0_49BB_1331_11EB);
+        x ^= x >> 29;
+        self.base_election_timeout() + 1 + x % ELECTION_TIMEOUT_FLOOR_TICKS
+    }
+
     pub(super) fn start_election(&mut self) {
+        let retry = self.role == Role::Candidate;
         self.current_term = self.current_term.next();
         self.role = Role::Candidate;
         self.voted_for = Some(self.id);
@@ -13,6 +28,11 @@ impl RaftNode {
         self.votes.clear();
         self.votes.insert(self.id);
         self.election_elapsed = 0;
+        self.election_timeout = if retry {
+            self.retry_election_timeout()
+        } else {
+            self.base_election_timeout()
+        };
         let (lli, llt) = (self.last_index(), self.last_term());
         let term = self.current_term;
         let mut vote_targets = self.conf_state.membership.voters().to_vec();
@@ -72,6 +92,7 @@ impl RaftNode {
             self.match_index.insert(p, Index::new(0));
         }
         self.heartbeat_elapsed = 0;
+        self.election_timeout = self.base_election_timeout();
         self.transfer_in_flight = None;
         self.transfer_elapsed = 0;
         if self.leader_noop {
@@ -97,6 +118,7 @@ impl RaftNode {
         }
         self.role = Role::Follower;
         self.election_elapsed = 0;
+        self.election_timeout = self.base_election_timeout();
         self.transfer_in_flight = None;
         self.transfer_elapsed = 0;
     }

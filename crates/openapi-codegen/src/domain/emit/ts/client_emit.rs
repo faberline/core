@@ -6,7 +6,7 @@ mod method;
 mod runtime;
 
 pub use client::{emit_client, hook_type_import, type_import};
-pub use runtime::emit_runtime;
+pub use runtime::{emit_managed_runtime, emit_runtime};
 
 #[cfg(test)]
 mod tests;

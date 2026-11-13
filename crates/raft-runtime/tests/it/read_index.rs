@@ -68,18 +68,45 @@ async fn read_index_appends_no_log_entry() {
 }
 
 #[tokio::test]
-async fn follower_reports_not_leader() {
+async fn follower_gets_the_leader_index_and_waits_for_apply() {
     let cfg = read_cfg();
     let nodes = cluster_with_config(3, cfg).await;
     let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
         .expect("a leader is elected");
+
+    nodes[leader]
+        .host
+        .propose(vec![1])
+        .await
+        .expect("first proposal commits");
+    nodes[leader]
+        .host
+        .propose(vec![2])
+        .await
+        .expect("second proposal commits");
+
     let follower = (0..nodes.len())
         .find(|&i| i != leader)
         .expect("a follower exists");
 
-    let res = nodes[follower].host.read_index().await;
-    assert_eq!(res, Err(ReadIndexError::NotLeader));
+    let index = nodes[follower]
+        .host
+        .read_index()
+        .await
+        .expect("the follower gets the leader's index");
+    assert!(index >= Index::new(2), "read index {index:?} is below 2");
+
+    let mut applied = nodes[follower].host.applied_watch();
+    let reached = tokio::time::timeout(
+        Duration::from_secs(5),
+        applied.wait_for(|applied| *applied >= index),
+    )
+    .await;
+    assert!(
+        matches!(reached, Ok(Ok(_))),
+        "the follower did not apply up to {index:?} in time"
+    );
 }
 
 #[tokio::test]

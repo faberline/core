@@ -2,7 +2,9 @@ use anyhow::Result;
 use sha2::{Digest, Sha256};
 
 use crate::domain::emit;
-use crate::domain::{FileBearerAuth, GenOptions, GeneratedOutput, Lang, TargetProfile};
+use crate::domain::{
+    FileBearerAuth, GenOptions, GeneratedOutput, GenerationAuth, Lang, ManagedAuth, TargetProfile,
+};
 
 fn validate_options(opts: &GenOptions) -> Result<()> {
     opts.validate()?;
@@ -50,6 +52,65 @@ pub fn generate_with_file_bearer_auth(
     };
     attach_provenance(&mut output, spec_json, opts);
     Ok(output)
+}
+
+fn generate_with_managed_auth(
+    spec_json: &str,
+    opts: &GenOptions,
+    auth: &ManagedAuth,
+) -> Result<GeneratedOutput> {
+    match opts.lang() {
+        Lang::Ts => {
+            validate_options(opts)?;
+            let mut output = match opts.target() {
+                Some(TargetProfile::TypeScript(target)) => {
+                    emit::ts::generate_for_target_with_managed_auth(spec_json, opts, target, auth)?
+                }
+                _ => emit::ts::generate_with_managed_auth(spec_json, opts, auth)?,
+            };
+            attach_provenance(&mut output, spec_json, opts);
+            Ok(output)
+        }
+        Lang::Py => {
+            validate_options(opts)?;
+            let mut output = match opts.target() {
+                Some(TargetProfile::Python(target)) => {
+                    emit::py::generate_for_target_with_managed_auth(spec_json, opts, target, auth)?
+                }
+                _ => emit::py::generate_with_managed_auth(spec_json, opts, auth)?,
+            };
+            attach_provenance(&mut output, spec_json, opts);
+            Ok(output)
+        }
+        Lang::Rust => {
+            validate_options(opts)?;
+            let mut output = match opts.target() {
+                Some(TargetProfile::Rust(target)) => {
+                    emit::rust::generate_for_target_with_managed_auth(
+                        spec_json, opts, target, auth,
+                    )?
+                }
+                _ => emit::rust::generate_with_managed_auth(spec_json, opts, auth)?,
+            };
+            attach_provenance(&mut output, spec_json, opts);
+            Ok(output)
+        }
+    }
+}
+
+/// Generate with an explicit auth selection. A file-bearer selection generates
+/// exactly like [`generate_with_file_bearer_auth`]. A Managed selection changes
+/// the runtime of every language: TypeScript, Python and Rust.
+pub fn generate_with_auth(
+    spec_json: &str,
+    opts: &GenOptions,
+    auth: &GenerationAuth,
+) -> Result<GeneratedOutput> {
+    match (auth.file_bearer(), auth.managed()) {
+        (Some(file), _) => generate_with_file_bearer_auth(spec_json, opts, file),
+        (None, Some(managed)) => generate_with_managed_auth(spec_json, opts, managed),
+        (None, None) => generate(spec_json, opts),
+    }
 }
 
 /// Pure core with an explicit versioned target profile. The profile must match

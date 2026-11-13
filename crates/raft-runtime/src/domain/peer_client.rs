@@ -10,6 +10,9 @@ use std::pin::Pin;
 /// follower forward client all use this one path.
 pub(crate) const PUBLISH_PATH: &str = "/raft/publish";
 
+/// The leader-side linearizable read-index target (#187 part 2).
+pub(crate) const READ_INDEX_PATH: &str = "/raft/read-index";
+
 /// What a leader answered to a forwarded proposal.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum ForwardReply {
@@ -29,6 +32,19 @@ pub(crate) enum ForwardReply {
     Ambiguous { index: Option<u64>, reason: String },
     /// The request failed or the reply was not understood; the command may or
     /// may not have been appended.
+    Failed { reason: String },
+}
+
+/// What a leader answered to a forwarded read-index request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ReadIndexReply {
+    /// The leader confirmed leadership; the caller waits for `index` to apply.
+    Granted { index: u64 },
+    /// The node answered `421`: it is not the leader.
+    NotLeader,
+    /// The leader refused or failed the round (`503`); `reason` is the leader's text.
+    Refused { reason: String },
+    /// The request failed or the reply was not understood.
     Failed { reason: String },
 }
 
@@ -64,4 +80,10 @@ pub(crate) trait PeerClient<Id>: Send + Sync {
         leader_url: &'a str,
         command: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = ForwardReply> + Send + 'a>>;
+
+    /// Ask the leader at `leader_url` for its read index.
+    fn read_index<'a>(
+        &'a self,
+        leader_url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ReadIndexReply> + Send + 'a>>;
 }

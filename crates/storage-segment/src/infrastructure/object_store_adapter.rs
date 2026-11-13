@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use storage_object::{ObjectStore, ObjectStoreError, PutCondition};
+use storage_object::{ObjectStore, ObjectStoreError, ObjectVersion, PutCondition};
 
 use super::put_immutable::put_immutable;
 use crate::domain::{ArchiveObject, ArchivedObject, ImmutableObjectStore, Result, SegmentError};
@@ -45,7 +45,73 @@ impl ImmutableObjectStore for ObjectStoreAdapter {
         Ok(self.store.delete(key)?)
     }
 
+    fn delete_if_present(&self, key: &str) -> Result<bool> {
+        // storage-object's `delete` treats a missing key as success, so ask
+        // `head` first to learn whether the object existed.
+        match self.store.head(key) {
+            Ok(_) => {
+                self.store.delete(key)?;
+                Ok(true)
+            }
+            Err(ObjectStoreError::NotFound { .. }) => Ok(false),
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    fn list_keys(&self, prefix: &str) -> Result<Vec<String>> {
+        let mut keys: Vec<String> = self
+            .store
+            .list(prefix)?
+            .iter()
+            .map(|meta| meta.key().to_string())
+            .collect();
+        keys.sort();
+        Ok(keys)
+    }
+
     fn put_object(&self, object: ArchiveObject) -> Result<ArchivedObject> {
         put_immutable(self.store.as_ref(), object)
     }
+
+    fn create_marker(&self, key: &str, bytes: &[u8]) -> Result<bool> {
+        match self
+            .store
+            .put(key, bytes, "application/json", PutCondition::IfAbsent)
+        {
+            Ok(_) => Ok(true),
+            Err(ObjectStoreError::PreconditionFailed { .. }) => Ok(false),
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    fn read_marker(&self, key: &str) -> Result<Option<(Vec<u8>, String)>> {
+        match self.store.get(key) {
+            Ok(object) => {
+                let version = object.meta().version().as_str().to_string();
+                Ok(Some((object.into_parts().1, version)))
+            }
+            Err(ObjectStoreError::NotFound { .. }) => Ok(None),
+            Err(error) => Err(error.into()),
+        }
+    }
+
+    fn replace_marker(&self, key: &str, bytes: &[u8], expected_version: &str) -> Result<()> {
+        match self.store.put(
+            key,
+            bytes,
+            "application/json",
+            PutCondition::IfVersion(ObjectVersion::new(expected_version)),
+        ) {
+            Ok(_) => Ok(()),
+            Err(ObjectStoreError::PreconditionFailed { .. }) => {
+                Err(SegmentError::StagingConflict {
+                    key: key.to_string(),
+                })
+            }
+            Err(error) => Err(error.into()),
+        }
+    }
 }
+
+#[cfg(test)]
+mod tests;

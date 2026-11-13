@@ -37,9 +37,9 @@ class ExpandNames(unittest.TestCase):
     def test_expand_names_examples(self):
         self.assertEqual(EXP["preflight"], "policy")
         self.assertEqual(
-            EXP["ci / test: feature rows (index-text)"], "unit"
+            EXP["ci / test: feature rows (group-a)"], "unit"
         )
-        self.assertEqual(EXP["ci / e2e: service-k8s kind (default)"], "functional_e2e")
+        self.assertEqual(EXP["ci / e2e: service-k8s kind (group-a)"], "functional_e2e")
         self.assertEqual(EXP["perf: thresholds"], "performance")
         self.assertEqual(EXP["gate"], "policy")
         names = crp.expand_names(REL, CI)
@@ -109,6 +109,36 @@ class ContractChecks(unittest.TestCase):
             if 164 in entry["issues"]:
                 entry["issues"].remove(164)
         self.assertNotEqual(crp.check_contract(c, set(EXP)), [])
+
+    def test_removed_issues_are_not_in_contract(self):
+        issues = set()
+        for entry in CONTRACT["milestones"]["8"]["acceptance"]:
+            issues.update(entry["issues"])
+        removed = {22, 24, 43, 44, 2, 7, 8, 14, 20, 21, 80, 88, 157}
+        self.assertEqual(issues & removed, set())
+
+    def test_no_peer_tls_entry(self):
+        acceptance = CONTRACT["milestones"]["8"]["acceptance"]
+        self.assertFalse(
+            any(entry["goal"].startswith("peer-tls:") for entry in acceptance)
+        )
+        self.assertEqual(len(acceptance), 5)
+
+    def test_contract_issue_set_is_exact(self):
+        issues = []
+        for entry in CONTRACT["milestones"]["8"]["acceptance"]:
+            issues.extend(entry["issues"])
+        self.assertEqual(set(issues), crp.MILESTONE_8_ISSUES)
+        self.assertEqual(len(crp.MILESTONE_8_ISSUES), 20)
+
+    def test_removed_issue_added_back_fails(self):
+        c = copy.deepcopy(CONTRACT)
+        for entry in c["milestones"]["8"]["acceptance"]:
+            if entry["goal"].startswith("The workspace version"):
+                entry["issues"].append(157)
+        errors = crp.check_contract(c, set(EXP))
+        self.assertNotEqual(errors, [])
+        self.assertTrue(any("unknown issues" in e for e in errors))
 
 
 class DocChecks(unittest.TestCase):

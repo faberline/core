@@ -1,5 +1,5 @@
 use crate::domain::emit::ts::types_emit::HEADER;
-use crate::domain::{FileBearerAuth, HttpClient};
+use crate::domain::{FileBearerAuth, HttpClient, ManagedAuth};
 
 /// Static request runtime shared by every generated client. The body depends
 /// only on the chosen [`HttpClient`] backend — the `ClientConfig`/`request`
@@ -14,6 +14,73 @@ pub fn emit_runtime(http_client: HttpClient, auth: Option<&FileBearerAuth>) -> S
         Some(auth) => emit_file_bearer_runtime(body, auth, http_client),
         None => body.to_string(),
     };
+    format!("{HEADER}{body}")
+}
+
+/// Managed runtime: like [`emit_runtime`], but every transport entry point
+/// first checks for an `https:` URL, reads the fixed token file and the CA
+/// bundle, and sends the token. Other auth selections keep their own output.
+pub fn emit_managed_runtime(http_client: HttpClient, auth: &ManagedAuth) -> String {
+    let body = match http_client {
+        HttpClient::Fetch => FETCH_RUNTIME,
+        HttpClient::Axios => AXIOS_RUNTIME,
+    };
+    let token_path = serde_json::to_string(auth.token_path())
+        .expect("serialize generated TypeScript token path");
+    let ca_path = serde_json::to_string(
+        auth.ca_path()
+            .to_str()
+            .expect("ManagedAuth validates UTF-8 paths"),
+    )
+    .expect("serialize generated TypeScript CA path");
+    let transport = match http_client {
+        HttpClient::Fetch => MANAGED_FETCH,
+        HttpClient::Axios => MANAGED_AXIOS,
+    };
+    let helper = format!(
+        "{}{}",
+        MANAGED_COMMON
+            .replace("__MANAGED_TOKEN_PATH__", &token_path)
+            .replace("__MANAGED_CA_PATH__", &ca_path),
+        transport
+    );
+    let anchor = "/**\n * A private trust anchor is only meaningful";
+    let body = body
+        .replacen(anchor, &format!("{helper}{anchor}"), 1)
+        .replacen(
+            "  trust?: PrivateTrust;\n",
+            "  trust?: PrivateTrust;\n  /**\n   * Path to the PEM bundle of the CA that signed the server. Managed clients\n   * default to the generated `MANAGED_CA_PATH`.\n   */\n  caPath?: string;\n",
+            1,
+        )
+        // Same type-stripper-safe constructor as the file bearer runtime.
+        .replacen(
+            "  constructor(private readonly maxInFlight: number) {}",
+            "  private readonly maxInFlight: number;\n  constructor(maxInFlight: number) { this.maxInFlight = maxInFlight; }",
+            1,
+        );
+    // The three lines below occur in `request` and in `sendNdjson`: replace
+    // every match, so both entry points get the https check and the token.
+    let body = match http_client {
+        HttpClient::Fetch => body.replace(
+            "  const doFetch = config.fetch ?? fetch;\n  assertTrustIsHonoured(config, config.fetch);\n  const url = new URL(config.baseUrl + args.path);\n",
+            "  const url = new URL(config.baseUrl + args.path);\n  const managed = await prepareManaged(config, url);\n  const doFetch = config.fetch ?? (await managedFetch(managed.ca, url.hostname));\n  assertTrustIsHonoured(config, config.fetch);\n",
+        ),
+        HttpClient::Axios => body.replace(
+            "  const instance = config.axios ?? axios.create();\n  assertTrustIsHonoured(config, config.axios);\n  const url = new URL(config.baseUrl + args.path);\n",
+            "  const url = new URL(config.baseUrl + args.path);\n  const managed = await prepareManaged(config, url);\n  const instance = config.axios ?? (await managedAxios(managed.ca, url.hostname));\n  assertTrustIsHonoured(config, config.axios);\n",
+        ),
+    };
+    let body = body
+        .replacen(
+            "      headers: { \"Content-Type\": \"application/json\", ...config.headers, ...args.headers },",
+            "      headers: { \"Content-Type\": \"application/json\", ...config.headers, ...args.headers, Authorization: managed.authorization },",
+            1,
+        )
+        .replacen(
+            "  const headers = { \"Content-Type\": args.ndjsonBody ? \"application/x-ndjson\" : \"application/json\", Accept: accept, ...config.headers, ...args.headers };",
+            "  const headers = { \"Content-Type\": args.ndjsonBody ? \"application/x-ndjson\" : \"application/json\", Accept: accept, ...config.headers, ...args.headers, Authorization: managed.authorization };",
+            1,
+        );
     format!("{HEADER}{body}")
 }
 
@@ -147,4 +214,19 @@ const FETCH_RUNTIME: &str = include_str!(concat!(
 const AXIOS_RUNTIME: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/assets/ts/axios_runtime.ts"
+));
+
+const MANAGED_COMMON: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/ts/managed_common.ts"
+));
+
+const MANAGED_FETCH: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/ts/managed_fetch.ts"
+));
+
+const MANAGED_AXIOS: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/ts/managed_axios.ts"
 ));

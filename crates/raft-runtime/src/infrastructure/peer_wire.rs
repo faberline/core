@@ -56,3 +56,11 @@ pub(crate) struct PublishEnvelope {
     pub(crate) group_id: String,
     pub(crate) command: Vec<u8>,
 }
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct ReadIndexEnvelope {
+    pub(crate) group_id: String,
+}
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(crate) struct ReadIndexResp {
+    pub(crate) index: u64,
+}

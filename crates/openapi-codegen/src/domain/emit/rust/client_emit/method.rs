@@ -109,6 +109,7 @@ pub(super) fn emit_method(
     tm: &TypeMap,
     reg: &mut NameRegistry,
     file_bearer_auth: bool,
+    managed: bool,
 ) -> MethodOut {
     let name = reg.unique(&fn_name(ir));
     let variants = error_variants(ir, tm);
@@ -192,7 +193,7 @@ pub(super) fn emit_method(
         "        let url = format!(\"{{}}{fmt}\", self.base_url{arg_tail});\n"
     ));
 
-    if file_bearer_auth {
+    if file_bearer_auth || managed {
         m.push_str("        let mut request_headers = self.default_headers.clone();\n");
         for (p, (snake, _, req)) in ir.header_params.iter().zip(&header_anns) {
             let header_name = esc(&p.name);
@@ -206,7 +207,13 @@ pub(super) fn emit_method(
                 ));
             }
         }
-        m.push_str("        attach_file_bearer(&self.base_url, &mut request_headers)?;\n");
+        if managed {
+            m.push_str(
+                "        attach_managed(&self.base_url, &self.ca_path, &mut request_headers)?;\n",
+            );
+        } else {
+            m.push_str("        attach_file_bearer(&self.base_url, &mut request_headers)?;\n");
+        }
     }
 
     if ir.method == "query" {
@@ -251,7 +258,7 @@ pub(super) fn emit_method(
         }
         m.push_str("        req = req.query(&q);\n");
     }
-    if file_bearer_auth {
+    if file_bearer_auth || managed {
         m.push_str("        req = req.headers(request_headers);\n");
     } else {
         for (p, (snake, _, req)) in ir.header_params.iter().zip(&header_anns) {

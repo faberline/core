@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use storage_object::LocalObjectStore;
 use storage_segment::{
-    ArchiveCommit, ArchiveCoordinator, ArchiveObject, ArchivedObject, CatalogEntry, CatalogPageRef,
-    CatalogRoot, PagedCatalog,
+    ArchiveCommit, ArchiveCoordinator, ArchiveIntent, ArchiveObject, ArchivedObject, CatalogEntry,
+    CatalogPageRef, CatalogRoot, PagedCatalog,
 };
 
 const ROOT_JSON: &str = r#"{"format_version":1,"height":2,"entry_count":120000,"page_bytes_limit":65536,"root":{"key":"sift/logs/catalog/pages/5f0c8f8a2b7e4d1c9a3b6e5d4c3b2a1908f7e6d5c4b3a2918f7e6d5c4b3a2918.json","sha256":"5f0c8f8a2b7e4d1c9a3b6e5d4c3b2a1908f7e6d5c4b3a2918f7e6d5c4b3a2918","bytes":1893,"entry_count":120000,"first_key":"segment/000000000","last_key":"segment/000119999"}}"#;
@@ -23,6 +23,8 @@ const TREE_ROOT_JSON: &str = r#"{"format_version":1,"height":1,"entry_count":600
 const ARCHIVED_OBJECT_JSON: &str = r#"{"key":"archive/segment-0001.parquet","size":7,"content_type":"application/vnd.apache.parquet","sha256":"03e71c6d7dc6bd4e89ceaf32f6488ca0aa69b0de784b706cac5818d680e9d97f","version":"03e71c6d7dc6bd4e89ceaf32f6488ca0aa69b0de784b706cac5818d680e9d97f"}"#;
 
 const ARCHIVE_COMMIT_JSON: &str = r#"{"objects":[{"key":"archive/segment-0001.parquet","size":7,"content_type":"application/vnd.apache.parquet","sha256":"03e71c6d7dc6bd4e89ceaf32f6488ca0aa69b0de784b706cac5818d680e9d97f","version":"03e71c6d7dc6bd4e89ceaf32f6488ca0aa69b0de784b706cac5818d680e9d97f"}],"manifest":{"key":"archive/manifest.json","size":14,"content_type":"application/json","sha256":"dfb4e167c75bcd060125723c543409d3134c992871d5da653e75eae8d5276b4b","version":"dfb4e167c75bcd060125723c543409d3134c992871d5da653e75eae8d5276b4b"}}"#;
+
+const ARCHIVE_INTENT_JSON: &str = r#"{"format_version":1,"segment_key":"archive/segment-0001.parquet","size":7,"sha256":"03e71c6d7dc6bd4e89ceaf32f6488ca0aa69b0de784b706cac5818d680e9d97f","content_type":"application/vnd.apache.parquet"}"#;
 
 fn root() -> CatalogRoot {
     CatalogRoot {
@@ -101,6 +103,26 @@ fn a_built_catalog_tree_has_a_pinned_root() {
         serde_json::from_str::<CatalogRoot>(TREE_ROOT_JSON).unwrap(),
         mutation.root
     );
+}
+
+#[test]
+fn archive_intent_json_is_pinned() {
+    let dir = tempfile::tempdir().unwrap();
+    let store = Arc::new(LocalObjectStore::open(dir.path()).unwrap());
+    let coordinator = ArchiveCoordinator::new(store);
+    let intent = ArchiveIntent::for_object(&ArchiveObject::new(
+        "archive/segment-0001.parquet",
+        b"segment".to_vec(),
+        "application/vnd.apache.parquet",
+    ));
+    let key =
+        "_archive/intent/fb6c3989579d2eae9aff55014178ae1764a8ef8b1ad93c0294d46d8ce7fac5b2.json";
+
+    let archived = coordinator.write_intent(&intent).unwrap();
+
+    assert_eq!(archived.key, key);
+    let bytes = std::fs::read(dir.path().join(key)).unwrap();
+    assert_eq!(String::from_utf8(bytes).unwrap(), ARCHIVE_INTENT_JSON);
 }
 
 #[test]

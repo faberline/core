@@ -7,7 +7,7 @@ mod client;
 mod literal;
 mod method;
 
-pub use client::{emit, HEADER};
+pub use client::{emit, emit_with, HEADER};
 
 #[cfg(test)]
 mod tests;
