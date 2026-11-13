@@ -34,6 +34,7 @@ pub(super) fn emit_method(
     is_async: bool,
     target: Option<PythonTarget>,
     file_bearer_auth: bool,
+    managed: bool,
 ) -> String {
     let name = reg.unique(&fn_name(ir));
 
@@ -153,6 +154,11 @@ pub(super) fn emit_method(
     }
     if file_bearer_auth {
         m.push_str("        _headers = _file_bearer_headers(self._base_url, _headers)\n");
+    }
+    if managed {
+        m.push_str(
+            "        _headers = _managed_headers(self._base_url, self._ca_path, _headers)\n",
+        );
     }
 
     let json_arg = if body_ty.is_some() {

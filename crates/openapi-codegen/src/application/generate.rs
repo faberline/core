@@ -59,24 +59,37 @@ fn generate_with_managed_auth(
     opts: &GenOptions,
     auth: &ManagedAuth,
 ) -> Result<GeneratedOutput> {
-    if opts.lang() != Lang::Ts {
-        // Python and Rust Managed runtimes arrive in #272 and #273.
-        return generate(spec_json, opts);
-    }
-    validate_options(opts)?;
-    let mut output = match opts.target() {
-        Some(TargetProfile::TypeScript(target)) => {
-            emit::ts::generate_for_target_with_managed_auth(spec_json, opts, target, auth)?
+    match opts.lang() {
+        Lang::Ts => {
+            validate_options(opts)?;
+            let mut output = match opts.target() {
+                Some(TargetProfile::TypeScript(target)) => {
+                    emit::ts::generate_for_target_with_managed_auth(spec_json, opts, target, auth)?
+                }
+                _ => emit::ts::generate_with_managed_auth(spec_json, opts, auth)?,
+            };
+            attach_provenance(&mut output, spec_json, opts);
+            Ok(output)
         }
-        _ => emit::ts::generate_with_managed_auth(spec_json, opts, auth)?,
-    };
-    attach_provenance(&mut output, spec_json, opts);
-    Ok(output)
+        Lang::Py => {
+            validate_options(opts)?;
+            let mut output = match opts.target() {
+                Some(TargetProfile::Python(target)) => {
+                    emit::py::generate_for_target_with_managed_auth(spec_json, opts, target, auth)?
+                }
+                _ => emit::py::generate_with_managed_auth(spec_json, opts, auth)?,
+            };
+            attach_provenance(&mut output, spec_json, opts);
+            Ok(output)
+        }
+        // The Rust Managed runtime arrives in #273.
+        Lang::Rust => generate(spec_json, opts),
+    }
 }
 
 /// Generate with an explicit auth selection. A file-bearer selection generates
 /// exactly like [`generate_with_file_bearer_auth`]. A Managed selection changes
-/// the TypeScript runtime; Python and Rust are unchanged until #272 and #273.
+/// the TypeScript and Python runtimes; Rust is unchanged until #273.
 pub fn generate_with_auth(
     spec_json: &str,
     opts: &GenOptions,
