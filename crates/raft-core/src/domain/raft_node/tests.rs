@@ -312,3 +312,68 @@ fn sole_voter_commits_its_leader_noop_at_once() {
     assert!(node.take_committed().is_empty());
     assert_eq!(node.propose(vec![5]), Some(Index::new(2)));
 }
+
+#[test]
+fn first_election_keeps_the_base_timeout() {
+    let membership = auto_membership(3);
+    let mut node = RaftNode::new(NodeId::new(1), &membership);
+
+    node.start_election();
+
+    assert_eq!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+    assert_eq!(node.role(), Role::Candidate);
+}
+
+#[test]
+fn retry_election_uses_the_jittered_timeout() {
+    let membership = auto_membership(3);
+    let mut node = RaftNode::new(NodeId::new(1), &membership);
+
+    node.start_election();
+    node.start_election();
+
+    assert_eq!(node.election_timeout, 91);
+}
+
+#[test]
+fn adjacent_ids_get_different_retry_timeouts() {
+    let membership = auto_membership(3);
+    let mut one = RaftNode::new(NodeId::new(1), &membership);
+    let mut two = RaftNode::new(NodeId::new(2), &membership);
+
+    one.start_election();
+    one.start_election();
+    two.start_election();
+    two.start_election();
+
+    assert_eq!(one.election_timeout, 91);
+    assert_eq!(two.election_timeout, 98);
+}
+
+#[test]
+fn step_down_restores_the_base_timeout() {
+    let membership = auto_membership(3);
+    let mut node = RaftNode::new(NodeId::new(1), &membership);
+
+    node.start_election();
+    node.start_election();
+    assert_ne!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+
+    node.step_down(node.current_term().next());
+
+    assert_eq!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+}
+
+#[test]
+fn become_leader_restores_the_base_timeout() {
+    let membership = auto_membership(3);
+    let mut node = RaftNode::new(NodeId::new(1), &membership);
+
+    node.start_election();
+    node.start_election();
+    assert_ne!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+
+    node.become_leader();
+
+    assert_eq!(node.election_timeout, ELECTION_TIMEOUT_FLOOR_TICKS + 1);
+}

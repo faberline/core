@@ -1,5 +1,5 @@
 use super::*;
-use crate::domain::{ForwardReply, PUBLISH_PATH};
+use crate::domain::{ForwardReply, PUBLISH_PATH, READ_INDEX_PATH};
 use raft_core::Term;
 
 /// The waiter owns this registration, including across cancellation. The applier
@@ -321,6 +321,9 @@ impl RaftHost {
     /// The leader-side write target. The direct router, registry router, and
     /// follower forward client all use this one public path.
     pub const PUBLISH_PATH: &'static str = PUBLISH_PATH;
+
+    /// The leader-side linearizable read-index route (#187 part 2).
+    pub const READ_INDEX_PATH: &'static str = READ_INDEX_PATH;
 }
 
 enum Route {

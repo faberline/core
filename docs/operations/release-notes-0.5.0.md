@@ -18,6 +18,7 @@ This page lists the changes from `v0.4.14` to `0.5.0`. The details are in the si
 - raft-runtime: `HostConfig` fields are private ([raft](release-notes-0.5.0/raft.md))
 - raft-runtime: state-machine and membership port errors are typed ([raft](release-notes-0.5.0/raft.md))
 - raft-runtime: `RaftStatus` has a new field `peer_match_index` ([raft](release-notes-0.5.0/raft.md))
+- raft-runtime: a new leader appends a no-op entry; upgrade all nodes of a group together ([raft](release-notes-0.5.0/raft.md))
 - storage-durable: `DataRoot` and `DataRootPolicy` return `DataRootError` ([storage](release-notes-0.5.0/storage.md))
 - storage-durable: `LogFrame` fields are private ([storage](release-notes-0.5.0/storage.md))
 - storage-durable: four public methods are deleted ([storage](release-notes-0.5.0/storage.md))

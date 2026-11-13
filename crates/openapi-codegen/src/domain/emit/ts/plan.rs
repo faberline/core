@@ -21,6 +21,9 @@ pub struct ParamField {
 pub struct BodyField {
     pub ts_type: String,
     pub required: bool,
+    /// True for an NDJSON body: `ts_type` is `AsyncIterable<T>` and the
+    /// client streams it as one record per line.
+    pub ndjson: bool,
 }
 
 /// Fully-resolved TypeScript plan for one HTTP operation.
@@ -40,6 +43,9 @@ pub struct OperationPlan {
     pub body: Option<BodyField>,
     /// TypeScript expression for the operation response (or `void`).
     pub response_type: String,
+    /// True when the response is NDJSON: `response_type` is `AsyncIterable<T>`
+    /// and the client returns the stream (no hook is emitted for it).
+    pub response_stream: bool,
     /// Name of the grouped request type, e.g. `GetPetByIdData`. `None` when the
     /// operation has no inputs (the client function then takes no argument).
     pub data_type_name: Option<String>,
@@ -93,20 +99,29 @@ fn build_one(
         .map(|p| param_field(p, tm))
         .collect();
 
-    let body = ir.body.as_ref().and_then(|b| {
-        (b.media_kind == MediaKind::Json).then(|| BodyField {
+    let body = ir.body.as_ref().map(|b| match b.media_kind {
+        MediaKind::Json => BodyField {
             ts_type: type_expr(&b.schema, tm),
             required: b.required,
-        })
+            ndjson: false,
+        },
+        MediaKind::Ndjson => BodyField {
+            ts_type: format!("AsyncIterable<{}>", type_expr(&b.schema, tm)),
+            required: b.required,
+            ndjson: true,
+        },
     });
 
-    let response_type = match &ir.response {
-        Some(resp) if resp.media_kind == MediaKind::Json => type_expr(&resp.schema, tm),
-        _ => "void".to_string(),
+    let (response_type, response_stream) = match &ir.response {
+        Some(resp) if resp.media_kind == MediaKind::Ndjson => (
+            format!("AsyncIterable<{}>", type_expr(&resp.schema, tm)),
+            true,
+        ),
+        Some(resp) => (type_expr(&resp.schema, tm), false),
+        None => ("void".to_string(), false),
     };
 
     let pascal = to_pascal(&fn_name);
-    // An NDJSON body is not emitted, so it does not count as an input.
     let has_inputs = !ir.path_params.is_empty()
         || !ir.query_params.is_empty()
         || !ir.header_params.is_empty()
@@ -128,6 +143,7 @@ fn build_one(
         header_params,
         body,
         response_type,
+        response_stream,
         data_type_name,
         response_type_name,
         post_twin_path: ir.post_twin_path.clone(),
@@ -238,7 +254,7 @@ mod tests {
     }
 
     #[test]
-    fn ndjson_operation_is_not_emitted_as_json() {
+    fn ndjson_operation_is_planned_as_stream() {
         let s = spec(
             r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs",
   "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
@@ -246,8 +262,25 @@ mod tests {
         );
         let tm = build_type_map(&s);
         let plans = build(&s, &tm);
-        assert!(plans[0].body.is_none());
-        assert_eq!(plans[0].response_type, "void");
-        assert!(plans[0].data_type_name.is_none());
+        let plan = &plans[0];
+        let body = plan.body.as_ref().expect("an NDJSON body is planned");
+        assert!(body.ndjson);
+        assert!(body.required);
+        assert_eq!(body.ts_type, "AsyncIterable<Record<string, unknown>>");
+        assert!(plan.response_stream);
+        assert_eq!(plan.response_type, "AsyncIterable<string>");
+        assert_eq!(plan.data_type_name.as_deref(), Some("UploadLogsData"));
+    }
+
+    #[test]
+    fn json_operation_plan_has_no_stream_flags() {
+        let s = spec(
+            r##"{"paths":{"/thing":{"post":{"operationId":"getThing","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"}}}},"responses":{"200":{"content":{"application/json":{"schema":{"type":"string"}}}}}}}}}"##,
+        );
+        let tm = build_type_map(&s);
+        let plans = build(&s, &tm);
+        assert!(!plans[0].body.as_ref().unwrap().ndjson);
+        assert!(!plans[0].response_stream);
+        assert_eq!(plans[0].response_type, "string");
     }
 }

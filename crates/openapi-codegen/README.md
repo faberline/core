@@ -101,9 +101,10 @@ will not decide that a service write is safe to retry.
 ## Understand current output boundaries
 
 The shared operation model reads `application/json` request bodies and JSON
-responses. It does not model streaming operations. An operation such as an
-NDJSON upload or streaming response therefore has no generated streaming
-method today.
+responses. It also reads `application/x-ndjson` bodies: an NDJSON upload or
+streaming response becomes a streaming method in all three languages (see
+STATUS.md for the exact shape and limits). Other streaming media types have no
+generated method today.
 
 Rust methods decode declared non-success responses into a per-operation typed
 error (`ApiError::Api`). Undeclared statuses and transport failures stay

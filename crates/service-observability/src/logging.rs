@@ -130,22 +130,26 @@ pub fn init_tracing_with_identity(
 fn build_otel_tracer(
     endpoint: &str,
     identity: &ServiceIdentity,
-) -> Result<opentelemetry_sdk::trace::Tracer, Box<dyn std::error::Error>> {
+) -> Result<opentelemetry_sdk::trace::SdkTracer, Box<dyn std::error::Error>> {
+    use opentelemetry::trace::TracerProvider as _;
     use opentelemetry_otlp::WithExportConfig;
-    let exporter = opentelemetry_otlp::new_exporter()
-        .tonic()
-        .with_endpoint(endpoint.to_string());
-    opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(exporter)
-        .with_trace_config(opentelemetry_sdk::trace::Config::default().with_resource(
-            opentelemetry_sdk::Resource::new(vec![
-                opentelemetry::KeyValue::new("service.name", identity.name().to_string()),
-                opentelemetry::KeyValue::new("service.version", identity.version().to_string()),
-            ]),
-        ))
-        .install_batch(opentelemetry_sdk::runtime::Tokio)
-        .map_err(Into::into)
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .with_endpoint(endpoint.to_string())
+        .build()?;
+    let resource = opentelemetry_sdk::Resource::builder()
+        .with_attributes([
+            opentelemetry::KeyValue::new("service.name", identity.name().to_string()),
+            opentelemetry::KeyValue::new("service.version", identity.version().to_string()),
+        ])
+        .build();
+    let provider = opentelemetry_sdk::trace::SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .with_resource(resource)
+        .build();
+    let tracer = provider.tracer("service-observability");
+    opentelemetry::global::set_tracer_provider(provider);
+    Ok(tracer)
 }
 
 #[cfg(feature = "otlp")]

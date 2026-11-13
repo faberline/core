@@ -15,6 +15,11 @@ Stable IDs here let current limits point to one destination.
 - ID: `media-type-and-streaming-operations`
 - Outcome: The shared operation model and all three emitters preserve declared
   non-JSON media types and expose bounded streaming request and response APIs.
+  NDJSON is done in all three emitters (see STATUS.md).
+- Remaining: Media types other than NDJSON. A cap on the size of one NDJSON
+  line. A non-blocking Rust streaming client. A cross-language fixture that
+  runs the generated TypeScript and Python streaming clients against a server,
+  as the Rust one already does.
 - Boundary: The generator owns reusable OpenAPI media-type modeling, framing
   hooks, backpressure, cancellation, and emitted client methods. Each service
   owns its stream record schema, size limits, ordering, and retry meaning.

@@ -57,7 +57,7 @@ done <<<"$job_ids"
 
 # gate runs always and needs every other job.
 gate_block=$(job_block gate)
-grep -qE "^    if: .*always\(\)" <<<"$gate_block" || report "gate does not have if: always()"
+grep -qxF '    if: always()' <<<"$gate_block" || report "gate does not have if: always()"
 gate_needs=$(sed -n 's/^    needs: *//p' <<<"$gate_block")
 while IFS= read -r id; do
   [ -n "$id" ] && [ "$id" != "gate" ] || continue

@@ -16,7 +16,7 @@ use serde::Serialize;
 
 use crate::interfaces::peer_http::wire::{
     AppendEnvelope, CapableSnapEnvelope, CapableSnapshotResp, NotLeader, PublishEnvelope,
-    SnapEnvelope, TimeoutNowEnvelope, VoteEnvelope,
+    ReadIndexEnvelope, ReadIndexResp, SnapEnvelope, TimeoutNowEnvelope, VoteEnvelope,
 };
 
 /// Encode gives `json`, and decoding `json` gives a value whose `Debug`
@@ -152,4 +152,15 @@ fn publish_envelope_and_not_leader_reply_are_pinned() {
         serde_json::to_string(&no_leader).unwrap(),
         r#"{"error":"not-leader","leader":null}"#
     );
+}
+
+#[test]
+fn read_index_envelope_and_reply_are_pinned() {
+    pin_json(
+        &ReadIndexEnvelope {
+            group_id: "orders".into(),
+        },
+        r#"{"group_id":"orders"}"#,
+    );
+    pin_json(&ReadIndexResp { index: 7 }, r#"{"index":7}"#);
 }
