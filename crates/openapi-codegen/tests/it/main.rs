@@ -1,5 +1,6 @@
 mod file_bearer_auth;
 mod managed_auth_py;
+mod managed_auth_rs;
 mod managed_auth_ts;
 mod ndjson_rust_client;
 mod optional_untyped_field;
