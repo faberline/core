@@ -28,10 +28,10 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "json"] }
 tokio = { workspace = true, features = ["sync", "rt"] }
 metrics-prometheus = { path = "../metrics-prometheus" }
 server-lifecycle = { path = "../server-lifecycle" }
-opentelemetry = { version = "0.21", optional = true }
-opentelemetry-otlp = { version = "0.14", features = ["tonic"], optional = true }
-opentelemetry_sdk = { version = "0.21", features = ["rt-tokio"], optional = true }
-tracing-opentelemetry = { version = "0.22", optional = true }
+opentelemetry = { version = "0.33", optional = true }
+opentelemetry-otlp = { version = "0.33", default-features = false, features = ["grpc-tonic", "trace"], optional = true }
+opentelemetry_sdk = { version = "0.33", features = ["rt-tokio"], optional = true }
+tracing-opentelemetry = { version = "0.34", optional = true }
 
 [lints]
 workspace = true
