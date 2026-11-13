@@ -24,7 +24,7 @@ use super::ids::{Index, NodeId, Term};
 use super::membership::Membership;
 use super::message::Outgoing;
 use super::role::Role;
-use super::timing::ELECTION_TIMEOUT_FLOOR_TICKS;
+use super::timing::base_election_timeout_ticks;
 
 /// A single Raft-group participant.
 pub struct RaftNode {
@@ -119,8 +119,8 @@ impl RaftNode {
             read_acks: HashSet::new(),
             votes: HashSet::new(),
             election_elapsed: 0,
-            // distinct per node so one voter always times out first.
-            election_timeout: ELECTION_TIMEOUT_FLOOR_TICKS + id.get(),
+            // distinct and 5 ticks apart per node, so one voter times out first and wins before the next one starts.
+            election_timeout: base_election_timeout_ticks(id),
             heartbeat_elapsed: 0,
             leader_id: None,
             transfer_in_flight: None,
