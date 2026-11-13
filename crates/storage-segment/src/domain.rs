@@ -8,6 +8,7 @@ mod catalog;
 mod immutable_object_store;
 mod segment;
 mod segment_error;
+mod staging_marker;
 
 pub use archive::{ArchiveCommit, ArchiveObject, ArchivedObject, ArchivedObjectVersion};
 pub use archive_intent::{ArchiveIntent, ARCHIVE_INTENT_FORMAT_VERSION, ARCHIVE_INTENT_PREFIX};
@@ -23,3 +24,7 @@ pub use catalog::{
 pub(crate) use immutable_object_store::ImmutableObjectStore;
 pub use segment::{Partitioner, RecordCodec};
 pub use segment_error::{Result, SegmentError};
+pub(crate) use staging_marker::staging_object_key;
+pub use staging_marker::{
+    StagingMarker, StagingState, STAGING_MARKER_FORMAT_VERSION, STAGING_MARKER_PREFIX,
+};
