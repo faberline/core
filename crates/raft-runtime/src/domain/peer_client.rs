@@ -35,6 +35,19 @@ pub(crate) enum ForwardReply {
     Failed { reason: String },
 }
 
+/// What a leader answered to a forwarded read-index request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ReadIndexReply {
+    /// The leader confirmed leadership; the caller waits for `index` to apply.
+    Granted { index: u64 },
+    /// The node answered `421`: it is not the leader.
+    NotLeader,
+    /// The leader refused or failed the round (`503`); `reason` is the leader's text.
+    Refused { reason: String },
+    /// The request failed or the reply was not understood.
+    Failed { reason: String },
+}
+
 /// The peer client port, generic over the peer id so that this layer names
 /// no raft-core item.
 pub(crate) trait PeerClient<Id>: Send + Sync {
@@ -67,4 +80,10 @@ pub(crate) trait PeerClient<Id>: Send + Sync {
         leader_url: &'a str,
         command: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = ForwardReply> + Send + 'a>>;
+
+    /// Ask the leader at `leader_url` for its read index.
+    fn read_index<'a>(
+        &'a self,
+        leader_url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ReadIndexReply> + Send + 'a>>;
 }

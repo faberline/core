@@ -18,13 +18,15 @@ pub mod types_emit;
 
 use crate::domain::ir::build_type_map;
 use crate::domain::ir::openapi::Spec;
-use crate::domain::{FileBearerAuth, GenOptions, GeneratedFile, GeneratedOutput, TypeScriptTarget};
+use crate::domain::{
+    FileBearerAuth, GenOptions, GeneratedFile, GeneratedOutput, ManagedAuth, TypeScriptTarget,
+};
 
 use super::SpecParseError;
 
 /// Pure TS generation: spec JSON text → in-memory files. No filesystem access.
 pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput, SpecParseError> {
-    generate_impl(spec_json, opts, None, None)
+    generate_impl(spec_json, opts, None, None, None)
 }
 
 pub fn generate_with_file_bearer_auth(
@@ -32,7 +34,15 @@ pub fn generate_with_file_bearer_auth(
     opts: &GenOptions,
     auth: &FileBearerAuth,
 ) -> Result<GeneratedOutput, SpecParseError> {
-    generate_impl(spec_json, opts, None, Some(auth))
+    generate_impl(spec_json, opts, None, Some(auth), None)
+}
+
+pub fn generate_with_managed_auth(
+    spec_json: &str,
+    opts: &GenOptions,
+    auth: &ManagedAuth,
+) -> Result<GeneratedOutput, SpecParseError> {
+    generate_impl(spec_json, opts, None, None, Some(auth))
 }
 
 /// Profile-aware TypeScript generation used by the public target-profile API.
@@ -41,7 +51,7 @@ pub fn generate_for_target(
     opts: &GenOptions,
     target: TypeScriptTarget,
 ) -> Result<GeneratedOutput, SpecParseError> {
-    generate_impl(spec_json, opts, Some(target), None)
+    generate_impl(spec_json, opts, Some(target), None, None)
 }
 
 pub fn generate_for_target_with_file_bearer_auth(
@@ -50,7 +60,16 @@ pub fn generate_for_target_with_file_bearer_auth(
     target: TypeScriptTarget,
     auth: &FileBearerAuth,
 ) -> Result<GeneratedOutput, SpecParseError> {
-    generate_impl(spec_json, opts, Some(target), Some(auth))
+    generate_impl(spec_json, opts, Some(target), Some(auth), None)
+}
+
+pub fn generate_for_target_with_managed_auth(
+    spec_json: &str,
+    opts: &GenOptions,
+    target: TypeScriptTarget,
+    auth: &ManagedAuth,
+) -> Result<GeneratedOutput, SpecParseError> {
+    generate_impl(spec_json, opts, Some(target), None, Some(auth))
 }
 
 fn generate_impl(
@@ -58,6 +77,7 @@ fn generate_impl(
     opts: &GenOptions,
     target: Option<TypeScriptTarget>,
     auth: Option<&FileBearerAuth>,
+    managed: Option<&ManagedAuth>,
 ) -> Result<GeneratedOutput, SpecParseError> {
     let spec: Spec = serde_json::from_str(spec_json).map_err(SpecParseError::new)?;
     let tm = build_type_map(&spec);
@@ -73,7 +93,10 @@ fn generate_impl(
     if opts.emit_client() {
         files.push(GeneratedFile {
             rel_path: "runtime.ts".to_string(),
-            contents: client_emit::emit_runtime(opts.http_client(), auth),
+            contents: match managed {
+                Some(managed) => client_emit::emit_managed_runtime(opts.http_client(), managed),
+                None => client_emit::emit_runtime(opts.http_client(), auth),
+            },
         });
         files.push(GeneratedFile {
             rel_path: "client.ts".to_string(),

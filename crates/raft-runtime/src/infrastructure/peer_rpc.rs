@@ -21,9 +21,10 @@ use super::peer_wire::{
     VoteEnvelope,
 };
 use super::PeerTransport;
-use crate::domain::{ForwardReply, GroupId, PeerClient};
+use crate::domain::{ForwardReply, GroupId, PeerClient, ReadIndexReply};
 
 mod forward;
+mod read_index;
 
 /// The HTTP peer client of one raft group member: its peer address book, its
 /// h2c client (or the shared mTLS transport) and the counters and nonces the
@@ -318,5 +319,12 @@ impl PeerClient<NodeId> for HttpPeerClient {
         command: &'a [u8],
     ) -> Pin<Box<dyn Future<Output = ForwardReply> + Send + 'a>> {
         Box::pin(self.forward_to_leader(leader_url, command))
+    }
+
+    fn read_index<'a>(
+        &'a self,
+        leader_url: &'a str,
+    ) -> Pin<Box<dyn Future<Output = ReadIndexReply> + Send + 'a>> {
+        Box::pin(self.read_index_from_leader(leader_url))
     }
 }

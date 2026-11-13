@@ -1043,7 +1043,8 @@ impl Engine {
     }
 
     fn elect(&mut self, candidate: NodeId) -> Result<NodeId, ReplayFailure> {
-        for _ in 0..(50 + candidate.get()) {
+        // Floor plus id times the 5-tick stagger of raft-core's election timeout.
+        for _ in 0..(50 + 5 * candidate.get()) {
             self.tick(candidate)?;
         }
         self.drain()?;
@@ -1273,11 +1274,12 @@ fn build_trace(
         Template::ElectionSplit => {
             let first = candidate;
             let second = NodeId::new((candidate.get() + 1) % 3);
-            for _ in 0..(50 + first.get()) {
+            // Floor plus id times the 5-tick stagger of raft-core's election timeout.
+            for _ in 0..(50 + 5 * first.get()) {
                 engine.tick(first)?;
             }
             engine.take_all()?;
-            for _ in 0..(50 + second.get()) {
+            for _ in 0..(50 + 5 * second.get()) {
                 engine.tick(second)?;
             }
             engine.take_all()?;

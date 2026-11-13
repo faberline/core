@@ -207,3 +207,126 @@ fn json_only_client_has_no_ndjson_output() {
     assert!(!out.contains("NdjsonRecords"), "{out}");
     assert!(!out.contains("NdjsonBodyReader"), "{out}");
 }
+
+fn managed_out() -> String {
+    let s: Spec = serde_json::from_str(
+        r##"{"paths":{"/ping":{"get":{"operationId":"ping","responses":{"204":{"description":"ok"}}}}}}"##,
+    )
+    .unwrap();
+    let tm = build_type_map(&s);
+    let managed =
+        crate::domain::ManagedAuth::new("/etc/ca/ca.crt", [crate::domain::FileBearerScheme::Https])
+            .unwrap();
+    emit_with(&operations::build(&s), &tm, None, Some(&managed))
+}
+
+#[test]
+fn managed_client_takes_a_ca_path_input() {
+    let out = managed_out();
+    assert!(
+        out.contains("const MANAGED_CA_PATH: &str = \"/etc/ca/ca.crt\";"),
+        "{out}"
+    );
+    assert!(
+        out.contains("pub fn with_ca_path(base_url: impl Into<String>, policy: TransportPolicy, ca_path: impl Into<std::path::PathBuf>) -> ClientResult<Self>"),
+        "{out}"
+    );
+    assert!(
+        out.contains("Self::with_ca_path(base_url, policy, MANAGED_CA_PATH)"),
+        "{out}"
+    );
+}
+
+#[test]
+fn managed_client_refuses_non_https_before_transport() {
+    let out = managed_out();
+    assert!(
+        out.contains("managed clients accept only https: URLs"),
+        "{out}"
+    );
+    assert!(out.contains(".https_only(true)"), "{out}");
+    let guard = out
+        .find("attach_managed(&self.base_url, &self.ca_path, &mut request_headers)?;")
+        .expect("managed method attaches the token before sending");
+    let slot = out
+        .find("let _slot = self.acquire_slot()?;")
+        .expect("method acquires a slot");
+    let send = out.find("req.send()").expect("method sends");
+    assert!(guard < slot, "{out}");
+    assert!(guard < send, "{out}");
+}
+
+#[test]
+fn managed_client_uses_the_fixed_token_path() {
+    let out = managed_out();
+    assert!(
+        out.contains("const MANAGED_TOKEN_PATH: &str = \"/var/run/secrets/kubernetes.io/serviceaccount/token\";"),
+        "{out}"
+    );
+    assert!(
+        out.contains("managed_read(std::path::Path::new(MANAGED_TOKEN_PATH), \"token\")?"),
+        "{out}"
+    );
+    assert!(!out.contains("FILE_BEARER"), "{out}");
+    assert!(!out.contains("attach_file_bearer"), "{out}");
+}
+
+#[test]
+fn managed_client_fails_before_transport_on_an_empty_token_or_ca() {
+    let out = managed_out();
+    assert!(out.contains("managed {what} is unavailable"), "{out}");
+    assert!(out.contains("managed {what} is empty"), "{out}");
+    assert!(
+        out.contains("managed_read(ca_path, \"CA bundle\")?"),
+        "{out}"
+    );
+    assert!(
+        out.contains("managed_read(&ca_path, \"CA bundle\")?"),
+        "{out}"
+    );
+}
+
+#[test]
+fn managed_client_never_retries_without_the_token() {
+    let out = managed_out();
+    assert_eq!(out.matches("req.send()").count(), 1, "{out}");
+    assert!(
+        out.contains("headers.insert(AUTHORIZATION, value);"),
+        "{out}"
+    );
+    assert!(out.contains("value.set_sensitive(true);"), "{out}");
+    let refusal = out.find("accept only https").expect("https check exists");
+    let token_read = out
+        .find("std::path::Path::new(MANAGED_TOKEN_PATH)")
+        .expect("token read exists");
+    assert!(refusal < token_read, "{out}");
+}
+
+#[test]
+fn managed_client_trusts_only_the_ca_and_has_no_public_fallback() {
+    let out = managed_out();
+    assert!(out.contains(".tls_built_in_root_certs(false)"), "{out}");
+    assert!(out.contains(".add_root_certificate(anchor)"), "{out}");
+    // The shared `PrivateTrust` doc comment still names `with_private_ca`; the
+    // constructor itself must be absent.
+    assert!(!out.contains("pub fn with_private_ca"), "{out}");
+    assert!(!out.contains("danger_accept_invalid_certs"), "{out}");
+    assert!(!out.contains("danger_accept_invalid_hostnames"), "{out}");
+}
+
+#[test]
+fn non_managed_client_is_unchanged() {
+    let s: Spec = serde_json::from_str(
+        r##"{"paths":{"/ping":{"get":{"operationId":"ping","responses":{"204":{"description":"ok"}}}}}}"##,
+    )
+    .unwrap();
+    let tm = build_type_map(&s);
+    let ops = operations::build(&s);
+    let plain = emit(&ops, &tm, None);
+    assert_eq!(plain, emit_with(&ops, &tm, None, None));
+    assert!(plain.contains("pub fn new(base_url: impl Into<String>) -> Self"));
+    assert!(plain.contains("with_private_ca"));
+    for needle in ["MANAGED_", "attach_managed", "ca_path", "Managed("] {
+        assert!(!plain.contains(needle), "{needle} leaked into {plain}");
+    }
+}
