@@ -5,6 +5,7 @@ use tokio::sync::oneshot;
 
 mod admission;
 mod peer_lane;
+mod read_index_peer;
 mod routes;
 mod shutdown_cutoffs;
 mod snapshot_preflight;
