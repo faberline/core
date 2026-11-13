@@ -10,32 +10,25 @@ use raft_runtime::{
     FsyncPolicy, HostConfig, Index, Membership, RaftHost, RaftStateMachine, RaftStore,
 };
 use tempfile::TempDir;
+use tokio::net::TcpListener;
 
 use crate::support::cluster::{
-    await_leader, cluster, peers_excluding, wait_for_applied_index, Node, TestSm,
+    await_leader, bind, peers_excluding, wait_for_applied_index, Node, TestSm,
     DEFAULT_APPLIED_INDEX_BUDGET,
 };
 
-/// Rebinds the listener on the port of `url`, reopens the durable store in
-/// `dir` and spawns the host again with the default config.
-async fn restart_node(id: NodeId, url: &str, dir: TempDir, all: &[(NodeId, String)]) -> Node {
-    let port: u16 = url.rsplit(':').next().unwrap().parse().unwrap();
-    let mut last_err = None;
-    let mut listener = None;
-    for _ in 0..50 {
-        match tokio::net::TcpListener::bind(("127.0.0.1", port)).await {
-            Ok(l) => {
-                listener = Some(l);
-                break;
-            }
-            Err(e) => {
-                last_err = Some(e);
-                tokio::time::sleep(Duration::from_millis(20)).await;
-            }
-        }
-    }
-    let listener = listener.unwrap_or_else(|| panic!("rebind {url} failed: {last_err:?}"));
-
+/// Starts one voter of the three-voter group on `listener`.
+///
+/// Every accepted peer connection runs in a `JoinSet` owned by the serve task.
+/// Aborting the serve task drops the set and aborts every open connection, so
+/// no peer keeps talking to the stopped node and its router state is released.
+fn start_node(
+    id: NodeId,
+    listener: TcpListener,
+    url: String,
+    dir: TempDir,
+    all: &[(NodeId, String)],
+) -> Node {
     let sm = TestSm::new();
     let store = RaftStore::open(dir.path().to_str().unwrap(), id, FsyncPolicy::Os).unwrap();
     let voters: Vec<NodeId> = (0..3).map(NodeId::new).collect();
@@ -49,10 +42,11 @@ async fn restart_node(id: NodeId, url: &str, dir: TempDir, all: &[(NodeId, Strin
     );
     let router = host.router();
     let serve = tokio::spawn(async move {
+        let mut conns = tokio::task::JoinSet::new();
         loop {
             if let Ok((stream, _)) = listener.accept().await {
                 let r = router.clone();
-                tokio::spawn(async move {
+                conns.spawn(async move {
                     let _ = transport_h2c::server::serve_connection(stream, r).await;
                 });
             }
@@ -61,18 +55,44 @@ async fn restart_node(id: NodeId, url: &str, dir: TempDir, all: &[(NodeId, Strin
     Node {
         host: Arc::new(host),
         sm,
-        url: url.to_string(),
+        url,
         _serve: serve,
         _dir: dir,
     }
 }
 
+/// Rebinds the listener on the port of `url`, retrying while the old socket
+/// is still in use.
+async fn rebind(url: &str) -> TcpListener {
+    let port: u16 = url.rsplit(':').next().unwrap().parse().unwrap();
+    let mut last_err = None;
+    for _ in 0..50 {
+        match TcpListener::bind(("127.0.0.1", port)).await {
+            Ok(l) => return l,
+            Err(e) => {
+                last_err = Some(e);
+                tokio::time::sleep(Duration::from_millis(20)).await;
+            }
+        }
+    }
+    panic!("rebind {url} failed: {last_err:?}");
+}
+
 async fn run_stop_and_return(stop_leader: bool) {
-    let mut nodes = cluster(3).await;
-    let all: Vec<(NodeId, String)> = nodes
-        .iter()
+    let mut listeners = Vec::new();
+    let mut all: Vec<(NodeId, String)> = Vec::new();
+    for id in 0..3u64 {
+        let (l, url) = bind().await;
+        listeners.push(l);
+        all.push((NodeId::new(id), url));
+    }
+    let mut nodes: Vec<Node> = listeners
+        .into_iter()
         .enumerate()
-        .map(|(i, n)| (NodeId::new(i as u64), n.url.clone()))
+        .map(|(i, l)| {
+            let (id, url) = all[i].clone();
+            start_node(id, l, url, TempDir::new().unwrap(), &all)
+        })
         .collect();
 
     let leader = await_leader(&nodes)
@@ -91,8 +111,9 @@ async fn run_stop_and_return(stop_leader: bool) {
     let before = before.unwrap();
     wait_for_applied_index(&nodes, before, DEFAULT_APPLIED_INDEX_BUDGET).await;
 
-    // Stop one node abruptly: abort its serve task and drop the host, which
-    // aborts its tick and pump tasks. No hand-off.
+    // Stop one node abruptly, with no hand-off: abort its serve task, which
+    // closes every open peer connection, then drop the host, which aborts its
+    // tick and pump tasks.
     let stopped = if stop_leader {
         leader
     } else {
@@ -103,11 +124,11 @@ async fn run_stop_and_return(stop_leader: bool) {
         host,
         sm: _sm,
         url,
-        _serve,
-        _dir,
+        _serve: serve,
+        _dir: dir,
     } = node;
-    _serve.abort();
-    drop(_serve);
+    serve.abort();
+    let _ = serve.await;
     drop(host);
 
     let live_leader = await_leader(&nodes)
@@ -127,7 +148,8 @@ async fn run_stop_and_return(stop_leader: bool) {
     wait_for_applied_index(&nodes, after, DEFAULT_APPLIED_INDEX_BUDGET).await;
     assert!(after > before, "the live pair must commit new entries");
 
-    let restarted = restart_node(NodeId::new(stopped as u64), &url, _dir, &all).await;
+    let listener = rebind(&url).await;
+    let restarted = start_node(NodeId::new(stopped as u64), listener, url, dir, &all);
     nodes.insert(stopped, restarted);
     wait_for_applied_index(&nodes, after, DEFAULT_APPLIED_INDEX_BUDGET).await;
 
