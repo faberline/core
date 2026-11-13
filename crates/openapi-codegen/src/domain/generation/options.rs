@@ -60,6 +60,7 @@ pub struct GenOptions {
     emit_types: bool,
     emit_client: bool,
     emit_hooks: bool,
+    emit_server: bool,
 }
 
 impl GenOptions {
@@ -83,6 +84,7 @@ impl GenOptions {
             emit_types: true,
             emit_client: true,
             emit_hooks: lang == Lang::Ts,
+            emit_server: false,
         }
     }
 
@@ -137,6 +139,12 @@ impl GenOptions {
     /// Set whether TanStack Query hooks are emitted (TypeScript only).
     pub fn with_emit_hooks(mut self, emit_hooks: bool) -> Self {
         self.emit_hooks = emit_hooks;
+        self
+    }
+
+    /// Set whether the Rust server skeleton is emitted (Rust only).
+    pub fn with_emit_server(mut self, emit_server: bool) -> Self {
+        self.emit_server = emit_server;
         self
     }
 
@@ -199,5 +207,10 @@ impl GenOptions {
     /// Whether TanStack Query hooks are emitted.
     pub fn emit_hooks(&self) -> bool {
         self.emit_hooks
+    }
+
+    /// Whether the Rust server skeleton is emitted.
+    pub fn emit_server(&self) -> bool {
+        self.emit_server
     }
 }
