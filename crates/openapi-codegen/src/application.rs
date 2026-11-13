@@ -4,6 +4,6 @@
 mod generate;
 
 pub use generate::{
-    generate, generate_for_target, generate_for_target_with_file_bearer_auth,
+    generate, generate_for_target, generate_for_target_with_file_bearer_auth, generate_with_auth,
     generate_with_file_bearer_auth,
 };
