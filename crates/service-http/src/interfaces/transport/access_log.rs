@@ -36,7 +36,7 @@ impl<B> MakeSpan<B> for CorrelatingMakeSpan {
             use tracing_opentelemetry::OpenTelemetrySpanExt as _;
             let parent = service_observability::extract_trace_context(request.headers());
             if parent.span().span_context().is_valid() {
-                span.set_parent(parent);
+                let _ = span.set_parent(parent);
                 let exported = span.context();
                 let exported = exported.span();
                 let exported = exported.span_context();
