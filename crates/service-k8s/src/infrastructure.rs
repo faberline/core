@@ -1,6 +1,8 @@
 //! Infrastructure layer.
 
 #[cfg(feature = "controller")]
+pub(crate) mod access_kubernetes_store;
+#[cfg(feature = "controller")]
 pub(crate) mod access_store;
 #[cfg(feature = "certificate")]
 pub(crate) mod certificate;
