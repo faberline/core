@@ -220,4 +220,13 @@ rc=0
 bash "$group_runner" >/dev/null 2>&1 || rc=$?
 [ "$rc" = "2" ] || fail "group runner without a package exited $rc, expected 2"
 
+# (i) the grouping is balanced by measured time (main run 43455059281):
+# index-text is not the longest package, so each group is pinned here.
+group_packages() {
+  echo "$matrix_include" | grep -E "group: $1," | sed -E 's/.*packages: "([^"]*)".*/\1/' | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//'
+}
+[ "$(group_packages group-a)" = "service-backup ui-runtime" ] || fail "group-a packages are '$(group_packages group-a)', expected 'service-backup ui-runtime'"
+[ "$(group_packages group-b)" = "cli-std index-text storage-object" ] || fail "group-b packages are '$(group_packages group-b)', expected 'cli-std index-text storage-object'"
+[ "$(group_packages group-c)" = "service-auth service-http service-observability transport-h2c" ] || fail "group-c packages are '$(group_packages group-c)', expected 'service-auth service-http service-observability transport-h2c'"
+
 echo "feature rows ok"

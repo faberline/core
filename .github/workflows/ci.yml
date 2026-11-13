@@ -165,9 +165,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { group: group-a, packages: "index-text" }
-          - { group: group-b, packages: "cli-std ui-runtime service-auth service-http" }
-          - { group: group-c, packages: "storage-object service-backup service-observability transport-h2c" }
+          - { group: group-a, packages: "service-backup ui-runtime" }
+          - { group: group-b, packages: "storage-object cli-std index-text" }
+          - { group: group-c, packages: "service-http service-auth transport-h2c service-observability" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
