@@ -39,14 +39,10 @@ impl ManagedAuth {
         Ok(Self { ca_path })
     }
 
-    // The emitters read this in #271-#273; no non-test caller reads it yet.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn ca_path(&self) -> &Path {
         &self.ca_path
     }
 
-    // The emitters read this in #271-#273; no non-test caller reads it yet.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) const fn token_path(&self) -> &'static str {
         MANAGED_TOKEN_PATH
     }

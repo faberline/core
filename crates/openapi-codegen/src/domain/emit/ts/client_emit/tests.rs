@@ -1,6 +1,7 @@
 use super::*;
 use crate::emit::ts::plan;
 use crate::ir::openapi::Spec;
+use crate::ManagedAuth;
 use crate::{build_type_map, FileBearerScheme, GenOptions};
 use crate::{FileBearerAuth, HttpClient};
 use std::path::PathBuf;
@@ -267,5 +268,170 @@ fn file_bearer_runtime_covers_ndjson_helpers() {
         assert!(runtime.contains(
             "await attachFileBearer(config.baseUrl, { \"Content-Type\": args.ndjsonBody ? \"application/x-ndjson\""
         ));
+    }
+}
+
+fn managed() -> ManagedAuth {
+    ManagedAuth::new("/etc/ca/ca.crt", [FileBearerScheme::Https]).unwrap()
+}
+
+fn managed_runtimes() -> [(HttpClient, String); 2] {
+    [
+        (
+            HttpClient::Fetch,
+            emit_managed_runtime(HttpClient::Fetch, &managed()),
+        ),
+        (
+            HttpClient::Axios,
+            emit_managed_runtime(HttpClient::Axios, &managed()),
+        ),
+    ]
+}
+
+#[test]
+fn managed_runtime_takes_a_ca_path_input() {
+    for (client, runtime) in managed_runtimes() {
+        assert!(runtime.contains("caPath?: string;"), "{client:?}");
+        assert!(
+            runtime.contains("const MANAGED_CA_PATH = \"/etc/ca/ca.crt\";"),
+            "{client:?}"
+        );
+        assert!(
+            runtime.contains("config.caPath ?? MANAGED_CA_PATH"),
+            "{client:?}"
+        );
+    }
+}
+
+#[test]
+fn managed_runtime_refuses_non_https_before_transport() {
+    for (client, runtime) in managed_runtimes() {
+        assert!(
+            runtime.contains("if (url.protocol !== \"https:\") {"),
+            "{client:?}"
+        );
+        assert!(
+            runtime.contains("managed clients accept only https: URLs"),
+            "{client:?}"
+        );
+        let prepare = runtime.find("await prepareManaged(config, url)").unwrap();
+        let admission = runtime.find("await acquireAdmission").unwrap();
+        let transport = match client {
+            HttpClient::Fetch => runtime.find("doFetch(url.toString()").unwrap(),
+            HttpClient::Axios => runtime.find("instance.request<T>(").unwrap(),
+        };
+        assert!(prepare < admission, "{client:?}");
+        assert!(admission < transport, "{client:?}");
+    }
+}
+
+#[test]
+fn managed_runtime_uses_the_fixed_token_path() {
+    for (client, runtime) in managed_runtimes() {
+        assert!(
+            runtime.contains(
+                "const MANAGED_TOKEN_PATH = \"/var/run/secrets/kubernetes.io/serviceaccount/token\";"
+            ),
+            "{client:?}"
+        );
+        assert!(!runtime.contains("tokenPath"), "{client:?}");
+        assert!(!runtime.contains("token?: string"), "{client:?}");
+        assert!(
+            runtime.contains("readManagedFile(MANAGED_TOKEN_PATH, \"token\")"),
+            "{client:?}"
+        );
+    }
+}
+
+#[test]
+fn managed_runtime_fails_before_transport_on_an_empty_token_or_ca() {
+    for (client, runtime) in managed_runtimes() {
+        assert!(
+            runtime.contains("managed ${what} is unavailable"),
+            "{client:?}"
+        );
+        assert!(runtime.contains("managed ${what} is empty"), "{client:?}");
+        assert!(
+            runtime.contains("readManagedFile(config.caPath ?? MANAGED_CA_PATH, \"CA bundle\")"),
+            "{client:?}"
+        );
+        let ca_read = runtime.find("\"CA bundle\"").unwrap();
+        let admission = runtime.find("await acquireAdmission").unwrap();
+        assert!(ca_read < admission, "{client:?}");
+    }
+}
+
+#[test]
+fn managed_runtime_never_retries_without_the_token() {
+    let fetch = emit_managed_runtime(HttpClient::Fetch, &managed());
+    assert_eq!(fetch.matches("doFetch(url.toString()").count(), 2);
+    assert_eq!(
+        fetch.matches("await prepareManaged(config, url)").count(),
+        2
+    );
+    let axios = emit_managed_runtime(HttpClient::Axios, &managed());
+    assert_eq!(axios.matches("instance.request").count(), 2);
+    assert_eq!(
+        axios.matches("await prepareManaged(config, url)").count(),
+        2
+    );
+    for runtime in [&fetch, &axios] {
+        assert_eq!(
+            runtime
+                .matches("...args.headers, Authorization: managed.authorization")
+                .count(),
+            2
+        );
+        assert!(!runtime.contains("attachFileBearer"));
+        assert!(!runtime.contains("hasAuthorization"));
+    }
+}
+
+#[test]
+fn managed_runtime_covers_ndjson_requests() {
+    for (client, runtime) in managed_runtimes() {
+        let start = runtime.find("async function sendNdjson(").unwrap();
+        let tail = &runtime[start..];
+        let prepare = tail.find("await prepareManaged(config, url)").unwrap();
+        let admission = tail.find("await acquireAdmission").unwrap();
+        assert!(prepare < admission, "{client:?}");
+        assert!(
+            runtime.contains(
+                "Accept: accept, ...config.headers, ...args.headers, Authorization: managed.authorization };"
+            ),
+            "{client:?}"
+        );
+    }
+}
+
+#[test]
+fn managed_runtime_replacements_applied() {
+    let fetch = emit_managed_runtime(HttpClient::Fetch, &managed());
+    assert!(!fetch.contains("const doFetch = config.fetch ?? fetch;"));
+    assert!(fetch.contains("managedFetch(managed.ca, url.hostname)"));
+    let axios = emit_managed_runtime(HttpClient::Axios, &managed());
+    assert!(!axios.contains("config.axios ?? axios.create()"));
+    assert!(axios.contains("managedAxios(managed.ca, url.hostname)"));
+}
+
+#[test]
+fn managed_runtime_keeps_the_no_skip_verification_rule() {
+    for (client, runtime) in managed_runtimes() {
+        assert!(!runtime.contains("rejectUnauthorized: false"), "{client:?}");
+        assert!(
+            !runtime.contains("NODE_TLS_REJECT_UNAUTHORIZED"),
+            "{client:?}"
+        );
+        assert!(!runtime.contains("insecure"), "{client:?}");
+    }
+}
+
+#[test]
+fn non_managed_runtime_is_unchanged() {
+    for client in [HttpClient::Fetch, HttpClient::Axios] {
+        let runtime = emit_runtime(client, None);
+        assert!(!runtime.contains("MANAGED_"), "{client:?}");
+        assert!(!runtime.contains("prepareManaged"), "{client:?}");
+        assert!(!runtime.contains("caPath"), "{client:?}");
     }
 }

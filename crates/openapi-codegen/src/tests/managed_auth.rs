@@ -73,8 +73,10 @@ fn generation_auth_refuses_both_profiles() {
 
 #[test]
 fn managed_only_generation_matches_legacy_output() {
+    // TypeScript changes with the Managed runtime (tests/it/managed_auth_ts.rs);
+    // Python and Rust stay legacy until #272 and #273.
     let auth = GenerationAuth::new(None, Some(managed())).unwrap();
-    for lang in [Lang::Ts, Lang::Py, Lang::Rust] {
+    for lang in [Lang::Py, Lang::Rust] {
         let opts = opts_for(lang);
         let with_auth = generate_with_auth(MINIMAL, &opts, &auth).unwrap();
         let legacy = generate(MINIMAL, &opts).unwrap();

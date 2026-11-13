@@ -3,7 +3,7 @@ use sha2::{Digest, Sha256};
 
 use crate::domain::emit;
 use crate::domain::{
-    FileBearerAuth, GenOptions, GeneratedOutput, GenerationAuth, Lang, TargetProfile,
+    FileBearerAuth, GenOptions, GeneratedOutput, GenerationAuth, Lang, ManagedAuth, TargetProfile,
 };
 
 fn validate_options(opts: &GenOptions) -> Result<()> {
@@ -54,17 +54,38 @@ pub fn generate_with_file_bearer_auth(
     Ok(output)
 }
 
+fn generate_with_managed_auth(
+    spec_json: &str,
+    opts: &GenOptions,
+    auth: &ManagedAuth,
+) -> Result<GeneratedOutput> {
+    if opts.lang() != Lang::Ts {
+        // Python and Rust Managed runtimes arrive in #272 and #273.
+        return generate(spec_json, opts);
+    }
+    validate_options(opts)?;
+    let mut output = match opts.target() {
+        Some(TargetProfile::TypeScript(target)) => {
+            emit::ts::generate_for_target_with_managed_auth(spec_json, opts, target, auth)?
+        }
+        _ => emit::ts::generate_with_managed_auth(spec_json, opts, auth)?,
+    };
+    attach_provenance(&mut output, spec_json, opts);
+    Ok(output)
+}
+
 /// Generate with an explicit auth selection. A file-bearer selection generates
-/// exactly like [`generate_with_file_bearer_auth`]. A Managed-only selection
-/// generates like [`generate`] for now; its emitters change in #271-#273.
+/// exactly like [`generate_with_file_bearer_auth`]. A Managed selection changes
+/// the TypeScript runtime; Python and Rust are unchanged until #272 and #273.
 pub fn generate_with_auth(
     spec_json: &str,
     opts: &GenOptions,
     auth: &GenerationAuth,
 ) -> Result<GeneratedOutput> {
-    match auth.file_bearer() {
-        Some(file) => generate_with_file_bearer_auth(spec_json, opts, file),
-        None => generate(spec_json, opts),
+    match (auth.file_bearer(), auth.managed()) {
+        (Some(file), _) => generate_with_file_bearer_auth(spec_json, opts, file),
+        (None, Some(managed)) => generate_with_managed_auth(spec_json, opts, managed),
+        (None, None) => generate(spec_json, opts),
     }
 }
 
