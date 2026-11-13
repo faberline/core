@@ -3,11 +3,11 @@ use crate::domain::entry::{EntryKind, RaftEntry};
 use crate::domain::ids::{Index, NodeId, Term};
 use crate::domain::message::{RaftMsg, VoteReq, VoteResp};
 use crate::domain::role::Role;
-use crate::domain::timing::ELECTION_TIMEOUT_FLOOR_TICKS;
+use crate::domain::timing::{base_election_timeout_ticks, ELECTION_TIMEOUT_FLOOR_TICKS};
 
 impl RaftNode {
     fn base_election_timeout(&self) -> u64 {
-        ELECTION_TIMEOUT_FLOOR_TICKS + self.id.get()
+        base_election_timeout_ticks(self.id)
     }
 
     fn retry_election_timeout(&self) -> u64 {
