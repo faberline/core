@@ -126,11 +126,13 @@ packages_table=$(data_rows | cut -d'|' -f1 | sort -u | tr '\n' ' ' | sed 's/ $//
 packages_expected=$(echo "$crates" | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')
 [ "$packages_table" = "$packages_expected" ] || fail "table packages are '$packages_table', expected '$packages_expected'"
 
-packages_matrix=$(awk '/^  test-feature-rows:/{f=1; next} /^  [a-z0-9-]+:$/{f=0} f' "$ci_file" \
-  | { grep -oE '^ *- \{ package: [a-z0-9-]+ \}' || true; } \
-  | sed -E 's/.*package: ([a-z0-9-]+) \}/\1/' \
-  | sort | tr '\n' ' ' | sed 's/ $//')
+matrix_include=$(awk '/^  test-feature-rows:/{f=1; next} /^  [a-z0-9-]+:$/{f=0} f' "$ci_file" \
+  | { grep -E '^ *- \{ group: ' || true; })
+matrix_packages_list=$(echo "$matrix_include" | sed -E 's/.*packages: "([^"]*)".*/\1/' | tr ' ' '\n' | grep -v '^$' || true)
+packages_matrix=$(echo "$matrix_packages_list" | sort | tr '\n' ' ' | sed 's/ $//')
 [ "$packages_matrix" = "$packages_expected" ] || fail "matrix of test-feature-rows is '$packages_matrix', expected '$packages_expected'"
+dups=$(echo "$matrix_packages_list" | sort | uniq -d)
+[ -z "$dups" ] || fail "matrix of test-feature-rows must hold each of the 9 packages exactly once"
 
 # (d) a dry run per package prints one DRY line per row; the sum is 31.
 dry_total=0
@@ -182,5 +184,40 @@ echo "$out" | tail -n 1 | grep -q "3 passed, 0 failed" || fail "last line does n
 rc=0
 bash "$runner" no-such-crate >/dev/null 2>&1 || rc=$?
 [ "$rc" = "2" ] || fail "no-such-crate exited $rc, expected 2"
+
+# (g) the job has exactly 3 include lines, and the groups are group-a, group-b, group-c.
+[ "$(echo "$matrix_include" | grep -c .)" = "3" ] || fail "matrix of test-feature-rows must have exactly 3 include lines"
+groups_matrix=$(echo "$matrix_include" | sed -E 's/.*group: ([a-z0-9-]+),.*/\1/' | sort | tr '\n' ' ' | sed 's/ $//')
+[ "$groups_matrix" = "group-a group-b group-c" ] || fail "groups of test-feature-rows are '$groups_matrix', expected 'group-a group-b group-c'"
+
+# (h) the group runner runs every package of a group, even after a failure,
+# prints one GROUP line and one step-summary line per package, and fails at the end.
+group_runner="ci/run-feature-group.sh"
+[ -f "$group_runner" ] || fail "missing $group_runner"
+cat > "$tmp/fake-runner.sh" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = "b-pkg" ] && exit 1
+exit 0
+EOF
+rm -f "$tmp/summary.md"
+rc=0
+out=$(RUN_FEATURE_ROWS="$tmp/fake-runner.sh" GITHUB_STEP_SUMMARY="$tmp/summary.md" bash "$group_runner" a-pkg b-pkg c-pkg 2>&1) || rc=$?
+[ "$rc" = "1" ] || fail "group with one failing package exited $rc, expected 1"
+echo "$out" | grep -qx "GROUP a-pkg: PASS" || fail "missing 'GROUP a-pkg: PASS'"
+echo "$out" | grep -qx "GROUP b-pkg: FAIL" || fail "missing 'GROUP b-pkg: FAIL'"
+echo "$out" | grep -qx "GROUP c-pkg: PASS" || fail "missing 'GROUP c-pkg: PASS' (c-pkg must run after the failure)"
+echo "$out" | tail -n 1 | grep -qx "GROUPS: 2 passed, 1 failed" || fail "last line does not say 'GROUPS: 2 passed, 1 failed'"
+grep -qxF -- "- a-pkg: PASS" "$tmp/summary.md" || fail "step summary lacks '- a-pkg: PASS'"
+grep -qxF -- "- b-pkg: FAIL" "$tmp/summary.md" || fail "step summary lacks '- b-pkg: FAIL'"
+grep -qxF -- "- c-pkg: PASS" "$tmp/summary.md" || fail "step summary lacks '- c-pkg: PASS'"
+
+rc=0
+out=$(RUN_FEATURE_ROWS="$tmp/fake-runner.sh" GITHUB_STEP_SUMMARY="" bash "$group_runner" a-pkg c-pkg 2>&1) || rc=$?
+[ "$rc" = "0" ] || fail "group with all packages passing exited $rc, expected 0"
+echo "$out" | tail -n 1 | grep -qx "GROUPS: 2 passed, 0 failed" || fail "last line does not say 'GROUPS: 2 passed, 0 failed'"
+
+rc=0
+bash "$group_runner" >/dev/null 2>&1 || rc=$?
+[ "$rc" = "2" ] || fail "group runner without a package exited $rc, expected 2"
 
 echo "feature rows ok"

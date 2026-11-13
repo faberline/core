@@ -157,24 +157,17 @@ jobs:
       - run: cargo test --locked -p openapi-codegen -- --include-ignored
 
   test-feature-rows:
-    name: "test: feature rows (${{ matrix.package }})"
+    name: "test: feature rows (${{ matrix.group }})"
     needs: lint
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      max-parallel: 8
       matrix:
         include:
-          - { package: index-text }
-          - { package: service-auth }
-          - { package: service-backup }
-          - { package: service-http }
-          - { package: service-observability }
-          - { package: storage-object }
-          - { package: transport-h2c }
-          - { package: ui-runtime }
-          - { package: cli-std }
+          - { group: group-a, packages: "index-text" }
+          - { group: group-b, packages: "cli-std ui-runtime service-auth service-http" }
+          - { group: group-c, packages: "storage-object service-backup service-observability transport-h2c" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -190,8 +183,8 @@ jobs:
           shared-key: ci-test-feature-rows
           cache-on-failure: true
           cache-workspace-crates: false
-      - name: Run all feature rows of ${{ matrix.package }}
-        run: bash ci/run-feature-rows.sh ${{ matrix.package }}
+      - name: Run the feature rows of ${{ matrix.group }}
+        run: bash ci/run-feature-group.sh ${{ matrix.packages }}
 
   e2e-service-k8s:
     name: "e2e: service-k8s kind (${{ matrix.profile }})"
