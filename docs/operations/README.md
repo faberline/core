@@ -3,6 +3,9 @@
 How core is released, how downstream repos consume a release, how to check a
 core change against them, and how to run the architecture checker.
 
+The design of the shared end-to-end test tooling is in
+[shared-test-tooling.md](shared-test-tooling.md).
+
 ## Releasing
 
 core has one version for the whole workspace, in `[workspace.package].version`
