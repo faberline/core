@@ -10,6 +10,11 @@ Test coverage follows standard S8: the baseline is in [aw.toml](../../aw.toml), 
 
 The stability promise (semantic versioning, no breaking change before 2.0.0) and the stable surface of every crate are in [stability-promise.md](stability-promise.md).
 
+## Backup, restore and upgrade
+
+- [backup-restore.md](backup-restore.md): what backup and restore do on main, and which parts are not available yet.
+- [upgrade.md](upgrade.md): how to move a workspace to 1.0.0 and back to the previous tag.
+
 The threat model of core (auth, TLS, audit, secrets, supply chain) is in [threat-model.md](threat-model.md).
 
 ## Releasing
