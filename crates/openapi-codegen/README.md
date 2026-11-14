@@ -51,6 +51,15 @@ floor.
 
 A project can pin defaults in `codegen.toml` under `[targets]`.
 
+## Generate a subset of operations
+
+`GenOptions::with_operations(OperationSelection::new(ids)?)` generates only the
+named `operationId`s and the component schemas they reach through `$ref`. The
+same list can come from `codegen.toml` under `[operations] include = ["getTask"]`
+through `OperationSelection::from_toml`. An empty list, a blank id or an unknown
+id is an error. The sidecar manifest lists the include list in `operations`; it
+has no `operations` key without a selection.
+
 ## Use QUERY and POST twins
 
 OpenAPI 3.2 `query` operations produce an HTTP `QUERY` request with a JSON

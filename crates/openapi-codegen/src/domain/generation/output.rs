@@ -17,6 +17,9 @@ pub struct GeneratedOutput {
     pub requirements: Option<TargetRequirements>,
     pub openapi_sha256: Option<String>,
     pub service_compatibility: Option<String>,
+    /// The `operationId`s of a selected subset, in first-seen order. `None`
+    /// when every operation is generated.
+    pub operations: Option<Vec<String>>,
     /// Non-fatal generator warnings (for example a union that stays free-form).
     pub(crate) warnings: Vec<String>,
 }
@@ -42,6 +45,8 @@ pub struct GenerationManifest {
     pub strict: Option<bool>,
     pub transport: Option<String>,
     pub runtime_dependencies: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub operations: Option<Vec<String>>,
 }
 
 impl GeneratedOutput {
@@ -52,6 +57,7 @@ impl GeneratedOutput {
             requirements: None,
             openapi_sha256: None,
             service_compatibility: None,
+            operations: None,
             warnings: Vec::new(),
         }
     }
@@ -63,6 +69,7 @@ impl GeneratedOutput {
             requirements: Some(target.requirements()),
             openapi_sha256: None,
             service_compatibility: None,
+            operations: None,
             warnings: Vec::new(),
         }
     }
@@ -106,6 +113,7 @@ impl GeneratedOutput {
                 .iter()
                 .map(|dependency| (*dependency).to_string())
                 .collect(),
+            operations: self.operations.clone(),
         })
     }
 }

@@ -2,6 +2,7 @@ mod error_display;
 mod file_bearer_auth;
 mod generation;
 mod managed_auth;
+mod operation_selection;
 mod output;
 mod target_profile;
 

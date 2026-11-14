@@ -1,7 +1,10 @@
+use std::borrow::Cow;
+
 use anyhow::Result;
 use sha2::{Digest, Sha256};
 
 use crate::domain::emit;
+use crate::domain::ir::select::select_operations;
 use crate::domain::{
     FileBearerAuth, GenOptions, GeneratedOutput, GenerationAuth, Lang, ManagedAuth, TargetProfile,
 };
@@ -11,10 +14,21 @@ fn validate_options(opts: &GenOptions) -> Result<()> {
     Ok(())
 }
 
+/// The spec text the emitters read. Without a selection it is the input, byte
+/// for byte; with one it is the spec filtered to the selected operations.
+fn prepared<'a>(spec_json: &'a str, opts: &GenOptions) -> Result<Cow<'a, str>> {
+    match opts.operations() {
+        None => Ok(Cow::Borrowed(spec_json)),
+        Some(selection) => Ok(Cow::Owned(select_operations(spec_json, selection)?)),
+    }
+}
+
+/// Records the provenance of the ORIGINAL spec text, never of the filtered one.
 fn attach_provenance(output: &mut GeneratedOutput, spec_json: &str, opts: &GenOptions) {
     let hash = format!("{:x}", Sha256::digest(spec_json.as_bytes()));
     output.openapi_sha256 = Some(hash);
     output.service_compatibility = opts.service_compatibility().map(str::to_string);
+    output.operations = opts.operations().map(|s| s.include().to_vec());
 }
 
 /// Pure core: spec JSON text → generated files. No filesystem access. Dispatches
@@ -24,9 +38,9 @@ pub fn generate(spec_json: &str, opts: &GenOptions) -> Result<GeneratedOutput> {
     let mut output = match opts.target() {
         Some(target) => generate_for_target(spec_json, opts, target)?,
         None => match opts.lang() {
-            Lang::Ts => emit::ts::generate(spec_json, opts)?,
-            Lang::Py => emit::py::generate(spec_json, opts)?,
-            Lang::Rust => emit::rust::generate(spec_json, opts)?,
+            Lang::Ts => emit::ts::generate(&prepared(spec_json, opts)?, opts)?,
+            Lang::Py => emit::py::generate(&prepared(spec_json, opts)?, opts)?,
+            Lang::Rust => emit::rust::generate(&prepared(spec_json, opts)?, opts)?,
         },
     };
     attach_provenance(&mut output, spec_json, opts);
@@ -45,9 +59,15 @@ pub fn generate_with_file_bearer_auth(
     let mut output = match opts.target() {
         Some(target) => generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth)?,
         None => match opts.lang() {
-            Lang::Ts => emit::ts::generate_with_file_bearer_auth(spec_json, opts, auth)?,
-            Lang::Py => emit::py::generate_with_file_bearer_auth(spec_json, opts, auth)?,
-            Lang::Rust => emit::rust::generate_with_file_bearer_auth(spec_json, opts, auth)?,
+            Lang::Ts => {
+                emit::ts::generate_with_file_bearer_auth(&prepared(spec_json, opts)?, opts, auth)?
+            }
+            Lang::Py => {
+                emit::py::generate_with_file_bearer_auth(&prepared(spec_json, opts)?, opts, auth)?
+            }
+            Lang::Rust => {
+                emit::rust::generate_with_file_bearer_auth(&prepared(spec_json, opts)?, opts, auth)?
+            }
         },
     };
     attach_provenance(&mut output, spec_json, opts);
@@ -62,35 +82,36 @@ fn generate_with_managed_auth(
     match opts.lang() {
         Lang::Ts => {
             validate_options(opts)?;
+            let spec = prepared(spec_json, opts)?;
             let mut output = match opts.target() {
                 Some(TargetProfile::TypeScript(target)) => {
-                    emit::ts::generate_for_target_with_managed_auth(spec_json, opts, target, auth)?
+                    emit::ts::generate_for_target_with_managed_auth(&spec, opts, target, auth)?
                 }
-                _ => emit::ts::generate_with_managed_auth(spec_json, opts, auth)?,
+                _ => emit::ts::generate_with_managed_auth(&spec, opts, auth)?,
             };
             attach_provenance(&mut output, spec_json, opts);
             Ok(output)
         }
         Lang::Py => {
             validate_options(opts)?;
+            let spec = prepared(spec_json, opts)?;
             let mut output = match opts.target() {
                 Some(TargetProfile::Python(target)) => {
-                    emit::py::generate_for_target_with_managed_auth(spec_json, opts, target, auth)?
+                    emit::py::generate_for_target_with_managed_auth(&spec, opts, target, auth)?
                 }
-                _ => emit::py::generate_with_managed_auth(spec_json, opts, auth)?,
+                _ => emit::py::generate_with_managed_auth(&spec, opts, auth)?,
             };
             attach_provenance(&mut output, spec_json, opts);
             Ok(output)
         }
         Lang::Rust => {
             validate_options(opts)?;
+            let spec = prepared(spec_json, opts)?;
             let mut output = match opts.target() {
                 Some(TargetProfile::Rust(target)) => {
-                    emit::rust::generate_for_target_with_managed_auth(
-                        spec_json, opts, target, auth,
-                    )?
+                    emit::rust::generate_for_target_with_managed_auth(&spec, opts, target, auth)?
                 }
-                _ => emit::rust::generate_with_managed_auth(spec_json, opts, auth)?,
+                _ => emit::rust::generate_with_managed_auth(&spec, opts, auth)?,
             };
             attach_provenance(&mut output, spec_json, opts);
             Ok(output)
@@ -123,12 +144,11 @@ pub fn generate_for_target(
 ) -> Result<GeneratedOutput> {
     validate_options(opts)?;
     validate_target(opts, target)?;
+    let spec = prepared(spec_json, opts)?;
     let mut output = match target {
-        TargetProfile::TypeScript(target) => {
-            emit::ts::generate_for_target(spec_json, opts, target)?
-        }
-        TargetProfile::Python(target) => emit::py::generate_for_target(spec_json, opts, target)?,
-        TargetProfile::Rust(target) => emit::rust::generate_for_target(spec_json, opts, target)?,
+        TargetProfile::TypeScript(target) => emit::ts::generate_for_target(&spec, opts, target)?,
+        TargetProfile::Python(target) => emit::py::generate_for_target(&spec, opts, target)?,
+        TargetProfile::Rust(target) => emit::rust::generate_for_target(&spec, opts, target)?,
     };
     attach_provenance(&mut output, spec_json, opts);
     Ok(output)
@@ -165,15 +185,16 @@ pub fn generate_for_target_with_file_bearer_auth(
 ) -> Result<GeneratedOutput> {
     validate_options(opts)?;
     validate_target(opts, target)?;
+    let spec = prepared(spec_json, opts)?;
     let mut output = match target {
         TargetProfile::TypeScript(target) => {
-            emit::ts::generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth)?
+            emit::ts::generate_for_target_with_file_bearer_auth(&spec, opts, target, auth)?
         }
         TargetProfile::Python(target) => {
-            emit::py::generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth)?
+            emit::py::generate_for_target_with_file_bearer_auth(&spec, opts, target, auth)?
         }
         TargetProfile::Rust(target) => {
-            emit::rust::generate_for_target_with_file_bearer_auth(spec_json, opts, target, auth)?
+            emit::rust::generate_for_target_with_file_bearer_auth(&spec, opts, target, auth)?
         }
     };
     attach_provenance(&mut output, spec_json, opts);
