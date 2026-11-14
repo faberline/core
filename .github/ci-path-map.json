@@ -41,6 +41,7 @@
     "claim-token": {"groups": ["lint", "test-workspace"]},
     "cli-std": {"groups": ["lint", "test-workspace", "test-service-backup", "test-service-k8s", "test-openapi-codegen", "test-feature-rows", "e2e-service-k8s"]},
     "compass": {"groups": ["lint", "test-workspace"]},
+    "e2e-support": {"groups": ["lint", "test-workspace"]},
     "index-text": {"groups": ["lint", "test-workspace", "test-feature-rows"]},
     "metrics-prometheus": {"groups": ["lint", "test-workspace", "test-service-backup", "test-service-k8s", "test-openapi-codegen", "test-feature-rows", "e2e-service-k8s"]},
     "metrics-remote-write": {"groups": ["lint", "test-workspace"]},
