@@ -3,6 +3,7 @@ mod managed_auth_py;
 mod managed_auth_rs;
 mod managed_auth_ts;
 mod ndjson_rust_client;
+mod operation_selection;
 mod optional_untyped_field;
 mod run_entry;
 mod rust_typed_errors;
