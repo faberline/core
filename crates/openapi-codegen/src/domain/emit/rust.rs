@@ -75,15 +75,24 @@ pub fn generate_for_target_with_managed_auth(
 }
 
 /// Top-level names that the generated `client.rs` and `server.rs` define
-/// themselves. A component schema may not use one of them.
+/// themselves, or import explicitly or use as private items in `client.rs`.
+/// A component schema may not use one of them.
 const RESERVED_TYPE_NAMES: &[&str] = &[
+    "AdmissionState",
     "ApiError",
     "ApiResult",
+    "Arc",
     "Client",
     "ClientError",
     "ClientResult",
+    "Condvar",
+    "Duration",
+    "Instant",
+    "Mutex",
+    "NdjsonBodyReader",
     "NdjsonRecords",
     "PrivateTrust",
+    "SlotGuard",
     "TransportPolicy",
 ];
 
@@ -462,6 +471,35 @@ mod tests {
         let out = generate(&spec, &opts()).unwrap();
         let models = file(&out, "models.rs");
         for n in RESERVED_TYPE_NAMES {
+            assert!(
+                models.contains(&format!("pub struct {n}Schema {{")),
+                "{n}: models.rs:\n{models}"
+            );
+            assert!(
+                !models.contains(&format!("pub struct {n} {{")),
+                "{n}: models.rs:\n{models}"
+            );
+        }
+    }
+
+    #[test]
+    fn client_imports_and_private_items_are_reserved() {
+        // Explicit `use` imports and private items that `client.rs` defines
+        // at top level. A component of the same name would shadow or clash.
+        let names = [
+            "AdmissionState",
+            "Arc",
+            "Condvar",
+            "Duration",
+            "Instant",
+            "Mutex",
+            "NdjsonBodyReader",
+            "SlotGuard",
+        ];
+        let spec = object_components_spec(&names);
+        let out = generate(&spec, &opts()).unwrap();
+        let models = file(&out, "models.rs");
+        for n in names {
             assert!(
                 models.contains(&format!("pub struct {n}Schema {{")),
                 "{n}: models.rs:\n{models}"
