@@ -98,6 +98,7 @@ fn expected_manifest(
             .iter()
             .map(|dependency| (*dependency).to_string())
             .collect(),
+        operations: None,
     }
 }
 
