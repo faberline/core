@@ -261,7 +261,7 @@ mod live {
     /// whole lifecycle: the first apply, which creates, and the second, which
     /// updates.
     #[tokio::test]
-    #[ignore]
+    #[ignore = "live kind cluster: needs SERVICE_K8S_LIVE_KUBE=1; runs in CI job `e2e: service-k8s kind` (kind row feature:certificate)"]
     async fn the_declared_grant_bootstraps_and_renews() {
         live_or_skip();
         let admin = Client::try_default().await.expect("admin client");
@@ -298,7 +298,7 @@ mod live {
     /// declared list made. Dropping `create` — and only `create` — must break
     /// the bootstrap and nothing else.
     #[tokio::test]
-    #[ignore]
+    #[ignore = "live kind cluster: needs SERVICE_K8S_LIVE_KUBE=1; runs in CI job `e2e: service-k8s kind` (kind row feature:certificate)"]
     async fn the_same_grant_without_create_cannot_bootstrap() {
         live_or_skip();
         let admin = Client::try_default().await.expect("admin client");
