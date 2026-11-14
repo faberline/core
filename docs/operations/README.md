@@ -16,6 +16,11 @@ The configuration of the operator crates (every environment variable, flag and k
 
 The threat model of core (auth, TLS, audit, secrets, supply chain) is in [threat-model.md](threat-model.md).
 
+## Backup, restore and upgrade
+
+- [backup-restore.md](backup-restore.md): what backup and restore parts exist on main, and which are not available.
+- [upgrade.md](upgrade.md): how to move a workspace to a new tag, and how to roll back.
+
 ## Releasing
 
 core has one version for the whole workspace, in `[workspace.package].version`
