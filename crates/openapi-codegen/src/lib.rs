@@ -47,7 +47,8 @@ pub use domain::SpecParseError;
 pub use domain::{
     FileBearerAuth, FileBearerAuthError, FileBearerScheme, GenOptions, GeneratedFile,
     GeneratedOutput, GenerationAuth, GenerationAuthError, GenerationManifest, HttpClient, Lang,
-    ManagedAuth, ManagedAuthError, ServiceCompatibilityError, MANAGED_TOKEN_PATH, MANIFEST_FILE,
+    ManagedAuth, ManagedAuthError, OperationSelection, OperationSelectionError,
+    ServiceCompatibilityError, MANAGED_TOKEN_PATH, MANIFEST_FILE,
 };
 pub use domain::{
     PythonTarget, RustTarget, TargetPolicy, TargetPolicyError, TargetProfile, TargetRequirements,
