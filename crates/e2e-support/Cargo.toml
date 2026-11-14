@@ -1,0 +1,18 @@
+[package]
+name = "e2e-support"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish = false
+description = "Shared end-to-end test harness for Faberline service repos: pure checks (identity, pool placement, evidence), no I/O."
+
+[lib]
+name = "e2e_support"
+path = "src/lib.rs"
+
+[dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
