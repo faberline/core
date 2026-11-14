@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
-"""Run the two measured performance workloads and check their original thresholds.
+"""Run the three measured performance workloads and check their thresholds.
 
 Workloads (commands and thresholds kept from the removed `candidate measured
 performance` job):
 - http2: 128 reused-connection requests in strictly less than 5.0 seconds.
+  Its requests per second and p50 and p99 latency are compared with the
+  baseline.
 - snapshot: 1000 small and 50000 large entries; the large peak must stay
   below max(small peak, 65536) * 4.
+- raft_write: 500 sequential single-voter proposals. Its requests per second
+  and p50 and p99 latency are compared with the baseline.
+
+A result is a regression when requests per second drops, or p50 or p99 grows,
+by more than REGRESSION_THRESHOLD of the baseline value in
+ci/performance-baseline.json. Refresh that file with --write-baseline.
 """
 
 import argparse
@@ -19,6 +27,7 @@ from pathlib import Path
 
 HTTP2_SUFFIX = '::generated_python_h2c_runtime_reused_connection_perf_guard'
 SNAPSHOT_SUFFIX = 'snapshot_peak_memory_grows_sublinearly'
+WRITE_SUFFIX = 'write_path_latency_is_measured'
 
 HTTP2_COMMAND = [
     'cargo', 'test', '--release', '--locked', '-p', 'openapi-codegen', '--lib', '--all-features',
@@ -30,10 +39,31 @@ SNAPSHOT_COMMAND = [
     '--all-features', '--', '--include-ignored', '--format', 'pretty', '--color', 'never',
     '--test-threads', '1', '--nocapture',
 ]
+WRITE_COMMAND = [
+    'cargo', 'test', '--release', '--locked', '-p', 'raft-runtime', '--test', 'write_path_latency',
+    '--all-features', '--', '--include-ignored', '--format', 'pretty', '--color', 'never',
+    '--test-threads', '1', '--nocapture',
+]
+COMMANDS = {'http2': HTTP2_COMMAND, 'snapshot': SNAPSHOT_COMMAND, 'raft_write': WRITE_COMMAND}
+
+# Fail when requests per second drops, or p50 or p99 grows, by more than this
+# fraction of the baseline. The only place this number is set.
+REGRESSION_THRESHOLD = 0.30
+BASELINE_PATH = 'ci/performance-baseline.json'
+COMPARED = ('http2', 'raft_write')
+LATENCY_FIELDS = ('requests_per_second', 'p50_ms', 'p99_ms')
 
 RESULT_OK_RE = re.compile(r'^test result: ok\. \d+ passed; 0 failed; 0 ignored; 0 measured; 0 filtered out', re.M)
 TEST_LINE_RE = re.compile(r'^test (\S+) \.\.\. (\w+)$', re.M)
 H2_LINE_RE = re.compile(r'^h2c_generated_sync_reused_connection seconds=([0-9.]+) requests=(\d+)$', re.M)
+H2_LATENCY_RE = re.compile(
+    r'^h2c_generated_sync_latency requests=(\d+) rps=([0-9.]+) p50_ms=([0-9.]+) p99_ms=([0-9.]+)$',
+    re.M,
+)
+WRITE_LATENCY_RE = re.compile(
+    r'^CORE_WRITE_PATH_LATENCY requests=(\d+) rps=([0-9.]+) p50_ms=([0-9.]+) p99_ms=([0-9.]+)$',
+    re.M,
+)
 SNAPSHOT_LINE_RE = re.compile(
     r'^CORE_SNAPSHOT_PEAK small_entries=(\d+) small_peak_bytes=(\d+) '
     r'large_entries=(\d+) large_peak_bytes=(\d+) limit_bytes=(\d+)$',
@@ -71,6 +101,63 @@ def check_http2(stdout: str, stderr: str) -> dict:
     }
 
 
+def parse_latency(regex, text, label) -> dict:
+    """Read one latency line: requests, requests per second, p50 and p99."""
+    matches = regex.findall(text)
+    if len(matches) != 1:
+        raise ValueError(f'missing or duplicate {label} latency line')
+    requests, rps, p50, p99 = matches[0]
+    values = {
+        'requests_per_second': float(rps),
+        'p50_ms': float(p50),
+        'p99_ms': float(p99),
+    }
+    for field, value in values.items():
+        if not (math.isfinite(value) and value > 0):
+            raise ValueError(f'{label} latency {field} must be finite and greater than 0')
+    return {'requests': int(requests), **values}
+
+
+def check_http2_latency(stdout: str, stderr: str) -> dict:
+    return parse_latency(H2_LATENCY_RE, stdout + '\n' + stderr, 'http2')
+
+
+def check_write_path(stdout: str, stderr: str) -> dict:
+    check_roster(stdout, WRITE_SUFFIX, 'raft write path')
+    measurement = parse_latency(WRITE_LATENCY_RE, stdout + '\n' + stderr, 'raft write path')
+    return {'workload': 'raft_write', 'measurement': measurement}
+
+
+def check_regression(label, measured, baseline, threshold=REGRESSION_THRESHOLD):
+    """Raise ValueError when a result is more than `threshold` worse than the baseline."""
+    if measured['requests_per_second'] < baseline['requests_per_second'] * (1 - threshold):
+        raise ValueError(
+            f'{label} regression: requests_per_second {measured["requests_per_second"]} '
+            f'is more than {threshold:.0%} below baseline {baseline["requests_per_second"]}'
+        )
+    for field in ('p50_ms', 'p99_ms'):
+        if measured[field] > baseline[field] * (1 + threshold):
+            raise ValueError(
+                f'{label} regression: {field} {measured[field]} '
+                f'is more than {threshold:.0%} above baseline {baseline[field]}'
+            )
+    return None
+
+
+def load_baseline(path) -> dict:
+    path = Path(path)
+    if not path.exists():
+        raise ValueError('missing performance baseline')
+    data = json.loads(path.read_text())
+    for kind in COMPARED:
+        if kind not in data:
+            raise ValueError(f'performance baseline lacks {kind}')
+        for field in LATENCY_FIELDS:
+            if field not in data[kind]:
+                raise ValueError(f'performance baseline lacks {kind}.{field}')
+    return data
+
+
 def check_snapshot(stdout: str, stderr: str) -> dict:
     check_roster(stdout, SNAPSHOT_SUFFIX, 'snapshot')
     text = stdout + '\n' + stderr
@@ -98,14 +185,17 @@ def check_snapshot(stdout: str, stderr: str) -> dict:
 
 
 def run_workload(kind: str, root: str) -> dict:
-    command = HTTP2_COMMAND if kind == 'http2' else SNAPSHOT_COMMAND
-    completed = subprocess.run(command, cwd=root, capture_output=True, text=True)
+    completed = subprocess.run(COMMANDS[kind], cwd=root, capture_output=True, text=True)
     sys.stdout.write(completed.stdout)
     sys.stderr.write(completed.stderr)
     if completed.returncode != 0:
         raise ValueError(f'measured target failed with exit {completed.returncode}')
     if kind == 'http2':
-        return check_http2(completed.stdout, completed.stderr)
+        result = check_http2(completed.stdout, completed.stderr)
+        result['measurement']['latency'] = check_http2_latency(completed.stdout, completed.stderr)
+        return result
+    if kind == 'raft_write':
+        return check_write_path(completed.stdout, completed.stderr)
     return check_snapshot(completed.stdout, completed.stderr)
 
 
@@ -117,11 +207,23 @@ def git_commit(root: str) -> str:
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path('.'))
+    parser.add_argument('--baseline', type=Path, default=None)
+    parser.add_argument('--write-baseline', action='store_true')
     args = parser.parse_args(argv)
     root = str(args.root)
+    baseline_path = args.baseline if args.baseline is not None else Path(root) / BASELINE_PATH
+
+    baseline = None
+    baseline_error = None
+    if not args.write_baseline:
+        try:
+            baseline = load_baseline(baseline_path)
+        except ValueError as error:
+            baseline_error = error
 
     failed = False
-    for kind in ('http2', 'snapshot'):
+    measured = {}
+    for kind in ('http2', 'snapshot', 'raft_write'):
         record = {
             'schema': 'CORE_PERFORMANCE_EVIDENCE_V1',
             'workload': kind,
@@ -131,6 +233,13 @@ def main(argv=None) -> int:
         }
         try:
             result = run_workload(kind, root)
+            if kind in COMPARED:
+                latency = result['measurement']['latency'] if kind == 'http2' else result['measurement']
+                measured[kind] = latency
+                if not args.write_baseline:
+                    if baseline_error is not None:
+                        raise baseline_error
+                    check_regression(kind, latency, baseline[kind])
             record['result'] = 'pass'
             record['measurement'] = result['measurement']
         except ValueError as error:
@@ -138,6 +247,16 @@ def main(argv=None) -> int:
             record['result'] = 'fail'
             record['error'] = str(error)
         print('CORE_PERFORMANCE_EVIDENCE_V1 ' + json.dumps(record, sort_keys=True))
+
+    if args.write_baseline and not failed:
+        data = {
+            kind: {field: round(measured[kind][field], 3) for field in LATENCY_FIELDS}
+            for kind in COMPARED
+        }
+        with open(baseline_path, 'w') as handle:
+            json.dump(data, handle, indent=2, sort_keys=True)
+            handle.write('\n')
+        print(f'wrote {baseline_path}')
     return 1 if failed else 0
 
 

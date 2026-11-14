@@ -49,13 +49,18 @@ import time
 sys.path.insert(0, {dir:?} + "/generated_api")
 from h2c_runtime import H2CClient
 client = H2CClient(timeout=5)
+latencies = []
 started = time.perf_counter()
 for index in range({request_count}):
+    t0 = time.perf_counter()
     payload = client.get({base_url:?} + f"/perf/{{index}}").json()
     assert payload["stream"] == index * 2 + 1
+    latencies.append(time.perf_counter() - t0)
 elapsed = time.perf_counter() - started
 client.close()
 print(f"h2c_generated_sync_reused_connection seconds={{elapsed:.6f}} requests={request_count}")
+latencies.sort()
+print(f"h2c_generated_sync_latency requests={request_count} rps={{{request_count} / elapsed:.3f}} p50_ms={{latencies[len(latencies) // 2] * 1000:.3f}} p99_ms={{latencies[(len(latencies) * 99) // 100] * 1000:.3f}}")
 assert elapsed < 5.0, elapsed
 "#,
         dir = dir.display().to_string(),
