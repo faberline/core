@@ -248,8 +248,8 @@ jobs:
         run: cargo install --locked cargo-semver-checks --version 0.51.0
       - name: Test the semver check
         run: bash ci/test-semver-check.sh
-      - name: Check semver against v0.4.14
-        run: bash ci/semver-check.sh v0.4.14
+      - name: Check semver against v0.5.0
+        run: bash ci/semver-check.sh v0.5.0
 
   e2e-service-k8s:
     name: "e2e: service-k8s kind (${{ matrix.group }})"
