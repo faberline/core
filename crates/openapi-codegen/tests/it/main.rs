@@ -5,6 +5,7 @@ mod managed_auth_ts;
 mod ndjson_rust_client;
 mod operation_selection;
 mod optional_untyped_field;
+mod property_spec_parser;
 mod run_entry;
 mod rust_server_errors;
 mod rust_server_handler;

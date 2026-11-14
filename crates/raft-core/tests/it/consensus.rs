@@ -7,14 +7,14 @@ use std::collections::{HashMap, HashSet};
 
 use raft_core::{auto_membership, AppendResp, Index, NodeId, RaftMsg, RaftNode, Role, Term};
 
-struct Cluster {
-    nodes: HashMap<NodeId, RaftNode>,
+pub(crate) struct Cluster {
+    pub(crate) nodes: HashMap<NodeId, RaftNode>,
     dropped: HashSet<NodeId>,
-    applied: HashMap<NodeId, Vec<Vec<u8>>>,
+    pub(crate) applied: HashMap<NodeId, Vec<Vec<u8>>>,
 }
 
 impl Cluster {
-    fn new(n: u64) -> Cluster {
+    pub(crate) fn new(n: u64) -> Cluster {
         let m = auto_membership(n);
         Cluster {
             nodes: (0..n)
@@ -80,7 +80,7 @@ impl Cluster {
             .map(|(id, _)| *id)
     }
 
-    fn run_until_leader(&mut self) -> NodeId {
+    pub(crate) fn run_until_leader(&mut self) -> NodeId {
         for _ in 0..200 {
             self.tick();
             if let Some(l) = self.leader() {
@@ -90,7 +90,7 @@ impl Cluster {
         panic!("no leader elected");
     }
 
-    fn propose(&mut self, cmd: Vec<u8>) {
+    pub(crate) fn propose(&mut self, cmd: Vec<u8>) {
         let l = self.leader().expect("a leader");
         self.nodes.get_mut(&l).unwrap().propose(cmd).unwrap();
         self.pump();
