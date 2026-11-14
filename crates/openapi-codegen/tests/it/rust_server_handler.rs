@@ -72,6 +72,7 @@ serde_json = "1"
 axum = "0.8"
 tokio = {{ version = "1", features = ["rt"] }}
 service-http = {{ path = "{}" }}
+tower = {{ version = "0.5", features = ["util"] }}
 
 [workspace]
 "#,

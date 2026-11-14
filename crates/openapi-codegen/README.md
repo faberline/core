@@ -71,6 +71,29 @@ sibling POST operation on the same path is the twin.
 The emitters do not yet create typed methods for arbitrary methods other than
 the dedicated `QUERY` path.
 
+## Generate a Rust server skeleton
+
+Set `with_emit_server(true)` in `GenOptions` to write a server module next to
+the models. Set `with_emit_client(false)` when only the server is needed. The
+output is `models.rs`, `server.rs` and `mod.rs`. The generated crate needs
+`axum` 0.8 and `service-http`.
+
+`server.rs` holds three things. A handler trait has one async method per
+operation. Each operation has an error enum whose `IntoResponse` returns the
+declared status with a `{error, message}` JSON body. The function
+`router(handler, readiness, openapi_json)` serves every operation together
+with the probe routes of `service-http`: `/healthz`, `/readyz`, `/metrics`,
+`/openapi.json` and `/docs`. The probe routes come from
+`service_http::standard_probe_routes_canonical_json`.
+
+The server skeleton has limits. A successful call answers 200 or 204, not the
+declared 2xx code. Header parameters, NDJSON operations and `QUERY` have no
+route, and the generator warns about each one. The `openapi_json` function and
+the readiness hook come from the caller. TypeScript and Python have no server
+mode. See the `rust-server-skeleton` row in `STATUS.md`.
+
+Gate: `cargo test -p openapi-codegen`.
+
 ## Configure transport and request headers
 
 Generated clients provide bounded transport settings and private-CA trust. The

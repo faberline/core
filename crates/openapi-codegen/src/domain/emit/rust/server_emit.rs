@@ -7,18 +7,22 @@ use crate::domain::ir::names::{to_pascal, NameRegistry};
 use crate::domain::ir::operations::{MediaKind, OperationIR};
 use crate::domain::ir::typemap::TypeMap;
 
+mod router;
+
 /// Contents of the generated `server.rs`: the generated header, then one
-/// handler trait with one async method per operation.
+/// handler trait with one async method per operation, the error types and
+/// the router.
 pub fn emit(ops: &[OperationIR], tm: &TypeMap, client_name: &str) -> (String, Vec<String>) {
     let mut out = String::from(HEADER);
     let mut warnings = Vec::new();
     let mut reg = NameRegistry::new();
     let mut stubs = String::new();
     let mut methods = String::new();
+    let mut routes: Vec<(usize, String)> = Vec::new();
 
     out.push_str("\n#[allow(unused_imports)]\nuse crate::models::*;\n\n");
 
-    for ir in ops {
+    for (index, ir) in ops.iter().enumerate() {
         let name = reg.unique(&fn_name(ir));
         if is_ndjson(ir) {
             warnings.push(format!(
@@ -26,6 +30,7 @@ pub fn emit(ops: &[OperationIR], tm: &TypeMap, client_name: &str) -> (String, Ve
             ));
             continue;
         }
+        routes.push((index, name.clone()));
         let op = to_pascal(&name);
         let error = format!("{op}Error");
         stubs.push_str(&emit_error_type(&error, &error_variants(ir)));
@@ -62,12 +67,16 @@ pub fn emit(ops: &[OperationIR], tm: &TypeMap, client_name: &str) -> (String, Ve
     }
 
     out.push_str(&stubs);
+    let trait_name = format!("{}Handler", to_pascal(client_name));
     out.push_str(&format!(
-        "pub trait {}Handler: Send + Sync + 'static {{\n",
-        to_pascal(client_name)
+        "pub trait {trait_name}: Send + Sync + 'static {{\n"
     ));
     out.push_str(&methods);
-    out.push_str("}\n");
+    out.push_str("}\n\n");
+
+    let (router_text, router_warnings) = router::emit_router(ops, tm, &routes, &trait_name);
+    out.push_str(&router_text);
+    warnings.extend(router_warnings);
     (out, warnings)
 }
 

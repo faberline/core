@@ -8,6 +8,7 @@ mod optional_untyped_field;
 mod run_entry;
 mod rust_server_errors;
 mod rust_server_handler;
+mod rust_server_router;
 mod rust_typed_errors;
 mod rust_unions;
 mod status_ndjson;
