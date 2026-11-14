@@ -6,6 +6,8 @@ core change against them, and how to run the architecture checker.
 The design of the shared end-to-end test tooling is in
 [shared-test-tooling.md](shared-test-tooling.md).
 
+The stability promise (semantic versioning, no breaking change before 2.0.0) and the stable surface of every crate are in [stability-promise.md](stability-promise.md).
+
 ## Releasing
 
 core has one version for the whole workspace, in `[workspace.package].version`
