@@ -23,6 +23,7 @@ grep -qE '^name: ci$' "$file" || report "workflow name is not ci"
 job_ids=$(awk '/^jobs:/{injobs=1; next} injobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/{gsub(/[ :]/,""); print}' "$file")
 grep -qx 'lint' <<<"$job_ids" || report "no job id lint"
 grep -qx 'gate' <<<"$job_ids" || report "no job id gate"
+grep -qx 'test-select' <<<"$job_ids" || report "no job id test-select"
 grep -q '^test-' <<<"$job_ids" || report "no job id starting with test-"
 
 # Text of one job: from its `  <id>:` line to the next job id.

@@ -36,6 +36,7 @@ class RealFiles(unittest.TestCase):
 class ExpandNames(unittest.TestCase):
     def test_expand_names_examples(self):
         self.assertEqual(EXP["preflight"], "policy")
+        self.assertEqual(EXP["ci / test: select jobs"], "unit")
         self.assertEqual(
             EXP["ci / test: feature rows (group-a)"], "unit"
         )
