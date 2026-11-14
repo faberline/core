@@ -12,7 +12,8 @@ pub use emit::SpecParseError;
 pub use generation::{
     FileBearerAuth, FileBearerAuthError, FileBearerScheme, GenOptions, GeneratedFile,
     GeneratedOutput, GenerationAuth, GenerationAuthError, GenerationManifest, HttpClient, Lang,
-    ManagedAuth, ManagedAuthError, ServiceCompatibilityError, MANAGED_TOKEN_PATH, MANIFEST_FILE,
+    ManagedAuth, ManagedAuthError, OperationSelection, OperationSelectionError,
+    ServiceCompatibilityError, MANAGED_TOKEN_PATH, MANIFEST_FILE,
 };
 pub use target::{
     PythonTarget, RustTarget, TargetPolicy, TargetProfile, TargetRequirements, TypeScriptTarget,
