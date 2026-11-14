@@ -17,6 +17,7 @@
         "ci / test: feature rows (group-a)": "unit",
         "ci / test: feature rows (group-b)": "unit",
         "ci / test: feature rows (group-c)": "unit",
+        "ci / test: semver": "unit",
         "ci / e2e: service-k8s kind (group-a)": "functional_e2e",
         "ci / e2e: service-k8s kind (group-b)": "functional_e2e",
         "ci / e2e: service-k8s kind (group-c)": "functional_e2e",
