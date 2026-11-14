@@ -10,6 +10,8 @@ Test coverage follows standard S8: the baseline is in [aw.toml](../../aw.toml), 
 
 The stability promise (semantic versioning, no breaking change before 2.0.0) and the stable surface of every crate are in [stability-promise.md](stability-promise.md).
 
+Measured performance numbers, the regression threshold and how to refresh the baseline: [performance.md](performance.md).
+
 The configuration of the operator crates (every environment variable, flag and key) is in [configuration-reference.md](configuration-reference.md). The sizes and rates per operator crate, each with its proof or the words "not measured", are in [limits.md](limits.md).
 
 The threat model of core (auth, TLS, audit, secrets, supply chain) is in [threat-model.md](threat-model.md).
