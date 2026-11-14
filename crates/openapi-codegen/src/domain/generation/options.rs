@@ -61,6 +61,7 @@ pub struct GenOptions {
     emit_types: bool,
     emit_client: bool,
     emit_hooks: bool,
+    emit_server: bool,
     operations: Option<OperationSelection>,
 }
 
@@ -85,6 +86,7 @@ impl GenOptions {
             emit_types: true,
             emit_client: true,
             emit_hooks: lang == Lang::Ts,
+            emit_server: false,
             operations: None,
         }
     }
@@ -134,6 +136,12 @@ impl GenOptions {
     /// Set whether the client is emitted.
     pub fn with_emit_client(mut self, emit_client: bool) -> Self {
         self.emit_client = emit_client;
+        self
+    }
+
+    /// Set whether the Rust server skeleton is emitted (Rust only).
+    pub fn with_emit_server(mut self, emit_server: bool) -> Self {
+        self.emit_server = emit_server;
         self
     }
 
@@ -213,6 +221,11 @@ impl GenOptions {
     /// Whether TanStack Query hooks are emitted.
     pub fn emit_hooks(&self) -> bool {
         self.emit_hooks
+    }
+
+    /// Whether the Rust server skeleton is emitted.
+    pub fn emit_server(&self) -> bool {
+        self.emit_server
     }
 }
 
