@@ -40,12 +40,12 @@ them, so their rows say "not measured".
 | `CONNECT_TIMEOUT` | 10 s | not measured | `crates/service-backup/src/infrastructure/admin_snapshot/transport_config.rs` |
 | `OPERATION_TIMEOUT` | 2 h | not measured | `crates/service-backup/src/infrastructure/admin_snapshot/transport_config.rs` |
 | `BACKUP_IDLE_TIMEOUT` | 30 s | not measured | `crates/service-backup/src/infrastructure/admin_snapshot/transport_config.rs` |
-| `MAX_RESTORE_LEDGER_BYTES` | 1 MiB (1024 * 1024 bytes) | not measured | `crates/service-backup/src/domain/restore_ledger.rs` |
-| `MAX_RESTORE_LEDGER_ARTIFACTS` | 1024 | not measured | `crates/service-backup/src/domain/restore_ledger.rs` |
-| `MAX_SET_ID_BYTES` | 128 | not measured | `crates/service-backup/src/domain/restore_ledger.rs` |
-| `MAX_MANIFEST_BYTES` | 1 MiB (1 048 576 bytes) | not measured | `crates/service-backup/src/domain/backup_set.rs` |
+| `MAX_RESTORE_LEDGER_BYTES` | 1 MiB (1024 * 1024 bytes) | `crates/service-backup/tests/it/restore_ledger.rs`, test `rejected_json_documents` (asserts `OversizedJson` for `MAX_RESTORE_LEDGER_BYTES + 1` bytes) | `crates/service-backup/src/domain/restore_ledger.rs` |
+| `MAX_RESTORE_LEDGER_ARTIFACTS` | 1024 | `crates/service-backup/tests/it/restore_ledger.rs`, test `each_invalid_begin_input` (asserts `TooManyArtifacts` for `MAX_RESTORE_LEDGER_ARTIFACTS + 1` artifacts) | `crates/service-backup/src/domain/restore_ledger.rs` |
+| `MAX_SET_ID_BYTES` | 128 | `crates/service-backup/tests/it/set_layout.rs`, test `invalid_prefix_set_id_and_name` (asserts `SetIdTooLong` for 129 bytes; it proves the same 128 limit as the literal in `set_key_layout.rs`, not this constant) | `crates/service-backup/src/domain/restore_ledger.rs` |
+| `MAX_MANIFEST_BYTES` | 1 MiB (1 048 576 bytes) | `crates/service-backup/tests/it/backup_set.rs`, test `oversized_manifest` (asserts `ManifestTooLarge` with `max == MAX_MANIFEST_BYTES` for `MAX_MANIFEST_BYTES + 1` bytes) | `crates/service-backup/src/domain/backup_set.rs` |
 | `MAX_ARTIFACTS` | 1024 | not measured | `crates/service-backup/src/domain/backup_set.rs` |
-| `MAX_ARTIFACT_NAME_BYTES` | 256 | not measured | `crates/service-backup/src/domain/backup_set.rs` |
+| `MAX_ARTIFACT_NAME_BYTES` | 256 | `crates/service-backup/tests/it/set_layout.rs`, test `invalid_prefix_set_id_and_name` (asserts `ArtifactNameTooLong` for 257 bytes; it proves the same 256 limit as the literal in `set_key_layout.rs`, not this constant) | `crates/service-backup/src/domain/backup_set.rs` |
 
 The transport limits are the defaults of `AdminSnapshotTransportConfig`. The
 tests that call `with_*` builders set their own values, so they do not prove

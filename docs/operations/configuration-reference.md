@@ -13,6 +13,23 @@ value from its caller and has no default of its own.
 | `POD_NAME` | unset: falls back to `HOSTNAME`, then the manager name | Leader-election identity of this replica. | `crates/service-k8s/src/app/operator.rs` |
 | `HOSTNAME` | unset: falls back to the manager name | Leader-election identity, used when `POD_NAME` is unset. | `crates/service-k8s/src/app/operator.rs` |
 | `POD_NAMESPACE` | `<manager>-system` | Namespace of the leader-election Lease. | `crates/service-k8s/src/app/operator.rs` |
+| `SERVICE_RUNTIME_DEADLINE_SECONDS` | none read here; the operator writes the value from the `TerminationBudget` | In-process runtime shutdown deadline in seconds. The operator replaces a value already in the pod template. | `crates/service-k8s/src/domain/lifecycle.rs` |
+| `SERVICE_SIGKILL_RESERVE_SECONDS` | none read here; the operator writes the value from the `TerminationBudget` | Trailing SIGKILL safety reserve in seconds. The operator replaces a value already in the pod template. | `crates/service-k8s/src/domain/lifecycle.rs` |
+
+The next table lists variables that the operator writes into the pod
+environment of the workload. The crate does not read them.
+
+### Rendered into the pod environment
+
+| Name | Value | Meaning | Source |
+|---|---|---|---|
+| `POD_NAME` | downward API `metadata.name` | Name of the pod; the replica's identity. | `crates/service-k8s/src/infrastructure/manifest/stateful_instance.rs` |
+| `POD_NAMESPACE` | downward API `metadata.namespace` | Namespace of the pod. | `crates/service-k8s/src/infrastructure/manifest/stateful_instance.rs` |
+| `SHARD_COUNT` | the instance spec's shard count | Number of shards of the instance. | `crates/service-k8s/src/infrastructure/manifest/stateful_instance.rs` |
+| `REPLICAS_PER_SHARD` | the instance spec's replicas per shard | Replicas in each shard. | `crates/service-k8s/src/infrastructure/manifest/stateful_instance.rs` |
+| `VOTER_COUNT` | the instance spec's voter count | Number of voting replicas. | `crates/service-k8s/src/infrastructure/manifest/stateful_instance.rs` |
+| `SERVICE_RUNTIME_DEADLINE_SECONDS` | the `TerminationBudget` runtime deadline | In-process runtime shutdown deadline in seconds. | `crates/service-k8s/src/infrastructure/manifest/common.rs` |
+| `SERVICE_SIGKILL_RESERVE_SECONDS` | the `TerminationBudget` SIGKILL reserve | Trailing SIGKILL safety reserve in seconds. | `crates/service-k8s/src/infrastructure/manifest/common.rs` |
 
 ## service-observability
 
