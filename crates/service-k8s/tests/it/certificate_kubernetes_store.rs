@@ -328,7 +328,7 @@ fn prepare_ssa_patch_detects_changed_or_missing_owner_uid() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "live kind cluster: needs SERVICE_K8S_LIVE_KUBE=1; runs in CI job `e2e: service-k8s kind` (kind row feature:certificate)"]
 fn live_kubernetes_secret_store_lifecycle() {
     let live_env = std::env::var("SERVICE_K8S_LIVE_KUBE").unwrap_or_default();
     assert_eq!(

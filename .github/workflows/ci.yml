@@ -35,6 +35,10 @@ jobs:
         run: bash ci/check-toolchain-pin.sh
       - name: Test the toolchain pin check
         run: bash ci/test-check-toolchain-pin.sh
+      - name: Check ignored tests have a reason
+        run: bash ci/check-ignore-reasons.sh
+      - name: Test the ignored-test reason check
+        run: bash ci/test-check-ignore-reasons.sh
       - name: Check the stability promise
         run: bash ci/check-stability-promise.sh
       - name: Test the stability promise check
