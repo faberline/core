@@ -102,9 +102,11 @@ fn generate_impl(
         });
     }
     if opts.emit_server() {
+        let (server, server_warnings) = server_emit::emit(&ops, &tm, opts.client_name());
+        warnings.extend(server_warnings);
         files.push(GeneratedFile {
             rel_path: "server.rs".to_string(),
-            contents: server_emit::emit(),
+            contents: server,
         });
     }
     files.push(GeneratedFile {
