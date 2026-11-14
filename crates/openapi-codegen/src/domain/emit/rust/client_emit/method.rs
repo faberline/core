@@ -5,7 +5,7 @@ use crate::domain::ir::openapi::RefOr;
 use crate::domain::ir::operations::{MediaKind, OperationIR, ParamIR};
 use crate::domain::ir::typemap::TypeMap;
 
-fn fn_name(ir: &OperationIR) -> String {
+pub(in crate::domain::emit::rust) fn fn_name(ir: &OperationIR) -> String {
     match &ir.operation_id {
         Some(id) if !id.trim().is_empty() => to_snake(id),
         _ => to_snake(&format!(
@@ -16,7 +16,10 @@ fn fn_name(ir: &OperationIR) -> String {
     }
 }
 
-fn param_ann(p: &ParamIR, tm: &TypeMap) -> (String, String, bool) {
+pub(in crate::domain::emit::rust) fn param_ann(
+    p: &ParamIR,
+    tm: &TypeMap,
+) -> (String, String, bool) {
     let ty = p
         .schema
         .as_ref()
@@ -40,7 +43,7 @@ struct ErrorVariant {
 }
 
 /// True when the operation sends or receives NDJSON.
-pub(super) fn is_ndjson(ir: &OperationIR) -> bool {
+pub(in crate::domain::emit::rust) fn is_ndjson(ir: &OperationIR) -> bool {
     ir.body
         .as_ref()
         .is_some_and(|b| b.media_kind == MediaKind::Ndjson)
@@ -330,7 +333,7 @@ pub(super) fn emit_method(
 }
 
 /// `(return type, return statement)` for the operation's response.
-fn response(ir: &OperationIR, tm: &TypeMap) -> (String, String) {
+pub(in crate::domain::emit::rust) fn response(ir: &OperationIR, tm: &TypeMap) -> (String, String) {
     match &ir.response {
         Some(resp) if resp.media_kind == MediaKind::Ndjson => {
             let item = match &resp.schema {
