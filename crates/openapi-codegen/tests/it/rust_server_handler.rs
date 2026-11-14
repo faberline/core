@@ -52,15 +52,38 @@ const SPEC: &str = r##"{
   }
 }"##;
 
-const CARGO_TOML: &str = r#"[package]
-name = "generated_server_handler"
+/// Writes the manifest of a generated server crate named `name` at `root`.
+/// The generated code needs `axum` and `service-http`, so the crate copies the
+/// repository lock file and builds offline from the warm cargo cache.
+pub(crate) fn write_manifest(root: &Path, name: &str) {
+    let service_http = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../service-http")
+        .canonicalize()
+        .expect("canonicalize service-http path");
+    let manifest = format!(
+        r#"[package]
+name = "{name}"
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
+serde = {{ version = "1", features = ["derive"] }}
 serde_json = "1"
-"#;
+axum = "0.8"
+tokio = {{ version = "1", features = ["rt"] }}
+service-http = {{ path = "{}" }}
+
+[workspace]
+"#,
+        service_http.display()
+    );
+    fs::write(root.join("Cargo.toml"), manifest).expect("write generated Rust manifest");
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../Cargo.lock"),
+        root.join("Cargo.lock"),
+    )
+    .expect("copy repository Cargo.lock");
+}
 
 const MOCK_ALL: &str = r#"use generated_server_handler::models::Pet;
 use generated_server_handler::server::*;
@@ -70,7 +93,7 @@ struct Mock;
 impl CreateClientHandler for Mock {
     async fn list_pets(&self, _limit: Option<i64>) -> Result<Vec<Pet>, ListPetsError> { Ok(Vec::new()) }
     async fn create_pet(&self, body: Pet) -> Result<Pet, CreatePetError> { Ok(body) }
-    async fn get_pet_by_id(&self, _pet_id: i64) -> Result<Pet, GetPetByIdError> { Err(GetPetByIdError) }
+    async fn get_pet_by_id(&self, _pet_id: i64) -> Result<Pet, GetPetByIdError> { Err(GetPetByIdError::Other(service_http::ApiErr::new(axum::http::StatusCode::NOT_FOUND, "not_found", "no pet"))) }
     async fn delete_pet(&self, _pet_id: i64) -> Result<(), DeletePetError> { Ok(()) }
 }
 
@@ -119,7 +142,7 @@ fn generated_crate(root: &Path, main_rs: &str) {
         generate_for_target(SPEC, &opts, target).expect("generate Rust server handler trait");
     materialize(&generated, &source);
     fs::rename(source.join("mod.rs"), source.join("lib.rs")).expect("install Rust lib root");
-    fs::write(root.join("Cargo.toml"), CARGO_TOML).expect("write generated Rust manifest");
+    write_manifest(root, "generated_server_handler");
     fs::write(source.join("main.rs"), main_rs).expect("write generated Rust consumer");
 }
 

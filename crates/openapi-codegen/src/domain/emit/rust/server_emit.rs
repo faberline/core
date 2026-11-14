@@ -28,7 +28,7 @@ pub fn emit(ops: &[OperationIR], tm: &TypeMap, client_name: &str) -> (String, Ve
         }
         let op = to_pascal(&name);
         let error = format!("{op}Error");
-        stubs.push_str(&format!("#[derive(Debug)]\npub struct {error};\n\n"));
+        stubs.push_str(&emit_error_type(&error, &error_variants(ir)));
 
         let mut args = String::new();
         for p in &ir.path_params {
@@ -69,6 +69,91 @@ pub fn emit(ops: &[OperationIR], tm: &TypeMap, client_name: &str) -> (String, Ve
     out.push_str(&methods);
     out.push_str("}\n");
     (out, warnings)
+}
+
+/// One variant of a generated per-operation error enum.
+struct ErrorVariant {
+    name: String,
+    kind: VariantKind,
+}
+
+/// How a variant maps its declared response key to an HTTP status.
+enum VariantKind {
+    /// A numeric key such as `404`: the status is fixed.
+    Exact(u16),
+    /// `4XX` or `5XX`: the status is carried in the value.
+    Range,
+    /// `default`: the status is carried in the value.
+    Default,
+}
+
+/// The variants of an operation's error enum, in `error_responses` order.
+/// Keys that are not a status, a range or `default` are skipped, and a
+/// repeated name (`4XX` and `4xx`) gives one variant.
+fn error_variants(ir: &OperationIR) -> Vec<ErrorVariant> {
+    let mut out: Vec<ErrorVariant> = Vec::new();
+    for e in &ir.error_responses {
+        let key = e.status.as_str();
+        let (name, kind) = if key.eq_ignore_ascii_case("default") {
+            ("Default".to_string(), VariantKind::Default)
+        } else if let Ok(code) = key.parse::<u16>() {
+            (format!("Status{code}"), VariantKind::Exact(code))
+        } else if key.eq_ignore_ascii_case("4XX") {
+            ("Status4XX".to_string(), VariantKind::Range)
+        } else if key.eq_ignore_ascii_case("5XX") {
+            ("Status5XX".to_string(), VariantKind::Range)
+        } else {
+            continue;
+        };
+        if out.iter().all(|v| v.name != name) {
+            out.push(ErrorVariant { name, kind });
+        }
+    }
+    out
+}
+
+/// The error enum `type_name` with its `From<ApiErr>` and `IntoResponse`
+/// impls. The `Other` catch-all is always last. No `#[derive]`:
+/// `service_http::ApiErr` does not implement `Debug`.
+fn emit_error_type(type_name: &str, variants: &[ErrorVariant]) -> String {
+    let mut out = format!("pub enum {type_name} {{\n");
+    for v in variants {
+        match v.kind {
+            VariantKind::Exact(code) => {
+                out.push_str(&format!("    Status{code}(service_http::ErrorEnvelope),\n"));
+            }
+            VariantKind::Range | VariantKind::Default => {
+                let name = &v.name;
+                out.push_str(&format!(
+                    "    {name}(axum::http::StatusCode, service_http::ErrorEnvelope),\n"
+                ));
+            }
+        }
+    }
+    out.push_str("    Other(service_http::ApiErr),\n}\n\n");
+
+    out.push_str(&format!(
+        "impl From<service_http::ApiErr> for {type_name} {{\n    fn from(e: service_http::ApiErr) -> Self {{\n        Self::Other(e)\n    }}\n}}\n\n"
+    ));
+
+    out.push_str(&format!(
+        "impl axum::response::IntoResponse for {type_name} {{\n    fn into_response(self) -> axum::response::Response {{\n        match self {{\n"
+    ));
+    for v in variants {
+        let name = &v.name;
+        match v.kind {
+            VariantKind::Exact(code) => out.push_str(&format!(
+                "            Self::{name}(e) => axum::response::IntoResponse::into_response((axum::http::StatusCode::from_u16({code}).unwrap_or(axum::http::StatusCode::INTERNAL_SERVER_ERROR), axum::Json(e))),\n"
+            )),
+            VariantKind::Range | VariantKind::Default => out.push_str(&format!(
+                "            Self::{name}(s, e) => axum::response::IntoResponse::into_response((s, axum::Json(e))),\n"
+            )),
+        }
+    }
+    out.push_str(
+        "            Self::Other(e) => axum::response::IntoResponse::into_response(e),\n        }\n    }\n}\n\n",
+    );
+    out
 }
 
 #[cfg(test)]
@@ -142,20 +227,117 @@ mod tests {
         ] {
             assert!(text.contains(line), "missing line: {line}\n{text}");
         }
-        assert_eq!(text.matches("    fn ").count(), 4);
+        assert_eq!(
+            text.matches("-> impl std::future::Future<Output = Result<")
+                .count(),
+            4
+        );
     }
 
     #[test]
-    fn each_operation_has_a_stub_error() {
+    fn each_operation_has_an_error_type() {
         let (text, _) = run(SPEC);
-        for stub in [
-            "pub struct ListPetsError;",
-            "pub struct CreatePetError;",
-            "pub struct GetPetByIdError;",
-            "pub struct DeletePetError;",
+        for ty in [
+            "pub enum ListPetsError {",
+            "pub enum CreatePetError {",
+            "pub enum GetPetByIdError {",
+            "pub enum DeletePetError {",
         ] {
-            assert!(text.contains(stub), "missing stub: {stub}\n{text}");
+            assert!(text.contains(ty), "missing error type: {ty}\n{text}");
         }
+        assert!(!text.contains("pub struct ListPetsError;"), "{text}");
+    }
+
+    #[test]
+    fn declared_404_gets_a_variant_and_its_status() {
+        let (text, _) = run(SPEC);
+        assert!(
+            text.contains("    Status404(service_http::ErrorEnvelope),"),
+            "{text}"
+        );
+        assert!(
+            text.contains("Self::Status404(e) => axum::response::IntoResponse::into_response((axum::http::StatusCode::from_u16(404).unwrap_or(axum::http::StatusCode::INTERNAL_SERVER_ERROR), axum::Json(e))),"),
+            "{text}"
+        );
+    }
+
+    #[test]
+    fn operation_without_declared_errors_has_only_other() {
+        let (text, _) = run(SPEC);
+        let start = text
+            .find("pub enum DeletePetError {")
+            .expect("DeletePetError enum");
+        let rest = &text[start..];
+        let end = rest.find('}').expect("enum closing brace") + 1;
+        assert_eq!(
+            &rest[..end],
+            "pub enum DeletePetError {\n    Other(service_http::ApiErr),\n}"
+        );
+    }
+
+    fn get_thing_spec(responses: &str) -> String {
+        format!(
+            r##"{{
+  "openapi": "3.0.3",
+  "info": {{ "title": "Things", "version": "1.0.0" }},
+  "paths": {{
+    "/things/{{id}}": {{
+      "get": {{
+        "operationId": "getThing",
+        "parameters": [{{ "name": "id", "in": "path", "required": true, "schema": {{ "type": "integer" }} }}],
+        "responses": {{ {responses} }}
+      }}
+    }}
+  }},
+  "components": {{
+    "schemas": {{
+      "Thing": {{ "type": "object", "properties": {{ "id": {{ "type": "integer" }} }}, "required": ["id"] }},
+      "ErrorEnvelope": {{ "type": "object", "properties": {{ "error": {{ "type": "string" }}, "message": {{ "type": "string" }} }}, "required": ["error", "message"] }}
+    }}
+  }}
+}}"##
+        )
+    }
+
+    const ERROR_BODY: &str = r##"{ "description": "e", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } } }"##;
+
+    #[test]
+    fn status_mapping_uses_the_declared_code() {
+        // Negative control: the code must come from the declared response, not a fixed 404.
+        let spec = get_thing_spec(&format!(
+            r#""200": {{ "description": "ok" }}, "409": {ERROR_BODY}"#
+        ));
+        let (text, _) = run(&spec);
+        assert!(text.contains("from_u16(409)"), "{text}");
+        assert!(!text.contains("from_u16(404)"), "{text}");
+    }
+
+    #[test]
+    fn range_and_default_variants_carry_the_status_code() {
+        let spec = get_thing_spec(&format!(
+            r#""200": {{ "description": "ok" }}, "4XX": {ERROR_BODY}, "5XX": {ERROR_BODY}, "default": {ERROR_BODY}"#
+        ));
+        let (text, _) = run(&spec);
+        for line in [
+            "    Status4XX(axum::http::StatusCode, service_http::ErrorEnvelope),",
+            "    Status5XX(axum::http::StatusCode, service_http::ErrorEnvelope),",
+            "    Default(axum::http::StatusCode, service_http::ErrorEnvelope),",
+        ] {
+            assert!(text.contains(line), "missing line: {line}\n{text}");
+        }
+        let four = text.find("    Status4XX(").expect("Status4XX");
+        let five = text.find("    Status5XX(").expect("Status5XX");
+        let default = text.find("    Default(").expect("Default");
+        assert!(four < five && five < default, "{text}");
+    }
+
+    #[test]
+    fn duplicate_range_keys_give_one_variant() {
+        let spec = get_thing_spec(&format!(
+            r#""200": {{ "description": "ok" }}, "4XX": {ERROR_BODY}, "4xx": {ERROR_BODY}"#
+        ));
+        let (text, _) = run(&spec);
+        assert_eq!(text.matches("    Status4XX(").count(), 1, "{text}");
     }
 
     #[test]
