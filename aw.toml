@@ -1,0 +1,4 @@
+# S8 test coverage: docs/standards/coverage.md in faberline/aw. CI raises `line`; it never goes down.
+[standards.coverage]
+line = 66.94
+target = 100

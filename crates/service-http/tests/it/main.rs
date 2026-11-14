@@ -7,6 +7,7 @@ mod lifecycle_observability;
 mod lifecycle_probes;
 mod lifecycle_signal;
 mod otlp_tracing;
+mod property_traceparent;
 mod request_trace_context;
 mod reverse_proxy;
 mod server_timing;

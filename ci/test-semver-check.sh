@@ -17,14 +17,14 @@ fi
 # Fixture: a crate at 1.0.0 with two public functions, tagged v1.0.0.
 fx="$tmp/fixture"
 mkdir -p "$fx/src"
-cat > "$fx/Cargo.toml" <<'EOF'
+cat > "$fx/Cargo.toml" <<'EOT'
 [package]
 name = "semver-fixture"
 version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-EOF
+EOT
 printf '%s\n' 'pub fn kept() {}' 'pub fn removed() {}' > "$fx/src/lib.rs"
 cd "$fx"
 # Keep cargo-semver-checks' baseline clone out of the fixture, or cargo sees two

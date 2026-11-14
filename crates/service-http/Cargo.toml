@@ -45,6 +45,7 @@ service-observability = { path = "../service-observability" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
+proptest = { workspace = true }
 tower = { workspace = true, features = ["util"] }
 futures-util = "0.3"
 tracing-subscriber = { workspace = true, features = ["fmt", "json", "env-filter", "registry"] }
