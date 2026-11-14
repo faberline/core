@@ -178,6 +178,7 @@ name = "e2e-support"
 depends_on = []
 [contexts.layers]
 domain = "crates/e2e-support/src/domain"
+infrastructure = "crates/e2e-support/src/infrastructure"
 
 [[contexts]]
 name = "index-text"

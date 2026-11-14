@@ -5,7 +5,7 @@ edition.workspace = true
 authors.workspace = true
 license.workspace = true
 publish = false
-description = "Shared end-to-end test harness for Faberline service repos: pure checks (identity, pool placement, evidence), no I/O."
+description = "Shared end-to-end test harness for Faberline service repos: pure checks (identity, pool placement, evidence) and the kubectl, wait and HTTP helpers."
 
 [lib]
 name = "e2e_support"
@@ -13,6 +13,8 @@ path = "src/lib.rs"
 
 [dependencies]
 serde_json = { workspace = true }
+reqwest = { workspace = true }
+tokio = { workspace = true }
 
 [lints]
 workspace = true
