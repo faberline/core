@@ -10,6 +10,8 @@ Test coverage follows standard S8: the baseline is in [aw.toml](../../aw.toml), 
 
 The stability promise (semantic versioning, no breaking change before 2.0.0) and the stable surface of every crate are in [stability-promise.md](stability-promise.md).
 
+The threat model of core (auth, TLS, audit, secrets, supply chain) is in [threat-model.md](threat-model.md).
+
 ## Releasing
 
 core has one version for the whole workspace, in `[workspace.package].version`
