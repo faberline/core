@@ -33,10 +33,10 @@ check() {
   [ "$got" = "$want" ] || fail "$label: $group is $got, expected $want"
 }
 
-# all_true <json> <label>: all 8 groups are true.
+# all_true <json> <label>: all 9 groups are true.
 all_true() {
-  echo "$1" | jq -e '(keys | length) == 8 and all(.[]; . == true)' >/dev/null \
-    || fail "$2: expected all 8 groups true, got $1"
+  echo "$1" | jq -e '(keys | length) == 9 and all(.[]; . == true)' >/dev/null \
+    || fail "$2: expected all 9 groups true, got $1"
 }
 
 # (a) a change to openapi-codegen selects no kind e2e job.
@@ -120,5 +120,11 @@ check "$out" e2e-service-k8s false "(k)"
 # (l) a change to service-k8s selects the coverage job, which runs every crate.
 out=$(run_pr crates/service-k8s/src/lib.rs)
 check "$out" test-coverage true "(l)"
+
+# (m) a change to a published crate selects the semver job; e2e-support has none.
+out=$(run_pr crates/service-k8s/src/lib.rs)
+check "$out" test-semver true "(m)"
+out=$(run_pr crates/e2e-support/src/lib.rs)
+check "$out" test-semver false "(m)"
 
 echo "select jobs ok"
