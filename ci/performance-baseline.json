@@ -1,0 +1,12 @@
+{
+  "http2": {
+    "p50_ms": 0.135,
+    "p99_ms": 0.276,
+    "requests_per_second": 5419.539
+  },
+  "raft_write": {
+    "p50_ms": 0.671,
+    "p99_ms": 1.277,
+    "requests_per_second": 1420.024
+  }
+}
