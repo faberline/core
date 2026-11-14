@@ -227,7 +227,11 @@ mod tests {
         ] {
             assert!(text.contains(line), "missing line: {line}\n{text}");
         }
-        assert_eq!(text.matches("    fn ").count(), 4);
+        assert_eq!(
+            text.matches("-> impl std::future::Future<Output = Result<")
+                .count(),
+            4
+        );
     }
 
     #[test]
