@@ -1,0 +1,20 @@
+# Manual run of the core drills on the shared GKE test cluster (core#379).
+# Never on pull_request or push: a run starts Spot nodes.
+name: gke-drill
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  gke-drill:
+    permissions:
+      id-token: write
+      contents: read
+      packages: read
+    uses: faberline/aw/.github/workflows/gke-test.yml@23808be0e47da30b47ce11ae587f422e8469e5e3
+    with:
+      image: registry.k8s.io/pause:3.10
+      aw-ref: 23808be0e47da30b47ce11ae587f422e8469e5e3
+      ttl-minutes: 45
+      queue-minutes: 30
+      test-command: cargo test -p service-k8s --test it gke_drill -- --ignored --test-threads=1

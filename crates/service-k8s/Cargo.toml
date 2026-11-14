@@ -51,6 +51,8 @@ reqwest = { workspace = true, optional = true }
 serde_urlencoded = { version = "0.7", optional = true }
 
 [dev-dependencies]
+e2e-support = { path = "../e2e-support" }
+serde_yaml = { workspace = true }
 http = { workspace = true }
 tower = { workspace = true }
 # The certificate lifecycle tests drive an async loop with no runtime of their
