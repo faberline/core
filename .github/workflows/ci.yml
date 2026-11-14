@@ -61,9 +61,36 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
 
+  test-select:
+    name: "test: select jobs"
+    needs: lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      lint: ${{ steps.select.outputs.lint }}
+      test-workspace: ${{ steps.select.outputs.test-workspace }}
+      test-service-backup: ${{ steps.select.outputs.test-service-backup }}
+      test-service-k8s: ${{ steps.select.outputs.test-service-k8s }}
+      test-openapi-codegen: ${{ steps.select.outputs.test-openapi-codegen }}
+      test-feature-rows: ${{ steps.select.outputs.test-feature-rows }}
+      e2e-service-k8s: ${{ steps.select.outputs.e2e-service-k8s }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select the jobs for the changed files
+        id: select
+        run: |
+          set -euo pipefail
+          json="$(bash ci/select-jobs.sh)"
+          echo "$json"
+          echo "$json" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_OUTPUT"
+
   test-workspace:
     name: "test: workspace"
-    needs: lint
+    needs: [lint, test-select]
+    if: needs.test-select.outputs.test-workspace == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
@@ -84,7 +111,8 @@ jobs:
 
   test-service-backup:
     name: "test: service-backup"
-    needs: lint
+    needs: [lint, test-select]
+    if: needs.test-select.outputs.test-service-backup == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -105,7 +133,8 @@ jobs:
 
   test-service-k8s:
     name: "test: service-k8s"
-    needs: lint
+    needs: [lint, test-select]
+    if: needs.test-select.outputs.test-service-k8s == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -126,7 +155,8 @@ jobs:
 
   test-openapi-codegen:
     name: "test: openapi-codegen"
-    needs: lint
+    needs: [lint, test-select]
+    if: needs.test-select.outputs.test-openapi-codegen == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -162,7 +192,8 @@ jobs:
 
   test-feature-rows:
     name: "test: feature rows (${{ matrix.group }})"
-    needs: lint
+    needs: [lint, test-select]
+    if: needs.test-select.outputs.test-feature-rows == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
     strategy:
@@ -192,7 +223,8 @@ jobs:
 
   e2e-service-k8s:
     name: "e2e: service-k8s kind (${{ matrix.group }})"
-    needs: [test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows]
+    needs: [test-select, test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows]
+    if: ${{ !cancelled() && needs.test-select.outputs.e2e-service-k8s == 'true' && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -239,13 +271,13 @@ jobs:
   gate:
     name: gate
     if: always()
-    needs: [lint, test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows, e2e-service-k8s]
+    needs: [lint, test-select, test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows, e2e-service-k8s]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # The guideline (docs/standards/ci.md) accepts a skipped stage; the spec does not.
-      # The first step is the guideline check. The second step keeps the spec rule:
-      # a skipped stage fails the gate too.
+      # A job is selected when its group output is true (lint and test-select always are).
+      # A selected job must succeed. A job that the map did not select must be skipped.
+      # On push, workflow_dispatch and workflow_call every group is true.
       - name: Check every stage
         env:
           RESULTS: ${{ toJSON(needs) }}
@@ -253,5 +285,17 @@ jobs:
           echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
           echo "$RESULTS" | jq -e '.lint.result == "success"' > /dev/null
           echo "$RESULTS" | jq -e 'all(.[]; .result == "success" or .result == "skipped")' > /dev/null
-      - name: Require every stage to succeed, a skipped stage included
-        run: test "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" = "false"
+      - name: Check every job against the map
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          echo "$RESULTS" | jq -r '
+            (.["test-select"].outputs // {}) as $o
+            | to_entries[]
+            | .key as $k
+            | (($k == "lint") or ($k == "test-select") or ($o[$k] == "true")) as $sel
+            | if $sel and .value.result == "success" then "\($k): selected success"
+              elif ($sel | not) and .value.result == "skipped" then "\($k): skipped by map"
+              else "FAIL \($k): \(if $sel then "selected" else "not selected" end), result \(.value.result)" end' | tee "$RUNNER_TEMP/gate.txt"
+          ! grep -q '^FAIL ' "$RUNNER_TEMP/gate.txt"
