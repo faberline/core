@@ -2,6 +2,7 @@
 name = "metrics-remote-write"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Prometheus Remote Write 1.0 transport and validation shell."
 
 [lib]
