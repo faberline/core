@@ -123,12 +123,21 @@ fn parse_peer_overrides_splits_trims_and_filters_empty() {
     std::env::remove_var("TEST_PEERS");
 }
 
-/// Clears `SHARD_ID` when dropped, so a failing test cannot leak it.
-struct ShardIdGuard;
+/// Clears every env var that the shard tests set when dropped, so a failing
+/// test cannot leak them into later tests.
+struct EnvGuard;
 
-impl Drop for ShardIdGuard {
+impl Drop for EnvGuard {
     fn drop(&mut self) {
-        std::env::remove_var("SHARD_ID");
+        for k in [
+            "SHARD_ID",
+            "SHARD_COUNT",
+            "REPLICAS_PER_SHARD",
+            "VOTER_COUNT",
+            "POD_NAME",
+        ] {
+            std::env::remove_var(k);
+        }
     }
 }
 
@@ -142,7 +151,7 @@ fn set_quartet(shard_count: &str, replicas: &str, voters: &str, pod: &str) {
 #[test]
 fn shard_id_env_is_read_into_the_topology() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    let _s = ShardIdGuard;
+    let _s = EnvGuard;
     set_quartet("3", "3", "3", "svc-s1-0");
     std::env::set_var("SHARD_ID", "1");
     std::env::remove_var("SVC_PEERS");
@@ -162,7 +171,7 @@ fn shard_id_env_is_read_into_the_topology() {
 #[test]
 fn shard_id_env_that_is_not_a_u32_names_shard_id() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    let _s = ShardIdGuard;
+    let _s = EnvGuard;
     set_quartet("3", "3", "3", "svc-s1-0");
     std::env::set_var("SHARD_ID", "abc");
     let err = ClusterDims::from_env().unwrap_err();
@@ -175,7 +184,7 @@ fn shard_id_env_that_is_not_a_u32_names_shard_id() {
 #[test]
 fn shard_id_env_equal_to_shard_count_is_an_error() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    let _s = ShardIdGuard;
+    let _s = EnvGuard;
     set_quartet("3", "3", "3", "svc-s2-0");
     std::env::set_var("SHARD_ID", "3");
     std::env::remove_var("SVC_PEERS");
@@ -189,7 +198,7 @@ fn shard_id_env_equal_to_shard_count_is_an_error() {
 #[test]
 fn shard_id_env_unset_leaves_dims_without_a_shard_id() {
     let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    let _s = ShardIdGuard;
+    let _s = EnvGuard;
     set_quartet("3", "3", "3", "svc-7");
     std::env::remove_var("SHARD_ID");
     assert_eq!(ClusterDims::from_env().unwrap().shard_id(), None);
