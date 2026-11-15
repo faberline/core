@@ -94,6 +94,24 @@ pub fn overlay_yaml() -> String {
         .join("---\n")
 }
 
+/// Env var that the `gke-drill` workflow sets. Other runs of
+/// `--include-ignored` (the kind rows in `ci/run-kind-rows.sh`) skip the GKE tests.
+pub const GKE_DRILL_ENV: &str = "GKE_DRILL";
+
+/// True only when the value of `GKE_DRILL` is `1`.
+pub fn gke_drill_enabled(value: Option<&str>) -> bool {
+    value == Some("1")
+}
+
+/// True only in the `gke-drill` workflow run. Otherwise prints a skip line.
+pub fn on_gke_drill_cluster(test: &str) -> bool {
+    if gke_drill_enabled(std::env::var(GKE_DRILL_ENV).ok().as_deref()) {
+        return true;
+    }
+    eprintln!("skip {test}: {GKE_DRILL_ENV}=1 is not set (only the gke-drill workflow sets it)");
+    false
+}
+
 /// The name of the first drill pod that is Running and Ready.
 /// Returns `Err(text)` when no drill pod is ready (for use inside `wait_for`).
 pub fn ready_pod(pods: &Value) -> Result<String, String> {
@@ -214,6 +232,13 @@ fn ready_pod_picks_the_first_ready_pod() {
 }
 
 #[test]
+fn gke_drill_enabled_only_for_the_workflow_value() {
+    assert!(gke_drill_enabled(Some("1")));
+    assert!(!gke_drill_enabled(None));
+    assert!(!gke_drill_enabled(Some("0")));
+}
+
+#[test]
 fn ready_pod_reports_when_none_is_ready() {
     let pods = json!({
         "items": [
@@ -225,8 +250,11 @@ fn ready_pod_reports_when_none_is_ready() {
 }
 
 #[test]
-#[ignore = "needs the shared GKE cluster: run by .github/workflows/gke-drill.yml (core#379), which sets KUBECONFIG and NAMESPACE"]
+#[ignore = "needs the shared GKE cluster: run by .github/workflows/gke-drill.yml (core#379), which sets GKE_DRILL=1, KUBECONFIG and NAMESPACE"]
 fn smoke_drill_statefulset_is_ready_on_the_core_server_pool() {
+    if !on_gke_drill_cluster("smoke_drill_statefulset_is_ready_on_the_core_server_pool") {
+        return;
+    }
     let kube = e2e_support::Kube::from_env();
     let _dump = e2e_support::DumpOnFailure {
         suite: "gke-drill",
@@ -250,6 +278,7 @@ fn smoke_drill_statefulset_is_ready_on_the_core_server_pool() {
         pull_secret: PULL_SECRET.into(),
     };
     let items = pods["items"].as_array().cloned().unwrap_or_default();
+    assert_eq!(items.len(), 3, "expected 3 drill pods");
     let mut nodes: Vec<String> = Vec::new();
     let mut lines: Vec<Value> = Vec::new();
     for pod in &items {

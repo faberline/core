@@ -13,8 +13,10 @@ Two facts hold for the cluster (see `docs/standards/test-cluster.md` in faberlin
 To start a run: Actions, `gke-drill`, Run workflow. It is manual only.
 
 To add a drill: add one `#[ignore = "needs the shared GKE cluster: ..."]` test in
-`crates/service-k8s/tests/it/`. Use `e2e_support::Kube::from_env()`,
-`DRILL_POD_LABEL` and `ready_pod`.
+`crates/service-k8s/tests/it/`. Its first line is
+`if !on_gke_drill_cluster("<name>") { return; }`, because the kind rows run every
+ignored test of service-k8s with `--include-ignored`. Then use
+`e2e_support::Kube::from_env()`, `DRILL_POD_LABEL` and `ready_pod`.
 
 To regenerate the overlay after a render change:
 `UPDATE_GKE_OVERLAY=1 cargo test -p service-k8s --test it gke_drill::overlay_file_matches_the_render`.

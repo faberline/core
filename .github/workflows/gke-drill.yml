@@ -17,4 +17,4 @@ jobs:
       aw-ref: 23808be0e47da30b47ce11ae587f422e8469e5e3
       ttl-minutes: 45
       queue-minutes: 30
-      test-command: cargo test -p service-k8s --test it gke_drill -- --ignored --test-threads=1
+      test-command: GKE_DRILL=1 cargo test -p service-k8s --test it gke_drill -- --ignored --test-threads=1
