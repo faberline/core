@@ -76,7 +76,7 @@ set +e
 out=$(cd "$repo" && bash ci/check-stability-promise.sh 2>&1)
 code=$?
 set -e
-if [ "$code" -eq 0 ] && grep -qF 'stability promise ok: 31 crates' <<<"$out"; then
+if [ "$code" -eq 0 ] && grep -qF 'stability promise ok: 32 crates' <<<"$out"; then
   echo "ok: real_repo_ok"
 else
   echo "FAIL: real_repo_ok (exit $code): $out"
