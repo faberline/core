@@ -2,6 +2,7 @@
 name = "transport-h2c"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared HTTP/2 cleartext transport: client helpers, connection management, pooling, sizing, and optional per-connection HTTP/1.1 plus h2c protocol support."
 
 [lib]

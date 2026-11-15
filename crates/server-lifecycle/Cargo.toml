@@ -2,6 +2,7 @@
 name = "server-lifecycle"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared protocol-neutral server lifecycle primitives: bind configuration, drain and readiness signals, connection budgets, shutdown hooks, and metrics hooks."
 
 [lib]
