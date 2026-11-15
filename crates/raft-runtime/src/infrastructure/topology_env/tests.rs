@@ -1,6 +1,6 @@
 use super::*;
-use crate::ClusterTopology;
 use crate::NodeId;
+use crate::{ClusterDims, ClusterTopology};
 use std::sync::Mutex;
 
 // The standard env vars are process-global; serialize the env tests.
@@ -121,4 +121,76 @@ fn parse_peer_overrides_splits_trims_and_filters_empty() {
         vec!["a:1".to_string(), "b:2".to_string(), "c:3".to_string()]
     );
     std::env::remove_var("TEST_PEERS");
+}
+
+/// Clears `SHARD_ID` when dropped, so a failing test cannot leak it.
+struct ShardIdGuard;
+
+impl Drop for ShardIdGuard {
+    fn drop(&mut self) {
+        std::env::remove_var("SHARD_ID");
+    }
+}
+
+fn set_quartet(shard_count: &str, replicas: &str, voters: &str, pod: &str) {
+    std::env::set_var("SHARD_COUNT", shard_count);
+    std::env::set_var("REPLICAS_PER_SHARD", replicas);
+    std::env::set_var("VOTER_COUNT", voters);
+    std::env::set_var("POD_NAME", pod);
+}
+
+#[test]
+fn shard_id_env_is_read_into_the_topology() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _s = ShardIdGuard;
+    set_quartet("3", "3", "3", "svc-s1-0");
+    std::env::set_var("SHARD_ID", "1");
+    std::env::remove_var("SVC_PEERS");
+    assert_eq!(ClusterDims::from_env().unwrap().shard_id(), Some(1));
+    let t = ClusterTopology::from_env("svc", "svc-s1-hl", 7373, "SVC_PEERS").unwrap();
+    assert_eq!(t.shard_index, 1);
+    assert_eq!(
+        t.peers.get(&NodeId::new(1)).unwrap(),
+        "http://svc-s1-1.svc-s1-hl:7373"
+    );
+    assert_eq!(
+        t.peers.get(&NodeId::new(2)).unwrap(),
+        "http://svc-s1-2.svc-s1-hl:7373"
+    );
+}
+
+#[test]
+fn shard_id_env_that_is_not_a_u32_names_shard_id() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _s = ShardIdGuard;
+    set_quartet("3", "3", "3", "svc-s1-0");
+    std::env::set_var("SHARD_ID", "abc");
+    let err = ClusterDims::from_env().unwrap_err();
+    assert!(
+        format!("{err:#}").contains("SHARD_ID"),
+        "error was: {err:#}"
+    );
+}
+
+#[test]
+fn shard_id_env_equal_to_shard_count_is_an_error() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _s = ShardIdGuard;
+    set_quartet("3", "3", "3", "svc-s2-0");
+    std::env::set_var("SHARD_ID", "3");
+    std::env::remove_var("SVC_PEERS");
+    let err = ClusterTopology::from_env("svc", "svc-s2-hl", 7373, "SVC_PEERS").unwrap_err();
+    assert!(
+        format!("{err:#}").contains("SHARD_ID"),
+        "error was: {err:#}"
+    );
+}
+
+#[test]
+fn shard_id_env_unset_leaves_dims_without_a_shard_id() {
+    let _g = ENV_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _s = ShardIdGuard;
+    set_quartet("3", "3", "3", "svc-7");
+    std::env::remove_var("SHARD_ID");
+    assert_eq!(ClusterDims::from_env().unwrap().shard_id(), None);
 }
