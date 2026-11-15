@@ -2,6 +2,7 @@
 name = "storage-object"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared local and cloud object-store boundary with conditional writes and versioned metadata."
 
 [lib]

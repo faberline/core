@@ -2,6 +2,7 @@
 name = "server-http"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared HTTP protocol runtime built on server-lifecycle and server-tcp: HTTP/1.1 plus h2c serving, request tracing, and hooks for service shells and development servers."
 
 [lib]

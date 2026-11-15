@@ -2,6 +2,7 @@
 name = "index-text"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Rebuildable text-index base for Axiom products."
 
 [lib]

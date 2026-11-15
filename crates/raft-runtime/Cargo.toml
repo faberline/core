@@ -2,6 +2,7 @@
 name = "raft-runtime"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared Raft runtime that drives raft-core for a service state machine over transport-h2c, including apply, snapshot, compaction, topology, and read-your-write proposal handling."
 
 [lib]
