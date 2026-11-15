@@ -28,3 +28,13 @@ To regenerate the overlay after a render change:
 still on the `core-server` pool on its own node, and that the StatefulSet reports 3 ready
 replicas. It checks no write: acknowledged writes are in the plan of core#361. It runs in the
 `gke-drill` workflow with the smoke test.
+
+## Rolling-upgrade drill
+
+`gke_drill_rolling_upgrade::rolling_upgrade_replaces_the_pods_from_the_highest_ordinal` patches the pod
+template of the `drill` StatefulSet (a new annotation and `minReadySeconds: 5`), waits for
+`kubectl rollout status`, and checks that every pod was replaced in the order `drill-2`, `drill-1`,
+`drill-0` (by creation time), that every pod is Ready, and that the StatefulSet reports 3 updated and
+3 ready replicas on one revision. It checks no write: acknowledged writes are in the plan of core#361.
+It runs in the `gke-drill` workflow with the other drills. There is no kind row and no `ci.yml` entry:
+kind is retired (core#378).
