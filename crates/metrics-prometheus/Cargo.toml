@@ -2,6 +2,7 @@
 name = "metrics-prometheus"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared lock-free Prometheus counter, gauge, and latency primitives plus the text/plain version 0.0.4 encoder used by service metrics endpoints."
 
 [lib]

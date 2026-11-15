@@ -2,6 +2,7 @@
 name = "service-http"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared HTTP-service policy and adapters: standard probe routes, observability compatibility, lifecycle readiness, runtime delegation, and the {error, message} envelope."
 
 [lib]
