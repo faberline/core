@@ -2,6 +2,7 @@
 name = "service-collector"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Reusable checkpointed collector runtime with quarantine and retry control."
 
 [dependencies]
