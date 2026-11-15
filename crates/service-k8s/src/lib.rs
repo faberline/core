@@ -31,6 +31,7 @@ pub use api::lifecycle;
 pub use api::llm;
 #[cfg(feature = "controller")]
 pub use api::metrics;
+pub use api::profile;
 pub use api::render;
 #[cfg(feature = "controller")]
 pub use api::resize;
