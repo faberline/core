@@ -2,6 +2,7 @@
 name = "cli-std"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Standard agent-facing CLI commands every axiom tool ships: llm (offline self-docs), upgrade (self-update from GitHub releases), issue (search/view/create diagnostics-rich issues). Parameterized by ToolInfo; clap-agnostic, except the optional link-time subcommand registry."
 
 [lib]
