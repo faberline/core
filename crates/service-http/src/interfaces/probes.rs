@@ -285,7 +285,7 @@ async fn openapi_spec(State(state): State<ProbeState>) -> Response {
 /// live spec from `/openapi.json`, so its "Try it out" buttons fire real
 /// requests against this pod. A minimal hand-rolled HTML page over the
 /// swagger-ui-dist CDN — the same approach lumen/keep use, which keeps the
-/// workspace lock free of a `utoipa-swagger-ui` version pinned against utoipa 4
+/// workspace lock free of a `utoipa-swagger-ui` version pinned against utoipa 5
 /// / axum 0.8 (see the crate docs note).
 async fn docs_swagger() -> impl IntoResponse {
     Html(SWAGGER_HTML)
