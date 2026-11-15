@@ -9,7 +9,10 @@ mod tests;
 
 /// Retry, deadline and cleanup values for a backup Job. The caller supplies
 /// them; the library has no implicit value.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(
+    Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, schemars::JsonSchema,
+)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct BackupJobPolicy {
     pub backoff_limit: i32,
     pub active_deadline_seconds: i64,
