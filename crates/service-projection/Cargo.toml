@@ -2,6 +2,7 @@
 name = "service-projection"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Typed projection registry, checkpoints, catch-up, rebuild, and flush runtime."
 
 [lib]
