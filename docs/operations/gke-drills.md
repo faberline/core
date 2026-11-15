@@ -20,3 +20,11 @@ ignored test of service-k8s with `--include-ignored`. Then use
 
 To regenerate the overlay after a render change:
 `UPDATE_GKE_OVERLAY=1 cargo test -p service-k8s --test it gke_drill::overlay_file_matches_the_render`.
+
+## Leader-loss drill
+
+`gke_drill_leader_loss::leader_loss_pod_is_rescheduled_on_the_core_server_pool` deletes the pod
+`drill-0`, waits until a new `drill-0` (a new uid) is Running and Ready, checks that every pod is
+still on the `core-server` pool on its own node, and that the StatefulSet reports 3 ready
+replicas. It checks no write: acknowledged writes are in the plan of core#361. It runs in the
+`gke-drill` workflow with the smoke test.

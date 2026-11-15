@@ -14,6 +14,7 @@ mod certificate_status;
 mod default_alert_rules;
 mod fleet_plan;
 mod gke_drill;
+mod gke_drill_leader_loss;
 mod lifecycle_render;
 mod placement;
 mod prune_unserved_api_is_scoped;
