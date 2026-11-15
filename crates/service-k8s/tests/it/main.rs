@@ -17,6 +17,7 @@ mod lifecycle_render;
 mod placement;
 mod prune_unserved_api_is_scoped;
 mod reconcile_once_does_not_assume_leadership;
+mod service_profile;
 mod stateful_adapter_equivalence;
 mod stateful_instance_render;
 mod status_conditions_survive_the_recovery_pass;
