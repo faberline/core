@@ -2,6 +2,7 @@
 name = "peer-tls"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared peer-mTLS material loading for mutually authenticated peer and replication ports: PEM loaders, rustls client/server builders, and process crypto-provider setup."
 
 [lib]
