@@ -207,6 +207,7 @@ jobs:
           echo "$RUNNER_TEMP/ci-python/bin" >> "$GITHUB_PATH"
           cp -R ci/generated-rust-dependencies "$RUNNER_TEMP/generated-rust-dependencies"
           cargo fetch --locked --manifest-path "$RUNNER_TEMP/generated-rust-dependencies/Cargo.toml"
+          cargo fetch --locked
           sha256sum "$RUNNER_TEMP/generated-rust-dependencies/Cargo.lock"
       - run: cargo test --locked -p openapi-codegen -- --include-ignored
 
