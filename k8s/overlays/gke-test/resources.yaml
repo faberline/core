@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: drill
+  namespace: core
+  labels:
+    app.kubernetes.io/name: core-drill
+    app.kubernetes.io/instance: drill
+    app.kubernetes.io/component: server
+    app.kubernetes.io/managed-by: core-drill
+    app.kubernetes.io/part-of: core-drill
+spec:
+  replicas: 3
+  serviceName: drill-headless
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: core-drill
+      app.kubernetes.io/instance: drill
+      app.kubernetes.io/component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: core-drill
+        app.kubernetes.io/instance: drill
+        app.kubernetes.io/component: server
+        app.kubernetes.io/managed-by: core-drill
+        app.kubernetes.io/part-of: core-drill
+    spec:
+      containers:
+      - name: server
+        image: core
+        imagePullPolicy: IfNotPresent
+        command: []
+        ports:
+        - name: http
+          containerPort: 8080
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SHARD_COUNT
+          value: '1'
+        - name: REPLICAS_PER_SHARD
+          value: '3'
+        - name: VOTER_COUNT
+          value: '3'
+        - name: DRILL_HEADLESS_SERVICE
+          value: drill-headless
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: core-drill
+                app.kubernetes.io/instance: drill
+                app.kubernetes.io/component: server
+            topologyKey: kubernetes.io/hostname
+      nodeSelector:
+        faberline.dev/pool: core-server
+      tolerations:
+      - key: faberline.dev/pool
+        operator: Equal
+        value: core-server
+        effect: NoSchedule
+      imagePullSecrets:
+      - name: ghcr-pull
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: drill-headless
+  namespace: core
+  labels:
+    app.kubernetes.io/name: core-drill
+    app.kubernetes.io/instance: drill
+    app.kubernetes.io/component: server
+    app.kubernetes.io/managed-by: core-drill
+    app.kubernetes.io/part-of: core-drill
+spec:
+  selector:
+    app.kubernetes.io/name: core-drill
+    app.kubernetes.io/instance: drill
+    app.kubernetes.io/component: server
+  ports:
+  - name: http
+    port: 8080
+    targetPort: http
+    protocol: TCP
+  clusterIP: None
+  publishNotReadyAddresses: true
