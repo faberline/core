@@ -1,0 +1,19 @@
+[package]
+name = "shard-routing"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish = false
+description = "Shared shard routing for Faberline services: the virtual-bucket map with versions, routes, and shard host names."
+
+[lib]
+name = "shard_routing"
+path = "src/lib.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+crc32fast = "1"
+
+[lints]
+workspace = true
