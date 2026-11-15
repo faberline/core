@@ -2,6 +2,7 @@
 name = "service-mcp"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared MCP stdio and streamable HTTP transport with browser security policy."
 
 [dependencies]
