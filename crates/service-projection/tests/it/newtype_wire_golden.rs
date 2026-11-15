@@ -1,14 +1,23 @@
 use service_projection::{
     ProjectionCheckpoint, ProjectionCursor, ProjectionDescriptor, ProjectionLag, SourceGeneration,
 };
-use utoipa::ToSchema;
+use utoipa::{PartialSchema, ToSchema};
 
 #[test]
 fn projection_openapi_schemas_keep_the_p2_baseline_bytes() {
     let schemas = [
-        ProjectionDescriptor::schema(),
-        ProjectionCheckpoint::schema(),
-        ProjectionLag::schema(),
+        (
+            <ProjectionDescriptor as ToSchema>::name().to_string(),
+            ProjectionDescriptor::schema(),
+        ),
+        (
+            <ProjectionCheckpoint as ToSchema>::name().to_string(),
+            ProjectionCheckpoint::schema(),
+        ),
+        (
+            <ProjectionLag as ToSchema>::name().to_string(),
+            ProjectionLag::schema(),
+        ),
     ];
     assert_eq!(
         serde_json::to_string(&schemas).unwrap(),
