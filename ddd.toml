@@ -316,6 +316,12 @@ application = "crates/service-projection/src/application"
 infrastructure = "crates/service-projection/src/infrastructure"
 
 [[contexts]]
+name = "shard-routing"
+depends_on = []
+[contexts.layers]
+domain = "crates/shard-routing/src/domain"
+
+[[contexts]]
 name = "storage-durable"
 depends_on = []
 [contexts.layers]
