@@ -47,6 +47,8 @@ jobs:
         run: bash ci/check-stability-promise.sh
       - name: Test the stability promise check
         run: bash ci/test-check-stability-promise.sh
+      - name: Check the failure drills document
+        run: bash ci/test-failure-drills-doc.sh
       - name: Check the threat model
         run: bash ci/check-threat-model.sh
       - name: Test the threat model check
