@@ -16,6 +16,7 @@ mod host_status;
 mod leadership_transfer;
 mod legacy_store_migration;
 mod member_admission;
+mod membership_admin_routes;
 mod membership_changes;
 mod peer_mtls;
 mod port_error_downcast;
