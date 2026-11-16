@@ -63,6 +63,7 @@
     "service-mcp": {"groups": ["lint", "test-workspace", "test-coverage", "test-semver"]},
     "service-observability": {"groups": ["lint", "test-workspace", "test-service-backup", "test-service-k8s", "test-openapi-codegen", "test-feature-rows", "e2e-service-k8s", "test-coverage", "test-semver"]},
     "service-projection": {"groups": ["lint", "test-workspace", "test-coverage", "test-semver"]},
+    "shard-routing": {"groups": ["lint", "test-workspace", "test-coverage"]},
     "storage-durable": {"groups": ["lint", "test-workspace", "test-service-backup", "test-service-k8s", "test-openapi-codegen", "test-feature-rows", "e2e-service-k8s", "test-coverage", "test-semver"]},
     "storage-object": {"groups": ["lint", "test-workspace", "test-service-backup", "test-service-k8s", "test-openapi-codegen", "test-feature-rows", "e2e-service-k8s", "test-coverage", "test-semver"]},
     "storage-segment": {"groups": ["lint", "test-workspace", "test-coverage", "test-semver"]},
