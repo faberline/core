@@ -11,6 +11,7 @@ mod certificate_ownership;
 mod certificate_rbac_least_privilege;
 mod certificate_rotation;
 mod certificate_status;
+mod crd_scale;
 mod default_alert_rules;
 mod fleet_plan;
 mod gke_drill;
