@@ -28,3 +28,13 @@ To regenerate the overlay after a render change:
 still on the `core-server` pool on its own node, and that the StatefulSet reports 3 ready
 replicas. It checks no write: acknowledged writes are in the plan of core#361. It runs in the
 `gke-drill` workflow with the smoke test.
+
+## Partition drill
+
+`gke_drill_partition::partition_isolates_one_pod_and_heals_when_the_policy_is_removed` applies a
+NetworkPolicy built from the `service-k8s` render that isolates `drill-0` (it selects the pod by
+`statefulset.kubernetes.io/pod-name` and denies all ingress and egress). A one-off busybox pod on the
+`core-client` pool probes port 8080: before the policy the pod answers with a refusal (reachable),
+under the policy the probe times out (isolated) while `drill-1` stays reachable, and after the policy
+is removed `drill-0` is reachable again. It checks no write: acknowledged writes are in the plan of
+core#361. It runs in the `gke-drill` workflow with the other drills.
