@@ -7,14 +7,19 @@ use crate::application::{check_peer_scheme, ClusterDims, ClusterTopology};
 use crate::infrastructure::parse_peer_overrides;
 
 impl ClusterDims {
-    /// Read the standard downward-API quartet.
+    /// Read the standard downward-API quartet, and the optional `SHARD_ID` of a
+    /// per-shard StatefulSet.
     pub fn from_env() -> Result<Self> {
-        Ok(Self::new(
+        let dims = Self::new(
             parse_env("SHARD_COUNT")?,
             parse_env("REPLICAS_PER_SHARD")?,
             parse_env("VOTER_COUNT")?,
             std::env::var("POD_NAME").context("POD_NAME not set")?,
-        ))
+        );
+        if std::env::var_os("SHARD_ID").is_some() {
+            return Ok(dims.with_shard_id(parse_env("SHARD_ID")?));
+        }
+        Ok(dims)
     }
 }
 
