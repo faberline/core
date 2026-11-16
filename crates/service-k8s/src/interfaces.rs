@@ -7,3 +7,4 @@ pub(crate) mod llm;
 pub(crate) mod metrics;
 #[cfg(feature = "controller")]
 pub(crate) mod operator;
+pub(crate) mod service_spec;
