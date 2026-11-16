@@ -72,13 +72,13 @@ expect no_ignore_ok 0 'ignore reasons ok: 0 ignored tests' "$root"
 mkdir -p "$tmp/empty"
 expect missing_crates_fails 1 'missing' "$tmp/empty"
 
-# 7. real_repo_ok: the real repository passes (no argument) with 18 ignored tests.
+# 7. real_repo_ok: the real repository passes (no argument) with 19 ignored tests.
 repo=$(cd "$(dirname "$0")/.." && pwd)
 set +e
 out=$(cd "$repo" && bash ci/check-ignore-reasons.sh 2>&1)
 code=$?
 set -e
-if [ "$code" -eq 0 ] && grep -qF 'ignore reasons ok: 18 ignored tests' <<<"$out"; then
+if [ "$code" -eq 0 ] && grep -qF 'ignore reasons ok: 19 ignored tests' <<<"$out"; then
   echo "ok: real_repo_ok"
 else
   echo "FAIL: real_repo_ok (exit $code): $out"
