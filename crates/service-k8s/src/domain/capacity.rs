@@ -7,8 +7,9 @@
 //! per-shard units and always returns a valid whole-layer total.
 //!
 //! This module deliberately plans but does not apply a membership change.
-//! `raft-runtime` currently has static membership; a controller must complete a
-//! Raft membership transition before patching the StatefulSet replica count.
+//! `raft-runtime` changes membership through admin routes (add learner, promote,
+//! demote, remove); a controller must complete a Raft membership transition
+//! before patching the StatefulSet replica count.
 //! Storage pressure is a separate axis: [`plan_shard_split`] plans one physical
 //! shard at a time from the busiest shard's durable bytes. The service still
 //! owns its domain-safe routing-map cutover and data movement; this library

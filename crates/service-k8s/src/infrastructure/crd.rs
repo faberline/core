@@ -88,6 +88,47 @@ pub fn add_spec_validation_rule(crd: &mut Value, rule: &str, message: &str) -> u
     attached
 }
 
+/// The CRD `subresources.scale` block for a service that scales read capacity with learners.
+/// `None` when `learners` is false: such a service has a fixed replica layout and must not expose `scale`.
+pub fn scale_subresource(learners: bool) -> Option<Value> {
+    learners.then(|| {
+        json!({
+            "specReplicasPath": ".spec.replicasPerShard",
+            "statusReplicasPath": ".status.replicasPerShard",
+            "labelSelectorPath": ".status.selector",
+        })
+    })
+}
+
+/// Add `subresources.scale` to every version of `crd` when `learners` is true.
+/// Existing keys under `subresources` (for example `status`) stay.
+/// Returns the number of versions changed; 0 when `learners` is false or `crd` has no `spec.versions` array.
+pub fn add_scale_subresource(crd: &mut Value, learners: bool) -> usize {
+    let Some(scale) = scale_subresource(learners) else {
+        return 0;
+    };
+    let Some(versions) = crd
+        .get_mut("spec")
+        .and_then(|spec| spec.get_mut("versions"))
+        .and_then(Value::as_array_mut)
+    else {
+        return 0;
+    };
+    let mut changed = 0;
+    for version in versions {
+        let Some(version) = version.as_object_mut() else {
+            continue;
+        };
+        let subresources = version.entry("subresources").or_insert_with(|| json!({}));
+        let Some(subresources) = subresources.as_object_mut() else {
+            continue;
+        };
+        subresources.insert("scale".to_string(), scale.clone());
+        changed += 1;
+    }
+    changed
+}
+
 /// Quote plain scalars that Kubernetes' YAML 1.1 decoder would coerce to a
 /// boolean even though the CRD JSON schema declares them as strings.
 ///
@@ -205,5 +246,52 @@ mod tests {
         assert!(normalized.contains("description: mode defaults to: off"));
         assert!(normalized.contains("default: false"));
         assert!(normalized.ends_with('\n'));
+    }
+
+    #[test]
+    fn scale_subresource_has_the_three_paths_for_learners() {
+        let scale = scale_subresource(true).expect("learners services expose scale");
+
+        assert_eq!(scale["specReplicasPath"], ".spec.replicasPerShard");
+        assert_eq!(scale["statusReplicasPath"], ".status.replicasPerShard");
+        assert_eq!(scale["labelSelectorPath"], ".status.selector");
+    }
+
+    #[test]
+    fn scale_subresource_is_none_without_learners() {
+        assert!(scale_subresource(false).is_none());
+    }
+
+    #[test]
+    fn scale_is_added_to_every_version_and_keeps_status() {
+        let mut crd = crd_with_versions(2);
+        crd["spec"]["versions"][0]["subresources"] = json!({ "status": {} });
+
+        assert_eq!(add_scale_subresource(&mut crd, true), 2);
+
+        for version in crd["spec"]["versions"].as_array().unwrap() {
+            assert_eq!(
+                version["subresources"]["scale"]["specReplicasPath"],
+                ".spec.replicasPerShard"
+            );
+        }
+        assert!(crd["spec"]["versions"][0]["subresources"]["status"].is_object());
+    }
+
+    #[test]
+    fn no_scale_key_without_learners() {
+        let mut crd = crd_with_versions(2);
+
+        assert_eq!(add_scale_subresource(&mut crd, false), 0);
+
+        for version in crd["spec"]["versions"].as_array().unwrap() {
+            assert!(version["subresources"]["scale"].is_null());
+            assert!(version.get("subresources").is_none());
+        }
+    }
+
+    #[test]
+    fn a_crd_without_versions_gets_no_scale_and_does_not_panic() {
+        assert_eq!(add_scale_subresource(&mut json!({}), true), 0);
     }
 }
