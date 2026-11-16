@@ -35,6 +35,10 @@ jobs:
         run: bash ci/check-toolchain-pin.sh
       - name: Test the toolchain pin check
         run: bash ci/test-check-toolchain-pin.sh
+      - name: Check crate licenses
+        run: bash ci/check-crate-license.sh
+      - name: Test the crate license check
+        run: bash ci/test-check-crate-license.sh
       - name: Check ignored tests have a reason
         run: bash ci/check-ignore-reasons.sh
       - name: Test the ignored-test reason check
@@ -43,6 +47,8 @@ jobs:
         run: bash ci/check-stability-promise.sh
       - name: Test the stability promise check
         run: bash ci/test-check-stability-promise.sh
+      - name: Check the failure drills document
+        run: bash ci/test-failure-drills-doc.sh
       - name: Check the threat model
         run: bash ci/check-threat-model.sh
       - name: Test the threat model check
