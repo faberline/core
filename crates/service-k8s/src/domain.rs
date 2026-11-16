@@ -12,6 +12,8 @@ pub mod fleet;
 #[cfg(feature = "controller")]
 pub(crate) mod leadership;
 pub(crate) mod lifecycle;
+pub(crate) mod membership;
 pub(crate) mod profile;
+pub(crate) mod reshard;
 pub(crate) mod rollout;
 pub mod trust_bundle;
