@@ -70,7 +70,7 @@ expect prefix_not_enough_fails 1 'crate alpha has no row' "$root"
 root=$(make_root missing_document_fails MISSING alpha)
 expect missing_document_fails 1 'missing' "$root"
 
-# 5. real_repo_ok: the real repository has a row for each of its 31 crates.
+# 5. real_repo_ok: the real repository has a row for each of its 32 crates.
 repo=$(cd "$(dirname "$0")/.." && pwd)
 set +e
 out=$(cd "$repo" && bash ci/check-stability-promise.sh 2>&1)
