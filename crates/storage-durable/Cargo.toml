@@ -2,6 +2,7 @@
 name = "storage-durable"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared durable local-storage primitives: fsync policy, atomic replacement, CRC-framed logs, and sequence-named snapshot file stores."
 
 [lib]

@@ -2,6 +2,7 @@
 name = "service-backup"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Shared backup contract for axiom services: destination/policy schema, sink trait, local sink, and runner primitive. Services produce consistent snapshots; backup runners upload them."
 
 [lib]

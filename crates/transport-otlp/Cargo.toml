@@ -2,6 +2,7 @@
 name = "transport-otlp"
 version = "0.1.0"
 edition = "2021"
+license.workspace = true
 description = "Official OTLP HTTP and gRPC transport shell."
 
 [lib]
