@@ -85,7 +85,7 @@ impl ZoneSpread {
 }
 
 /// A Kubernetes toleration definition.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct Toleration {
     pub key: String,
     pub operator: String,
