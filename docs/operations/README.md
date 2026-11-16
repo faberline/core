@@ -18,6 +18,8 @@ The configuration of the operator crates (every environment variable, flag and k
 
 The threat model of core (auth, TLS, audit, secrets, supply chain) is in [threat-model.md](threat-model.md).
 
+The cargo-deny advisories of the real workspace, with a recommendation each, are in [supply-chain-advisories.md](supply-chain-advisories.md).
+
 ## Backup, restore and upgrade
 
 - [backup-restore.md](backup-restore.md): what backup and restore parts exist on main, and which are not available.
