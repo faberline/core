@@ -85,6 +85,10 @@ pub use domain::leadership::Election;
 pub use domain::lifecycle::{
     LifecyclePolicy, LifecyclePolicyError, ProbeTiming, TerminationBudget,
 };
+pub use domain::membership::{
+    plan_membership_step, DesiredMembership, MemberRole, MemberState, MembershipStep,
+    ObservedMembership, ReadScalingMode, ShardMembership,
+};
 pub use domain::reshard::{
     decide_split, BucketData, BucketDataError, CopyPass, CopyReport, SplitDecision,
 };
