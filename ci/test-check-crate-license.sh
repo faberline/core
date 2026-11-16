@@ -94,13 +94,13 @@ expect license_text_mismatch_fails 1 'does not match' "$root"
 root=$(make_root no_crates_fails 'license = "MIT"')
 expect no_crates_fails 1 'no crate manifests' "$root"
 
-# 8. real_repo_ok: the real repository passes (31 crates after the change).
+# 8. real_repo_ok: the real repository passes (32 crates after the change).
 repo=$(cd "$(dirname "$0")/.." && pwd)
 set +e
 out=$(cd "$repo" && bash ci/check-crate-license.sh 2>&1)
 code=$?
 set -e
-if [ "$code" -eq 0 ] && grep -qF 'crate licenses ok: 31 crates' <<<"$out"; then
+if [ "$code" -eq 0 ] && grep -qF 'crate licenses ok: 32 crates' <<<"$out"; then
   echo "ok: real_repo_ok"
 else
   echo "FAIL: real_repo_ok (exit $code): $out"

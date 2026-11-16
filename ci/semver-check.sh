@@ -6,6 +6,7 @@
 #
 # Skipped, on purpose, with the reason:
 #   e2e-support     publish = false, and it is not in the baseline release.
+#   shard-routing   publish = false, and it is not in the baseline release.
 #   openapi-codegen publish = false (crates/openapi-codegen/Cargo.toml).
 #   index-text      checked with default features only: the optional feature
 #                   jieba re-exports jieba_rs::RouteStore from vendor/jieba-rs,
@@ -21,5 +22,5 @@ if ! command -v cargo-semver-checks >/dev/null 2>&1; then
 fi
 
 cargo semver-checks --workspace --baseline-rev "$baseline" \
-  --exclude e2e-support --exclude openapi-codegen --exclude index-text
+  --exclude e2e-support --exclude openapi-codegen --exclude index-text --exclude shard-routing
 cargo semver-checks -p index-text --baseline-rev "$baseline" --default-features
