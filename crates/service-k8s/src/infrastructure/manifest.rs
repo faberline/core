@@ -46,7 +46,10 @@ pub mod stateful_instance;
 pub mod workload_plan;
 mod workloads;
 
-pub use monitoring::{prometheus_rule, service_monitor, AlertRule, PrometheusRule, ServiceMonitor};
+pub use monitoring::{
+    default_alert_rules, prometheus_rule, service_monitor, AlertRule, DefaultAlertRule,
+    PrometheusRule, ServiceMonitor, DEFAULT_ALERT_NAMES,
+};
 pub use placement::{
     FailureDomainPlacement, HostSeparation, PlacementError, PlacementPlan, Toleration, ZoneSpread,
 };

@@ -162,3 +162,46 @@ fn prometheus_rule_empty_rules() {
     assert!(rules.is_array());
     assert_eq!(rules.as_array().unwrap().len(), 0);
 }
+
+#[test]
+fn default_alert_rules_names_and_order() {
+    let defaults = default_alert_rules("svc-operator", "s", &[]);
+    let names: Vec<&str> = defaults.iter().map(|r| r.alert.as_str()).collect();
+    assert_eq!(names, DEFAULT_ALERT_NAMES);
+    assert_eq!(defaults[0].expr, r#"up{service="s"} == 0"#);
+    assert_eq!(defaults[1].expr, "sum(svc_operator_leader) == 0");
+}
+
+#[test]
+fn default_alert_rules_can_be_turned_off() {
+    let defaults = default_alert_rules(
+        "svc-operator",
+        "s",
+        &["OperatorReconcileSlow", "NoSuchAlert"],
+    );
+    assert_eq!(defaults.len(), 3);
+    assert!(defaults.iter().all(|r| r.alert != "OperatorReconcileSlow"));
+}
+
+#[test]
+fn default_alert_rules_render_in_a_prometheus_rule_with_an_application_rule() {
+    let cx = cx();
+    let defaults = default_alert_rules("svc-operator", "s", &[]);
+    let mut all: Vec<AlertRule> = defaults.iter().map(DefaultAlertRule::as_rule).collect();
+    all.push(rules().remove(0));
+    let r = prometheus_rule(PrometheusRule {
+        cx: &cx,
+        name: "s",
+        component: "server",
+        group: "svc.rules",
+        rules: all,
+    });
+    let out = r["spec"]["groups"][0]["rules"].as_array().unwrap();
+    assert_eq!(out.len(), 5);
+    for (i, name) in DEFAULT_ALERT_NAMES.iter().enumerate() {
+        assert_eq!(out[i]["alert"], *name);
+    }
+    assert_eq!(out[4]["alert"], "SvcDown");
+    assert_eq!(out[1]["labels"]["severity"], "critical");
+    assert_eq!(out[1]["for"], "5m");
+}
