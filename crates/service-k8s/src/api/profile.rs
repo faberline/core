@@ -9,3 +9,8 @@ pub use crate::interfaces::service_spec::{
     crd_for, AuthMode, AuthSpec, BackupSpec, ImageSpec, MonitoringSpec, PeerTlsSpec, PlacementSpec,
     ReplicasSpec, ServiceSpec, StorageSpec,
 };
+
+pub use crate::domain::config_env::{
+    config_env, config_map, env_from, secret_volume_mounts, secret_volumes, ConfigEnv,
+    ConfigEnvError, SecretMount, SecretRef, SECRET_MOUNT_ROOT,
+};
