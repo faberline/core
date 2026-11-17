@@ -14,6 +14,7 @@ performance` job):
 A result is a regression when requests per second drops, or p50 or p99 grows,
 by more than REGRESSION_THRESHOLD of the baseline value in
 ci/performance-baseline.json. Refresh that file with --write-baseline.
+The http2 and raft_write workloads run REPEATS times and the median of each metric is compared with the baseline; the evidence line lists every sample.
 """
 
 import argparse
@@ -21,6 +22,7 @@ import json
 import math
 import os
 import re
+import statistics
 import subprocess
 import sys
 from pathlib import Path
@@ -49,6 +51,8 @@ COMMANDS = {'http2': HTTP2_COMMAND, 'snapshot': SNAPSHOT_COMMAND, 'raft_write': 
 # Fail when requests per second drops, or p50 or p99 grows, by more than this
 # fraction of the baseline. The only place this number is set.
 REGRESSION_THRESHOLD = 0.30
+# Each compared workload is measured this many times; the gate uses the median. Odd, so the median is a real sample. The only place this number is set.
+REPEATS = 5
 BASELINE_PATH = 'ci/performance-baseline.json'
 COMPARED = ('http2', 'raft_write')
 LATENCY_FIELDS = ('requests_per_second', 'p50_ms', 'p99_ms')
@@ -199,6 +203,32 @@ def run_workload(kind: str, root: str) -> dict:
     return check_snapshot(completed.stdout, completed.stderr)
 
 
+def median_latency(samples: list) -> dict:
+    """The median of each latency field over several samples."""
+    if not samples:
+        raise ValueError('no latency samples')
+    result = {'requests': samples[0]['requests']}
+    for field in LATENCY_FIELDS:
+        result[field] = round(statistics.median(s[field] for s in samples), 3)
+    return result
+
+
+def run_repeated(kind: str, root: str, repeats: int) -> dict:
+    """Run a compared workload `repeats` times; the result carries the median of each metric."""
+    results = [run_workload(kind, root) for _ in range(repeats)]
+    if kind == 'raft_write':
+        samples = [r['measurement'] for r in results]
+        median = median_latency(samples)
+        return {'workload': 'raft_write', 'measurement': {**median, 'repeats': repeats, 'samples': samples}}
+    samples = [r['measurement']['latency'] for r in results]
+    worst = max(results, key=lambda r: r['measurement']['seconds'])
+    measurement = dict(worst['measurement'])
+    measurement['latency'] = median_latency(samples)
+    measurement['repeats'] = repeats
+    measurement['samples'] = samples
+    return {'workload': 'http2', 'measurement': measurement}
+
+
 def git_commit(root: str) -> str:
     completed = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True)
     return completed.stdout.strip()
@@ -209,7 +239,10 @@ def main(argv=None) -> int:
     parser.add_argument('--root', type=Path, default=Path('.'))
     parser.add_argument('--baseline', type=Path, default=None)
     parser.add_argument('--write-baseline', action='store_true')
+    parser.add_argument('--repeats', type=int, default=REPEATS)
     args = parser.parse_args(argv)
+    if args.repeats < 1:
+        parser.error('--repeats must be 1 or more')
     root = str(args.root)
     baseline_path = args.baseline if args.baseline is not None else Path(root) / BASELINE_PATH
 
@@ -232,7 +265,7 @@ def main(argv=None) -> int:
             'run_attempt': os.environ.get('GITHUB_RUN_ATTEMPT'),
         }
         try:
-            result = run_workload(kind, root)
+            result = run_repeated(kind, root, args.repeats) if kind in COMPARED else run_workload(kind, root)
             if kind in COMPARED:
                 latency = result['measurement']['latency'] if kind == 'http2' else result['measurement']
                 measured[kind] = latency
