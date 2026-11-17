@@ -38,7 +38,7 @@ class ExpandNames(unittest.TestCase):
         self.assertEqual(EXP["preflight"], "policy")
         self.assertEqual(EXP["ci / test: select jobs"], "unit")
         self.assertEqual(
-            EXP["ci / test: feature rows (group-a)"], "unit"
+            EXP["ci / test: feature rows"], "unit"
         )
         self.assertEqual(EXP["ci / e2e: service-k8s kind (group-a)"], "functional_e2e")
         self.assertEqual(EXP["perf: thresholds"], "performance")

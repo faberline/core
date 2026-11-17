@@ -6,7 +6,7 @@ core change against them, and how to run the architecture checker.
 The design of the shared end-to-end test tooling is in
 [shared-test-tooling.md](shared-test-tooling.md).
 
-Test coverage follows standard S8: the baseline is in [aw.toml](../../aw.toml), the job is `test: workspace, coverage` in .github/workflows/ci.yml, and `line` is raised in the same pull request that raises the measured value, never lowered.
+Test coverage follows standard S8: the baseline is in [aw.toml](../../aw.toml), the job is `test: coverage and semver` in .github/workflows/ci.yml, and `line` is raised in the same pull request that raises the measured value, never lowered.
 
 The stability promise (semantic versioning, no breaking change before 2.0.0) and the stable surface of every crate are in [stability-promise.md](stability-promise.md).
 
