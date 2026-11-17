@@ -175,3 +175,211 @@ fn the_error_messages_name_the_shard_and_the_detail() {
         "the service refused the step: fenced"
     );
 }
+
+const COPIES: [ReshardStep; 3] = [
+    ReshardStep::CopyFirst,
+    ReshardStep::CopySecond,
+    ReshardStep::Checkpoint,
+];
+
+const ORDER: [ReshardStep; 8] = [
+    ReshardStep::Fence,
+    ReshardStep::CopyFirst,
+    ReshardStep::CopySecond,
+    ReshardStep::Prune,
+    ReshardStep::Checkpoint,
+    ReshardStep::Cutover,
+    ReshardStep::Converge,
+    ReshardStep::Done,
+];
+
+fn state(step: ReshardStep) -> ReshardState {
+    ReshardState {
+        step,
+        from_shard: 0,
+        to_shard: 1,
+        buckets: vec![3, 4],
+        map_version: 2,
+    }
+}
+
+fn observed(outcome: StepOutcome, completed: &[ReshardStep], versions: &[u64]) -> ObservedReshard {
+    ObservedReshard {
+        outcome,
+        completed: completed.to_vec(),
+        pod_map_versions: versions.to_vec(),
+    }
+}
+
+#[test]
+fn order_is_fence_to_done_when_every_observation_succeeds() {
+    assert_eq!(
+        next_action(
+            &state(ReshardStep::Fence),
+            &observed(StepOutcome::NotStarted, &COPIES, &[])
+        ),
+        ReshardAction::Run(ReshardStep::Fence)
+    );
+    for pair in ORDER[..7].windows(2) {
+        assert_eq!(
+            next_action(
+                &state(pair[0]),
+                &observed(StepOutcome::Succeeded, &COPIES, &[])
+            ),
+            ReshardAction::Run(pair[1]),
+            "after {:?}",
+            pair[0]
+        );
+    }
+    assert_eq!(
+        next_action(
+            &state(ReshardStep::Converge),
+            &observed(StepOutcome::Succeeded, &COPIES, &[2, 2, 2])
+        ),
+        ReshardAction::Finished
+    );
+    assert_eq!(
+        next_action(
+            &state(ReshardStep::Done),
+            &observed(StepOutcome::NotStarted, &[], &[])
+        ),
+        ReshardAction::Finished
+    );
+}
+
+#[test]
+fn failed_observation_rolls_back_from_each_step() {
+    for step in &ORDER[..7] {
+        assert_eq!(
+            next_action(&state(*step), &observed(StepOutcome::Failed, &COPIES, &[2])),
+            ReshardAction::Rollback { from_step: *step },
+            "{step:?}"
+        );
+    }
+    assert_eq!(
+        next_action(
+            &state(ReshardStep::Done),
+            &observed(StepOutcome::Failed, &COPIES, &[2])
+        ),
+        ReshardAction::Finished
+    );
+}
+
+#[test]
+fn rollback_plan_lists_the_exact_undo_for_each_step() {
+    use RollbackAction::{DropTargetCopy, RestoreOldMapVersion, Unfence};
+    let table: [(ReshardStep, Vec<RollbackAction>); 8] = [
+        (ReshardStep::Fence, vec![DropTargetCopy, Unfence]),
+        (ReshardStep::CopyFirst, vec![DropTargetCopy, Unfence]),
+        (ReshardStep::CopySecond, vec![DropTargetCopy, Unfence]),
+        (ReshardStep::Prune, vec![DropTargetCopy, Unfence]),
+        (ReshardStep::Checkpoint, vec![DropTargetCopy, Unfence]),
+        (ReshardStep::Cutover, vec![RestoreOldMapVersion, Unfence]),
+        (ReshardStep::Converge, vec![RestoreOldMapVersion, Unfence]),
+        (ReshardStep::Done, vec![]),
+    ];
+    for (step, plan) in table {
+        assert_eq!(rollback_plan(step), plan, "{step:?}");
+    }
+}
+
+#[test]
+fn cutover_never_runs_without_the_copy_passes() {
+    let partial = [ReshardStep::CopyFirst, ReshardStep::Checkpoint];
+    for step in ORDER {
+        for outcome in [
+            StepOutcome::NotStarted,
+            StepOutcome::Running,
+            StepOutcome::Succeeded,
+            StepOutcome::Failed,
+        ] {
+            let action = next_action(&state(step), &observed(outcome, &partial, &[2]));
+            assert_ne!(
+                action,
+                ReshardAction::Run(ReshardStep::Cutover),
+                "{step:?} {outcome:?}"
+            );
+        }
+    }
+    assert_eq!(
+        next_action(
+            &state(ReshardStep::Checkpoint),
+            &observed(StepOutcome::Succeeded, &partial, &[])
+        ),
+        ReshardAction::Wait(ReshardWait::MissingStep(ReshardStep::CopySecond))
+    );
+    assert_eq!(
+        next_action(
+            &state(ReshardStep::Cutover),
+            &observed(
+                StepOutcome::NotStarted,
+                &[ReshardStep::CopySecond, ReshardStep::Checkpoint],
+                &[]
+            )
+        ),
+        ReshardAction::Wait(ReshardWait::MissingStep(ReshardStep::CopyFirst))
+    );
+}
+
+#[test]
+fn running_step_waits() {
+    assert_eq!(
+        next_action(
+            &state(ReshardStep::Prune),
+            &observed(StepOutcome::Running, &[], &[])
+        ),
+        ReshardAction::Wait(ReshardWait::StepRunning(ReshardStep::Prune))
+    );
+}
+
+#[test]
+fn converge_waits_while_one_pod_reports_the_old_map_version() {
+    let converge = state(ReshardStep::Converge);
+    assert_eq!(
+        next_action(
+            &converge,
+            &observed(StepOutcome::Succeeded, &COPIES, &[2, 1, 2])
+        ),
+        ReshardAction::Wait(ReshardWait::PodsOnOldMapVersion { stale: 1 })
+    );
+    assert_eq!(
+        next_action(&converge, &observed(StepOutcome::Succeeded, &COPIES, &[])),
+        ReshardAction::Wait(ReshardWait::NoPodReports)
+    );
+    assert_eq!(
+        next_action(
+            &converge,
+            &observed(StepOutcome::Succeeded, &COPIES, &[2, 2, 2])
+        ),
+        ReshardAction::Finished
+    );
+}
+
+#[test]
+fn state_round_trips_as_camel_case_json() {
+    let value = ReshardState {
+        step: ReshardStep::Cutover,
+        from_shard: 0,
+        to_shard: 1,
+        buckets: vec![3, 4],
+        map_version: 2,
+    };
+    assert_eq!(
+        serde_json::to_value(&value).expect("serialize"),
+        serde_json::json!({
+            "step": "Cutover",
+            "fromShard": 0,
+            "toShard": 1,
+            "buckets": [3, 4],
+            "mapVersion": 2
+        })
+    );
+    let back: ReshardState =
+        serde_json::from_value(serde_json::to_value(&value).expect("serialize"))
+            .expect("deserialize");
+    assert_eq!(back, value);
+    assert_eq!(
+        ReshardState::new(0, 1, vec![3, 4], 2),
+        state(ReshardStep::Fence)
+    );
+}

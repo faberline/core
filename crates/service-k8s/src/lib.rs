@@ -90,7 +90,9 @@ pub use domain::membership::{
     ObservedMembership, ReadScalingMode, ShardMembership,
 };
 pub use domain::reshard::{
-    decide_split, BucketData, BucketDataError, CopyPass, CopyReport, SplitDecision,
+    decide_split, next_action, rollback_plan, BucketData, BucketDataError, CopyPass, CopyReport,
+    ObservedReshard, ReshardAction, ReshardState, ReshardStep, ReshardWait, RollbackAction,
+    SplitDecision, StepOutcome,
 };
 pub use domain::shard_map::{
     rebuild_shard_map, PodShardReport, ShardMap, ShardMapError, SHARD_MAP_KEY,
