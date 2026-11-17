@@ -9,17 +9,17 @@
         {
           "goal": "Raft runtime correctness: a new leader commits a no-op, ReadIndex serves linearizable reads, propose reports only the entry it proposed, and the status and replica-lag accessors are public",
           "issues": [40, 42, 45, 47, 48, 49],
-          "checks": ["ci / test: workspace"]
+          "checks": ["ci / test: packages"]
         },
         {
           "goal": "Truthful observability and bounded service foundations: admission config, body limits, efficiency and stability dimensions, phase-stable soak sampling, and an honest process-sampling promise",
           "issues": [23],
-          "checks": ["ci / test: workspace", "perf: thresholds"]
+          "checks": ["ci / test: packages", "perf: thresholds"]
         },
         {
           "goal": "service-k8s: core-owned service operations are recorded, and a zero-replica stateful plan returns an error instead of panicking",
           "issues": [97, 99],
-          "checks": ["ci / test: service-k8s"]
+          "checks": ["ci / test: packages"]
         },
         {
           "goal": "Reviewed CI and release gates: unit checks run before integration and performance, failure reasons are reviewed, legacy delivery entrypoints are retired, and the release contract is reviewed before tagging",

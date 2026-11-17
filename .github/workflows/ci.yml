@@ -111,12 +111,12 @@ jobs:
           echo "$json"
           echo "$json" | jq -r 'to_entries[] | "\(.key)=\(.value)"' >> "$GITHUB_OUTPUT"
 
-  test-workspace:
-    name: "test: workspace"
+  test-packages:
+    name: "test: packages"
     needs: [lint, test-select]
-    if: needs.test-select.outputs.test-workspace == 'true'
+    if: ${{ needs.test-select.outputs.test-workspace == 'true' || needs.test-select.outputs.test-service-backup == 'true' || needs.test-select.outputs.test-service-k8s == 'true' || needs.test-select.outputs.test-openapi-codegen == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -128,77 +128,22 @@ jobs:
           toolchain: 1.99.1
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
-          shared-key: ci-test-workspace
+          shared-key: ci-test-packages
           cache-on-failure: true
           cache-workspace-crates: false
-      - run: cargo test --workspace --locked --exclude service-k8s --exclude openapi-codegen --exclude service-backup -- --include-ignored
-
-  test-service-backup:
-    name: "test: service-backup"
-    needs: [lint, test-select]
-    if: needs.test-select.outputs.test-service-backup == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Supply the workspace root to legacy EC contract probes
-        run: mkdir -p .aw
-      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
-        with:
-          toolchain: 1.99.1
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          shared-key: ci-test-service-backup
-          cache-on-failure: true
-          cache-workspace-crates: false
-      - run: cargo test --locked -p service-backup --features http-client -- --include-ignored
-
-  test-service-k8s:
-    name: "test: service-k8s"
-    needs: [lint, test-select]
-    if: needs.test-select.outputs.test-service-k8s == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Supply the workspace root to legacy EC contract probes
-        run: mkdir -p .aw
-      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
-        with:
-          toolchain: 1.99.1
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          shared-key: ci-test-service-k8s
-          cache-on-failure: true
-          cache-workspace-crates: false
-      - run: cargo test --locked -p service-k8s
-
-  test-openapi-codegen:
-    name: "test: openapi-codegen"
-    needs: [lint, test-select]
-    if: needs.test-select.outputs.test-openapi-codegen == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Supply the workspace root to legacy EC contract probes
-        run: mkdir -p .aw
-      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
-        with:
-          toolchain: 1.99.1
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          shared-key: ci-test-openapi-codegen
-          cache-on-failure: true
-          cache-workspace-crates: false
+      - name: Test the workspace
+        if: ${{ needs.test-select.outputs.test-workspace == 'true' }}
+        run: cargo test --workspace --locked --exclude service-k8s --exclude openapi-codegen --exclude service-backup -- --include-ignored
+      - name: Test service-backup
+        if: ${{ !cancelled() && needs.test-select.outputs.test-service-backup == 'true' }}
+        run: cargo test --locked -p service-backup --features http-client -- --include-ignored
+      - name: Test service-k8s
+        if: ${{ !cancelled() && needs.test-select.outputs.test-service-k8s == 'true' }}
+        run: cargo test --locked -p service-k8s
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9
+        if: ${{ !cancelled() && needs.test-select.outputs.test-openapi-codegen == 'true' }}
       - name: Require external compiler and runtime tools
+        if: ${{ !cancelled() && needs.test-select.outputs.test-openapi-codegen == 'true' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -213,21 +158,16 @@ jobs:
           cargo fetch --locked --manifest-path "$RUNNER_TEMP/generated-rust-dependencies/Cargo.toml"
           cargo fetch --locked
           sha256sum "$RUNNER_TEMP/generated-rust-dependencies/Cargo.lock"
-      - run: cargo test --locked -p openapi-codegen -- --include-ignored
+      - name: Test openapi-codegen
+        if: ${{ !cancelled() && needs.test-select.outputs.test-openapi-codegen == 'true' }}
+        run: cargo test --locked -p openapi-codegen -- --include-ignored
 
   test-feature-rows:
-    name: "test: feature rows (${{ matrix.group }})"
+    name: "test: feature rows"
     needs: [lint, test-select]
     if: needs.test-select.outputs.test-feature-rows == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { group: group-a, packages: "service-backup ui-runtime" }
-          - { group: group-b, packages: "storage-object cli-std index-text" }
-          - { group: group-c, packages: "service-http service-auth transport-h2c service-observability" }
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -243,18 +183,20 @@ jobs:
           shared-key: ci-test-feature-rows
           cache-on-failure: true
           cache-workspace-crates: false
-      - name: Run the feature rows of ${{ matrix.group }}
-        run: bash ci/run-feature-group.sh ${{ matrix.packages }}
+      - name: Run the feature rows of all 9 packages
+        run: bash ci/run-feature-group.sh service-backup ui-runtime storage-object cli-std index-text service-http service-auth transport-h2c service-observability
 
   test-coverage:
-    name: "test: workspace, coverage"
+    name: "test: coverage and semver"
     needs: [lint, test-select]
-    if: needs.test-select.outputs.test-coverage == 'true'
+    if: ${{ needs.test-select.outputs.test-coverage == 'true' || needs.test-select.outputs.test-semver == 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
+          fetch-tags: true
           persist-credentials: false
       - name: Supply the workspace root to legacy EC contract probes
         run: mkdir -p .aw
@@ -268,13 +210,17 @@ jobs:
           cache-on-failure: true
           cache-workspace-crates: false
       - uses: taiki-e/install-action@5488ac5a951645ce95062214902ac4b6bc1a1037 # v2.87.32
+        if: ${{ needs.test-select.outputs.test-coverage == 'true' }}
         with:
           tool: cargo-llvm-cov@0.9.1
-      - run: cargo llvm-cov --workspace --locked --exclude service-k8s --exclude openapi-codegen --exclude service-backup --json --summary-only --output-path target/coverage.json -- --include-ignored
+      - if: ${{ !cancelled() && needs.test-select.outputs.test-coverage == 'true' }}
+        run: cargo llvm-cov --workspace --locked --exclude service-k8s --exclude openapi-codegen --exclude service-backup --json --summary-only --output-path target/coverage.json -- --include-ignored
       - uses: faberline/aw/.github/actions/coverage@49df274a62a227fd7b6f635f4ebf3ed4e81df349 # S8
+        if: ${{ !cancelled() && needs.test-select.outputs.test-coverage == 'true' }}
         with:
           summary: target/coverage.json
       - name: Negative test, the ratchet must fail on COV3 when line is above the measurement
+        if: ${{ !cancelled() && needs.test-select.outputs.test-coverage == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
           COVERAGE_ROOT: ${{ github.workspace }}
@@ -288,39 +234,19 @@ jobs:
           "$RUNNER_TEMP/check.sh" target/coverage.json "$RUNNER_TEMP/aw-raised.toml" > "$RUNNER_TEMP/coverage-negative.json" || status=$?
           test "$status" = 1
           jq -e 'any(.findings[]; .check == "COV3" and .status == "fail")' "$RUNNER_TEMP/coverage-negative.json"
-
-  test-semver:
-    name: "test: semver"
-    needs: [lint, test-select]
-    if: needs.test-select.outputs.test-semver == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-          persist-credentials: false
-      - name: Supply the workspace root to legacy EC contract probes
-        run: mkdir -p .aw
-      - uses: dtolnay/rust-toolchain@4360b52568e2003a75bf9bc1d59f33a8e3fc893c
-        with:
-          toolchain: 1.99.1
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
-        with:
-          shared-key: ci-test-semver
-          cache-on-failure: true
-          cache-workspace-crates: false
       - name: Install cargo-semver-checks
+        if: ${{ !cancelled() && needs.test-select.outputs.test-semver == 'true' }}
         run: cargo install --locked cargo-semver-checks --version 0.51.0
       - name: Test the semver check
+        if: ${{ !cancelled() && needs.test-select.outputs.test-semver == 'true' }}
         run: bash ci/test-semver-check.sh
       - name: Check semver against v0.5.0
+        if: ${{ !cancelled() && needs.test-select.outputs.test-semver == 'true' }}
         run: bash ci/semver-check.sh v0.5.0
 
   e2e-service-k8s:
     name: "e2e: service-k8s kind (${{ matrix.group }})"
-    needs: [test-select, test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows]
+    needs: [test-select, test-packages, test-feature-rows]
     if: ${{ !cancelled() && needs.test-select.outputs.e2e-service-k8s == 'true' && !contains(needs.*.result, 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -368,11 +294,11 @@ jobs:
   gate:
     name: gate
     if: always()
-    needs: [lint, test-select, test-workspace, test-service-backup, test-service-k8s, test-openapi-codegen, test-feature-rows, test-coverage, test-semver, e2e-service-k8s]
+    needs: [lint, test-select, test-packages, test-feature-rows, test-coverage, e2e-service-k8s]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # A job is selected when its group output is true (lint and test-select always are).
+      # A job is selected when one of its groups outputs true (lint and test-select always are).
       # A selected job must succeed. A job that the map did not select must be skipped.
       # On push, workflow_dispatch and workflow_call every group is true.
       - name: Check every stage
@@ -389,9 +315,15 @@ jobs:
           set -euo pipefail
           echo "$RESULTS" | jq -r '
             (.["test-select"].outputs // {}) as $o
+            | {
+                "test-packages": ["test-workspace", "test-service-backup", "test-service-k8s", "test-openapi-codegen"],
+                "test-feature-rows": ["test-feature-rows"],
+                "test-coverage": ["test-coverage", "test-semver"],
+                "e2e-service-k8s": ["e2e-service-k8s"]
+              } as $groups
             | to_entries[]
             | .key as $k
-            | (($k == "lint") or ($k == "test-select") or ($o[$k] == "true")) as $sel
+            | (($k == "lint") or ($k == "test-select") or any(($groups[$k] // [])[]; $o[.] == "true")) as $sel
             | if $sel and .value.result == "success" then "\($k): selected success"
               elif ($sel | not) and .value.result == "skipped" then "\($k): skipped by map"
               else "FAIL \($k): \(if $sel then "selected" else "not selected" end), result \(.value.result)" end' | tee "$RUNNER_TEMP/gate.txt"
