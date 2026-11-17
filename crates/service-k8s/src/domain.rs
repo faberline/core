@@ -10,6 +10,7 @@ pub(crate) mod condition;
 pub(crate) mod config_env;
 #[cfg(feature = "controller")]
 pub mod fleet;
+pub(crate) mod instance_conditions;
 #[cfg(feature = "controller")]
 pub(crate) mod leadership;
 pub(crate) mod lifecycle;
