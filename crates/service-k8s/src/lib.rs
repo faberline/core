@@ -92,6 +92,9 @@ pub use domain::membership::{
 pub use domain::reshard::{
     decide_split, BucketData, BucketDataError, CopyPass, CopyReport, SplitDecision,
 };
+pub use domain::shard_map::{
+    rebuild_shard_map, PodShardReport, ShardMap, ShardMapError, SHARD_MAP_KEY,
+};
 #[cfg(feature = "certificate")]
 pub use infrastructure::certificate::csr::RcgenCsrGenerator;
 #[cfg(feature = "certificate")]
