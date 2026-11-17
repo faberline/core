@@ -47,6 +47,17 @@ pub struct RaftStatus {
     pub peer_match_index: Vec<PeerMatch>,
 }
 
+/// True once this node is a member of its group's applied configuration and
+/// knows a leader.
+pub(crate) async fn host_ready(s: &Shared) -> bool {
+    let n = s.node.lock().await;
+    let conf = n.conf_state();
+    let member = conf.membership.voters().contains(&s.id)
+        || conf.membership.learners().contains(&s.id)
+        || conf.outgoing.as_ref().is_some_and(|o| o.contains(&s.id));
+    member && n.leader().is_some()
+}
+
 pub(crate) async fn host_status(s: &Shared) -> RaftStatus {
     let n = s.node.lock().await;
     let durability_error = s
