@@ -17,7 +17,7 @@ For the two latency workloads the script records requests per second and the p50
 | http2 (128 requests, one connection) | 5419.539 | 0.135 | 0.276 |
 | raft_write (500 proposals, one voter) | 1420.024 | 0.671 | 1.277 |
 
-Measured on Linux x86_64 with 4 CPUs, on 2026-11-14 (UTC). The numbers depend on the machine and its load, so compare runs only with runs from the same runner class. The stored values are in `ci/performance-baseline.json`.
+Measured on Linux x86_64 with 4 CPUs, on 2026-11-14 (UTC). The numbers depend on the machine and its load, so compare runs only with runs from the same runner class. The stored values are in `ci/performance-baseline.json`. The release job uses the label `ubuntu-latest`. The image behind it changed from ubuntu-24.04 to ubuntu-26.04 between v0.5.0 and v0.5.1-rc.1, and the stored numbers were not measured on a release runner (issue #455).
 
 ## Limits that never change
 
@@ -30,12 +30,12 @@ They are set in `ci/measure-performance.py`.
 
 ## Regression check
 
-A run fails when, compared with the baseline:
+A run measures each latency workload 5 times (`REPEATS` in `ci/measure-performance.py`, or `--repeats`) and uses the median of each metric. It fails when, compared with the baseline:
 
 - requests per second drops by more than 30 percent of the baseline, or
 - p50 or p99 latency grows by more than 30 percent of the baseline.
 
-The number is the constant `REGRESSION_THRESHOLD` in `ci/measure-performance.py`. A result exactly at the limit passes.
+The number is the constant `REGRESSION_THRESHOLD` in `ci/measure-performance.py`. A result exactly at the limit passes. The evidence line `CORE_PERFORMANCE_EVIDENCE_V1` of each workload lists every sample under `samples`, so a refresh of the baseline can use the real numbers of the release runner.
 
 ## Refresh the baseline
 
