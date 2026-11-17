@@ -37,7 +37,8 @@ pub use crate::infrastructure::manifest::{
     ServiceStatefulSet, ShardedServices, ShardedStatefulSet, StatefulSetPlan,
     TokenRegistryProjection, TokenRegistrySource, Toleration, WorkloadPlan, WorkloadPlanError,
     WorkloadVolumeClaim, ZoneSpread, DEFAULT_ALERT_NAMES, DEFAULT_TOKEN_REGISTRY_CSI_DRIVER,
-    ENV_POD_NAME, ENV_POD_NAMESPACE, ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_VOTER_COUNT,
+    ENV_POD_NAME, ENV_POD_NAMESPACE, ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_SHARD_ID,
+    ENV_VOTER_COUNT,
 };
 
 pub mod placement {
