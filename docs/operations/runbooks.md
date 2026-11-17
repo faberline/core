@@ -1,6 +1,6 @@
 # Runbooks
 
-One section for each default alert of `service-k8s`. The alert names come from `DEFAULT_ALERT_NAMES` in `crates/service-k8s/src/infrastructure/manifest/monitoring.rs`; `ci/test-runbooks.sh` fails when an alert has no section. A service can turn an alert off through the `disabled` argument of `default_alert_rules`. Replace `<ns>` with the namespace of the instance and `<operator>` with the operator Deployment name (the `manager` name, for example `lumen-operator`).
+One section for each default alert of `service-k8s`. The alert names come from `DEFAULT_ALERT_NAMES` in `crates/service-k8s/src/infrastructure/manifest/monitoring.rs`; `ci/test-runbooks.sh` fails when an alert has no section. A service can turn an alert off through the `disabled` argument of `default_alert_rules`. Replace `<ns>` with the namespace of the instance and `<operator>` with the operator Deployment name (the `manager` name, for example `lumen-operator`). In metric names, `<p>` is the operator name with `-` replaced by `_` (for example `lumen_operator`).
 
 ## ServiceDown
 
@@ -14,7 +14,7 @@ One section for each default alert of `service-k8s`. The alert names come from `
 
 ## OperatorNoLeader
 
-**What it means**: no operator replica holds the leader Lease, so nothing is reconciled (no rollout, no repair, no status update). The alert is critical and its rule waits 5 minutes (`sum(<operator>_leader) == 0`). The leader is the replica that holds the Lease named like the operator. A replica that does not hold it publishes `<operator>_leader 0`. The Lease lasts 15 seconds and is renewed every 5 seconds.
+**What it means**: no operator replica holds the leader Lease, so nothing is reconciled (no rollout, no repair, no status update). The alert is critical and its rule waits 5 minutes (`sum(<p>_leader) == 0`). The leader is the replica that holds the Lease named like the operator. A replica that does not hold it publishes `<p>_leader 0`. The Lease lasts 15 seconds and is renewed every 5 seconds.
 
 **How to check**: run `kubectl -n <ns> get lease <operator> -o yaml` and read `holderIdentity` and `renewTime`. A renew time older than 15 seconds means that there is no holder. Then run `kubectl -n <ns> get deploy <operator>` and `kubectl -n <ns> logs deploy/<operator>`.
 
@@ -24,9 +24,9 @@ One section for each default alert of `service-k8s`. The alert names come from `
 
 ## OperatorReconcileErrors
 
-**What it means**: more than 10% of the operator reconciles fail over 5 minutes. The alert is a warning and its rule waits 10 minutes (`sum(rate(<operator>_reconcile_errors_total[5m])) / sum(rate(<operator>_reconcile_total[5m])) > 0.1`).
+**What it means**: more than 10% of the operator reconciles fail over 5 minutes. The alert is a warning and its rule waits 10 minutes (`sum(rate(<p>_reconcile_errors_total[5m])) / sum(rate(<p>_reconcile_total[5m])) > 0.1`).
 
-**How to check**: run `kubectl -n <ns> logs deploy/<operator> | grep -i error` and `kubectl get events -n <ns> --sort-by=.lastTimestamp`. Read the metrics `<operator>_reconcile_errors_total` and `<operator>_reconcile_total`.
+**How to check**: run `kubectl -n <ns> logs deploy/<operator> | grep -i error` and `kubectl get events -n <ns> --sort-by=.lastTimestamp`. Read the metrics `<p>_reconcile_errors_total` and `<p>_reconcile_total`.
 
 **How to fix**: read the error of the failing object. Common causes are a refused apply (RBAC or an admission webhook), an invalid custom resource, or a missing dependency. Fix the resource or the permission. The next reconcile then clears the error.
 
@@ -34,9 +34,9 @@ One section for each default alert of `service-k8s`. The alert names come from `
 
 ## OperatorReconcileSlow
 
-**What it means**: the 99th percentile of a reconcile is above 10 seconds over 5 minutes. The operator is stuck behind a slow or throttled apiserver. The alert is a warning and its rule waits 15 minutes (`histogram_quantile(0.99, sum by (le) (rate(<operator>_reconcile_duration_seconds_bucket[5m]))) > 10`). The largest histogram bucket is 10 seconds.
+**What it means**: the 99th percentile of a reconcile is above 10 seconds over 5 minutes. The operator is stuck behind a slow or throttled apiserver. The alert is a warning and its rule waits 15 minutes (`histogram_quantile(0.99, sum by (le) (rate(<p>_reconcile_duration_seconds_bucket[5m]))) > 10`). The largest histogram bucket is 10 seconds.
 
-**How to check**: read the histogram `<operator>_reconcile_duration_seconds_bucket`. Run `kubectl -n <ns> logs deploy/<operator>`. Check the apiserver latency in the cluster monitoring, and the number of objects the operator owns.
+**How to check**: read the histogram `<p>_reconcile_duration_seconds_bucket`. Run `kubectl -n <ns> logs deploy/<operator>`. Check the apiserver latency in the cluster monitoring, and the number of objects the operator owns.
 
 **How to fix**: remove the load (many objects that change at once, or a hot loop on one object). Wait for the apiserver throttling to end. Do not raise the alert threshold to hide the problem.
 
