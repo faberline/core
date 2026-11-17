@@ -32,6 +32,7 @@ use crate::domain::capacity::{
 pub const ENV_POD_NAME: &str = "POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "POD_NAMESPACE";
 pub const ENV_SHARD_COUNT: &str = "SHARD_COUNT";
+pub const ENV_SHARD_ID: &str = "SHARD_ID";
 pub const ENV_REPLICAS_PER_SHARD: &str = "REPLICAS_PER_SHARD";
 pub const ENV_VOTER_COUNT: &str = "VOTER_COUNT";
 
@@ -57,8 +58,9 @@ pub use render_ctx::RenderCtx;
 pub use workload_plan::*;
 pub use workloads::{
     cron_job, horizontal_pod_autoscaler, service_statefulset,
-    service_statefulset_with_service_links, sharded_statefulset, CronJob, HorizontalPodAutoscaler,
-    ServiceStatefulSet, ShardedStatefulSet,
+    service_statefulset_with_service_links, sharded_services, sharded_statefulset,
+    sharded_statefulsets, CronJob, HorizontalPodAutoscaler, ServiceStatefulSet, ShardedServices,
+    ShardedStatefulSet,
 };
 
 /// The owner reference that ties a child to its CR (cascading GC). `uid` comes

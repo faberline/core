@@ -430,3 +430,151 @@ fn service_statefulset_with_service_links_zero_replicas_returns_error() {
         Err(StatefulInstanceError::ZeroReplicas)
     );
 }
+
+fn per_shard<'a>(cx: &'a RenderCtx<'a>, shard_count: u32, replicas: u32) -> ShardedStatefulSet<'a> {
+    ShardedStatefulSet {
+        cx,
+        name: "s",
+        component: "server",
+        image: "img:1",
+        image_pull_policy: "IfNotPresent",
+        command: vec!["serve".into()],
+        ports: vec![("http", 7000)],
+        headless_service: "s-headless",
+        shard_count,
+        replicas_per_shard: replicas,
+        voter_count: replicas,
+        headless_env_key: "SVC_HEADLESS_SERVICE",
+        cpu: "",
+        memory: "",
+        extra_env: vec![],
+        volume_claim: Some(json!({ "metadata": { "name": "raft" }, "spec": {} })),
+    }
+}
+
+fn env_value(ss: &Value, key: &str) -> Option<String> {
+    ss["spec"]["template"]["spec"]["containers"][0]["env"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["name"] == key)
+        .and_then(|e| e["value"].as_str().map(str::to_owned))
+}
+
+#[test]
+fn sharded_statefulsets_one_shard_renders_one_set_with_shard_zero() {
+    let cx = cx();
+    let sets = sharded_statefulsets(per_shard(&cx, 1, 3)).expect("valid shards");
+    assert_eq!(sets.len(), 1);
+    let ss = &sets[0];
+    assert_eq!(ss["metadata"]["name"], "s");
+    assert_eq!(ss["spec"]["replicas"], 3);
+    assert_eq!(env_value(ss, "SHARD_ID").as_deref(), Some("0"));
+    assert_eq!(env_value(ss, "SHARD_COUNT").as_deref(), Some("1"));
+    assert_eq!(ss["spec"]["serviceName"], "s-headless");
+    assert_eq!(ss["metadata"]["labels"]["shard"], "0");
+    assert_eq!(ss["spec"]["template"]["metadata"]["labels"]["shard"], "0");
+    assert_eq!(ss["spec"]["selector"]["matchLabels"]["shard"], "0");
+}
+
+#[test]
+fn sharded_statefulsets_three_shards_have_own_names_services_ids_and_selectors() {
+    let cx = cx();
+    let sets = sharded_statefulsets(per_shard(&cx, 3, 3)).expect("valid shards");
+    assert_eq!(sets.len(), 3);
+    let names: Vec<&str> = sets
+        .iter()
+        .map(|s| s["metadata"]["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["s", "s-s1", "s-s2"]);
+    let services: Vec<&str> = sets
+        .iter()
+        .map(|s| s["spec"]["serviceName"].as_str().unwrap())
+        .collect();
+    assert_eq!(services, ["s-headless", "s-headless-s1", "s-headless-s2"]);
+    for (i, ss) in sets.iter().enumerate() {
+        let id = i.to_string();
+        assert_eq!(env_value(ss, "SHARD_ID").as_deref(), Some(id.as_str()));
+        assert_eq!(env_value(ss, "SHARD_COUNT").as_deref(), Some("3"));
+        assert_eq!(ss["spec"]["replicas"], 3);
+        assert_eq!(ss["spec"]["selector"]["matchLabels"]["shard"], id.as_str());
+        assert_eq!(
+            env_value(ss, "SVC_HEADLESS_SERVICE").as_deref(),
+            ss["spec"]["serviceName"].as_str()
+        );
+    }
+    assert_eq!(
+        sets[2]["spec"]["template"]["spec"]["affinity"]["podAntiAffinity"]
+            ["requiredDuringSchedulingIgnoredDuringExecution"][0]["labelSelector"]["matchLabels"]
+            ["shard"],
+        "2"
+    );
+}
+
+#[test]
+fn sharded_statefulsets_pvc_names_keep_shard_zero_and_suffix_the_others() {
+    let cx = cx();
+    let sets = sharded_statefulsets(per_shard(&cx, 2, 3)).expect("valid shards");
+    let pvc_name = |ss: &Value| {
+        let claim = ss["spec"]["volumeClaimTemplates"][0]["metadata"]["name"]
+            .as_str()
+            .unwrap();
+        let sts = ss["metadata"]["name"].as_str().unwrap();
+        format!("{claim}-{sts}-0")
+    };
+    assert_eq!(pvc_name(&sets[0]), "raft-s-0");
+    assert_eq!(pvc_name(&sets[1]), "raft-s-s1-0");
+}
+
+#[test]
+fn sharded_statefulsets_zero_counts_return_error() {
+    let cx = cx();
+    assert!(matches!(
+        sharded_statefulsets(per_shard(&cx, 0, 3)),
+        Err(StatefulInstanceError::ZeroReplicas)
+    ));
+    assert!(matches!(
+        sharded_statefulsets(per_shard(&cx, 3, 0)),
+        Err(StatefulInstanceError::ZeroReplicas)
+    ));
+}
+
+#[test]
+fn sharded_statefulset_single_set_output_is_unchanged() {
+    let cx = cx();
+    let ss = sharded_statefulset(per_shard(&cx, 2, 3)).expect("valid statefulset");
+    assert_eq!(ss["spec"]["replicas"], 6);
+    assert_eq!(ss["metadata"]["name"], "s");
+    assert_eq!(env_value(&ss, "SHARD_ID"), None);
+    assert_eq!(ss["spec"]["selector"]["matchLabels"]["shard"], Value::Null);
+}
+
+#[test]
+fn sharded_services_render_a_headless_service_per_shard_and_one_client_service() {
+    let cx = cx();
+    let svcs = sharded_services(&cx, "server", "s-headless", "s-client", 3, 7000).unwrap();
+    let names: Vec<&str> = svcs
+        .headless
+        .iter()
+        .map(|s| s["metadata"]["name"].as_str().unwrap())
+        .collect();
+    assert_eq!(names, ["s-headless", "s-headless-s1", "s-headless-s2"]);
+    for (i, svc) in svcs.headless.iter().enumerate() {
+        assert_eq!(svc["spec"]["clusterIP"], "None");
+        assert_eq!(svc["spec"]["selector"]["shard"], i.to_string().as_str());
+    }
+    let client = &svcs.client;
+    assert_eq!(client["metadata"]["name"], "s-client");
+    assert_eq!(client["spec"]["type"], "ClusterIP");
+    assert!(client["spec"]["selector"].get("shard").is_none());
+    assert_eq!(client["spec"]["selector"], cx.selector("server"));
+}
+
+#[test]
+fn sharded_services_zero_shards_return_error() {
+    let cx = cx();
+    assert!(matches!(
+        sharded_services(&cx, "server", "s-headless", "s-client", 0, 7000),
+        Err(StatefulInstanceError::ZeroReplicas)
+    ));
+}

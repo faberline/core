@@ -4,7 +4,7 @@
 use serde_json::{json, Value};
 
 use super::common::{apply_termination_budget, apply_termination_contract};
-use super::stateful_instance::StatefulInstanceError;
+use super::stateful_instance::{render_shard_statefulset, shard_name, StatefulInstanceError};
 use super::{dedicated_node_affinity, requested_resources, RenderCtx, WorkloadVolumeClaim};
 use crate::domain::lifecycle::TerminationBudget;
 
@@ -284,7 +284,18 @@ pub struct ShardedStatefulSet<'a> {
 /// Returns [`StatefulInstanceError::ZeroReplicas`] when `shard_count` or
 /// `replicas_per_shard` is 0.
 pub fn sharded_statefulset(p: ShardedStatefulSet) -> Result<Value, StatefulInstanceError> {
-    let volume_claim = p.volume_claim.map(|template| {
+    let affinity = dedicated_node_affinity(p.cx.selector(p.component));
+    service_statefulset(sharded_set(&p, p.headless_service, affinity))
+}
+
+/// The shared body of one sharded StatefulSet: the fields of `p`, the given
+/// headless Service name and the given pod anti-affinity.
+fn sharded_set<'a>(
+    p: &ShardedStatefulSet<'a>,
+    headless_service: &'a str,
+    affinity: Value,
+) -> ServiceStatefulSet<'a> {
+    let volume_claim = p.volume_claim.clone().map(|template| {
         let name = template["metadata"]["name"]
             .as_str()
             .unwrap_or("data")
@@ -297,26 +308,26 @@ pub fn sharded_statefulset(p: ShardedStatefulSet) -> Result<Value, StatefulInsta
         }
     });
 
-    service_statefulset(ServiceStatefulSet {
+    ServiceStatefulSet {
         cx: p.cx,
         name: p.name,
         component: p.component,
         image: p.image,
         image_pull_policy: p.image_pull_policy,
-        command: p.command,
+        command: p.command.clone(),
         args: vec![],
         ports: p
             .ports
             .iter()
             .map(|(n, port)| json!({ "name": n, "containerPort": port, "protocol": "TCP" }))
             .collect(),
-        headless_service: p.headless_service,
+        headless_service,
         shard_count: p.shard_count,
         replicas_per_shard: p.replicas_per_shard,
         voter_count: p.voter_count,
         headless_env_key: p.headless_env_key,
         service_account_name: Some(p.cx.name()),
-        env: p.extra_env,
+        env: p.extra_env.clone(),
         env_from: vec![],
         resources: requested_resources(p.cpu, p.memory),
         pod_annotations: None,
@@ -329,12 +340,71 @@ pub fn sharded_statefulset(p: ShardedStatefulSet) -> Result<Value, StatefulInsta
         lifecycle: None,
         volumes: vec![],
         volume_mounts: vec![],
-        affinity: Some(dedicated_node_affinity(p.cx.selector(p.component))),
+        affinity: Some(affinity),
         node_selector: None,
         tolerations: vec![],
         topology_spread_constraints: vec![],
         revision_history_limit: None,
         update_strategy: None,
         volume_claim,
-    })
+    }
+}
+
+/// One StatefulSet per shard. Shard `N` is named `<name>` for `N == 0` and
+/// `<name>-s<N>` otherwise, with `replicas = replicas_per_shard`, its own
+/// headless Service name, `SHARD_ID=<N>` and the label `shard: "<N>"`. The pod
+/// anti-affinity is per component and shard.
+///
+/// # Errors
+///
+/// Returns [`StatefulInstanceError::ZeroReplicas`] when `shard_count` or
+/// `replicas_per_shard` is 0.
+pub fn sharded_statefulsets(p: ShardedStatefulSet) -> Result<Vec<Value>, StatefulInstanceError> {
+    if p.shard_count == 0 {
+        return Err(StatefulInstanceError::ZeroReplicas);
+    }
+    (0..p.shard_count)
+        .map(|shard| {
+            let headless = shard_name(p.headless_service, shard);
+            let mut selector = p.cx.selector(p.component);
+            selector["shard"] = json!(shard.to_string());
+            let set = sharded_set(&p, &headless, dedicated_node_affinity(selector));
+            render_shard_statefulset(set, shard)
+        })
+        .collect()
+}
+
+/// The Services of a per-shard set: one headless Service per shard and one
+/// client Service that selects the pods of every shard.
+pub struct ShardedServices {
+    pub headless: Vec<Value>,
+    pub client: Value,
+}
+
+/// Render the per-shard headless Services and the client Service.
+///
+/// # Errors
+///
+/// Returns [`StatefulInstanceError::ZeroReplicas`] when `shard_count` is 0.
+pub fn sharded_services(
+    cx: &RenderCtx,
+    component: &str,
+    headless_service: &str,
+    client_service_name: &str,
+    shard_count: u32,
+    port: i32,
+) -> Result<ShardedServices, StatefulInstanceError> {
+    if shard_count == 0 {
+        return Err(StatefulInstanceError::ZeroReplicas);
+    }
+    let headless = (0..shard_count)
+        .map(|shard| {
+            let mut svc =
+                super::headless_service(cx, &shard_name(headless_service, shard), component, port);
+            svc["spec"]["selector"]["shard"] = json!(shard.to_string());
+            svc
+        })
+        .collect();
+    let client = super::client_service(cx, client_service_name, component, port);
+    Ok(ShardedServices { headless, client })
 }
