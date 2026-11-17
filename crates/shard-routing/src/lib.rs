@@ -5,6 +5,7 @@
 
 mod domain;
 
+pub use domain::bucket_move::{bucket_moves, BucketMove};
 pub use domain::forwarding::{
     assert_owns, check_forwarded_map_version, forward_headers, forwarded_map_version, is_forwarded,
     ShardForwardMisrouted, ShardForwardRemoteError, ShardForwardUnavailable,
