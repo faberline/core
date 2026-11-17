@@ -29,6 +29,12 @@ impl RaftHost {
     pub async fn leader(&self) -> Option<NodeId> {
         self.shared.node.lock().await.leader()
     }
+    /// True once this node is a member of its group's applied configuration and
+    /// knows a leader. A joiner outside the initial membership is not ready until
+    /// the leader has added it and it has applied that change.
+    pub async fn is_ready(&self) -> bool {
+        host_ready(&self.shared).await
+    }
     /// Return the host's current [`RaftStatus`].
     ///
     /// Returns the same value as the `/raftz` body and is a point-in-time snapshot.
