@@ -13,6 +13,7 @@ mod group_membership_isolation;
 mod group_registry;
 mod host_shutdown_deadline;
 mod host_status;
+mod joiner_readiness;
 mod leadership_transfer;
 mod legacy_store_migration;
 mod member_admission;
