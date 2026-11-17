@@ -159,9 +159,6 @@ pub struct ClusterTopology {
     pub peers: HashMap<NodeId, String>,
     pub replicas_per_shard: u32,
     pub shard_index: u32,
-    /// The pod is outside the initial membership: it starts with an empty
-    /// membership, never campaigns, and waits for the leader to add it.
-    pub joiner: bool,
 }
 
 /// Refuse any peer URL scheme but `http` and `https`, so a malformed scheme
@@ -274,8 +271,13 @@ impl ClusterTopology {
             peers,
             replicas_per_shard,
             shard_index,
-            joiner,
         })
+    }
+
+    /// True when the pod is outside the initial membership: it starts with an
+    /// empty membership, never campaigns, and waits for the leader to add it.
+    pub fn is_joiner(&self) -> bool {
+        self.membership.voters().is_empty() && self.membership.learners().is_empty()
     }
 }
 

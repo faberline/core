@@ -108,7 +108,7 @@ fn without_shard_id_peers_use_the_old_ordinal_math() {
 fn a_shard_pod_beyond_the_initial_replicas_boots_as_a_joiner() {
     let d = dims(3, 3, 3, "svc-s1-3").with_shard_id(1);
     let t = ClusterTopology::from_dims(&d, "svc", "svc-s1-hl", 7373, &[], "http").unwrap();
-    assert!(t.joiner);
+    assert!(t.is_joiner());
     assert_eq!(t.node_id, NodeId::new(3));
     assert!(t.membership.voters().is_empty());
     assert!(t.membership.learners().is_empty());
@@ -125,7 +125,7 @@ fn a_shard_pod_beyond_the_initial_replicas_boots_as_a_joiner() {
 fn a_shard_pod_inside_the_initial_replicas_is_not_a_joiner() {
     let d = dims(3, 3, 3, "svc-s1-2").with_shard_id(1);
     let t = ClusterTopology::from_dims(&d, "svc", "svc-s1-hl", 7373, &[], "http").unwrap();
-    assert!(!t.joiner);
+    assert!(!t.is_joiner());
     assert_eq!(t.node_id, NodeId::new(2));
     assert_eq!(t.membership.voters().len(), 3);
 }
