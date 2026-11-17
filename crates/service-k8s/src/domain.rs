@@ -7,6 +7,7 @@ pub(crate) mod capacity;
 #[cfg(feature = "certificate")]
 pub(crate) mod certificate;
 pub(crate) mod condition;
+pub(crate) mod config_env;
 #[cfg(feature = "controller")]
 pub mod fleet;
 #[cfg(feature = "controller")]
