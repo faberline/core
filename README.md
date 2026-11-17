@@ -13,6 +13,7 @@ and the CLI standard commands. Split out of
 | [claim-token](crates/claim-token) | Scoped claim-check access tokens (HMAC-SHA256). Loom's schema layer signs; Keep verifies, so a worker reaches Keep directly only within its key scope. |
 | [cli-std](crates/cli-std) | Standard agent-facing CLI commands every axiom tool ships: llm (offline self-docs), upgrade (self-update from GitHub releases), issue (search/view/create diagnostics-rich issues). Parameterized by ToolInfo; clap-agnostic. |
 | [compass](crates/compass) | Code intelligence arsenal — navigate, analyze, refactor, and watch any codebase |
+| [e2e-support](crates/e2e-support) | Shared end-to-end test harness for service repos: pure identity, pool-placement and evidence checks, and the kubectl, wait and HTTP helpers. Not published. |
 | [index-text](crates/index-text) | Rebuildable text-index base for Axiom products. |
 | [metrics-prometheus](crates/metrics-prometheus) | Shared lock-free Prometheus counter, gauge, and latency primitives plus the text/plain version 0.0.4 encoder used by service metrics endpoints. |
 | [metrics-remote-write](crates/metrics-remote-write) | Prometheus Remote Write 1.0 transport and validation shell. |
