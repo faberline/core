@@ -8,7 +8,7 @@ It runs these jobs:
 - `preflight`: checks the tag against its commit and the reviewed contract.
 - `ci`: every job of `ci.yml`, called through `workflow_call`. Each job shows
   as `ci / <job name>`.
-- `perf: thresholds`: runs `ci/measure-performance.py` with the original thresholds.
+- `perf: thresholds`: measures the newest final release before the tag and the tag in one job (`ci/measure-performance.py --base-root`), and fails when the tag is more than 30% worse. The limits do not change.
 - `gate`: passes only when every job above passed.
 
 ## The two reviewed files

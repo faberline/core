@@ -389,5 +389,138 @@ class MainRepeatTests(unittest.TestCase):
         self.assertEqual(record['result'], 'pass')
 
 
+class RelativeTests(unittest.TestCase):
+    BASE = {'requests_per_second': 1000.0, 'p50_ms': 1.0, 'p99_ms': 2.0}
+
+    def test_equal_medians_pass(self):
+        self.assertIsNone(mod.check_relative('http2', self.BASE, self.BASE))
+
+    def test_31_percent_worse_fails_30_percent_passes(self):
+        self.assertIsNone(mod.check_relative(
+            'http2', {'requests_per_second': 1000.0, 'p50_ms': 1.3, 'p99_ms': 2.0}, self.BASE))
+        self.assertIsNone(mod.check_relative(
+            'http2', {'requests_per_second': 1000.0, 'p50_ms': 1.0, 'p99_ms': 2.6}, self.BASE))
+        self.assertIsNone(mod.check_relative(
+            'http2', {'requests_per_second': 700.0, 'p50_ms': 1.0, 'p99_ms': 2.0}, self.BASE))
+        for measured in (
+            {'requests_per_second': 1000.0, 'p50_ms': 1.31, 'p99_ms': 2.0},
+            {'requests_per_second': 1000.0, 'p50_ms': 1.0, 'p99_ms': 2.62},
+            {'requests_per_second': 690.0, 'p50_ms': 1.0, 'p99_ms': 2.0},
+        ):
+            with self.subTest(measured=measured):
+                with self.assertRaisesRegex(ValueError, 'regression'):
+                    mod.check_relative('http2', measured, self.BASE)
+
+    def test_better_than_base_passes(self):
+        self.assertIsNone(mod.check_relative(
+            'http2', {'requests_per_second': 2000.0, 'p50_ms': 0.5, 'p99_ms': 1.0}, self.BASE))
+
+    def test_threshold_still_30(self):
+        self.assertEqual(mod.REGRESSION_THRESHOLD, 0.30)
+
+
+def ab_fake(head_factor=1.0, base_fail=False, counts=None):
+    """Fake subprocess.run for the A/B path: head latency is base latency times head_factor."""
+
+    def fake_run(command, **kwargs):
+        cwd = kwargs.get('cwd')
+        if command[0] == 'git':
+            return mock.Mock(returncode=0, stdout='abc123\n', stderr='')
+        if '--no-run' in command:
+            return mock.Mock(returncode=0, stdout='', stderr='')
+        if 'write_path_latency' in command:
+            if counts is not None:
+                counts.append(cwd)
+            if cwd == 'base' and base_fail:
+                return mock.Mock(returncode=101, stdout='', stderr='')
+            factor = 1.0 if cwd == 'base' else head_factor
+            return mock.Mock(
+                returncode=0, stdout=write, stderr=latency_line(1000.0, 1.0 * factor, 2.0 * factor))
+        if 'snapshot_peak_memory' in command:
+            return mock.Mock(returncode=0, stdout=peak, stderr=peak_line)
+        factor = 1.0 if cwd == 'base' else head_factor
+        return mock.Mock(
+            returncode=0,
+            stdout=h2,
+            stderr=good_h2_line + h2_latency(1000.0, 1.0 * factor, 2.0 * factor),
+        )
+
+    return fake_run
+
+
+class AbMainTests(unittest.TestCase):
+    def run_ab(self, argv, head_factor=1.0, base_fail=False, counts=None, baseline_file=None):
+        out = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp:
+            baseline = Path(tmp) / 'none.json' if baseline_file is None else Path(tmp) / 'b.json'
+            if baseline_file is not None:
+                baseline.write_text(json.dumps(baseline_file))
+            fake = ab_fake(head_factor, base_fail, counts)
+            with mock.patch.object(mod.subprocess, 'run', side_effect=fake):
+                with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                    code = mod.main(
+                        ['--root', 'head', '--base-root', 'base', '--repeats', '3',
+                         '--baseline', str(baseline)] + argv)
+        return code, out.getvalue()
+
+    def test_ab_equal_medians_pass(self):
+        code, _ = self.run_ab([])
+        self.assertEqual(code, 0)
+
+    def test_ab_31_percent_worse_fails(self):
+        code, out = self.run_ab([], head_factor=1.31)
+        self.assertEqual(code, 1)
+        lines = [l for l in out.splitlines() if l.startswith('CORE_PERFORMANCE_EVIDENCE_V1 ')]
+        self.assertTrue(any('"result": "fail"' in l for l in lines))
+
+    def test_ab_30_percent_worse_passes(self):
+        code, _ = self.run_ab([], head_factor=1.3)
+        self.assertEqual(code, 0)
+
+    def test_ab_missing_base_measurement_fails(self):
+        code, out = self.run_ab([], base_fail=True)
+        self.assertEqual(code, 1)
+        self.assertIn('no measurement for: base raft_write', out)
+
+    def test_ab_report_only_never_applies_limit(self):
+        code, _ = self.run_ab(['--report-only'], head_factor=2.0)
+        self.assertEqual(code, 0)
+
+    def test_ab_report_only_still_fails_on_missing_measurement(self):
+        code, _ = self.run_ab(['--report-only'], base_fail=True)
+        self.assertEqual(code, 1)
+
+    def test_ab_alternates_base_then_head(self):
+        counts = []
+        self.run_ab([], counts=counts)
+        self.assertEqual(counts, ['base', 'head', 'base', 'head', 'base', 'head'])
+
+    def test_ab_report_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report_dir = Path(tmp) / 'r'
+            _, _ = self.run_ab(['--report-dir', str(report_dir), '--base-ref', 'v0.5.0',
+                                '--head-ref', 'abc123'])
+            data = json.loads((report_dir / 'perf-ab.json').read_text())
+            self.assertTrue((report_dir / 'perf-ab.md').exists())
+            self.assertEqual(data['base_ref'], 'v0.5.0')
+            self.assertEqual(data['head_ref'], 'abc123')
+            self.assertEqual(data['limit'], 0.3)
+            self.assertIn('raft_write', data['medians']['base'])
+            self.assertIn('raft_write', data['ratios'])
+            code, _ = self.run_ab(['--report-dir', str(report_dir), '--report-only'])
+            self.assertEqual(code, 0)
+            self.assertIsNone(json.loads((report_dir / 'perf-ab.json').read_text())['limit'])
+
+    def test_ab_baseline_is_not_the_verdict(self):
+        better = {
+            'http2': {'requests_per_second': 10000.0, 'p50_ms': 0.1, 'p99_ms': 0.2},
+            'raft_write': {'requests_per_second': 20000.0, 'p50_ms': 0.04, 'p99_ms': 0.09},
+        }
+        code, _ = self.run_ab([], head_factor=1.0, baseline_file=better)
+        self.assertEqual(code, 0)
+        code, _ = self.run_ab([], head_factor=1.0, baseline_file=None)
+        self.assertEqual(code, 0)
+
+
 if __name__ == '__main__':
     unittest.main()

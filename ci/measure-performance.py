@@ -15,6 +15,8 @@ A result is a regression when requests per second drops, or p50 or p99 grows,
 by more than REGRESSION_THRESHOLD of the baseline value in
 ci/performance-baseline.json. Refresh that file with --write-baseline.
 The http2 and raft_write workloads run REPEATS times and the median of each metric is compared with the baseline; the evidence line lists every sample.
+
+With `--base-root` the run compares the head tree with the base tree measured on the same machine (relative gate); the baseline file is a reference only.
 """
 
 import argparse
@@ -234,16 +236,238 @@ def git_commit(root: str) -> str:
     return completed.stdout.strip()
 
 
+def check_relative(label, head, base, threshold=REGRESSION_THRESHOLD):
+    """Raise ValueError when head is more than `threshold` worse than base, measured on the same machine."""
+    if head['requests_per_second'] < base['requests_per_second'] * (1 - threshold):
+        raise ValueError(
+            f'{label} regression: requests_per_second {head["requests_per_second"]} '
+            f'is more than {threshold:.0%} below base {base["requests_per_second"]}'
+        )
+    for field in ('p50_ms', 'p99_ms'):
+        if head[field] > base[field] * (1 + threshold):
+            raise ValueError(
+                f'{label} regression: {field} {head[field]} '
+                f'is more than {threshold:.0%} above base {base[field]}'
+            )
+    return None
+
+
+def median_or_none(samples: list):
+    return median_latency(samples) if samples else None
+
+
+def measure_ab(base_root: str, head_root: str, repeats: int):
+    """Measure the base and the head tree on this machine, base then head for each repeat.
+
+    Returns (base_samples, head_samples, errors); each samples value is {kind: [latency dict, ...]}.
+    """
+    roots = (('base', base_root), ('head', head_root))
+    for _, root in roots:
+        for kind in COMPARED:
+            cmd = list(COMMANDS[kind])
+            cmd.insert(cmd.index('--'), '--no-run')
+            subprocess.run(cmd, cwd=root, check=True)
+
+    samples = {label: {kind: [] for kind in COMPARED} for label, _ in roots}
+    errors = []
+    for i in range(repeats):
+        for kind in COMPARED:
+            for label, root in roots:
+                try:
+                    result = run_workload(kind, root)
+                except ValueError as error:
+                    errors.append(f'{label} {kind} run {i + 1}: {error}')
+                    continue
+                value = result['measurement']['latency'] if kind == 'http2' else result['measurement']
+                samples[label][kind].append(value)
+    return samples['base'], samples['head'], errors
+
+
+def ab_report(base_ref, head_ref, base_sha, head_sha, repeats, base_samples, head_samples,
+              errors, baseline, limit):
+    """Build the report dict and its markdown table from the A/B samples."""
+    samples = {'base': base_samples, 'head': head_samples}
+    medians = {
+        'base': {kind: median_or_none(base_samples[kind]) for kind in COMPARED},
+        'head': {kind: median_or_none(head_samples[kind]) for kind in COMPARED},
+    }
+    ratios = {}
+    for kind in COMPARED:
+        base_med, head_med = medians['base'][kind], medians['head'][kind]
+        if base_med is None or head_med is None:
+            ratios[kind] = None
+        else:
+            ratios[kind] = {
+                field: round(head_med[field] / base_med[field], 3) for field in LATENCY_FIELDS
+            }
+    report = {
+        'base_ref': base_ref,
+        'head_ref': head_ref,
+        'base_sha': base_sha,
+        'head_sha': head_sha,
+        'repeats': repeats,
+        'limit': limit,
+        'runner_image': os.environ.get('ImageVersion'),
+        'run_id': os.environ.get('GITHUB_RUN_ID'),
+        'samples': samples,
+        'medians': medians,
+        'baseline': None if baseline is None else {kind: baseline[kind] for kind in COMPARED},
+        'ratios': ratios,
+        'errors': errors,
+    }
+
+    lines = [f'## perf: base `{base_ref}` at `{base_sha}`, head `{head_ref}` at `{head_sha}`', '']
+    if limit is None:
+        lines.append('Report only: no limit is applied.')
+    else:
+        lines.append(
+            f'Limit: {limit:.0%} worse than base (REGRESSION_THRESHOLD). '
+            'The baseline file is shown as a reference only.'
+        )
+    lines.append('')
+    for kind in COMPARED:
+        lines += [
+            f'### {kind}', '',
+            '| ref | p50_ms runs | p50_ms median | p99_ms median | requests_per_second median |',
+            '|---|---|---|---|---|',
+        ]
+        for label in ('base', 'head'):
+            values = samples[label][kind]
+            med = medians[label][kind]
+            runs = ', '.join(str(v['p50_ms']) for v in values) or 'none'
+            if med is None:
+                lines.append(f'| {label} | {runs} | - | - | - |')
+            else:
+                lines.append(
+                    f'| {label} | {runs} | {med["p50_ms"]} | {med["p99_ms"]} | {med["requests_per_second"]} |'
+                )
+        if baseline is not None:
+            b = baseline[kind]
+            lines.append(
+                f'| baseline | - | {b["p50_ms"]} | {b["p99_ms"]} | {b["requests_per_second"]} |'
+            )
+        ratio = ratios[kind]
+        if ratio is not None:
+            lines.append('')
+            lines.append(
+                f'ratio head / base: rps {ratio["requests_per_second"]}, '
+                f'p50 {ratio["p50_ms"]}, p99 {ratio["p99_ms"]}'
+            )
+        lines.append('')
+    if errors:
+        lines += ['### errors', ''] + [f'- {e}' for e in errors] + ['']
+    return report, '\n'.join(lines) + '\n'
+
+
+def run_ab(args, root: str) -> int:
+    """The base and head trees on one machine, compared by check_relative (or reported only)."""
+    base_root = str(args.base_root)
+    base_samples, head_samples, errors = measure_ab(base_root, root, args.repeats)
+    medians = {
+        'base': {kind: median_or_none(base_samples[kind]) for kind in COMPARED},
+        'head': {kind: median_or_none(head_samples[kind]) for kind in COMPARED},
+    }
+    failed = False
+    missing = [
+        f'{label} {kind}'
+        for label in ('base', 'head') for kind in COMPARED if medians[label][kind] is None
+    ]
+    if missing:
+        print('no measurement for: ' + ', '.join(missing))
+        failed = True
+
+    run_id = os.environ.get('GITHUB_RUN_ID')
+    run_attempt = os.environ.get('GITHUB_RUN_ATTEMPT')
+    base_commit = git_commit(base_root)
+    head_commit = git_commit(root)
+    for kind in COMPARED:
+        base_med, head_med = medians['base'][kind], medians['head'][kind]
+        error = None
+        if base_med is None or head_med is None:
+            error = 'no measurement'
+        elif not args.report_only:
+            try:
+                check_relative(kind, head_med, base_med)
+            except ValueError as relative_error:
+                error = str(relative_error)
+        record = {
+            'schema': 'CORE_PERFORMANCE_EVIDENCE_V1',
+            'workload': kind,
+            'mode': 'relative',
+            'commit': head_commit,
+            'base_commit': base_commit,
+            'run_id': run_id,
+            'run_attempt': run_attempt,
+            'result': 'pass' if error is None else 'fail',
+            'base_median': base_med,
+            'head_median': head_med,
+        }
+        if error is not None:
+            record['error'] = error
+            failed = True
+        print('CORE_PERFORMANCE_EVIDENCE_V1 ' + json.dumps(record, sort_keys=True))
+
+    if not args.report_only:
+        snapshot = {
+            'schema': 'CORE_PERFORMANCE_EVIDENCE_V1',
+            'workload': 'snapshot',
+            'mode': 'relative',
+            'commit': head_commit,
+            'base_commit': base_commit,
+            'run_id': run_id,
+            'run_attempt': run_attempt,
+            'base_median': None,
+            'head_median': None,
+        }
+        try:
+            run_workload('snapshot', root)
+            snapshot['result'] = 'pass'
+        except ValueError as snapshot_error:
+            snapshot['result'] = 'fail'
+            snapshot['error'] = str(snapshot_error)
+            failed = True
+        print('CORE_PERFORMANCE_EVIDENCE_V1 ' + json.dumps(snapshot, sort_keys=True))
+
+    baseline_path = args.baseline if args.baseline is not None else Path(root) / BASELINE_PATH
+    try:
+        baseline = load_baseline(baseline_path)
+    except ValueError:
+        baseline = None
+
+    report, markdown = ab_report(
+        args.base_ref, args.head_ref, base_commit, head_commit, args.repeats,
+        base_samples, head_samples, errors, baseline,
+        None if args.report_only else REGRESSION_THRESHOLD,
+    )
+    if args.report_dir is not None:
+        args.report_dir.mkdir(parents=True, exist_ok=True)
+        (args.report_dir / 'perf-ab.json').write_text(json.dumps(report, indent=2) + '\n')
+        (args.report_dir / 'perf-ab.md').write_text(markdown)
+    summary = os.environ.get('GITHUB_STEP_SUMMARY')
+    if summary:
+        with open(summary, 'a') as handle:
+            handle.write(markdown)
+    print(markdown)
+    return 1 if failed else 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, default=Path('.'))
     parser.add_argument('--baseline', type=Path, default=None)
     parser.add_argument('--write-baseline', action='store_true')
     parser.add_argument('--repeats', type=int, default=REPEATS)
+    parser.add_argument('--base-root', type=Path, default=None)
+    parser.add_argument('--base-ref', type=str, default='')
+    parser.add_argument('--head-ref', type=str, default='')
+    parser.add_argument('--report-dir', type=Path, default=None)
+    parser.add_argument('--report-only', action='store_true')
     args = parser.parse_args(argv)
     if args.repeats < 1:
         parser.error('--repeats must be 1 or more')
     root = str(args.root)
+    if args.base_root is not None:
+        return run_ab(args, root)
     baseline_path = args.baseline if args.baseline is not None else Path(root) / BASELINE_PATH
 
     baseline = None
