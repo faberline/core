@@ -19,6 +19,7 @@ mod gke_drill_leader_loss;
 mod gke_drill_partition;
 mod gke_drill_rolling_upgrade;
 mod lifecycle_render;
+mod membership_executor;
 mod placement;
 mod prune_unserved_api_is_scoped;
 mod reconcile_once_does_not_assume_leadership;
