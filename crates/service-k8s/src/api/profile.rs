@@ -14,3 +14,7 @@ pub use crate::domain::config_env::{
     config_env, config_map, env_from, secret_volume_mounts, secret_volumes, ConfigEnv,
     ConfigEnvError, SecretMount, SecretRef, SECRET_MOUNT_ROOT,
 };
+
+pub use crate::domain::instance_conditions::{
+    instance_conditions, DomainReadiness, InstanceFacts, STANDARD_CONDITION_TYPES,
+};
