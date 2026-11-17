@@ -103,3 +103,39 @@ fn without_shard_id_peers_use_the_old_ordinal_math() {
         "http://svc-7.svc-hl:7373"
     );
 }
+
+#[test]
+fn a_shard_pod_beyond_the_initial_replicas_boots_as_a_joiner() {
+    let d = dims(3, 3, 3, "svc-s1-3").with_shard_id(1);
+    let t = ClusterTopology::from_dims(&d, "svc", "svc-s1-hl", 7373, &[], "http").unwrap();
+    assert!(t.joiner);
+    assert_eq!(t.node_id, NodeId::new(3));
+    assert!(t.membership.voters().is_empty());
+    assert!(t.membership.learners().is_empty());
+    assert_eq!(t.peers.len(), 3);
+    for replica in 0..3u64 {
+        assert_eq!(
+            t.peers.get(&NodeId::new(replica)).unwrap(),
+            &format!("http://svc-s1-{replica}.svc-s1-hl:7373")
+        );
+    }
+}
+
+#[test]
+fn a_shard_pod_inside_the_initial_replicas_is_not_a_joiner() {
+    let d = dims(3, 3, 3, "svc-s1-2").with_shard_id(1);
+    let t = ClusterTopology::from_dims(&d, "svc", "svc-s1-hl", 7373, &[], "http").unwrap();
+    assert!(!t.joiner);
+    assert_eq!(t.node_id, NodeId::new(2));
+    assert_eq!(t.membership.voters().len(), 3);
+}
+
+#[test]
+fn without_shard_id_an_ordinal_outside_the_replicas_is_still_an_error() {
+    let d = dims(3, 3, 3, "svc-9");
+    let err = ClusterTopology::from_dims(&d, "svc", "svc-hl", 7373, &[], "http").unwrap_err();
+    assert!(
+        format!("{err:#}").contains("outside REPLICAS_PER_SHARD"),
+        "error was: {err:#}"
+    );
+}

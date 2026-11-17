@@ -27,14 +27,14 @@ use tempfile::TempDir;
 use crate::support::cluster;
 use cluster::{await_leader, bind, cluster, Node, TestSm};
 
-fn h2c_client() -> reqwest::Client {
+pub(crate) fn h2c_client() -> reqwest::Client {
     reqwest::Client::builder()
         .http2_prior_knowledge()
         .build()
         .unwrap()
 }
 
-async fn status(client: &reqwest::Client, url: &str) -> RaftStatus {
+pub(crate) async fn status(client: &reqwest::Client, url: &str) -> RaftStatus {
     client
         .get(format!("{url}/raftz"))
         .send()
@@ -45,7 +45,7 @@ async fn status(client: &reqwest::Client, url: &str) -> RaftStatus {
         .expect("the status is the published shape")
 }
 
-async fn poll_status_until<F>(
+pub(crate) async fn poll_status_until<F>(
     client: &reqwest::Client,
     url: &str,
     predicate: F,
@@ -69,7 +69,7 @@ where
     }
 }
 
-async fn spawn_standalone_node(id: u64) -> Node {
+pub(crate) async fn spawn_standalone_node(id: u64) -> Node {
     let (listener, url) = bind().await;
     let sm = TestSm::new();
     let dir = TempDir::new().unwrap();

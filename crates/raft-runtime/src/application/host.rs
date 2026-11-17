@@ -63,7 +63,7 @@ pub(crate) use apply::{apply_ready, cold_start, persist_node};
 pub(crate) use backpressure::decode_backpressure;
 pub(crate) use peer_lane::PeerLaneQueue;
 pub(crate) use spawn::{HostStore, PeerWiring};
-pub(crate) use status::host_status;
+pub(crate) use status::{host_ready, host_status};
 
 use apply::tick_then_maybe_persist;
 use backpressure::{encode_backpressure, rejected_admission};

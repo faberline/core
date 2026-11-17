@@ -159,6 +159,9 @@ pub struct ClusterTopology {
     pub peers: HashMap<NodeId, String>,
     pub replicas_per_shard: u32,
     pub shard_index: u32,
+    /// The pod is outside the initial membership: it starts with an empty
+    /// membership, never campaigns, and waits for the leader to add it.
+    pub joiner: bool,
 }
 
 /// Refuse any peer URL scheme but `http` and `https`, so a malformed scheme
@@ -201,7 +204,8 @@ impl ClusterTopology {
         }
         let shard_index = dims.shard_index()?;
         let node_id = NodeId::new(u64::from(dims.replica_index()?));
-        if node_id.get() >= u64::from(replicas_per_shard) {
+        let joiner = dims.shard_id.is_some() && node_id.get() >= u64::from(replicas_per_shard);
+        if !joiner && node_id.get() >= u64::from(replicas_per_shard) {
             bail!("POD_NAME ordinal resolves outside REPLICAS_PER_SHARD");
         }
 
@@ -254,18 +258,23 @@ impl ClusterTopology {
             peers.insert(id, url);
         }
 
-        let membership = Membership::new(
-            (0..u64::from(voter_count)).map(NodeId::new).collect(),
-            (u64::from(voter_count)..u64::from(replicas_per_shard))
-                .map(NodeId::new)
-                .collect(),
-        );
+        let membership = if joiner {
+            Membership::new(Vec::new(), Vec::new())
+        } else {
+            Membership::new(
+                (0..u64::from(voter_count)).map(NodeId::new).collect(),
+                (u64::from(voter_count)..u64::from(replicas_per_shard))
+                    .map(NodeId::new)
+                    .collect(),
+            )
+        };
         Ok(Self {
             node_id,
             membership,
             peers,
             replicas_per_shard,
             shard_index,
+            joiner,
         })
     }
 }
