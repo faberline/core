@@ -19,4 +19,5 @@ pub(crate) mod membership_port;
 pub(crate) mod profile;
 pub(crate) mod reshard;
 pub(crate) mod rollout;
+pub(crate) mod shard_map;
 pub mod trust_bundle;
