@@ -111,8 +111,16 @@ pub use interfaces::operator::Error;
 #[cfg(feature = "controller")]
 pub use application::access_reconcile::{reconcile_access, AccessReport};
 #[cfg(feature = "controller")]
+pub use application::membership::{run_membership_step, run_membership_step_as_leader};
+#[cfg(feature = "controller")]
 pub use domain::access::{AccessObjectKind, AccessOutcome, AccessStore};
+#[cfg(feature = "controller")]
+pub use domain::membership_port::{
+    MembershipError, MembershipExecutor, Progress, RaftAdminClient, StepResult,
+};
 #[cfg(feature = "controller")]
 pub use infrastructure::access_kubernetes_store::{KubernetesAccessStore, ACCESS_FIELD_MANAGER};
 #[cfg(feature = "controller")]
 pub use infrastructure::access_store::InMemoryAccessStore;
+#[cfg(feature = "controller")]
+pub use infrastructure::membership_executor::{KubeMembershipExecutor, MembershipNaming};
