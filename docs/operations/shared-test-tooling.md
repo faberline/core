@@ -104,7 +104,10 @@ open them.
   `perf` in `crates/e2e-support` (API: `PerfGate`, `Threshold`, `Measurement`,
   `Bound`).
 - The security test templates (auth, authorization, TLS rotation) become the
-  module `security` in `crates/e2e-support`.
+  module `security` in `crates/e2e-support`. The auth and authorization
+  templates are `assert_rejects_missing_credential`,
+  `assert_rejects_wrong_role` and `assert_accepts_credential`; TLS rotation is
+  still a later piece.
 
 Each module takes its thresholds and credentials as parameters. No default is
 ever lowered to make a repo pass.
