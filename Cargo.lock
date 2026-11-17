@@ -4805,6 +4805,7 @@ version = "0.5.1"
 dependencies = [
  "anyhow",
  "crc32fast",
+ "http 1.4.0",
 ]
 
 [[package]]
