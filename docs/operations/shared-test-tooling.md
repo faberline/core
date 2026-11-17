@@ -100,8 +100,9 @@ open them.
 
 ## Later pieces
 
-- The performance gate helper (from lumen `perf_gate.rs`) becomes the module
-  `perf` in `crates/e2e-support`.
+- The performance gate helper (from lumen `perf_gate.rs`) is the module
+  `perf` in `crates/e2e-support` (API: `PerfGate`, `Threshold`, `Measurement`,
+  `Bound`).
 - The security test templates (auth, authorization, TLS rotation) become the
   module `security` in `crates/e2e-support`.
 
