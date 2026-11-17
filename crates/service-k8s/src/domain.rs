@@ -21,4 +21,5 @@ pub(crate) mod profile;
 pub(crate) mod reshard;
 pub(crate) mod rollout;
 pub(crate) mod shard_map;
+pub(crate) mod shard_migration;
 pub mod trust_bundle;

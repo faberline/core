@@ -95,6 +95,9 @@ pub use domain::reshard::{
 pub use domain::shard_map::{
     rebuild_shard_map, PodShardReport, ShardMap, ShardMapError, SHARD_MAP_KEY,
 };
+pub use domain::shard_migration::{
+    plan_shard_migration, ShardMigrationError, ShardMigrationPlan, StatefulSetShape,
+};
 #[cfg(feature = "certificate")]
 pub use infrastructure::certificate::csr::RcgenCsrGenerator;
 #[cfg(feature = "certificate")]
