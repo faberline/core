@@ -1,0 +1,1 @@
+mod collector_runtime_contract;
