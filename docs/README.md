@@ -30,5 +30,6 @@ root. It is checked by the workspace's rust-arch contract
 | Service kit | [service-http](domain/service-http.md), [service-auth](domain/service-auth.md), [service-observability](domain/service-observability.md), [service-executor](domain/service-executor.md), [service-collector](domain/service-collector.md), [service-projection](domain/service-projection.md), [service-backup](domain/service-backup.md), [service-k8s](domain/service-k8s.md), [service-mcp](domain/service-mcp.md) |
 | Telemetry wire | [metrics-prometheus](domain/metrics-prometheus.md), [metrics-remote-write](domain/metrics-remote-write.md), [transport-otlp](domain/transport-otlp.md) |
 | Tokens | [claim-token](domain/claim-token.md) |
+| Test tooling | [e2e-support](domain/e2e-support.md) |
 | CLI and tooling | [cli-std](domain/cli-std.md), [openapi-codegen](domain/openapi-codegen.md), [build-stamp](domain/build-stamp.md), [compass](domain/compass.md) |
 | UI | [surface](domain/surface.md) (shared kernel), [ui-runtime](domain/ui-runtime.md) |
