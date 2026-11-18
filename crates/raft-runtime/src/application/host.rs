@@ -47,6 +47,7 @@ mod shutdown_report;
 mod snapshot_compaction;
 mod spawn;
 mod status;
+mod transitions;
 mod voter_barriers;
 
 pub use backpressure::ProposalBackpressure;
@@ -97,6 +98,7 @@ pub(crate) struct Shared {
     pub(crate) cfg: HostConfig,
     pub(crate) rpc_tracker: Arc<RpcTracker>,
     pub(crate) latched_failure: StdMutex<Option<StorageFailed>>,
+    pub(crate) last_view: StdMutex<transitions::NodeView>,
     pub(crate) undeliverable_never_addressed: AtomicU64,
     pub(crate) proposal_rejected_before_routing: AtomicU64,
     pub(crate) proposal_rejected_before_append: AtomicU64,
@@ -169,7 +171,18 @@ impl Shared {
         Ok(guard)
     }
 
+    /// Log the election-visible changes of `node` since the last step.
+    fn observe(&self, node: &RaftNode) {
+        let after = transitions::NodeView::of(node);
+        let before = std::mem::replace(&mut *self.last_view.lock().unwrap(), after);
+        let list = transitions::transitions(before, after);
+        if !list.is_empty() {
+            transitions::log_transitions(self.id, self.group_id.as_str(), &list);
+        }
+    }
+
     pub(crate) fn persist(&self, node: &RaftNode) -> Result<(), StorageFailed> {
+        self.observe(node);
         if let Some(err) = self.latched_failure.lock().unwrap().clone() {
             return Err(err);
         }

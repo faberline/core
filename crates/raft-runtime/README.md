@@ -114,3 +114,11 @@ writes so idle ticks do not create avoidable fsync pressure.
 - Source: `crates/raft-runtime/src/infrastructure/store.rs`,
   `crates/raft-runtime/src/infrastructure/applied_index_store.rs`
 - Evidence: raft-core/runtime restart, seed, and store tests
+
+## Election log lines
+
+`raft-runtime` writes one `info` line for each election start, each vote
+answered or received, and each term or leader change that a node sees. The
+target is `raft_runtime::election`. Turn them on with
+`RUST_LOG=raft_runtime::election=info` and off with
+`RUST_LOG=raft_runtime::election=off`.

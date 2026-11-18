@@ -30,14 +30,23 @@ pub(crate) async fn request_vote(
         })
         .into_response();
     }
-    Json(match take_reply(&mut n, env.from) {
+    let resp = match take_reply(&mut n, env.from) {
         Some(RaftMsg::VoteResp(r)) => r,
         _ => VoteResp {
             term: Term::new(0),
             granted: false,
         },
-    })
-    .into_response()
+    };
+    tracing::info!(
+        target: "raft_runtime::election",
+        node = s.id.get(),
+        group = s.group_id.as_str(),
+        candidate = env.from.get(),
+        term = resp.term.get(),
+        granted = resp.granted,
+        "raft: vote answered"
+    );
+    Json(resp).into_response()
 }
 
 impl Shared {

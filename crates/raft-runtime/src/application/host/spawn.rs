@@ -101,6 +101,7 @@ impl RaftHost {
             propose_timeout: cfg.propose_timeout(),
             snapshot_rpc_timeout,
         });
+        let last_view = transitions::NodeView::of(&node);
         let shared = Arc::new(Shared {
             id,
             group_id,
@@ -117,6 +118,7 @@ impl RaftHost {
             cfg,
             rpc_tracker: Arc::new(RpcTracker::default()),
             latched_failure: StdMutex::new(None),
+            last_view: StdMutex::new(last_view),
             undeliverable_never_addressed: AtomicU64::new(0),
             proposal_rejected_before_routing: AtomicU64::new(0),
             proposal_rejected_before_append: AtomicU64::new(0),
