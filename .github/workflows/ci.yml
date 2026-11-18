@@ -218,7 +218,7 @@ jobs:
           tool: cargo-llvm-cov@0.9.1
       - if: ${{ !cancelled() && needs.test-select.outputs.test-coverage == 'true' }}
         run: cargo llvm-cov --workspace --locked --exclude service-k8s --exclude openapi-codegen --exclude service-backup --json --summary-only --output-path target/coverage.json -- --include-ignored
-      - uses: faberline/aw/.github/actions/coverage@49df274a62a227fd7b6f635f4ebf3ed4e81df349 # S8
+      - uses: faberline/aw/.github/actions/coverage@4340a382c73351cffff85edba7079e4c24adf3db # S8
         if: ${{ !cancelled() && needs.test-select.outputs.test-coverage == 'true' }}
         with:
           summary: target/coverage.json
@@ -230,7 +230,7 @@ jobs:
           GITHUB_STEP_SUMMARY: /dev/null
         run: |
           set -euo pipefail
-          gh api -H 'Accept: application/vnd.github.raw' 'repos/faberline/aw/contents/.github/actions/coverage/check.sh?ref=49df274a62a227fd7b6f635f4ebf3ed4e81df349' > "$RUNNER_TEMP/check.sh"
+          gh api -H 'Accept: application/vnd.github.raw' 'repos/faberline/aw/contents/.github/actions/coverage/check.sh?ref=4340a382c73351cffff85edba7079e4c24adf3db' > "$RUNNER_TEMP/check.sh"
           chmod +x "$RUNNER_TEMP/check.sh"
           sed -E 's/^line = [0-9.]+.*/line = 100.00/' aw.toml > "$RUNNER_TEMP/aw-raised.toml"
           status=0
