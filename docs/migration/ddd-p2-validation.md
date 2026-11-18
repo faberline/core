@@ -30,8 +30,10 @@ The checks used Cargo and rustc 1.96.1. The commands ran from the core root:
 ```sh
 cargo test --offline --locked --workspace --all-features --no-fail-fast
 cargo clippy --offline --locked --workspace --all-targets --all-features
-uv run --script /Users/chrischeng/faberlines/workspace/scripts/meta/rust_arch_contract.py check --repo /Users/chrischeng/faberlines/core --base refactor/ddd-p1 --strict
+uv run --script "$WORKSPACE/scripts/meta/rust_arch_contract.py" check --repo . --base refactor/ddd-p1 --strict
 ```
+
+In the last command, `WORKSPACE` is the root of the workspace checkout that holds `scripts/meta/`.
 
 The `UV_CACHE_DIR` and `npm_config_cache` paths were temporary task directories.
 This lets generated-client tests write caches within the permitted files.
