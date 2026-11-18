@@ -28,3 +28,6 @@ pub use crate::infrastructure::manifest::derived_rbac::{derive_rbac_rules, Deriv
 pub use crate::infrastructure::manifest::operator_install::{
     operator_install, InstallError, InstallOptions,
 };
+
+#[cfg(feature = "controller")]
+pub use crate::application::operator::profile_service::{ProfileApi, ProfileService};
