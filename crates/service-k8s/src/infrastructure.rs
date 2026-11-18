@@ -12,6 +12,8 @@ pub(crate) mod lease;
 pub(crate) mod manifest;
 #[cfg(feature = "controller")]
 pub(crate) mod membership_executor;
+#[cfg(feature = "raft-admin-http")]
+pub(crate) mod raft_admin_http;
 #[cfg(feature = "controller")]
 pub(crate) mod resize;
 pub mod trust_bundle;

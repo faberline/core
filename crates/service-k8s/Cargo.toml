@@ -15,8 +15,10 @@ path = "src/lib.rs"
 # surface without changing the default build or the source-compatible adapter.
 default = ["full"]
 render-only = []
-controller = ["render-only", "dep:kube", "dep:k8s-openapi", "dep:axum", "dep:metrics-prometheus", "dep:cli-std"]
-certificate = ["dep:rcgen", "dep:x509-parser", "dep:kube", "dep:k8s-openapi"]
+controller = ["render-only", "raft-admin-http", "dep:kube", "dep:k8s-openapi", "dep:axum", "dep:metrics-prometheus", "dep:cli-std"]
+# The HTTP client of the Raft membership admin routes (#431).
+raft-admin-http = ["dep:reqwest"]
+certificate = ["dep:rcgen","dep:x509-parser", "dep:kube", "dep:k8s-openapi"]
 gcp-cas-client = ["certificate", "dep:reqwest", "dep:serde_urlencoded"]
 # Compatibility alias retained for downstream manifests.
 gcp-cas = ["full"]
