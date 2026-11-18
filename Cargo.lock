@@ -1600,9 +1600,13 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 name = "e2e-support"
 version = "0.5.1"
 dependencies = [
+ "rcgen",
  "reqwest",
+ "rustls",
  "serde_json",
+ "time",
  "tokio",
+ "tokio-rustls",
 ]
 
 [[package]]
