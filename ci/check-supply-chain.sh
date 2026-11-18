@@ -24,7 +24,9 @@ cargo-audit --version
 
 rc=0
 cargo deny --manifest-path "$dir/Cargo.toml" --config "$root/deny.toml" check || rc=1
-cargo audit --file "$dir/Cargo.lock" || rc=1
+# cargo-deny keeps its advisory database in ~/.cargo/advisory-db; cargo-audit
+# clones into the same path and refuses a non-empty directory. Give audit its own.
+cargo audit --db "${CARGO_HOME:-$HOME/.cargo}/advisory-db-audit" --file "$dir/Cargo.lock" || rc=1
 
 if [ "$rc" -ne 0 ]; then
   echo "FAIL: supply chain check failed" >&2

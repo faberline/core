@@ -31,6 +31,7 @@ pub use api::lifecycle;
 pub use api::llm;
 #[cfg(feature = "controller")]
 pub use api::metrics;
+pub use api::profile;
 pub use api::render;
 #[cfg(feature = "controller")]
 pub use api::resize;
@@ -46,6 +47,9 @@ pub use application::certificate::reconcile::Reconciler;
 #[cfg(feature = "controller")]
 pub use application::operator::managed_service::{
     ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
+};
+pub use application::reshard::{
+    run_reshard, ReshardCluster, ReshardConfig, ReshardError, ReshardOutcome,
 };
 #[cfg(feature = "controller")]
 pub use domain::access::{
@@ -84,6 +88,21 @@ pub use domain::leadership::Election;
 pub use domain::lifecycle::{
     LifecyclePolicy, LifecyclePolicyError, ProbeTiming, TerminationBudget,
 };
+pub use domain::membership::{
+    plan_membership_step, DesiredMembership, MemberRole, MemberState, MembershipStep,
+    ObservedMembership, ReadScalingMode, ShardMembership,
+};
+pub use domain::reshard::{
+    decide_split, next_action, rollback_plan, BucketData, BucketDataError, CopyPass, CopyReport,
+    ObservedReshard, ReshardAction, ReshardState, ReshardStep, ReshardWait, RollbackAction,
+    SplitDecision, StepOutcome,
+};
+pub use domain::shard_map::{
+    rebuild_shard_map, PodShardReport, ShardMap, ShardMapError, SHARD_MAP_KEY,
+};
+pub use domain::shard_migration::{
+    plan_shard_migration, ShardMigrationError, ShardMigrationPlan, StatefulSetShape,
+};
 #[cfg(feature = "certificate")]
 pub use infrastructure::certificate::csr::RcgenCsrGenerator;
 #[cfg(feature = "certificate")]
@@ -100,8 +119,18 @@ pub use interfaces::operator::Error;
 #[cfg(feature = "controller")]
 pub use application::access_reconcile::{reconcile_access, AccessReport};
 #[cfg(feature = "controller")]
+pub use application::membership::{run_membership_step, run_membership_step_as_leader};
+#[cfg(feature = "controller")]
 pub use domain::access::{AccessObjectKind, AccessOutcome, AccessStore};
+#[cfg(feature = "controller")]
+pub use domain::membership_port::{
+    MembershipError, MembershipExecutor, Progress, RaftAdminClient, StepResult,
+};
 #[cfg(feature = "controller")]
 pub use infrastructure::access_kubernetes_store::{KubernetesAccessStore, ACCESS_FIELD_MANAGER};
 #[cfg(feature = "controller")]
 pub use infrastructure::access_store::InMemoryAccessStore;
+#[cfg(feature = "controller")]
+pub use infrastructure::membership_executor::{KubeMembershipExecutor, MembershipNaming};
+#[cfg(feature = "raft-admin-http")]
+pub use infrastructure::raft_admin_http::{HttpRaftAdminClient, RaftAdminTopology};

@@ -29,6 +29,12 @@ impl RaftHost {
     pub async fn leader(&self) -> Option<NodeId> {
         self.shared.node.lock().await.leader()
     }
+    /// True once this node is a member of its group's applied configuration and
+    /// knows a leader. A joiner outside the initial membership is not ready until
+    /// the leader has added it and it has applied that change.
+    pub async fn is_ready(&self) -> bool {
+        host_ready(&self.shared).await
+    }
     /// Return the host's current [`RaftStatus`].
     ///
     /// Returns the same value as the `/raftz` body and is a point-in-time snapshot.
@@ -65,48 +71,32 @@ impl RaftHost {
         &self,
         target: NodeId,
     ) -> std::result::Result<(), TransferRefused> {
-        let res = self.shared.node.lock().await.transfer_leadership(target);
-        if res.is_ok() {
-            self.shared.flush().await;
-        }
-        res
+        self.shared.do_transfer_leadership(target).await
     }
     /// Promote a caught-up learner to voter (#3646).
     pub async fn promote_learner(
         &self,
         target: NodeId,
     ) -> std::result::Result<Index, PromotionRefused> {
-        let res = self.shared.node.lock().await.promote_learner(target);
-        if res.is_ok() {
-            self.shared.flush().await;
-        }
-        res
+        self.shared.do_promote_learner(target).await
     }
     /// Demote a voter to a learner (#3646).
     pub async fn demote_voter(
         &self,
         target: NodeId,
     ) -> std::result::Result<Index, DemotionRefused> {
-        let res = self.shared.node.lock().await.demote_voter(target);
-        if res.is_ok() {
-            self.shared.flush().await;
-        }
-        res
+        self.shared.do_demote_voter(target).await
     }
     /// Remove a member from the group (#3646).
     pub async fn remove_member(
         &self,
         target: NodeId,
     ) -> std::result::Result<Index, RemovalRefused> {
-        let res = self.shared.node.lock().await.remove_member(target);
-        if res.is_ok() {
-            self.shared.flush().await;
-        }
-        res
+        self.shared.do_remove_member(target).await
     }
     /// Add or update the address of a peer (#3650).
     pub async fn upsert_peer(&self, peer: NodeId, url: String) {
-        self.shared.peer_client.set_address(peer, url);
+        self.shared.do_upsert_peer(peer, url).await;
     }
     /// Remove the address of a peer (#3650).
     pub async fn forget_peer(&self, peer: NodeId) {
@@ -122,21 +112,7 @@ impl RaftHost {
         &self,
         target: NodeId,
     ) -> std::result::Result<Index, AdmissionRefused> {
-        let is_routable = self.shared.peer_client.address(&target).is_some();
-        if !is_routable {
-            return Err(AdmissionRefused::Unroutable { target });
-        }
-        let res = {
-            let mut node = self.shared.node.lock().await;
-            match node.add_learner(target) {
-                Some(idx) => Ok(idx),
-                None => Err(AdmissionRefused::NotLeaderOrTransferInFlight),
-            }
-        };
-        if res.is_ok() {
-            self.shared.flush().await;
-        }
-        res
+        self.shared.do_add_learner(target).await
     }
     /// Watch the state machine's applied head (followers await an index here).
     pub fn applied_watch(&self) -> watch::Receiver<Index> {
@@ -159,5 +135,78 @@ impl RaftHost {
         let mut n = self.shared.node.lock().await;
         n.handle(from, raft_core::RaftMsg::VoteResp(resp));
         let _ = self.shared.persist(&n);
+    }
+}
+
+/// Membership operations on the shared host state. The HTTP admin routes call
+/// these; the `RaftHost` methods delegate to them.
+impl Shared {
+    pub(crate) async fn do_add_learner(
+        self: &Arc<Self>,
+        target: NodeId,
+    ) -> std::result::Result<Index, AdmissionRefused> {
+        let is_routable = self.peer_client.address(&target).is_some();
+        if !is_routable {
+            return Err(AdmissionRefused::Unroutable { target });
+        }
+        let res = {
+            let mut node = self.node.lock().await;
+            match node.add_learner(target) {
+                Some(idx) => Ok(idx),
+                None => Err(AdmissionRefused::NotLeaderOrTransferInFlight),
+            }
+        };
+        if res.is_ok() {
+            self.flush().await;
+        }
+        res
+    }
+
+    pub(crate) async fn do_transfer_leadership(
+        self: &Arc<Self>,
+        target: NodeId,
+    ) -> std::result::Result<(), TransferRefused> {
+        let res = self.node.lock().await.transfer_leadership(target);
+        if res.is_ok() {
+            self.flush().await;
+        }
+        res
+    }
+
+    pub(crate) async fn do_promote_learner(
+        self: &Arc<Self>,
+        target: NodeId,
+    ) -> std::result::Result<Index, PromotionRefused> {
+        let res = self.node.lock().await.promote_learner(target);
+        if res.is_ok() {
+            self.flush().await;
+        }
+        res
+    }
+
+    pub(crate) async fn do_demote_voter(
+        self: &Arc<Self>,
+        target: NodeId,
+    ) -> std::result::Result<Index, DemotionRefused> {
+        let res = self.node.lock().await.demote_voter(target);
+        if res.is_ok() {
+            self.flush().await;
+        }
+        res
+    }
+
+    pub(crate) async fn do_remove_member(
+        self: &Arc<Self>,
+        target: NodeId,
+    ) -> std::result::Result<Index, RemovalRefused> {
+        let res = self.node.lock().await.remove_member(target);
+        if res.is_ok() {
+            self.flush().await;
+        }
+        res
+    }
+
+    pub(crate) async fn do_upsert_peer(self: &Arc<Self>, peer: NodeId, url: String) {
+        self.peer_client.set_address(peer, url);
     }
 }

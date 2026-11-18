@@ -19,12 +19,16 @@ use crate::{Membership, NodeId};
 ///
 /// Build one with [`ClusterDims::new`], or read it from the process
 /// environment with [`ClusterDims::from_env`].
+///
+/// An optional `SHARD_ID` says the pod belongs to a StatefulSet of one shard:
+/// the shard is `SHARD_ID` and the replica is the pod ordinal, with no division.
 #[derive(Debug, Clone)]
 pub struct ClusterDims {
     shard_count: u32,
     replicas_per_shard: u32,
     voter_count: u32,
     pod_name: String,
+    shard_id: Option<u32>,
 }
 
 impl ClusterDims {
@@ -41,7 +45,19 @@ impl ClusterDims {
             replicas_per_shard,
             voter_count,
             pod_name: pod_name.into(),
+            shard_id: None,
         }
+    }
+
+    /// Mark the pod as a replica of shard `shard_id` (`SHARD_ID`).
+    pub fn with_shard_id(mut self, shard_id: u32) -> Self {
+        self.shard_id = Some(shard_id);
+        self
+    }
+
+    /// `SHARD_ID`, when the pod belongs to a per-shard StatefulSet.
+    pub fn shard_id(&self) -> Option<u32> {
+        self.shard_id
     }
 
     /// `SHARD_COUNT`: how many shards the StatefulSet's pods are spread over.
@@ -99,14 +115,21 @@ impl ClusterDims {
         Ok(prefix)
     }
 
-    /// `ordinal % shard_count` — which shard this pod belongs to.
+    /// Which shard this pod belongs to: `SHARD_ID` when set, else
+    /// `ordinal % shard_count`.
     pub fn shard_index(&self) -> Result<u32> {
+        if let Some(id) = self.shard_id {
+            return Ok(id);
+        }
         Ok(self.pod_ordinal()? % self.shard_count)
     }
 
-    /// `ordinal / shard_count` — this pod's replica index within its shard
-    /// (== the raft node id).
+    /// This pod's replica index within its shard (== the raft node id): the
+    /// pod ordinal when `SHARD_ID` is set, else `ordinal / shard_count`.
     pub fn replica_index(&self) -> Result<u32> {
+        if self.shard_id.is_some() {
+            return self.pod_ordinal();
+        }
         Ok(self.pod_ordinal()? / self.shard_count)
     }
 
@@ -171,9 +194,15 @@ impl ClusterTopology {
         if voter_count == 0 || voter_count > replicas_per_shard {
             bail!("VOTER_COUNT must be in 1..=REPLICAS_PER_SHARD");
         }
+        if let Some(id) = dims.shard_id {
+            if id >= shard_count {
+                bail!("SHARD_ID {id} must be less than SHARD_COUNT {shard_count}");
+            }
+        }
         let shard_index = dims.shard_index()?;
         let node_id = NodeId::new(u64::from(dims.replica_index()?));
-        if node_id.get() >= u64::from(replicas_per_shard) {
+        let joiner = dims.shard_id.is_some() && node_id.get() >= u64::from(replicas_per_shard);
+        if !joiner && node_id.get() >= u64::from(replicas_per_shard) {
             bail!("POD_NAME ordinal resolves outside REPLICAS_PER_SHARD");
         }
 
@@ -215,19 +244,27 @@ impl ClusterTopology {
                 Some(addr) if addr.contains(':') => format!("{scheme}://{addr}"),
                 Some(addr) => format!("{scheme}://{addr}:{peer_port}"),
                 None => {
-                    let ordinal = peer_ordinal(shard_count, shard_index, replica);
+                    let ordinal = if dims.shard_id.is_some() {
+                        replica
+                    } else {
+                        peer_ordinal(shard_count, shard_index, replica)
+                    };
                     format!("{scheme}://{prefix}-{ordinal}.{headless_service}:{peer_port}")
                 }
             };
             peers.insert(id, url);
         }
 
-        let membership = Membership::new(
-            (0..u64::from(voter_count)).map(NodeId::new).collect(),
-            (u64::from(voter_count)..u64::from(replicas_per_shard))
-                .map(NodeId::new)
-                .collect(),
-        );
+        let membership = if joiner {
+            Membership::new(Vec::new(), Vec::new())
+        } else {
+            Membership::new(
+                (0..u64::from(voter_count)).map(NodeId::new).collect(),
+                (u64::from(voter_count)..u64::from(replicas_per_shard))
+                    .map(NodeId::new)
+                    .collect(),
+            )
+        };
         Ok(Self {
             node_id,
             membership,
@@ -235,6 +272,12 @@ impl ClusterTopology {
             replicas_per_shard,
             shard_index,
         })
+    }
+
+    /// True when the pod is outside the initial membership: it starts with an
+    /// empty membership, never campaigns, and waits for the leader to add it.
+    pub fn is_joiner(&self) -> bool {
+        self.membership.voters().is_empty() && self.membership.learners().is_empty()
     }
 }
 

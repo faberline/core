@@ -13,6 +13,7 @@ pub mod lifecycle;
 pub mod llm;
 #[cfg(feature = "controller")]
 pub mod metrics;
+pub mod profile;
 pub mod render;
 #[cfg(feature = "controller")]
 pub mod resize;

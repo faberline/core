@@ -7,9 +7,11 @@ mod infrastructure;
 
 pub use domain::{
     env_count, evidence_line, is_dns_label, is_lower_hex, mounts_named, named,
-    normalize_runtime_image_id, Identity, PoolPlacement, EVIDENCE_PREFIX,
+    normalize_runtime_image_id, Bound, Identity, Measurement, PerfGate, PoolPlacement, Threshold,
+    EVIDENCE_PREFIX,
 };
 pub use infrastructure::{
+    assert_accepts_credential, assert_rejects_missing_credential, assert_rejects_wrong_role,
     evidence, namespace, required, say, wait_for, wait_pods_exist, wait_ready, Api, DumpOnFailure,
     Kube, Step,
 };

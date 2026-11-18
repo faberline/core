@@ -32,12 +32,16 @@ use crate::domain::capacity::{
 pub const ENV_POD_NAME: &str = "POD_NAME";
 pub const ENV_POD_NAMESPACE: &str = "POD_NAMESPACE";
 pub const ENV_SHARD_COUNT: &str = "SHARD_COUNT";
+pub const ENV_SHARD_ID: &str = "SHARD_ID";
 pub const ENV_REPLICAS_PER_SHARD: &str = "REPLICAS_PER_SHARD";
 pub const ENV_VOTER_COUNT: &str = "VOTER_COUNT";
 
 pub mod common;
 pub mod deployment;
+pub mod derived_rbac;
+pub mod instance_render;
 pub mod monitoring;
+pub mod operator_install;
 pub mod placement;
 pub mod projected_token;
 pub mod rbac;
@@ -46,7 +50,10 @@ pub mod stateful_instance;
 pub mod workload_plan;
 mod workloads;
 
-pub use monitoring::{prometheus_rule, service_monitor, AlertRule, PrometheusRule, ServiceMonitor};
+pub use monitoring::{
+    default_alert_rules, prometheus_rule, service_monitor, AlertRule, DefaultAlertRule,
+    PrometheusRule, ServiceMonitor, DEFAULT_ALERT_NAMES,
+};
 pub use placement::{
     FailureDomainPlacement, HostSeparation, PlacementError, PlacementPlan, Toleration, ZoneSpread,
 };
@@ -54,8 +61,9 @@ pub use render_ctx::RenderCtx;
 pub use workload_plan::*;
 pub use workloads::{
     cron_job, horizontal_pod_autoscaler, service_statefulset,
-    service_statefulset_with_service_links, sharded_statefulset, CronJob, HorizontalPodAutoscaler,
-    ServiceStatefulSet, ShardedStatefulSet,
+    service_statefulset_with_service_links, sharded_services, sharded_statefulset,
+    sharded_statefulsets, CronJob, HorizontalPodAutoscaler, ServiceStatefulSet, ShardedServices,
+    ShardedStatefulSet,
 };
 
 /// The owner reference that ties a child to its CR (cascading GC). `uid` comes

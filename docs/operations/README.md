@@ -6,9 +6,26 @@ core change against them, and how to run the architecture checker.
 The design of the shared end-to-end test tooling is in
 [shared-test-tooling.md](shared-test-tooling.md).
 
-Test coverage follows standard S8: the baseline is in [aw.toml](../../aw.toml), the job is `test: workspace, coverage` in .github/workflows/ci.yml, and `line` is raised in the same pull request that raises the measured value, never lowered.
+Test coverage follows standard S8: the baseline is in [aw.toml](../../aw.toml), the job is `test: coverage and semver` in .github/workflows/ci.yml, and `line` is raised in the same pull request that raises the measured value, never lowered.
 
 The stability promise (semantic versioning, no breaking change before 2.0.0) and the stable surface of every crate are in [stability-promise.md](stability-promise.md).
+
+The failure drill plan (leader loss, node loss, network partition, disk full, backup and restore, rolling upgrade, 24 hour soak) is in [failure-drills.md](failure-drills.md).
+
+Measured performance numbers, the regression threshold and how to refresh the baseline: [performance.md](performance.md).
+
+The configuration of the operator crates (every environment variable, flag and key) is in [configuration-reference.md](configuration-reference.md). The sizes and rates per operator crate, each with its proof or the words "not measured", are in [limits.md](limits.md).
+
+The threat model of core (auth, TLS, audit, secrets, supply chain) is in [threat-model.md](threat-model.md).
+
+What to do when a default alert of `service-k8s` fires (what it means, how to check, how to fix, when to escalate) is in [runbooks.md](runbooks.md).
+
+The cargo-deny advisories of the real workspace, with a recommendation each, are in [supply-chain-advisories.md](supply-chain-advisories.md).
+
+## Backup, restore and upgrade
+
+- [backup-restore.md](backup-restore.md): what backup and restore parts exist on main, and which are not available.
+- [upgrade.md](upgrade.md): how to move a workspace to a new tag, and how to roll back.
 
 ## Releasing
 

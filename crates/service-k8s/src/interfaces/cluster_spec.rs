@@ -13,9 +13,9 @@ pub struct ClusterSpec {
     pub image_pull_policy: Option<String>,
     #[serde(default = "one")]
     pub shard_count: u32,
-    /// Starting/minimum members per shard. With startup-static raft-runtime
-    /// membership this is also the fixed desired value; a future membership
-    /// controller may plan whole replica layers above this floor.
+    /// Desired members per shard. Changing it is a Raft membership transition
+    /// (add learner, promote, demote, remove) that the controller completes one
+    /// step at a time before it changes the pod count.
     #[serde(default = "one")]
     pub replicas_per_shard: u32,
     #[serde(default = "one")]

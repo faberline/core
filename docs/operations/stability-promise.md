@@ -40,6 +40,7 @@ From 1.0.0, core follows semantic versioning. No breaking change is made before 
 | `service-mcp` | `service_mcp::{McpApplication, HttpTransportConfig, streamable_http_router, serve_stdio}` | Model Context Protocol (streamable HTTP, stdio) | none | none | docs/domain/service-mcp.md |
 | `service-observability` | `service_observability::{config, filesystem, jsonl, logging, metrics, process}` | JSON log line (`axiom.service.log.v1`) | none | none | docs/domain/service-observability.md |
 | `service-projection` | `service_projection::{application, domain, infrastructure}` | JSON state, three published OpenAPI schemas | `indexes/<name>/state.json`, format version 1 | none | docs/domain/service-projection.md |
+| `shard-routing` | `shard_routing::{DEFAULT_VIRTUAL_BUCKET_COUNT, VirtualBucketShardMap, ShardRoute, SearchShardTarget, shard_index, document_shard_index, shard_host, BucketMove, bucket_moves}` | none | none | none | not measured |
 | `storage-durable` | `storage_durable::{atomic, capacity, data_root, framed_log, fsync, generation, snapshot_store}` | none | framed log and snapshot files | none | docs/domain/storage-durable.md |
 | `storage-object` | `storage_object::{error, object, store, local, gcs, s3, scratch}` | none | object store (local, GCS, S3) | none | docs/domain/storage-object.md |
 | `storage-segment` | `storage_segment::{application, domain}` | JSON catalog page | `<prefix>/pages/<sha256>.json` pages | none | docs/domain/storage-segment.md |

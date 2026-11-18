@@ -126,13 +126,14 @@ packages_table=$(data_rows | cut -d'|' -f1 | sort -u | tr '\n' ' ' | sed 's/ $//
 packages_expected=$(echo "$crates" | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//')
 [ "$packages_table" = "$packages_expected" ] || fail "table packages are '$packages_table', expected '$packages_expected'"
 
-matrix_include=$(awk '/^  test-feature-rows:/{f=1; next} /^  [a-z0-9-]+:$/{f=0} f' "$ci_file" \
-  | { grep -E '^ *- \{ group: ' || true; })
-matrix_packages_list=$(echo "$matrix_include" | sed -E 's/.*packages: "([^"]*)".*/\1/' | tr ' ' '\n' | grep -v '^$' || true)
+rows_line=$(awk '/^  test-feature-rows:/{f=1; next} /^  [a-z0-9-]+:$/{f=0} f' "$ci_file" \
+  | { grep -E '^ *run: bash ci/run-feature-group\.sh ' || true; })
+[ "$(echo "$rows_line" | grep -c .)" = "1" ] || fail "job test-feature-rows must have exactly one 'bash ci/run-feature-group.sh' step"
+matrix_packages_list=$(echo "$rows_line" | sed -E 's/.*run-feature-group\.sh //' | tr ' ' '\n' | grep -v '^$' || true)
 packages_matrix=$(echo "$matrix_packages_list" | sort | tr '\n' ' ' | sed 's/ $//')
-[ "$packages_matrix" = "$packages_expected" ] || fail "matrix of test-feature-rows is '$packages_matrix', expected '$packages_expected'"
+[ "$packages_matrix" = "$packages_expected" ] || fail "step of test-feature-rows names '$packages_matrix', expected '$packages_expected'"
 dups=$(echo "$matrix_packages_list" | sort | uniq -d)
-[ -z "$dups" ] || fail "matrix of test-feature-rows must hold each of the 9 packages exactly once"
+[ -z "$dups" ] || fail "step of test-feature-rows must hold each of the 9 packages exactly once"
 
 # (d) a dry run per package prints one DRY line per row; the sum is 31.
 dry_total=0
@@ -185,10 +186,8 @@ rc=0
 bash "$runner" no-such-crate >/dev/null 2>&1 || rc=$?
 [ "$rc" = "2" ] || fail "no-such-crate exited $rc, expected 2"
 
-# (g) the job has exactly 3 include lines, and the groups are group-a, group-b, group-c.
-[ "$(echo "$matrix_include" | grep -c .)" = "3" ] || fail "matrix of test-feature-rows must have exactly 3 include lines"
-groups_matrix=$(echo "$matrix_include" | sed -E 's/.*group: ([a-z0-9-]+),.*/\1/' | sort | tr '\n' ' ' | sed 's/ $//')
-[ "$groups_matrix" = "group-a group-b group-c" ] || fail "groups of test-feature-rows are '$groups_matrix', expected 'group-a group-b group-c'"
+# (g) the job has no matrix: all 9 packages run in one step.
+if awk '/^  test-feature-rows:/{f=1; next} /^  [a-z0-9-]+:$/{f=0} f' "$ci_file" | grep -q 'matrix'; then fail "job test-feature-rows must not use a matrix"; fi
 
 # (h) the group runner runs every package of a group, even after a failure,
 # prints one GROUP line and one step-summary line per package, and fails at the end.
@@ -219,14 +218,5 @@ echo "$out" | tail -n 1 | grep -qx "GROUPS: 2 passed, 0 failed" || fail "last li
 rc=0
 bash "$group_runner" >/dev/null 2>&1 || rc=$?
 [ "$rc" = "2" ] || fail "group runner without a package exited $rc, expected 2"
-
-# (i) the grouping is balanced by measured time (main run 43455059281):
-# index-text is not the longest package, so each group is pinned here.
-group_packages() {
-  echo "$matrix_include" | grep -E "group: $1," | sed -E 's/.*packages: "([^"]*)".*/\1/' | tr ' ' '\n' | sort | tr '\n' ' ' | sed 's/ $//'
-}
-[ "$(group_packages group-a)" = "service-backup ui-runtime" ] || fail "group-a packages are '$(group_packages group-a)', expected 'service-backup ui-runtime'"
-[ "$(group_packages group-b)" = "cli-std index-text storage-object" ] || fail "group-b packages are '$(group_packages group-b)', expected 'cli-std index-text storage-object'"
-[ "$(group_packages group-c)" = "service-auth service-http service-observability transport-h2c" ] || fail "group-c packages are '$(group_packages group-c)', expected 'service-auth service-http service-observability transport-h2c'"
 
 echo "feature rows ok"

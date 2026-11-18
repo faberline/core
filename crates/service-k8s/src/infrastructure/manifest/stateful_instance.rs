@@ -12,7 +12,7 @@ use thiserror::Error;
 
 use super::{
     common::ServicePodTemplate, RenderCtx, ServiceStatefulSet, ENV_POD_NAME, ENV_POD_NAMESPACE,
-    ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_VOTER_COUNT,
+    ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_SHARD_ID, ENV_VOTER_COUNT,
 };
 
 mod renderer;
@@ -24,19 +24,39 @@ pub use renderer::stateful_instance;
 pub fn render_compat_service_statefulset(
     p: ServiceStatefulSet,
 ) -> Result<Value, StatefulInstanceError> {
-    render_compat_service_statefulset_impl(p, None)
+    render_compat_service_statefulset_impl(p, None, None)
+}
+
+/// The StatefulSet name of one shard: the base name for shard 0, else
+/// `<base>-s<shard>`.
+pub(super) fn shard_name(base: &str, shard: u32) -> String {
+    if shard == 0 {
+        base.to_owned()
+    } else {
+        format!("{base}-s{shard}")
+    }
+}
+
+/// Render one shard of a per-shard StatefulSet set: `replicas_per_shard`
+/// pods, `SHARD_ID=<shard>` and the `shard` label on every object.
+pub(super) fn render_shard_statefulset(
+    p: ServiceStatefulSet,
+    shard: u32,
+) -> Result<Value, StatefulInstanceError> {
+    render_compat_service_statefulset_impl(p, None, Some(shard))
 }
 
 pub(super) fn render_compat_service_statefulset_with_links(
     p: ServiceStatefulSet,
     enable_service_links: bool,
 ) -> Result<Value, StatefulInstanceError> {
-    render_compat_service_statefulset_impl(p, Some(enable_service_links))
+    render_compat_service_statefulset_impl(p, Some(enable_service_links), None)
 }
 
 fn render_compat_service_statefulset_impl(
     p: ServiceStatefulSet,
     enable_service_links: Option<bool>,
+    shard: Option<u32>,
 ) -> Result<Value, StatefulInstanceError> {
     let ServiceStatefulSet {
         cx,
@@ -83,6 +103,9 @@ fn render_compat_service_statefulset_impl(
         json!({ "name": ENV_VOTER_COUNT, "value": voter_count.to_string() }),
         json!({ "name": headless_env_key, "value": headless_service }),
     ];
+    if let Some(n) = shard {
+        env.push(json!({ "name": ENV_SHARD_ID, "value": n.to_string() }));
+    }
     env.extend(extra_env);
 
     let pod = ServicePodTemplate {
@@ -117,13 +140,19 @@ fn render_compat_service_statefulset_impl(
             read_only: claim.read_only,
         })
     });
-    let mut plan = StatefulInstancePlan::without_storage(
-        cx,
-        headless_service,
-        shard_count * replicas_per_shard,
-        pod,
-    );
-    plan.name = name.into();
+    let replicas = if shard.is_some() {
+        replicas_per_shard
+    } else {
+        shard_count * replicas_per_shard
+    };
+    let mut plan = StatefulInstancePlan::without_storage(cx, headless_service, replicas, pod);
+    plan.name = match shard {
+        Some(n) => shard_name(name, n),
+        None => name.into(),
+    };
+    if let Some(n) = shard {
+        plan.selector.insert("shard".into(), n.to_string());
+    }
     plan.storage = storage;
     plan.affinity = affinity;
     plan.node_selector = node_selector;

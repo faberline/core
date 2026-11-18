@@ -16,9 +16,10 @@ pub mod models_emit;
 pub mod rsmap;
 pub mod server_emit;
 
-use crate::domain::ir::build_type_map;
+use crate::domain::ir::names::{to_pascal, NameRegistry};
 use crate::domain::ir::openapi::Spec;
 use crate::domain::ir::operations;
+use crate::domain::ir::TypeMap;
 use crate::domain::{
     FileBearerAuth, GenOptions, GeneratedFile, GeneratedOutput, ManagedAuth, RustTarget,
 };
@@ -73,6 +74,28 @@ pub fn generate_for_target_with_managed_auth(
     generate_impl(spec_json, opts, Some(target), None, Some(auth))
 }
 
+/// Top-level names that the generated `client.rs` and `server.rs` define
+/// themselves, or import explicitly or use as private items in `client.rs`.
+/// A component schema may not use one of them.
+const RESERVED_TYPE_NAMES: &[&str] = &[
+    "AdmissionState",
+    "ApiError",
+    "ApiResult",
+    "Arc",
+    "Client",
+    "ClientError",
+    "ClientResult",
+    "Condvar",
+    "Duration",
+    "Instant",
+    "Mutex",
+    "NdjsonBodyReader",
+    "NdjsonRecords",
+    "PrivateTrust",
+    "SlotGuard",
+    "TransportPolicy",
+];
+
 fn generate_impl(
     spec_json: &str,
     opts: &GenOptions,
@@ -81,7 +104,7 @@ fn generate_impl(
     managed: Option<&ManagedAuth>,
 ) -> Result<GeneratedOutput, SpecParseError> {
     let spec: Spec = serde_json::from_str(spec_json).map_err(SpecParseError::new)?;
-    let tm = build_type_map(&spec);
+    let tm = build_rust_type_map(&spec);
     let ops = operations::build(&spec);
 
     let mut files = Vec::new();
@@ -119,6 +142,29 @@ fn generate_impl(
     };
     out.warnings = warnings;
     Ok(out)
+}
+
+/// Like `build_type_map`, but a component whose PascalCase name is in
+/// `RESERVED_TYPE_NAMES` gets the suffix `Schema` (`ApiError` -> `ApiErrorSchema`).
+fn build_rust_type_map(spec: &Spec) -> TypeMap {
+    let mut reg = NameRegistry::new();
+    let mut names = std::collections::BTreeMap::new();
+    // Pass 1: every component that is not reserved keeps its normal name.
+    for key in spec.components.schemas.keys() {
+        let base = to_pascal(key);
+        if !RESERVED_TYPE_NAMES.contains(&base.as_str()) {
+            names.insert(key.clone(), reg.unique(&base));
+        }
+    }
+    // Pass 2: reserved components get the suffix. A clash with a name from
+    // pass 1 (a component really named `ApiErrorSchema`) gets `_2` from the registry.
+    for key in spec.components.schemas.keys() {
+        let base = to_pascal(key);
+        if RESERVED_TYPE_NAMES.contains(&base.as_str()) {
+            names.insert(key.clone(), reg.unique(&format!("{base}Schema")));
+        }
+    }
+    TypeMap { names }
 }
 
 fn emit_mod(opts: &GenOptions) -> String {
@@ -350,5 +396,149 @@ mod tests {
                 assert_eq!(fa.contents, fb.contents);
             }
         }
+    }
+
+    /// Component `ApiError` collides with the `ApiError<E>` enum that `client.rs` defines.
+    const SPEC_API_ERROR: &str = r##"{
+      "openapi": "3.0.0",
+      "info": { "title": "Mini", "version": "1.0.0" },
+      "paths": {
+        "/tasks/{id}": {
+          "get": {
+            "operationId": "getTask",
+            "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+            "responses": {
+              "200": { "description": "ok", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Task" } } } },
+              "404": { "description": "gone", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ApiError" } } } }
+            }
+          }
+        }
+      },
+      "components": { "schemas": {
+        "Task": { "type": "object", "properties": { "id": { "type": "string" } }, "required": ["id"] },
+        "ApiError": { "type": "object", "properties": { "message": { "type": "string" } }, "required": ["message"] }
+      } }
+    }"##;
+
+    /// A spec whose only paths are empty and whose components are one object each, named `keys`.
+    fn object_components_spec(keys: &[&str]) -> String {
+        let schemas: Vec<String> = keys
+            .iter()
+            .map(|k| {
+                format!(
+                    r#""{k}": {{ "type": "object", "properties": {{ "a": {{ "type": "string" }} }}, "required": ["a"] }}"#
+                )
+            })
+            .collect();
+        format!(
+            r#"{{ "openapi": "3.0.0", "info": {{ "title": "Mini", "version": "1.0.0" }}, "paths": {{}}, "components": {{ "schemas": {{ {} }} }} }}"#,
+            schemas.join(", ")
+        )
+    }
+
+    #[test]
+    fn component_named_api_error_gets_the_schema_suffix() {
+        let out = generate(SPEC_API_ERROR, &opts()).unwrap();
+        let models = file(&out, "models.rs");
+        let client = file(&out, "client.rs");
+        assert!(
+            models.contains("pub struct ApiErrorSchema {"),
+            "models.rs:\n{models}"
+        );
+        assert!(
+            !models.contains("pub struct ApiError {"),
+            "models.rs:\n{models}"
+        );
+        // The runtime enum keeps its name.
+        assert!(
+            client.contains("pub enum ApiError<E> {"),
+            "client.rs:\n{client}"
+        );
+        // The 404 payload is the component type, under its suffixed name.
+        assert!(
+            client.contains("Status404(ApiErrorSchema)"),
+            "client.rs:\n{client}"
+        );
+        assert!(
+            !client.contains("Status404(ApiError)"),
+            "client.rs:\n{client}"
+        );
+    }
+
+    #[test]
+    fn every_reserved_name_gets_the_schema_suffix() {
+        let spec = object_components_spec(RESERVED_TYPE_NAMES);
+        let out = generate(&spec, &opts()).unwrap();
+        let models = file(&out, "models.rs");
+        for n in RESERVED_TYPE_NAMES {
+            assert!(
+                models.contains(&format!("pub struct {n}Schema {{")),
+                "{n}: models.rs:\n{models}"
+            );
+            assert!(
+                !models.contains(&format!("pub struct {n} {{")),
+                "{n}: models.rs:\n{models}"
+            );
+        }
+    }
+
+    #[test]
+    fn client_imports_and_private_items_are_reserved() {
+        // Explicit `use` imports and private items that `client.rs` defines
+        // at top level. A component of the same name would shadow or clash.
+        let names = [
+            "AdmissionState",
+            "Arc",
+            "Condvar",
+            "Duration",
+            "Instant",
+            "Mutex",
+            "NdjsonBodyReader",
+            "SlotGuard",
+        ];
+        let spec = object_components_spec(&names);
+        let out = generate(&spec, &opts()).unwrap();
+        let models = file(&out, "models.rs");
+        for n in names {
+            assert!(
+                models.contains(&format!("pub struct {n}Schema {{")),
+                "{n}: models.rs:\n{models}"
+            );
+            assert!(
+                !models.contains(&format!("pub struct {n} {{")),
+                "{n}: models.rs:\n{models}"
+            );
+        }
+    }
+
+    #[test]
+    fn schema_suffix_does_not_depend_on_component_order() {
+        let spec = object_components_spec(&["ApiError", "ApiErrorSchema"]);
+        let out = generate(&spec, &opts()).unwrap();
+        let models = file(&out, "models.rs");
+        assert!(
+            models.contains("pub struct ApiErrorSchema {"),
+            "models.rs:\n{models}"
+        );
+        assert!(
+            models.contains("pub struct ApiErrorSchema_2 {"),
+            "models.rs:\n{models}"
+        );
+        assert!(
+            !models.contains("pub struct ApiError {"),
+            "models.rs:\n{models}"
+        );
+    }
+
+    #[test]
+    fn spec_without_a_reserved_name_is_unchanged() {
+        for json in [SPEC, SPEC_32_QUERY] {
+            let spec: Spec = serde_json::from_str(json).unwrap();
+            let old = crate::domain::ir::build_type_map(&spec);
+            let new = build_rust_type_map(&spec);
+            assert_eq!(old.names, new.names);
+        }
+        let out = generate(SPEC, &opts()).unwrap();
+        assert!(file(&out, "models.rs").contains("pub struct Pet {"));
     }
 }
