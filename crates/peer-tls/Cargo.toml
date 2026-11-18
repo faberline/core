@@ -12,7 +12,6 @@ path = "src/lib.rs"
 [dependencies]
 anyhow = { workspace = true }
 rustls = "0.23"
-rustls-pemfile = "2"
 # Hot-reload validation (#3112). A candidate leaf has to be inspected for its
 # validity window, SPIFFE SANs, and fingerprint before it is allowed to serve;
 # rustls answers "would this handshake?" but not "what is in this certificate".

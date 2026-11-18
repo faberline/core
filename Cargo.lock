@@ -3382,7 +3382,6 @@ dependencies = [
  "anyhow",
  "rcgen",
  "rustls",
- "rustls-pemfile",
  "sha2 0.10.9",
  "tempfile",
  "time",

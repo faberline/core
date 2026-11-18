@@ -137,3 +137,25 @@ fn builds_rustls_peer_configs_from_pem_material() {
         .expect("client config should build");
     std::fs::remove_dir_all(cfg.cert().parent().unwrap()).ok();
 }
+
+#[test]
+fn load_private_key_reports_a_file_with_no_key() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("key.pem");
+    std::fs::write(
+        &path,
+        "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----\n",
+    )
+    .unwrap();
+    let err = load_private_key(&path).unwrap_err();
+    assert!(err.to_string().contains("no private key found at"));
+}
+
+#[test]
+fn load_cert_chain_reports_a_file_with_no_certificate() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("cert.pem");
+    std::fs::write(&path, "not pem\n").unwrap();
+    let err = load_cert_chain(&path).unwrap_err();
+    assert!(err.to_string().contains("no certificates found at"));
+}

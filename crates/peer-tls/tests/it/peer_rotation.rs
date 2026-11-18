@@ -132,9 +132,11 @@ async fn peer_rotation_leaves_a_client_without_a_certificate_no_way_in() {
     // A client that trusts us but presents nothing. On a peer port that is not
     // an anonymous request, it is an unauthenticated replication peer.
     let anonymous = {
+        use rustls::pki_types::pem::PemObject;
+        use rustls::pki_types::CertificateDer;
         let mut roots = rustls::RootCertStore::empty();
         let anchors =
-            rustls_pemfile::certs(&mut ca.pem().as_bytes()).collect::<Result<Vec<_>, _>>();
+            CertificateDer::pem_slice_iter(ca.pem().as_bytes()).collect::<Result<Vec<_>, _>>();
         for anchor in anchors.unwrap() {
             roots.add(anchor).unwrap();
         }
