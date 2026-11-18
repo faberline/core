@@ -9,8 +9,34 @@ use crate::diagnostic::Diagnostic;
 use crate::domain::analysis_cache::{AnalysisCache, CacheFuture};
 use crate::type_inference::SemanticModel;
 
-/// Current schema version. Bump when PersistedEntry layout changes.
-const SCHEMA_VERSION: u32 = 1;
+/// Current schema version. Bump when PersistedEntry layout changes. Every file
+/// starts with the header (`MAGIC`, then this version as a little-endian u32),
+/// and the postcard bytes follow it.
+const SCHEMA_VERSION: u32 = 2;
+
+/// First four bytes of every cache file. A file without it (for example one
+/// written before schema version 2) is a cache miss.
+const MAGIC: [u8; 4] = *b"CMPC";
+const HEADER_LEN: usize = 8;
+
+/// Encodes `value` as a cache file: the header, then the postcard bytes.
+fn encode<T: Serialize>(value: &T) -> Result<Vec<u8>, postcard::Error> {
+    let mut out = Vec::with_capacity(HEADER_LEN + 64);
+    out.extend_from_slice(&MAGIC);
+    out.extend_from_slice(&SCHEMA_VERSION.to_le_bytes());
+    out.extend(postcard::to_stdvec(value)?);
+    Ok(out)
+}
+
+/// Decodes a cache file. Returns `None` when the header or the version does not match.
+fn decode<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Option<T> {
+    let rest = bytes.strip_prefix(&MAGIC)?;
+    let (version, body) = rest.split_at_checked(4)?;
+    if u32::from_le_bytes(version.try_into().ok()?) != SCHEMA_VERSION {
+        return None;
+    }
+    postcard::from_bytes(body).ok()
+}
 
 /// Data persisted to disk for a single source file.
 #[derive(Serialize, Deserialize)]
@@ -80,7 +106,7 @@ impl DiskCache {
 
         let idx_path = self.cache_dir.join(&entry.cache_file);
         let bytes = fs::read(&idx_path).ok()?;
-        let persisted: PersistedEntry = bincode::deserialize(&bytes).ok()?;
+        let persisted: PersistedEntry = decode(&bytes)?;
 
         if persisted.version != SCHEMA_VERSION {
             return None;
@@ -108,7 +134,7 @@ impl DiskCache {
             diagnostics: diagnostics.to_vec(),
         };
 
-        let bytes = match bincode::serialize(&entry) {
+        let bytes = match encode(&entry) {
             Ok(b) => b,
             Err(e) => {
                 tracing::warn!("disk cache serialize error: {e}");
@@ -149,7 +175,7 @@ impl DiskCache {
     pub async fn flush_manifest(&self) {
         let manifest = self.manifest.read().await;
         let manifest_path = self.cache_dir.join("manifest.bin");
-        match bincode::serialize(&*manifest) {
+        match encode(&*manifest) {
             Ok(bytes) => {
                 if let Err(e) = fs::write(&manifest_path, bytes) {
                     tracing::warn!("manifest write error: {e}");
@@ -192,7 +218,7 @@ impl DiskCache {
             Ok(b) => b,
             Err(_) => return CacheManifest::default(),
         };
-        bincode::deserialize(&bytes).unwrap_or_default()
+        decode(&bytes).unwrap_or_default()
     }
 }
 
@@ -325,6 +351,29 @@ mod tests {
         cache.cleanup_stale().await;
 
         assert!(!cache_dir.join("orphan.idx").exists());
+    }
+
+    #[tokio::test]
+    async fn test_manifest_without_magic_is_ignored() {
+        let tmp = TempDir::new().unwrap();
+        let cache_dir = tmp.path().join("cache");
+        let path = PathBuf::from("/fake/src/manifest.py");
+        let hash: u64 = 555;
+
+        {
+            let cache = DiskCache::new(cache_dir.clone());
+            cache.store(&path, hash, &make_model(), &[]).await;
+            cache.flush_manifest().await;
+        }
+
+        // Drop the magic: the rest is a manifest without a header.
+        let manifest_path = cache_dir.join("manifest.bin");
+        let bytes = fs::read(&manifest_path).unwrap();
+        assert!(bytes.starts_with(b"CMPC"));
+        fs::write(&manifest_path, &bytes[4..]).unwrap();
+
+        let cache = DiskCache::new(cache_dir);
+        assert!(!cache.is_fresh(&path, hash).await);
     }
 
     #[tokio::test]

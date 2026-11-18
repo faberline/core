@@ -13,7 +13,6 @@ version = 2
 # Ignore only these advisories. Each has no fixed upgrade; re-check by 2027-02-16 (desk decision, faberline/core#353).
 ignore = [
     { id = "RUSTSEC-2025-0012", reason = "backoff is unmaintained; no fixed upgrade. Re-check by 2027-02-16." },
-    { id = "RUSTSEC-2025-0141", reason = "bincode is unmaintained; no fixed upgrade. Its replacement is a separate issue. Re-check by 2027-02-16." },
     { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained; no fixed upgrade. Re-check by 2027-02-16." },
     { id = "RUSTSEC-2024-0384", reason = "instant is unmaintained; no fixed upgrade. Re-check by 2027-02-16." },
     { id = "RUSTSEC-2025-0134", reason = "rustls-pemfile is unmaintained; no fixed upgrade. Its replacement is a separate issue. Re-check by 2027-02-16." },
