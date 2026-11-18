@@ -9,4 +9,5 @@ pub(crate) mod condition;
 pub(crate) mod membership;
 #[cfg(feature = "controller")]
 pub(crate) mod operator;
+pub(crate) mod reshard;
 pub mod trust_bundle;

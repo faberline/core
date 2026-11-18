@@ -48,6 +48,9 @@ pub use application::certificate::reconcile::Reconciler;
 pub use application::operator::managed_service::{
     ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
 };
+pub use application::reshard::{
+    run_reshard, ReshardCluster, ReshardConfig, ReshardError, ReshardOutcome,
+};
 #[cfg(feature = "controller")]
 pub use domain::access::{
     access_policy_condition, validate_policy, AccessGrant, AccessGrantError, AccessRule,
