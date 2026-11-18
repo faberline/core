@@ -18,3 +18,8 @@ pub use crate::domain::config_env::{
 pub use crate::domain::instance_conditions::{
     instance_conditions, DomainReadiness, InstanceFacts, STANDARD_CONDITION_TYPES,
 };
+
+pub use crate::infrastructure::manifest::instance_render::{
+    render_instance, InstanceRenderError, INSTANCE_COMPONENT, INSTANCE_DATA_MOUNT_PATH,
+    INSTANCE_DATA_VOLUME, INSTANCE_HTTP_PORT,
+};
