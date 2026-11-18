@@ -18,6 +18,8 @@ The configuration of the operator crates (every environment variable, flag and k
 
 The threat model of core (auth, TLS, audit, secrets, supply chain) is in [threat-model.md](threat-model.md).
 
+What to do when a default alert of `service-k8s` fires (what it means, how to check, how to fix, when to escalate) is in [runbooks.md](runbooks.md).
+
 The cargo-deny advisories of the real workspace, with a recommendation each, are in [supply-chain-advisories.md](supply-chain-advisories.md).
 
 ## Backup, restore and upgrade
