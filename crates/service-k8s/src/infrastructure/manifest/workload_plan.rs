@@ -32,7 +32,7 @@ pub use network::{
 };
 pub use pod::{ContainerPlan, PodPlan, PodRuntimePolicy};
 pub use service::{ServiceAccountPlan, ServicePlan, ServicePortPlan};
-pub use service_account_identity::ServiceAccountIdentityPlan;
+pub use service_account_identity::{InvalidWorkloadIdentity, ServiceAccountIdentityPlan};
 pub use workload::{
     CronJobPlan, DaemonSetPlan, DeploymentPlan, PersistentVolumeClaimPlan, PodDisruptionBudgetPlan,
     StatefulSetPlan,
@@ -72,8 +72,6 @@ pub enum WorkloadPlanError {
     NegativeValue(String, &'static str),
     #[error("workload {0} must have a non-empty command")]
     EmptyCommand(String),
-    #[error("service account {0} has an invalid Workload Identity email")]
-    InvalidWorkloadIdentity(String),
 }
 
 /// One ordered set of typed Kubernetes children for a managed service.
@@ -154,7 +152,6 @@ impl<'a> WorkloadPlan<'a> {
                     "automountServiceAccountToken": plan.automount_service_account_token,
                 })),
                 PlannedObject::ServiceAccountIdentity(plan) => {
-                    plan.validate()?;
                     rendered.push(plan.render(self.cx));
                 }
                 PlannedObject::Service(plan) => rendered.push(plan.render(self.cx)),

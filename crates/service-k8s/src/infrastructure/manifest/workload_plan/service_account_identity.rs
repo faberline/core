@@ -3,11 +3,17 @@
 use std::collections::BTreeMap;
 
 use serde_json::{json, Value};
+use thiserror::Error;
 
-use super::{RenderCtx, WorkloadPlanError};
+use super::RenderCtx;
 
 const WORKLOAD_IDENTITY_ANNOTATION: &str = "iam.gke.io/gcp-service-account";
 const GCP_SERVICE_ACCOUNT_SUFFIX: &str = ".iam.gserviceaccount.com";
+
+/// A Workload Identity email that is not `<name>@<project>.iam.gserviceaccount.com`.
+#[derive(Debug, Error, PartialEq, Eq)]
+#[error("Workload Identity email {0:?} is not <name>@<project>.iam.gserviceaccount.com")]
+pub struct InvalidWorkloadIdentity(pub String);
 
 /// A ServiceAccount with metadata annotations. It never mounts an API token:
 /// `automountServiceAccountToken` is always `false`, and a pod that needs a
@@ -31,15 +37,28 @@ impl ServiceAccountIdentityPlan {
         }
     }
 
-    pub fn with_annotation(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
-        self.annotations.insert(key.into(), value.into());
-        self
+    /// Sets one annotation. The Workload Identity key is checked here, so no
+    /// path can render an invalid binding.
+    pub fn with_annotation(
+        mut self,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) -> Result<Self, InvalidWorkloadIdentity> {
+        let key = key.into();
+        let value = value.into();
+        if key == WORKLOAD_IDENTITY_ANNOTATION && !is_gcp_service_account_email(&value) {
+            return Err(InvalidWorkloadIdentity(value));
+        }
+        self.annotations.insert(key, value);
+        Ok(self)
     }
 
     /// Binds the ServiceAccount to a Google service account through
-    /// `iam.gke.io/gcp-service-account`. The email is checked when the
-    /// workload plan renders, not here.
-    pub fn with_workload_identity(self, gcp_service_account_email: impl Into<String>) -> Self {
+    /// `iam.gke.io/gcp-service-account`. An empty or malformed email is an error.
+    pub fn with_workload_identity(
+        self,
+        gcp_service_account_email: impl Into<String>,
+    ) -> Result<Self, InvalidWorkloadIdentity> {
         self.with_annotation(WORKLOAD_IDENTITY_ANNOTATION, gcp_service_account_email)
     }
 
@@ -53,15 +72,6 @@ impl ServiceAccountIdentityPlan {
 
     pub fn annotations(&self) -> &BTreeMap<String, String> {
         &self.annotations
-    }
-
-    pub(super) fn validate(&self) -> Result<(), WorkloadPlanError> {
-        match self.annotations.get(WORKLOAD_IDENTITY_ANNOTATION) {
-            Some(email) if !is_gcp_service_account_email(email) => Err(
-                WorkloadPlanError::InvalidWorkloadIdentity(self.name.clone()),
-            ),
-            _ => Ok(()),
-        }
     }
 
     pub(super) fn render(self, cx: &RenderCtx<'_>) -> Value {

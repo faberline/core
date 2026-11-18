@@ -4,10 +4,10 @@ use serde_json::json;
 use service_k8s::render::projected_token::ProjectedServiceAccountToken;
 use service_k8s::render::{
     ClusterRoleBindingPlan, ContainerPlan, CronJobPlan, DeploymentPlan, FqdnMatchPlan,
-    FqdnNetworkPolicyPlan, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
-    PodPlan, PodRuntimePolicy, RbacRulePlan, RenderCtx, RoleBindingPlan, RolePlan,
-    ServiceAccountIdentityPlan, ServiceAccountPlan, ServiceAccountSubjectPlan, ServicePlan,
-    ServicePortPlan, WorkloadPlan, WorkloadPlanError,
+    FqdnNetworkPolicyPlan, InvalidWorkloadIdentity, NetworkPeerPlan, NetworkPolicyPlan,
+    NetworkPortPlan, NetworkRulePlan, PodPlan, PodRuntimePolicy, RbacRulePlan, RenderCtx,
+    RoleBindingPlan, RolePlan, ServiceAccountIdentityPlan, ServiceAccountPlan,
+    ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan, WorkloadPlan, WorkloadPlanError,
 };
 
 fn context() -> RenderCtx<'static> {
@@ -373,9 +373,11 @@ fn typed_plan_rejects_negative_cron_job_execution_policy_knobs() {
 fn typed_plan_renders_identity_separated_backup_and_restore_service_accounts() {
     let cx = context();
     let backup_sa = ServiceAccountIdentityPlan::new("sample-backup", "backup")
-        .with_workload_identity("sample-backup@demo-project.iam.gserviceaccount.com");
+        .with_workload_identity("sample-backup@demo-project.iam.gserviceaccount.com")
+        .expect("valid workload identity");
     let restore_sa = ServiceAccountIdentityPlan::new("sample-restore", "restore")
-        .with_workload_identity("sample-restore@demo-project.iam.gserviceaccount.com");
+        .with_workload_identity("sample-restore@demo-project.iam.gserviceaccount.com")
+        .expect("valid workload identity");
     let backup_role = RolePlan::new("sample-backup", "backup").with_rule(RbacRulePlan::new(
         vec!["demo.axiom.dev".into()],
         vec!["backupsets".into()],
@@ -488,7 +490,6 @@ fn service_account_identity_without_annotation_renders_like_service_account_plan
 
 #[test]
 fn service_account_identity_rejects_a_malformed_workload_identity() {
-    let cx = context();
     for email in [
         "",
         "sample-backup",
@@ -497,16 +498,11 @@ fn service_account_identity_rejects_a_malformed_workload_identity() {
         "sample-backup@.iam.gserviceaccount.com",
         "sample backup@demo-project.iam.gserviceaccount.com",
     ] {
-        let mut plan = WorkloadPlan::new(&cx);
-        plan.add_service_account_identity(
-            ServiceAccountIdentityPlan::new("sample-backup", "backup")
-                .with_workload_identity(email),
-        );
         assert_eq!(
-            plan.render(),
-            Err(WorkloadPlanError::InvalidWorkloadIdentity(
-                "sample-backup".into()
-            )),
+            ServiceAccountIdentityPlan::new("sample-backup", "backup")
+                .with_workload_identity(email)
+                .map(|_| ()),
+            Err(InvalidWorkloadIdentity(email.into())),
             "email {email:?} must be rejected"
         );
     }
