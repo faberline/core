@@ -41,6 +41,7 @@ pub mod deployment;
 pub mod derived_rbac;
 pub mod instance_render;
 pub mod monitoring;
+pub mod operator_install;
 pub mod placement;
 pub mod projected_token;
 pub mod rbac;
