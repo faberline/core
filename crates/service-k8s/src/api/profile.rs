@@ -25,3 +25,6 @@ pub use crate::infrastructure::manifest::instance_render::{
 };
 
 pub use crate::infrastructure::manifest::derived_rbac::{derive_rbac_rules, DerivedRule};
+pub use crate::infrastructure::manifest::operator_install::{
+    operator_install, InstallError, InstallOptions,
+};
