@@ -35,6 +35,7 @@ tokio-rustls = "0.26"
 rcgen = "0.13"
 syn = { version = "2", features = ["full", "visit"] }
 tempfile = "3"
+tracing-subscriber = { workspace = true, features = ["fmt"] }
 
 [lints]
 workspace = true

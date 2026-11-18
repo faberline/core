@@ -20,6 +20,17 @@ impl Shared {
         };
         if let Some(reply) = reply {
             let mut n = self.node.lock().await;
+            if let RaftMsg::VoteResp(r) = &reply {
+                tracing::info!(
+                    target: "raft_runtime::election",
+                    node = self.id.get(),
+                    group = self.group_id.as_str(),
+                    voter = to.get(),
+                    term = r.term.get(),
+                    granted = r.granted,
+                    "raft: vote result received"
+                );
+            }
             n.handle(to, reply);
             if self.persist(&n).is_err() {
                 return;

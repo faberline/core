@@ -6,6 +6,7 @@ mod concurrent_host;
 mod conf_state_durability;
 mod durable_layout;
 mod durable_persistence;
+mod election_logging;
 mod fenced_assignment;
 mod full_group_restart;
 mod group_identity;
