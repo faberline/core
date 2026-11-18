@@ -19,6 +19,7 @@ mod gke_drill_leader_loss;
 mod gke_drill_partition;
 mod gke_drill_rolling_upgrade;
 mod gke_drill_upgrade_rollback;
+mod gke_drill_zero_downtime;
 mod lifecycle_render;
 mod membership_executor;
 mod placement;
