@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// The code of the rule that produced a diagnostic, such as `"PY001"` or
 /// `"CUSTOM_NO_PRINT"`.
 ///
-/// It serializes as a bare string, so the JSON and bincode formats of
+/// It serializes as a bare string, so the JSON and postcard formats of
 /// [`Diagnostic`](crate::Diagnostic) are the same as when the code was a
 /// `String`.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]

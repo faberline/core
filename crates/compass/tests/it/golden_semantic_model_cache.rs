@@ -1,9 +1,10 @@
 //! Golden bytes for the semantic-model disk cache (compass E3).
 //!
-//! `DiskCache` writes one bincode `PersistedEntry` per source file: the schema
+//! `DiskCache` writes one postcard entry per source file, behind a magic and a
+//! schema version (8-byte header, then the postcard `PersistedEntry`): the schema
 //! version, the content hash, the `SemanticModel` (with its `ScopeId` and
-//! `SymbolId`s) and the file's diagnostics. These literals pin today's bytes so
-//! that the id newtypes and the `RuleCode` change keep old caches readable.
+//! `SymbolId`s) and the file's diagnostics. These literals pin the bytes so that
+//! a change of the id newtypes or the `RuleCode` is noticed.
 
 use std::path::{Path, PathBuf};
 
@@ -45,7 +46,7 @@ fn model() -> SemanticModel {
     model
 }
 
-/// bincode is not self-describing, and `quick_fixes` is skipped when empty,
+/// postcard is not self-describing, and `quick_fixes` is skipped when empty,
 /// so only a diagnostic with a fix round-trips through the cache.
 fn diagnostics() -> Vec<Diagnostic> {
     vec![Diagnostic::new(
@@ -66,15 +67,29 @@ fn diagnostics() -> Vec<Diagnostic> {
 
 const CONTENT_HASH: u64 = 0x0102_0304_0506_0708;
 
-fn only_idx_file(dir: &Path) -> Vec<u8> {
+fn only_idx_path(dir: &Path) -> PathBuf {
     let files: Vec<PathBuf> = std::fs::read_dir(dir)
         .unwrap()
         .map(|e| e.unwrap().path())
         .filter(|p| p.extension().is_some_and(|e| e == "idx"))
         .collect();
     assert_eq!(files.len(), 1, "{files:?}");
-    std::fs::read(&files[0]).unwrap()
+    files[0].clone()
 }
+
+fn only_idx_file(dir: &Path) -> Vec<u8> {
+    std::fs::read(only_idx_path(dir)).unwrap()
+}
+
+fn unhex(s: &str) -> Vec<u8> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16).unwrap())
+        .collect()
+}
+
+/// Bytes that compass wrote before schema version 2 (bincode).
+const OLD_BINCODE_ENTRY_HEX: &str = "0100000008070605040302010100000000000000000000000000000005000000000000006772656574010000000000000004000000000000000900000009000000000000002f772f6170702e7079060000000107000000000000005361792068692e00000000000000000002000000000000000000000000000000000000000400000000000000090000000100000000000000000200000000000000020000000500000000010000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000100000000000000020000000000000002000000050000000600000001000000000000000001000000000000000500000000000000677265657401000000000000000000000000000000010000000000000001000000000000000100000000000000020000000000000002000000050000000100000005000000000000005059303130020000000d00000000000000736861646f776564206e616d650100000000000000060000000000000052656e616d6501000000000000000200000000000000020000000500000008000000000000006772656574696e67";
 
 #[tokio::test]
 async fn disk_cache_entry_bytes_are_pinned() {
@@ -88,14 +103,15 @@ async fn disk_cache_entry_bytes_are_pinned() {
         .store(&source, CONTENT_HASH, &model, &diagnostics)
         .await;
     let bytes = only_idx_file(&cache_dir);
-    pin_text(&hex(&bytes), "0100000008070605040302010100000000000000000000000000000005000000000000006772656574010000000000000004000000000000000900000009000000000000002f772f6170702e7079060000000107000000000000005361792068692e00000000000000000002000000000000000000000000000000000000000400000000000000090000000100000000000000000200000000000000020000000500000000010000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000100000000000000020000000000000002000000050000000600000001000000000000000001000000000000000500000000000000677265657401000000000000000000000000000000010000000000000001000000000000000100000000000000020000000000000002000000050000000100000005000000000000005059303130020000000d00000000000000736861646f776564206e616d650100000000000000060000000000000052656e616d6501000000000000000200000000000000020000000500000008000000000000006772656574696e67");
+    assert_eq!(hex(&bytes[..8]), "434d504302000000");
+    pin_text(&hex(&bytes), "434d50430200000002888e98a8c0e080810101000567726565740100040009092f772f6170702e70790601075361792068692e00000200000400090100020002050001000000000003000001020002050601000105677265657401000101010200020501055059303130020d736861646f776564206e616d65010652656e616d650102000205086772656574696e67");
 
-    // The entry is the tuple (version, content hash, model, diagnostics).
-    let tuple = (1u32, CONTENT_HASH, &model, &diagnostics);
-    assert_eq!(bincode::serialize(&tuple).unwrap(), bytes);
+    // After the 8-byte header the entry is the tuple (version, content hash, model, diagnostics).
+    let tuple = (2u32, CONTENT_HASH, &model, &diagnostics);
+    assert_eq!(postcard::to_stdvec(&tuple).unwrap(), &bytes[8..]);
     let (version, hash, decoded_model, decoded_diags): (u32, u64, SemanticModel, Vec<Diagnostic>) =
-        bincode::deserialize(&bytes).unwrap();
-    assert_eq!((version, hash), (1, CONTENT_HASH));
+        postcard::from_bytes(&bytes[8..]).unwrap();
+    assert_eq!((version, hash), (2, CONTENT_HASH));
     assert_eq!(format!("{decoded_model:?}"), format!("{model:?}"));
     assert_eq!(format!("{decoded_diags:?}"), format!("{diagnostics:?}"));
 
@@ -108,6 +124,38 @@ async fn disk_cache_entry_bytes_are_pinned() {
     );
 }
 
+#[tokio::test]
+async fn old_bincode_cache_entry_is_a_miss() {
+    let tmp = tempfile::tempdir().unwrap();
+    let cache_dir = tmp.path().join("cache");
+    let source = PathBuf::from("/w/app.py");
+    let (model, diagnostics) = (model(), diagnostics());
+
+    let cache = DiskCache::new(cache_dir.clone());
+    cache
+        .store(&source, CONTENT_HASH, &model, &diagnostics)
+        .await;
+    // The manifest in memory still lists the entry; only the header check can reject the file.
+    std::fs::write(only_idx_path(&cache_dir), unhex(OLD_BINCODE_ENTRY_HEX)).unwrap();
+    assert!(cache.load(&source, CONTENT_HASH).await.is_none());
+}
+
+#[tokio::test]
+async fn new_cache_entry_has_magic_and_version() {
+    let tmp = tempfile::tempdir().unwrap();
+    let cache_dir = tmp.path().join("cache");
+    let source = PathBuf::from("/w/app.py");
+    let (model, diagnostics) = (model(), diagnostics());
+
+    let cache = DiskCache::new(cache_dir.clone());
+    cache
+        .store(&source, CONTENT_HASH, &model, &diagnostics)
+        .await;
+    let bytes = only_idx_file(&cache_dir);
+    assert!(bytes.starts_with(b"CMPC"));
+    assert_eq!(&bytes[4..8], &2u32.to_le_bytes());
+}
+
 #[test]
 fn semantic_model_json_bytes_are_pinned() {
     let model = model();
@@ -118,7 +166,7 @@ fn semantic_model_json_bytes_are_pinned() {
 }
 
 #[test]
-fn diagnostic_without_fixes_bincode_bytes_are_pinned() {
+fn diagnostic_without_fixes_postcard_bytes_are_pinned() {
     let diagnostic = Diagnostic::new(
         range(1, 2, 3, 4),
         DiagnosticSeverity::Error,
@@ -126,5 +174,8 @@ fn diagnostic_without_fixes_bincode_bytes_are_pinned() {
         DiagnosticCategory::Syntax,
         "syntax error",
     );
-    pin_text(&hex(&bincode::serialize(&diagnostic).unwrap()), "010000000200000003000000040000000000000005000000000000005253303031000000000c0000000000000073796e746178206572726f72");
+    pin_text(
+        &hex(&postcard::to_stdvec(&diagnostic).unwrap()),
+        "0102030400055253303031000c73796e746178206572726f72",
+    );
 }
