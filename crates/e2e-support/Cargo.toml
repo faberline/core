@@ -15,6 +15,12 @@ path = "src/lib.rs"
 serde_json = { workspace = true }
 reqwest = { workspace = true }
 tokio = { workspace = true }
+rustls = "0.23"
+tokio-rustls = "0.26"
+
+[dev-dependencies]
+rcgen = { version = "0.13", features = ["pem", "x509-parser"] }
+time = { version = "0.3", default-features = false }
 
 [lints]
 workspace = true

@@ -106,8 +106,9 @@ open them.
 - The security test templates (auth, authorization, TLS rotation) become the
   module `security` in `crates/e2e-support`. The auth and authorization
   templates are `assert_rejects_missing_credential`,
-  `assert_rejects_wrong_role` and `assert_accepts_credential`; TLS rotation is
-  still a later piece.
+  `assert_rejects_wrong_role` and `assert_accepts_credential`; the TLS
+  templates are `assert_serves_certificate`,
+  `assert_rejects_expired_certificate` and `assert_rotation`.
 
 Each module takes its thresholds and credentials as parameters. No default is
 ever lowered to make a repo pass.

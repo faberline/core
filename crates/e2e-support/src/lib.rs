@@ -11,7 +11,8 @@ pub use domain::{
     EVIDENCE_PREFIX,
 };
 pub use infrastructure::{
-    assert_accepts_credential, assert_rejects_missing_credential, assert_rejects_wrong_role,
-    evidence, namespace, required, say, wait_for, wait_pods_exist, wait_ready, Api, DumpOnFailure,
-    Kube, Step,
+    assert_accepts_credential, assert_rejects_expired_certificate,
+    assert_rejects_missing_credential, assert_rejects_wrong_role, assert_rotation,
+    assert_serves_certificate, evidence, namespace, required, say, wait_for, wait_pods_exist,
+    wait_ready, Api, DumpOnFailure, Kube, Step,
 };
