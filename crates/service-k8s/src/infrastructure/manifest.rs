@@ -38,6 +38,7 @@ pub const ENV_VOTER_COUNT: &str = "VOTER_COUNT";
 
 pub mod common;
 pub mod deployment;
+pub mod instance_render;
 pub mod monitoring;
 pub mod placement;
 pub mod projected_token;
