@@ -21,7 +21,7 @@ Measured with `cargo deny check advisories` (cargo-deny 0.20.2, RustSec database
 | RUSTSEC-2026-0461 | rmcp | 3.1.4 | `service-mcp` | 3.6.0 | Done: group A (#459) |
 | RUSTSEC-2026-0462 | rmcp | 3.1.4 | `service-mcp` | 3.9.0 | Done: group A (#459) |
 | RUSTSEC-2025-0134 | rustls-pemfile | 2.2.0 | kube-client 0.98, rustls-native-certs (`peer-tls` no longer uses it, #502) | none (unmaintained) | Done in `peer-tls` (#502). Still locked through kube-client; the ignore in `deny.toml` stays until the kube upgrade (B3) |
-| RUSTSEC-2025-0141 | bincode | 1.3.3 | `compass` (direct, `bincode = "1.3"`) | none (unmaintained) | Replace in `compass` (desk picks the crate): group B |
+| RUSTSEC-2025-0141 | bincode | 1.3.3 | `compass` (direct, `bincode = "1.3"`) | none (unmaintained) | Done: replaced by postcard 1.1 in compass (#503); the cache format has a magic and schema version 2, old files are rebuilt |
 | RUSTSEC-2024-0449 | unsafe-libyaml | 0.2.11 | serde_yaml 0.9 (`compass` direct, kube-client) | none (unmaintained) | Reasoned ignore: serde_yaml is deprecated, replace it with the kube upgrade: group B |
 | RUSTSEC-2025-0012 | backoff | 0.4.0 | kube-runtime 0.98 (`service-k8s`) | none (unmaintained) | Reasoned ignore; leaves with a kube upgrade: group B |
 | RUSTSEC-2024-0384 | instant | 0.1.13 | backoff, and notify-types (notify 7, `compass`) | none (unmaintained) | Reasoned ignore; leaves with kube and notify upgrades: group B |
@@ -54,7 +54,7 @@ One lock-file-only change fixes all of them. Command and result measured with `c
 
 For each of the 6 ids, the reason to ignore until the owner crate is replaced is in the "Enters through" column. Recommendation: a reasoned ignore `{ id = "RUSTSEC-...", reason = "<one line>" }` in `deny.toml` `[advisories] ignore`, only after the desk approves, with a follow-up per owner:
 
-- (B1) `compass`: replace `bincode` 1.3 and `serde_yaml` 0.9;
+- (B1) `compass`: `bincode` is replaced (#503); `serde_yaml` 0.9 is still open;
 - (B2) `peer-tls`: done in #502, PEM is read with `rustls::pki_types::pem`. `rustls-pemfile` stays in `Cargo.lock` through `kube-client` (B3);
 - (B3) `service-k8s`: upgrade `kube` 0.98. The registry has 5.1.0. Whether it drops backoff, instant, rustls-pemfile and unsafe-libyaml is NOT checked; the follow-up must check it;
 - (B4) `service-http`, `service-projection`: upgrade `utoipa` 4 to 5. Whether this drops proc-macro-error is NOT checked.
