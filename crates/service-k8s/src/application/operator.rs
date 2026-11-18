@@ -3,3 +3,4 @@
 
 pub(crate) mod leadership;
 pub(crate) mod managed_service;
+pub(crate) mod profile_service;
