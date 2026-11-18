@@ -26,7 +26,7 @@ RBAC object shape, not an app's permission meaning.
 
 ## Local Workflow
 
-This library has no app phase ladder. Make one bounded library change with its
+Make one bounded library change with its
 test. Put externally observable behavior in a `crates/service-k8s/tests/it/`
 module and declare it in `tests/it/main.rs`; a case that needs the `certificate`
 or `controller` feature starts with `#![cfg(feature = "…")]`. Keep internal

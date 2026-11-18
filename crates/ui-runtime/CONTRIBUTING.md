@@ -1,17 +1,7 @@
 # Contributing to ui-runtime
 
-## Brief
+How to change `crates/ui-runtime`. What the crate promises lives in
+[README.md](README.md); repository-wide rules live in the root
+[CONTRIBUTING.md](../../CONTRIBUTING.md).
 
-How to change `crates/ui-runtime`. What it promises and the work roots it owns
-live in [README.md](README.md); repository-wide authoring and verification
-rules live in the root [CONTRIBUTING.md](../../CONTRIBUTING.md).
-
-There is no phase ladder here. `leg.leg_root` resolves `apps/<project>` and
-nothing else, so a change to this crate is authored and committed directly
-rather than driven through `e2e -> impl`.
-
-## Verification
-
-| Gate | Command |
-|---|---|
-| unit + colocated tests | `cargo test -p ui-runtime` |
+Verify a change with `cargo test -p ui-runtime`.
