@@ -41,8 +41,14 @@ impl RaftNode {
                     );
                 }
             }
-        } else if self.is_voter && self.election_elapsed >= self.election_timeout {
-            self.start_election();
+        } else if self.is_voter {
+            if self.role == Role::Candidate && self.heartbeat_elapsed >= HEARTBEAT_INTERVAL_TICKS {
+                self.heartbeat_elapsed = 0;
+                self.resend_votes();
+            }
+            if self.election_elapsed >= self.election_timeout {
+                self.start_election();
+            }
         }
     }
 
