@@ -48,3 +48,14 @@ NetworkPolicy built from the `service-k8s` render that isolates `drill-0` (it se
 under the policy the probe times out (isolated) while `drill-1` stays reachable, and after the policy
 is removed `drill-0` is reachable again. It checks no write: acknowledged writes are in the plan of
 core#361. It runs in the `gke-drill` workflow with the other drills.
+
+## Upgrade-rollback drill
+
+`gke_drill_upgrade_rollback::upgrade_and_rollback_keep_the_objects_on_a_real_apiserver` applies the
+old render, then the current render, then the old render again (server-side apply), and checks that
+each object (the ServiceAccount and the Service of the probe) keeps its uid and its `spec` in all
+three states. It builds the old render from the newest `v0.*` tag on the runner (about 5 to 10
+minutes) unless `UPGRADE_ROLLBACK_OLD_RENDER` names a file. It checks no `status` and no write: the
+status proof is the in-process test `tests/it/upgrade_rollback.rs` (#373), and acknowledged writes are
+in the plan of core#361. It creates no CRD and runs no old operator binary. It runs in the
+`gke-drill` workflow with the other drills, and there is no kind row.
