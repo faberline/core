@@ -8,9 +8,11 @@ use serde_json::{json, Value};
 
 use super::common::{network_policy, NetworkPolicy};
 use super::stateful_instance::StatefulInstanceError;
+use super::AlertRule as BorrowedAlert;
 use super::{
-    client_service, headless_service, pdb, requested_resources, service_statefulset, RenderCtx,
-    ServiceStatefulSet, WorkloadVolumeClaim,
+    client_service, headless_service, pdb, prometheus_rule, requested_resources, service_monitor,
+    service_statefulset, PrometheusRule, RenderCtx, ServiceMonitor, ServiceStatefulSet,
+    WorkloadVolumeClaim,
 };
 use crate::domain::config_env::{
     config_env, config_map, env_from, secret_volume_mounts, secret_volumes, ConfigEnvError,
@@ -65,11 +67,76 @@ impl From<StatefulInstanceError> for InstanceRenderError {
     }
 }
 
+/// Severity of the standard alerts.
+const STANDARD_ALERT_SEVERITY: &str = "warning";
+
+/// A standard alert of core. `{kind}`, `{ns}` and `{name}` in `expr` and `summary` are replaced
+/// with the profile kind, the instance namespace and the instance name.
+struct StandardAlert {
+    suffix: &'static str,
+    expr: &'static str,
+    for_duration: &'static str,
+    summary: &'static str,
+}
+
+/// The standard alerts of core, in rendering order. The alert name is `<Kind><suffix>`.
+const STANDARD_ALERTS: [StandardAlert; 2] = [
+    StandardAlert {
+        suffix: "NotReady",
+        expr: "kube_statefulset_status_replicas_ready{namespace=\"{ns}\",statefulset=\"{name}\"} < kube_statefulset_replicas{namespace=\"{ns}\",statefulset=\"{name}\"}",
+        for_duration: "10m",
+        summary: "{kind} {name} has pods that are not ready",
+    },
+    StandardAlert {
+        suffix: "StorageDegraded",
+        expr: "kubelet_volume_stats_available_bytes{namespace=\"{ns}\",persistentvolumeclaim=~\"data-{name}-.*\"} / kubelet_volume_stats_capacity_bytes{namespace=\"{ns}\",persistentvolumeclaim=~\"data-{name}-.*\"} < 0.1",
+        for_duration: "10m",
+        summary: "{kind} {name} has less than 10% free storage",
+    },
+];
+
+/// One alert with owned text, so that `BorrowedAlert` can borrow it.
+struct OwnedAlert {
+    alert: String,
+    expr: String,
+    for_duration: String,
+    severity: String,
+    summary: String,
+}
+
+/// The standard alerts of core for this instance, then the alerts of the profile, in order.
+fn alert_rules<P: ServiceProfile>(ctx: &RenderCtx<'_>) -> Vec<OwnedAlert> {
+    let fill = |text: &str| {
+        text.replace("{kind}", P::KIND)
+            .replace("{ns}", ctx.ns())
+            .replace("{name}", ctx.name())
+    };
+    let mut rules: Vec<OwnedAlert> = STANDARD_ALERTS
+        .iter()
+        .map(|standard| OwnedAlert {
+            alert: format!("{}{}", P::KIND, standard.suffix),
+            expr: fill(standard.expr),
+            for_duration: standard.for_duration.to_string(),
+            severity: STANDARD_ALERT_SEVERITY.to_string(),
+            summary: fill(standard.summary),
+        })
+        .collect();
+    rules.extend(P::alerts().into_iter().map(|rule| OwnedAlert {
+        alert: rule.name,
+        expr: rule.expression,
+        for_duration: rule.for_duration,
+        severity: rule.severity,
+        summary: rule.summary,
+    }));
+    rules
+}
+
 /// Render the children of one profile instance for one shard, in this order:
 /// ConfigMap `<name>-config`, headless Service `<name>-headless`, client Service
 /// `<name>`, StatefulSet `<name>`, PodDisruptionBudget `<name>`, NetworkPolicy `<name>`
 /// (`<name>` is `ctx.name()`). It does not render a ServiceAccount, so the pods use the
-/// namespace's default one.
+/// namespace's default one. With `spec.monitoring.enabled` it appends a ServiceMonitor
+/// `<name>` and a PrometheusRule `<name>-alerts`.
 ///
 /// `validate_profile::<P>()` runs first, then the shard check (`shards != 1` is
 /// `MultiShardUnsupported`), then `config_env::<P>`.
@@ -161,7 +228,7 @@ where
         volume_claim: Some(volume_claim),
     })?;
 
-    Ok(Vec::from([
+    let mut children = Vec::from([
         config,
         headless_service(ctx, &headless_name, component, INSTANCE_HTTP_PORT),
         client_service(ctx, name, component, INSTANCE_HTTP_PORT),
@@ -175,7 +242,37 @@ where
             peer_ports: Vec::from([INSTANCE_HTTP_PORT]),
             extra_egress: Vec::new(),
         }),
-    ]))
+    ]);
+
+    if spec.monitoring.enabled {
+        children.push(service_monitor(ServiceMonitor {
+            cx: ctx,
+            name,
+            component,
+            port: "http",
+            path: "/metrics",
+            interval: "30s",
+        }));
+        let owned = alert_rules::<P>(ctx);
+        let rules = owned
+            .iter()
+            .map(|rule| BorrowedAlert {
+                alert: &rule.alert,
+                expr: &rule.expr,
+                for_duration: &rule.for_duration,
+                severity: &rule.severity,
+                summary: &rule.summary,
+            })
+            .collect();
+        children.push(prometheus_rule(PrometheusRule {
+            cx: ctx,
+            name: &format!("{name}-alerts"),
+            component,
+            group: name,
+            rules,
+        }));
+    }
+    Ok(children)
 }
 
 #[cfg(test)]
