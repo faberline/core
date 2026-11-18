@@ -810,3 +810,142 @@ fn a_voter_asked_to_campaign_at_a_stale_term_stays_where_it_is() {
          an election, or the refusal above is not about the term"
     );
 }
+
+/// Tick one node `ticks` times and deliver nothing (no `pump`), so the only
+/// messages that come out are the ones the ticks themselves produce.
+fn tick_target(bus: &mut Bus, target: NodeId, ticks: u64) {
+    for _ in 0..ticks {
+        bus.nodes.get_mut(&target).unwrap().tick();
+        bus.ticks += 1;
+    }
+}
+
+/// Both first vote requests of the target are lost: the target has campaigned
+/// at the next term and nothing has been delivered to the peers.
+fn lose_first_votes(bus: &mut Bus, leader: NodeId, target: NodeId, term: Term) {
+    bus.nodes
+        .get_mut(&leader)
+        .unwrap()
+        .transfer_leadership(target)
+        .unwrap();
+    let first = bus.nodes.get_mut(&leader).unwrap().take_outgoing();
+    deliver(bus, leader, first.into_iter().next().unwrap());
+    let votes = campaign_votes(bus, target, term);
+    drop(votes);
+}
+
+/// A lost `Vote` request is sent again by the candidate, to each peer, at the
+/// heartbeat interval, in the same term. Today it is never sent again.
+#[test]
+fn a_candidate_resends_a_lost_vote_request_at_the_next_heartbeat() {
+    let (mut bus, leader, target) = settled_group();
+    let bystander = bystander_of(leader, target);
+    let term = bus.nodes[&leader].current_term();
+    lose_first_votes(&mut bus, leader, target, term);
+
+    tick_target(&mut bus, target, raft_core::HEARTBEAT_INTERVAL_TICKS - 1);
+    assert!(
+        bus.nodes
+            .get_mut(&target)
+            .unwrap()
+            .take_outgoing()
+            .is_empty(),
+        "no resend before one full heartbeat interval"
+    );
+
+    tick_target(&mut bus, target, 1);
+    let resent = bus.nodes.get_mut(&target).unwrap().take_outgoing();
+    assert_eq!(resent.len(), 2, "one resent request to each peer");
+    let mut addressees: Vec<NodeId> = resent.iter().map(|out| out.to).collect();
+    addressees.sort();
+    let mut want = vec![leader, bystander];
+    want.sort();
+    assert_eq!(addressees, want, "the resend goes to both peers");
+    for out in &resent {
+        match &out.msg {
+            RaftMsg::Vote(request) => {
+                assert_eq!(
+                    request.term.get(),
+                    term.get() + 1,
+                    "same term as the campaign"
+                );
+                assert_eq!(request.candidate, target, "the target campaigns for itself");
+            }
+            other => panic!("a resend is a vote request; got {other:?}"),
+        }
+    }
+}
+
+/// When the resent requests get through, the candidate wins, and the group
+/// has one leader.
+#[test]
+fn a_candidate_wins_after_both_vote_requests_were_lost() {
+    let (mut bus, leader, target) = settled_group();
+    let bystander = bystander_of(leader, target);
+    let term = bus.nodes[&leader].current_term();
+    lose_first_votes(&mut bus, leader, target, term);
+
+    tick_target(&mut bus, target, raft_core::HEARTBEAT_INTERVAL_TICKS);
+    let resent = bus.nodes.get_mut(&target).unwrap().take_outgoing();
+    for out in resent {
+        deliver(&mut bus, target, out);
+    }
+    bus.pump();
+    bus.settle();
+    assert_target_leads_alone(&bus, leader, target, bystander, term);
+}
+
+/// Once a voter has granted, the candidate no longer resends to it. A leader
+/// sends `Append`, not `Vote`, so no `Vote` comes out after the win.
+#[test]
+fn a_granted_candidate_stops_resending_to_the_voter_that_granted() {
+    let (mut bus, leader, target) = settled_group();
+    let term = bus.nodes[&leader].current_term();
+    lose_first_votes(&mut bus, leader, target, term);
+
+    tick_target(&mut bus, target, raft_core::HEARTBEAT_INTERVAL_TICKS);
+    let resent = bus.nodes.get_mut(&target).unwrap().take_outgoing();
+    for out in resent {
+        if out.to == leader {
+            deliver(&mut bus, target, out);
+        }
+    }
+    bus.pump();
+    assert_eq!(
+        bus.leader(),
+        Some(target),
+        "the old leader's grant makes a majority"
+    );
+
+    tick_target(&mut bus, target, raft_core::HEARTBEAT_INTERVAL_TICKS);
+    let after = bus.nodes.get_mut(&target).unwrap().take_outgoing();
+    assert!(
+        after.iter().all(|out| !matches!(out.msg, RaftMsg::Vote(_))),
+        "a leader sends no vote request: {after:?}"
+    );
+}
+
+/// A duplicate request is granted again in the same term and gives one leader:
+/// no voter grants a second candidate.
+#[test]
+fn a_repeated_vote_request_is_granted_again_and_gives_one_leader() {
+    let (mut bus, leader, target) = settled_group();
+    let bystander = bystander_of(leader, target);
+    let term = bus.nodes[&leader].current_term();
+    lose_first_votes(&mut bus, leader, target, term);
+
+    tick_target(&mut bus, target, raft_core::HEARTBEAT_INTERVAL_TICKS);
+    let resent = bus.nodes.get_mut(&target).unwrap().take_outgoing();
+    for out in resent {
+        deliver(&mut bus, target, out);
+    }
+    for addr in [leader, bystander] {
+        let replies = bus.nodes.get_mut(&addr).unwrap().take_outgoing();
+        for out in replies {
+            deliver(&mut bus, addr, out);
+        }
+    }
+    bus.pump();
+    bus.settle();
+    assert_eq!(leaders(&bus), vec![target], "one leader only");
+}
