@@ -1,0 +1,13 @@
+[package]
+name = "supply-chain-advisory"
+version = "0.0.0"
+edition = "2021"
+publish = false
+license = "MIT"
+
+# Own workspace: the fixture must not join the repository workspace.
+[workspace]
+
+[dependencies]
+# time 0.1.43 carries RUSTSEC-2020-0071.
+time = "=0.1.43"

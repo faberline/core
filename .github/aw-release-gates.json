@@ -9,6 +9,7 @@
       "jobs": {
         "preflight": "policy",
         "ci / lint: fmt and clippy": "policy",
+        "ci / test: supply chain (deny and audit)": "unit",
         "ci / test: select jobs": "unit",
         "ci / test: packages": "unit",
         "ci / test: feature rows": "unit",
