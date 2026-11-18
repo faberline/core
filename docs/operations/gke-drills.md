@@ -59,3 +59,21 @@ minutes) unless `UPGRADE_ROLLBACK_OLD_RENDER` names a file. It checks no `status
 status proof is the in-process test `tests/it/upgrade_rollback.rs` (#373), and acknowledged writes are
 in the plan of core#361. It creates no CRD and runs no old operator binary. It runs in the
 `gke-drill` workflow with the other drills, and there is no kind row.
+
+## Zero-downtime drill (2 of 3 pods stay Ready)
+
+`gke_drill_zero_downtime::rolling_update_and_rollback_keep_two_of_three_pods_ready` patches the pod
+template of the `drill` StatefulSet (annotation `core.faberline.dev/drill-rev: zero-downtime-up`,
+`minReadySeconds: 5`), and then runs `kubectl rollout undo` for the rollback. While both rollouts run
+it samples the pod list every 2 seconds. It checks that at least 2 of the 3 pods are Ready at every
+sample, and that the revision after the rollback equals the revision before the upgrade. It records the
+minimum Ready count, the sample counts and `elapsed_seconds` as evidence.
+
+The evidence name is "rolling update and rollback keep 2 of 3 pods Ready". This is NOT a zero-downtime
+proof under client load, and core#359 does not count it as one: the pods run `pause` and serve no
+request, and core ships no serving image (faberline/aw#416, desk decision faberline/aw#611). No test
+image is built, and no client load is sent.
+
+Cost: a few minutes of the existing drill nodes inside the one run that the owner approved (cap 10 USD,
+core#385). The price-page check of that approval is marked "not needed" for this run. It runs in the
+`gke-drill` workflow with the other drills, and there is no kind row (kind is retired, core#378).
