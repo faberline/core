@@ -132,3 +132,5 @@ pub use infrastructure::access_kubernetes_store::{KubernetesAccessStore, ACCESS_
 pub use infrastructure::access_store::InMemoryAccessStore;
 #[cfg(feature = "controller")]
 pub use infrastructure::membership_executor::{KubeMembershipExecutor, MembershipNaming};
+#[cfg(feature = "raft-admin-http")]
+pub use infrastructure::raft_admin_http::{HttpRaftAdminClient, RaftAdminTopology};
