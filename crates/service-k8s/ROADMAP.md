@@ -36,7 +36,7 @@ phase table orders the outcomes.
   dimensions, the static render uses the same renderer as the operator, and a
   capability outside the closed set is refused. Lumen's `operator_render`
   tests prove its rendered children do not change when it moves onto the
-  engine.
+  engine. The golden test is `tests/it/service_profile_engine_golden.rs`.
 - Tracking: [#204](https://github.com/faberline/core/issues/204).
 
 ### Per-shard topology
