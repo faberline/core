@@ -252,3 +252,114 @@ fn the_pdb_and_the_network_policy_select_the_instance_pods() {
     assert_eq!(children[5]["spec"]["podSelector"]["matchLabels"], selector);
     assert_eq!(children[3]["spec"]["selector"]["matchLabels"], selector);
 }
+
+struct Alerting;
+
+impl ServiceProfile for Alerting {
+    const KIND: &'static str = "Alerting";
+    const PREFIX: &'static str = "ALERTING";
+    type Config = Value;
+
+    fn capabilities() -> Capabilities {
+        Capabilities {
+            partitioning: Partitioning::Single,
+            read_scaling: ReadScaling::None,
+        }
+    }
+
+    fn alerts() -> Vec<AlertRule> {
+        ["A1", "A2"]
+            .iter()
+            .map(|name| AlertRule {
+                name: (*name).to_string(),
+                expression: format!("up{{job=\"{name}\"}} == 0"),
+                for_duration: "7m".to_string(),
+                severity: "critical".to_string(),
+                summary: format!("{name} fired"),
+            })
+            .collect()
+    }
+}
+
+fn spec_monitoring(enabled: bool) -> ServiceSpec<Value> {
+    serde_json::from_value(json!({
+        "image": { "image": "lumen:1" },
+        "resources": { "cpu": "500m", "memory": "1Gi" },
+        "storage": { "size": "10Gi" },
+        "replicas": { "replicasPerShard": 3, "voters": 3 },
+        "auth": { "mode": "none" },
+        "monitoring": { "enabled": enabled },
+        "config": {},
+    }))
+    .unwrap()
+}
+
+fn rule_names(rule: &Value) -> Vec<&str> {
+    rule["spec"]["groups"][0]["rules"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|entry| entry["alert"].as_str().unwrap())
+        .collect()
+}
+
+#[test]
+fn monitoring_off_renders_no_monitoring_objects() {
+    let children = render_instance::<Alerting>(&ctx(), &spec_monitoring(false), 1).unwrap();
+    let kinds = kinds(&children);
+    assert_eq!(kinds.len(), 6);
+    assert!(!kinds.contains(&"ServiceMonitor"));
+    assert!(!kinds.contains(&"PrometheusRule"));
+}
+
+#[test]
+fn monitoring_on_appends_a_service_monitor_and_a_prometheus_rule_last() {
+    let children = render_instance::<Alerting>(&ctx(), &spec_monitoring(true), 1).unwrap();
+    let kinds = kinds(&children);
+    assert_eq!(kinds.len(), 8);
+    assert_eq!(kinds[6], "ServiceMonitor");
+    assert_eq!(kinds[7], "PrometheusRule");
+    assert_eq!(children[6]["metadata"]["name"], "l1");
+    assert_eq!(children[7]["metadata"]["name"], "l1-alerts");
+    let endpoint = &children[6]["spec"]["endpoints"][0];
+    assert_eq!(endpoint["port"], "http");
+    assert_eq!(endpoint["path"], "/metrics");
+    assert_eq!(
+        children[6]["spec"]["selector"]["matchLabels"],
+        ctx().selector("server")
+    );
+}
+
+#[test]
+fn the_profile_alert_rules_appear_in_the_rendered_prometheus_rule() {
+    let children = render_instance::<Alerting>(&ctx(), &spec_monitoring(true), 1).unwrap();
+    let rules = children[7]["spec"]["groups"][0]["rules"]
+        .as_array()
+        .unwrap();
+    for name in ["A1", "A2"] {
+        let rule = rules
+            .iter()
+            .find(|rule| rule["alert"] == name)
+            .unwrap_or_else(|| panic!("alert {name}"));
+        assert_eq!(rule["expr"], format!("up{{job=\"{name}\"}} == 0"));
+        assert_eq!(rule["for"], "7m");
+        assert_eq!(rule["labels"]["severity"], "critical");
+    }
+}
+
+#[test]
+fn standard_alerts_come_before_the_profile_alerts() {
+    let children = render_instance::<Alerting>(&ctx(), &spec_monitoring(true), 1).unwrap();
+    assert_eq!(
+        rule_names(&children[7]),
+        ["AlertingNotReady", "AlertingStorageDegraded", "A1", "A2"]
+    );
+    let rules = children[7]["spec"]["groups"][0]["rules"]
+        .as_array()
+        .unwrap();
+    assert_eq!(rules[0]["labels"]["severity"], "warning");
+    assert_eq!(rules[1]["labels"]["severity"], "warning");
+    let expr = rules[0]["expr"].as_str().unwrap();
+    assert!(expr.contains("namespace=\"ns\""), "{expr}");
+    assert!(expr.contains("statefulset=\"l1\""), "{expr}");
+}
