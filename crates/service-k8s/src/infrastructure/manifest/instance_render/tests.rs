@@ -363,3 +363,64 @@ fn standard_alerts_come_before_the_profile_alerts() {
     assert!(expr.contains("namespace=\"ns\""), "{expr}");
     assert!(expr.contains("statefulset=\"l1\""), "{expr}");
 }
+
+#[test]
+fn the_static_render_equals_the_operator_render_for_the_same_spec() {
+    let spec = spec_with(3, json!({ "mode": "fast" }));
+    let operator = render_operator::<Lumen>(&ctx(), &spec).unwrap();
+    let static_render = render_static::<Lumen>(&ctx(), &spec, 3).unwrap();
+    assert_eq!(static_render, operator);
+    assert_eq!(
+        operator,
+        render_instance::<Lumen>(&ctx(), &spec, 1).unwrap()
+    );
+}
+
+#[test]
+fn static_replicas_override_the_spec() {
+    let spec = spec_with(3, json!({}));
+    let before = serde_json::to_value(&spec).unwrap();
+    let children = render_static::<Lumen>(&ctx(), &spec, 5).unwrap();
+    let sts = children
+        .iter()
+        .find(|child| child["kind"] == "StatefulSet")
+        .unwrap();
+    assert_eq!(sts["spec"]["replicas"], 5);
+    // voters is min(5, 3) = 3
+    let env = sts["spec"]["template"]["spec"]["containers"][0]["env"]
+        .as_array()
+        .unwrap();
+    let voters = env
+        .iter()
+        .find(|entry| entry["name"] == "VOTER_COUNT")
+        .unwrap();
+    assert_eq!(voters["value"], "3");
+    assert_eq!(serde_json::to_value(&spec).unwrap(), before);
+    assert_eq!(spec.replicas.replicas_per_shard, 3);
+}
+
+#[test]
+fn static_voters_never_exceed_the_replicas() {
+    let spec = spec_with(3, json!({}));
+    let children = render_static::<Lumen>(&ctx(), &spec, 1).unwrap();
+    let sts = children
+        .iter()
+        .find(|child| child["kind"] == "StatefulSet")
+        .unwrap();
+    assert_eq!(sts["spec"]["replicas"], 1);
+    let env = sts["spec"]["template"]["spec"]["containers"][0]["env"]
+        .as_array()
+        .unwrap();
+    let voters = env
+        .iter()
+        .find(|entry| entry["name"] == "VOTER_COUNT")
+        .unwrap();
+    assert_eq!(voters["value"], "1");
+}
+
+#[test]
+fn static_render_refuses_zero_replicas() {
+    let err = render_static::<Lumen>(&ctx(), &spec_with(3, json!({})), 0).unwrap_err();
+    assert_eq!(err, InstanceRenderError::NoReplicas);
+    assert_eq!(err.to_string(), "replicas must be at least 1");
+}
