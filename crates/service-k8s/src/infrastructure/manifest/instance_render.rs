@@ -47,6 +47,9 @@ pub enum InstanceRenderError {
     /// The StatefulSet renderer refused the plan, for example `replicas_per_shard == 0`.
     #[error("{0}")]
     Workload(StatefulInstanceError),
+    /// `render_static` was called with `replicas == 0`.
+    #[error("replicas must be at least 1")]
+    NoReplicas,
 }
 
 impl From<ProfileError> for InstanceRenderError {
@@ -273,6 +276,41 @@ where
         }));
     }
     Ok(children)
+}
+
+/// Render one profile instance for the operator: the one renderer with one shard.
+pub fn render_operator<P>(
+    ctx: &RenderCtx<'_>,
+    spec: &ServiceSpec<P::Config>,
+) -> Result<Vec<Value>, InstanceRenderError>
+where
+    P: ServiceProfile,
+    P::Config: Serialize,
+{
+    render_instance::<P>(ctx, spec, 1)
+}
+
+/// Render one profile instance for the static path with `replicas` pods.
+///
+/// It copies the spec, sets `replicas_per_shard = replicas` and
+/// `voters = replicas.min(spec.replicas.voters)`, and calls `render_instance` with one shard.
+/// The input spec is not changed. `replicas == 0` is `NoReplicas`.
+pub fn render_static<P>(
+    ctx: &RenderCtx<'_>,
+    spec: &ServiceSpec<P::Config>,
+    replicas: u32,
+) -> Result<Vec<Value>, InstanceRenderError>
+where
+    P: ServiceProfile,
+    P::Config: Serialize + Clone,
+{
+    if replicas == 0 {
+        return Err(InstanceRenderError::NoReplicas);
+    }
+    let mut copy = spec.clone();
+    copy.replicas.replicas_per_shard = replicas;
+    copy.replicas.voters = replicas.min(spec.replicas.voters);
+    render_instance::<P>(ctx, &copy, 1)
 }
 
 #[cfg(test)]

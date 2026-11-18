@@ -20,6 +20,6 @@ pub use crate::domain::instance_conditions::{
 };
 
 pub use crate::infrastructure::manifest::instance_render::{
-    render_instance, InstanceRenderError, INSTANCE_COMPONENT, INSTANCE_DATA_MOUNT_PATH,
-    INSTANCE_DATA_VOLUME, INSTANCE_HTTP_PORT,
+    render_instance, render_operator, render_static, InstanceRenderError, INSTANCE_COMPONENT,
+    INSTANCE_DATA_MOUNT_PATH, INSTANCE_DATA_VOLUME, INSTANCE_HTTP_PORT,
 };
