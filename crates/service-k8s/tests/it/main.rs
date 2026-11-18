@@ -28,6 +28,7 @@ mod reconcile_once_does_not_assume_leadership;
 mod service_profile;
 mod service_profile_config_env;
 mod service_profile_crd;
+mod service_profile_engine_golden;
 mod shard_migration;
 mod stateful_adapter_equivalence;
 mod stateful_instance_render;
