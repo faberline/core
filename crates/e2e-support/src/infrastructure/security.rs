@@ -67,7 +67,7 @@ pub async fn assert_accepts_credential(base: &str, path: &str, token: &str) {
 
 /// Installs the process crypto provider. A second install is ignored.
 fn install_crypto_provider() {
-    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+    let _ = rustls::crypto::ring::default_provider().install_default();
 }
 
 /// Connects to `addr` over TLS, trusting only the CA in `ca_pem`, with SNI
@@ -311,7 +311,7 @@ mod tests {
     /// Serves TLS on a local port. Each connection uses the certificate that
     /// `current` holds when the connection is accepted. Returns `host:port`.
     async fn tls_serve(current: Arc<Mutex<(Vec<u8>, Vec<u8>)>>) -> String {
-        let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+        install_crypto_provider();
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
         let port = listener.local_addr().unwrap().port();
         tokio::spawn(async move {
