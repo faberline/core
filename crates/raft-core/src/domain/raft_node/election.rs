@@ -28,6 +28,9 @@ impl RaftNode {
         self.votes.clear();
         self.votes.insert(self.id);
         self.election_elapsed = 0;
+        // A candidate is not a leader, so it resets the heartbeat clock itself;
+        // otherwise its first vote resend would come at tick 1, not at the interval.
+        self.heartbeat_elapsed = 0;
         self.election_timeout = if retry {
             self.retry_election_timeout()
         } else {
@@ -35,14 +38,7 @@ impl RaftNode {
         };
         let (lli, llt) = (self.last_index(), self.last_term());
         let term = self.current_term;
-        let mut vote_targets = self.conf_state.membership.voters().to_vec();
-        if let Some(outgoing) = &self.conf_state.outgoing {
-            vote_targets.extend(outgoing);
-        }
-        vote_targets.sort_unstable();
-        vote_targets.dedup();
-        let peers: Vec<NodeId> = vote_targets.into_iter().filter(|v| *v != self.id).collect();
-        for v in peers {
+        for v in self.vote_peers() {
             self.send(
                 v,
                 RaftMsg::Vote(VoteReq {
@@ -55,6 +51,42 @@ impl RaftNode {
         }
         // A sole voter wins immediately.
         self.maybe_become_leader();
+    }
+
+    /// The voters that a campaign asks: the membership and the outgoing
+    /// configuration, sorted, deduplicated, without this node.
+    fn vote_peers(&self) -> Vec<NodeId> {
+        let mut vote_targets = self.conf_state.membership.voters().to_vec();
+        if let Some(outgoing) = &self.conf_state.outgoing {
+            vote_targets.extend(outgoing);
+        }
+        vote_targets.sort_unstable();
+        vote_targets.dedup();
+        vote_targets.into_iter().filter(|v| *v != self.id).collect()
+    }
+
+    // Safe to repeat: a voter grants again only when voted_for == Some(candidate)
+    // in the same term (handle_vote), and handle_vote_resp inserts into a set,
+    // so a duplicate request or a duplicate grant changes nothing.
+    pub(super) fn resend_votes(&mut self) {
+        if self.role != Role::Candidate {
+            return;
+        }
+        let (lli, llt) = (self.last_index(), self.last_term());
+        let term = self.current_term;
+        for v in self.vote_peers() {
+            if !self.votes.contains(&v) {
+                self.send(
+                    v,
+                    RaftMsg::Vote(VoteReq {
+                        term,
+                        candidate: self.id,
+                        last_log_index: lli,
+                        last_log_term: llt,
+                    }),
+                );
+            }
+        }
     }
 
     fn maybe_become_leader(&mut self) {
