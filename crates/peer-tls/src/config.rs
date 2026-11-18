@@ -1,8 +1,9 @@
-use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use anyhow::{anyhow, Context, Result};
+use rustls::pki_types::pem::PemObject;
+use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 
 use crate::install_default_crypto_provider;
 
@@ -132,8 +133,7 @@ impl PeerTlsConfig {
 fn load_cert_chain(path: &Path) -> Result<Vec<rustls::pki_types::CertificateDer<'static>>> {
     let file =
         std::fs::File::open(path).with_context(|| format!("open cert {}", path.display()))?;
-    let mut reader = BufReader::new(file);
-    let certs = rustls_pemfile::certs(&mut reader)
+    let certs = CertificateDer::pem_reader_iter(file)
         .collect::<std::result::Result<Vec<_>, _>>()
         .with_context(|| format!("parse cert {}", path.display()))?;
     if certs.is_empty() {
@@ -144,10 +144,12 @@ fn load_cert_chain(path: &Path) -> Result<Vec<rustls::pki_types::CertificateDer<
 
 fn load_private_key(path: &Path) -> Result<rustls::pki_types::PrivateKeyDer<'static>> {
     let file = std::fs::File::open(path).with_context(|| format!("open key {}", path.display()))?;
-    let mut reader = BufReader::new(file);
-    rustls_pemfile::private_key(&mut reader)
-        .with_context(|| format!("parse key {}", path.display()))?
-        .ok_or_else(|| anyhow!("no private key found at {}", path.display()))
+    PrivateKeyDer::from_pem_reader(file).map_err(|err| match err {
+        rustls::pki_types::pem::Error::NoItemsFound => {
+            anyhow!("no private key found at {}", path.display())
+        }
+        other => anyhow::Error::new(other).context(format!("parse key {}", path.display())),
+    })
 }
 
 fn load_root_store(path: &Path) -> Result<rustls::RootCertStore> {
