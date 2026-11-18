@@ -16,6 +16,7 @@ mod backup_job;
 mod network;
 mod pod;
 mod service;
+mod service_account_identity;
 mod workload;
 
 #[cfg(feature = "controller")]
@@ -31,6 +32,7 @@ pub use network::{
 };
 pub use pod::{ContainerPlan, PodPlan, PodRuntimePolicy};
 pub use service::{ServiceAccountPlan, ServicePlan, ServicePortPlan};
+pub use service_account_identity::ServiceAccountIdentityPlan;
 pub use workload::{
     CronJobPlan, DaemonSetPlan, DeploymentPlan, PersistentVolumeClaimPlan, PodDisruptionBudgetPlan,
     StatefulSetPlan,
@@ -48,6 +50,7 @@ fn merge_string_labels(mut base: Value, extra: &LabelSet) -> Value {
 
 enum PlannedObject {
     ServiceAccount(ServiceAccountPlan),
+    ServiceAccountIdentity(ServiceAccountIdentityPlan),
     Service(ServicePlan),
     StatefulSet(StatefulSetPlan),
     Deployment(DeploymentPlan),
@@ -69,6 +72,8 @@ pub enum WorkloadPlanError {
     NegativeValue(String, &'static str),
     #[error("workload {0} must have a non-empty command")]
     EmptyCommand(String),
+    #[error("service account {0} has an invalid Workload Identity email")]
+    InvalidWorkloadIdentity(String),
 }
 
 /// One ordered set of typed Kubernetes children for a managed service.
@@ -87,6 +92,11 @@ impl<'a> WorkloadPlan<'a> {
 
     pub fn add_service_account(&mut self, plan: ServiceAccountPlan) {
         self.objects.push(PlannedObject::ServiceAccount(plan));
+    }
+
+    pub fn add_service_account_identity(&mut self, plan: ServiceAccountIdentityPlan) {
+        self.objects
+            .push(PlannedObject::ServiceAccountIdentity(plan));
     }
 
     pub fn add_service(&mut self, plan: ServicePlan) {
@@ -143,6 +153,10 @@ impl<'a> WorkloadPlan<'a> {
                     "metadata": self.cx.meta(&plan.name, &plan.component),
                     "automountServiceAccountToken": plan.automount_service_account_token,
                 })),
+                PlannedObject::ServiceAccountIdentity(plan) => {
+                    plan.validate()?;
+                    rendered.push(plan.render(self.cx));
+                }
                 PlannedObject::Service(plan) => rendered.push(plan.render(self.cx)),
                 PlannedObject::StatefulSet(plan) => rendered.push(plan.render(self.cx)?),
                 PlannedObject::Deployment(plan) => rendered.extend(plan.render(self.cx)?),

@@ -1,11 +1,13 @@
 use std::collections::BTreeMap;
 
 use serde_json::json;
+use service_k8s::render::projected_token::ProjectedServiceAccountToken;
 use service_k8s::render::{
     ClusterRoleBindingPlan, ContainerPlan, CronJobPlan, DeploymentPlan, FqdnMatchPlan,
     FqdnNetworkPolicyPlan, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
     PodPlan, PodRuntimePolicy, RbacRulePlan, RenderCtx, RoleBindingPlan, RolePlan,
-    ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan, WorkloadPlan, WorkloadPlanError,
+    ServiceAccountIdentityPlan, ServiceAccountPlan, ServiceAccountSubjectPlan, ServicePlan,
+    ServicePortPlan, WorkloadPlan, WorkloadPlanError,
 };
 
 fn context() -> RenderCtx<'static> {
@@ -365,4 +367,147 @@ fn typed_plan_rejects_negative_cron_job_execution_policy_knobs() {
             "ttlSecondsAfterFinished",
         ))
     );
+}
+
+#[test]
+fn typed_plan_renders_identity_separated_backup_and_restore_service_accounts() {
+    let cx = context();
+    let backup_sa = ServiceAccountIdentityPlan::new("sample-backup", "backup")
+        .with_workload_identity("sample-backup@demo-project.iam.gserviceaccount.com");
+    let restore_sa = ServiceAccountIdentityPlan::new("sample-restore", "restore")
+        .with_workload_identity("sample-restore@demo-project.iam.gserviceaccount.com");
+    let backup_role = RolePlan::new("sample-backup", "backup").with_rule(RbacRulePlan::new(
+        vec!["demo.axiom.dev".into()],
+        vec!["backupsets".into()],
+        vec!["get".into(), "list".into()],
+    ));
+    let restore_role = RolePlan::new("sample-restore", "restore").with_rule(RbacRulePlan::new(
+        vec!["demo.axiom.dev".into()],
+        vec!["restores".into()],
+        vec!["get".into(), "update".into()],
+    ));
+    let backup_binding =
+        RoleBindingPlan::new("sample-backup", "backup", "sample-backup").with_service_account(
+            ServiceAccountSubjectPlan::new("observability", "sample-backup"),
+        );
+    let restore_binding =
+        RoleBindingPlan::new("sample-restore", "restore", "sample-restore").with_service_account(
+            ServiceAccountSubjectPlan::new("observability", "sample-restore"),
+        );
+
+    let mut plan = WorkloadPlan::new(&cx);
+    plan.add_service_account_identity(backup_sa);
+    plan.add_service_account_identity(restore_sa);
+    plan.add_role(backup_role);
+    plan.add_role(restore_role);
+    plan.add_role_binding(backup_binding);
+    plan.add_role_binding(restore_binding);
+    let objects = plan.render().expect("render identity service accounts");
+    assert_eq!(objects.len(), 6);
+
+    assert_eq!(objects[0]["kind"], "ServiceAccount");
+    assert_eq!(objects[0]["metadata"]["name"], "sample-backup");
+    assert_eq!(
+        objects[0]["metadata"]["annotations"]["iam.gke.io/gcp-service-account"],
+        "sample-backup@demo-project.iam.gserviceaccount.com"
+    );
+    assert_eq!(objects[0]["automountServiceAccountToken"], json!(false));
+    assert_eq!(objects[1]["metadata"]["name"], "sample-restore");
+    assert_eq!(
+        objects[1]["metadata"]["annotations"]["iam.gke.io/gcp-service-account"],
+        "sample-restore@demo-project.iam.gserviceaccount.com"
+    );
+
+    assert_eq!(objects[2]["kind"], "Role");
+    assert_eq!(objects[3]["kind"], "Role");
+    let backup_rules = objects[2]["rules"].as_array().expect("backup rules");
+    let restore_rules = objects[3]["rules"].as_array().expect("restore rules");
+    for rule in backup_rules {
+        assert!(!restore_rules.contains(rule), "roles share a rule");
+    }
+
+    assert_eq!(objects[4]["kind"], "RoleBinding");
+    assert_eq!(objects[4]["roleRef"]["name"], "sample-backup");
+    assert_eq!(objects[4]["subjects"][0]["name"], "sample-backup");
+    assert_eq!(objects[5]["kind"], "RoleBinding");
+    assert_eq!(objects[5]["roleRef"]["name"], "sample-restore");
+    assert_eq!(objects[5]["subjects"][0]["name"], "sample-restore");
+}
+
+#[test]
+fn typed_plan_mounts_an_audience_bound_projected_token_and_no_secret() {
+    let cx = context();
+    let token = ProjectedServiceAccountToken::new(
+        "admin-token",
+        "/var/run/secrets/admin",
+        "sample-admin-api",
+    );
+    let mut container = ContainerPlan::new("backup", "demo:1", vec!["backup".into()]);
+    container.volume_mounts = vec![token.mount()];
+    let runtime =
+        PodRuntimePolicy::restricted("sample-backup", json!({})).with_volumes(vec![token.volume()]);
+    let pod = PodPlan::new("backup", container, runtime);
+    let cron = CronJobPlan::new("sample-backup", "0 3 * * *", pod);
+
+    let mut plan = WorkloadPlan::new(&cx);
+    plan.add_cron_job(cron);
+    let objects = plan.render().expect("render projected token job");
+    let pod_spec = &objects[0]["spec"]["jobTemplate"]["spec"]["template"]["spec"];
+
+    let volumes = pod_spec["volumes"].as_array().expect("pod volumes");
+    let projected = &volumes[0]["projected"]["sources"][0]["serviceAccountToken"];
+    assert_eq!(projected["audience"], "sample-admin-api");
+    assert!(projected["expirationSeconds"]
+        .as_u64()
+        .is_some_and(|seconds| seconds >= 600));
+    assert!(
+        volumes.iter().all(|volume| volume.get("secret").is_none()),
+        "projected token must not be a Secret volume"
+    );
+    assert_eq!(
+        pod_spec["containers"][0]["volumeMounts"][0],
+        json!({
+            "name": "admin-token",
+            "mountPath": "/var/run/secrets/admin",
+            "readOnly": true
+        })
+    );
+}
+
+#[test]
+fn service_account_identity_without_annotation_renders_like_service_account_plan() {
+    let cx = context();
+    let mut plan = WorkloadPlan::new(&cx);
+    plan.add_service_account(ServiceAccountPlan::new("sample-query", "query"));
+    plan.add_service_account_identity(ServiceAccountIdentityPlan::new("sample-query", "query"));
+    let objects = plan.render().expect("render service accounts");
+    assert_eq!(objects.len(), 2);
+    assert_eq!(objects[0], objects[1]);
+    assert!(objects[1]["metadata"].get("annotations").is_none());
+}
+
+#[test]
+fn service_account_identity_rejects_a_malformed_workload_identity() {
+    let cx = context();
+    for email in [
+        "",
+        "sample-backup",
+        "sample-backup@demo-project.example.com",
+        "@demo-project.iam.gserviceaccount.com",
+        "sample-backup@.iam.gserviceaccount.com",
+        "sample backup@demo-project.iam.gserviceaccount.com",
+    ] {
+        let mut plan = WorkloadPlan::new(&cx);
+        plan.add_service_account_identity(
+            ServiceAccountIdentityPlan::new("sample-backup", "backup")
+                .with_workload_identity(email),
+        );
+        assert_eq!(
+            plan.render(),
+            Err(WorkloadPlanError::InvalidWorkloadIdentity(
+                "sample-backup".into()
+            )),
+            "email {email:?} must be rejected"
+        );
+    }
 }
