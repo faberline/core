@@ -101,6 +101,12 @@ pub use domain::reshard::{
     ObservedReshard, ReshardAction, ReshardState, ReshardStep, ReshardWait, RollbackAction,
     SplitDecision, StepOutcome,
 };
+pub use domain::restore_job::{
+    next_restore_status, plan_restore_job, restore_finalizer_removable, restore_gates_readiness,
+    restore_job_name, ObservedRestoreJob, RestoreJobDecision, RestoreJobError, RestoreJobOutcome,
+    RestoreJobPhase, RestoreJobPolicy, RestorePhase, RestoreRequest, RestoreStatus,
+    RESTORE_FINALIZER,
+};
 pub use domain::shard_map::{
     rebuild_shard_map, PodShardReport, ShardMap, ShardMapError, SHARD_MAP_KEY,
 };

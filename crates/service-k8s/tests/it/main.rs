@@ -25,6 +25,7 @@ mod membership_executor;
 mod placement;
 mod prune_unserved_api_is_scoped;
 mod reconcile_once_does_not_assume_leadership;
+mod restore_job;
 mod service_profile;
 mod service_profile_config_env;
 mod service_profile_crd;
