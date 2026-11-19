@@ -16,6 +16,9 @@
   - [projected_admin_transport.rs](tests/it/projected_admin_transport.rs) and
     [admin_request_golden.rs](tests/it/admin_request_golden.rs): the admin
     snapshot transport; built only with the `http-client` feature.
+  - [backup_verb.rs](tests/it/backup_verb.rs): the shared `backup` verb: output
+    text and the three `next:` marker policies; built only with the
+    `http-client` feature.
   - [wire_golden.rs](tests/it/wire_golden.rs) and
     [schema_golden.rs](tests/it/schema_golden.rs): the CRD JSON, its
     `schemars` schema, the rendered topic and the destination and policy error
