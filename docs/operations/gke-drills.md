@@ -10,7 +10,7 @@ Two facts hold for the cluster (see `docs/standards/test-cluster.md` in faberlin
 - the cluster enforces NetworkPolicy (Dataplane V2);
 - the core pools `core-server` and `core-client` fit one `gke-test.yml` call.
 
-To start a run: Actions, `gke-drill`, Run workflow. It is manual only.
+To start a run: Actions, `gke-drill`, Run workflow. It is manual only. The run fails when the gke_drill filter matches no test (ci/run-gke-drill.sh).
 
 To add a drill: add one `#[ignore = "needs the shared GKE cluster: ..."]` test in
 `crates/service-k8s/tests/it/`. Its first line is
