@@ -8,6 +8,7 @@ use super::{
     StatefulInstanceError, StatefulInstancePlan, StatefulInstanceRender, StatefulStorageAttachment,
     VolumeClaimTemplate,
 };
+use crate::domain::retention::INSTANCE_UID_LABEL;
 
 fn nonempty(value: &str, field: &'static str) -> Result<(), StatefulInstanceError> {
     if value.trim().is_empty() {
@@ -292,8 +293,11 @@ pub fn stateful_instance(
     let mut pvc = None;
     match &plan.storage {
         Some(StatefulStorageAttachment::VolumeClaimTemplate(claim)) => {
-            sts_spec["volumeClaimTemplates"] =
-                json!([claim_template(claim.template.clone(), claim, &labels,)?]);
+            let mut template = claim_template(claim.template.clone(), claim, &labels)?;
+            if let Some(uid) = plan.cx.instance_uid() {
+                template["metadata"]["labels"][INSTANCE_UID_LABEL] = json!(uid);
+            }
+            sts_spec["volumeClaimTemplates"] = json!([template]);
         }
         Some(StatefulStorageAttachment::ExistingClaim(claim)) => {
             let volumes = sts_spec["template"]["spec"]
