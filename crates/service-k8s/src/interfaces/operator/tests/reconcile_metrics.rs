@@ -9,7 +9,7 @@ use super::*;
     kind = "CountedService",
     namespaced
 )]
-struct CountedServiceSpec {
+pub(super) struct CountedServiceSpec {
     replicas: u32,
 }
 
@@ -34,7 +34,7 @@ impl ManagedService for CountedService {
     }
 }
 
-fn counted_ctx(client: Client, leader: bool) -> Arc<Ctx> {
+pub(super) fn counted_ctx(client: Client, leader: bool) -> Arc<Ctx> {
     let election = Election::new("test-identity".to_string());
     election.is_leader.store(leader, Ordering::Relaxed);
     Arc::new(Ctx::new::<CountedService>(
@@ -44,7 +44,7 @@ fn counted_ctx(client: Client, leader: bool) -> Arc<Ctx> {
     ))
 }
 
-fn counted_obj() -> Arc<CountedService> {
+pub(super) fn counted_obj() -> Arc<CountedService> {
     let mut obj = CountedService::new("counted", CountedServiceSpec { replicas: 1 });
     obj.metadata.namespace = Some("acme".to_string());
     Arc::new(obj)

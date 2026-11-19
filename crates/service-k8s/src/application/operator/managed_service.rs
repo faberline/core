@@ -215,6 +215,16 @@ pub trait ManagedService:
     fn cluster_scoped_children(&self) -> Vec<ClusterScopedChild> {
         Vec::new()
     }
+
+    /// The data retention plan of this instance (#517).
+    ///
+    /// `None` (the default) keeps today's behavior exactly. With `Some`, the
+    /// controller adds a data-retention finalizer and, on deletion, stops the
+    /// named workloads before the finalizer is removed.
+    #[cfg(feature = "controller")]
+    fn data_retention(&self) -> Option<crate::domain::retention::RetentionPlan> {
+        None
+    }
 }
 
 /// One object a service no longer renders and wants removed (#2603).

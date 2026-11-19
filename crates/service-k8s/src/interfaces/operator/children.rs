@@ -194,6 +194,36 @@ pub(super) fn cluster_children_finalizer<S: ManagedService>() -> String {
     format!("service-k8s.axiom.dev/{}-cluster-children", S::MANAGER)
 }
 
+pub(super) fn retention_finalizer<S: ManagedService>() -> String {
+    format!("service-k8s.axiom.dev/{}-data-retention", S::MANAGER)
+}
+
+/// Scale one workload to 0 replicas. A workload that is already gone is fine.
+pub(super) async fn scale_workload_to_zero(
+    client: &Client,
+    ns: &str,
+    kind: &str,
+    name: &str,
+) -> Result<(), Error> {
+    if kind != "StatefulSet" && kind != "Deployment" {
+        return Err(Error::Plan(format!("data retention cannot scale a {kind}")));
+    }
+    let ar = api_resource("apps/v1", kind);
+    let api: Api<DynamicObject> = Api::namespaced_with(client.clone(), ns, &ar);
+    match api
+        .patch(
+            name,
+            &PatchParams::default(),
+            &Patch::Merge(json!({"spec": {"replicas": 0}})),
+        )
+        .await
+    {
+        Ok(_) => Ok(()),
+        Err(kube::Error::Api(e)) if e.code == 404 => Ok(()),
+        Err(err) => Err(err.into()),
+    }
+}
+
 pub(super) async fn patch_finalizers<S: ManagedService>(
     api: &Api<S>,
     obj: &S,
