@@ -213,22 +213,57 @@ pub async fn await_leader(nodes: &[Node]) -> Option<usize> {
 /// `tick`; callers using [`HostConfig::default`] may use [`await_leader`].
 pub async fn await_leader_with_tick(nodes: &[Node], tick: Duration) -> Option<usize> {
     let timing = leader_wait_budget(tick, nodes.len());
-    let started = tokio::time::Instant::now();
 
-    loop {
+    match poll_with_step_budget(timing, || async move {
         for (i, n) in nodes.iter().enumerate() {
             if n.host.is_leader().await {
                 return Some(i);
             }
         }
-
-        let elapsed = started.elapsed();
-        if elapsed >= timing.wait_budget {
+        None
+    })
+    .await
+    {
+        Ok(i) => Some(i),
+        Err(elapsed) => {
             report_election_timeout(nodes, timing, elapsed).await;
-            return None;
+            None
         }
-        let remaining = timing.wait_budget.saturating_sub(elapsed);
-        tokio::time::sleep(timing.poll_interval.min(remaining)).await;
+    }
+}
+
+/// The hard wall-time cap of a step-budget wait, as a multiple of `wait_budget`.
+pub const LEADER_WAIT_HARD_CAP_FACTOR: u32 = 10;
+
+/// Poll until `poll` returns `Some`. The budget counts only the sleep
+/// steps (`timing.poll_interval` each), not the time the polls take, so
+/// scheduler lag stretches wall time but not the budget. A wall-time cap of
+/// `timing.wait_budget * LEADER_WAIT_HARD_CAP_FACTOR` ends the wait too.
+/// `Err(elapsed)` is the wall time at the timeout.
+pub async fn poll_with_step_budget<T, F, Fut>(
+    timing: LeaderWaitBudget,
+    mut poll: F,
+) -> Result<T, Duration>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Option<T>>,
+{
+    let started = tokio::time::Instant::now();
+    let hard_cap = timing
+        .wait_budget
+        .saturating_mul(LEADER_WAIT_HARD_CAP_FACTOR);
+    let mut counted = Duration::ZERO;
+    loop {
+        if let Some(found) = poll().await {
+            return Ok(found);
+        }
+        let elapsed = started.elapsed();
+        if counted >= timing.wait_budget || elapsed >= hard_cap {
+            return Err(elapsed);
+        }
+        let step = timing.poll_interval.min(timing.wait_budget - counted);
+        tokio::time::sleep(step).await;
+        counted += step;
     }
 }
 
