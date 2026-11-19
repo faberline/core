@@ -5,6 +5,7 @@
 //! - [`llm`] — offline self-documentation (how do I drive this?)
 //! - [`upgrade`] — self-update from the tool's GitHub releases (am I current?)
 //! - [`spec`] — print the service API document and generate a typed client, from parameters.
+//! - [`dockerfile`] — render a service Dockerfile (`source` or `release`) from parameters.
 //! - [`issue`] — search, view, file, and comment on diagnostics-rich GitHub
 //!   issues; comments automatically reopen issues for post-closure verification
 //!   failures.
@@ -55,6 +56,6 @@ pub use api::connect;
 pub use api::k8s_render;
 #[cfg(feature = "registry")]
 pub use api::registry;
-pub use api::{artifact, chainable, issue, llm, report_issue, spec, upgrade};
+pub use api::{artifact, chainable, dockerfile, issue, llm, report_issue, spec, upgrade};
 pub use application::tool_info::ToolInfo;
 pub use domain::issue::number::IssueNumberError;
