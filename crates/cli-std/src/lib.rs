@@ -27,6 +27,10 @@
 //! k8s-native service CLI's `<cli> connect` wants (extracted from `lumen
 //! connect`, #1321/#1376 — see `CONTRIBUTING.md` § "Deploy artifacts").
 //!
+//! [`k8s_render`], behind the `k8s` feature, holds the offline `k8s ... render`
+//! rules the service CLIs share: the file names, the `--out` rules and the
+//! `next:` marker. Each service passes its own names, rule and marker.
+//!
 //! [`registry`], behind the `registry` feature, is the one clap-typed piece:
 //! the link-time subcommand registry (`CliModule` + the `CLI_MODULES` linkme
 //! slice) a main binary dispatches through instead of a hand-kept table.
@@ -47,6 +51,8 @@ mod interfaces;
 
 #[cfg(feature = "k8s")]
 pub use api::connect;
+#[cfg(feature = "k8s")]
+pub use api::k8s_render;
 #[cfg(feature = "registry")]
 pub use api::registry;
 pub use api::{artifact, chainable, issue, llm, report_issue, spec, upgrade};

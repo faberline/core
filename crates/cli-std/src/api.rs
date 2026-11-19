@@ -6,6 +6,8 @@ pub mod chainable;
 #[cfg(feature = "k8s")]
 pub mod connect;
 pub mod issue;
+#[cfg(feature = "k8s")]
+pub mod k8s_render;
 pub mod llm;
 #[cfg(feature = "registry")]
 pub mod registry;

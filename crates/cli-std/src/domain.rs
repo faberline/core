@@ -6,6 +6,8 @@
 #[cfg(feature = "k8s")]
 pub(crate) mod connect;
 pub(crate) mod issue;
+#[cfg(feature = "k8s")]
+pub(crate) mod k8s_render;
 pub(crate) mod llm;
 #[cfg(feature = "online")]
 pub(crate) mod prompt;
