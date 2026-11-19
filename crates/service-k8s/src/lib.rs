@@ -60,6 +60,10 @@ pub use domain::backup_job::{
     backup_job_name, plan_backup_job, BackupJobDecision, BackupJobError, BackupJobPhase,
     BackupJobPolicy, ObservedBackupJob,
 };
+pub use domain::backup_status::{
+    backup_staleness_seconds, last_backup_succeeded, next_backup_status, BackupAttempt,
+    BackupJobOutcome, BackupManifestRef, BackupStatus, LatestBackup,
+};
 pub use domain::capacity::{
     plan_replica_layer, plan_shard_split, ObservedShardUsage, ObservedUtilization,
     ReplicaLayerError, ReplicaLayerPlan, ReplicaLayerPolicy, ShardSplitError, ShardSplitPlan,

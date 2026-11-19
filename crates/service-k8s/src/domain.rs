@@ -3,6 +3,7 @@
 #[cfg(feature = "controller")]
 pub(crate) mod access;
 pub(crate) mod backup_job;
+pub(crate) mod backup_status;
 pub(crate) mod capacity;
 #[cfg(feature = "certificate")]
 pub(crate) mod certificate;
