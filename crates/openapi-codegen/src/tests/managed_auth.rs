@@ -105,3 +105,82 @@ fn file_bearer_only_generation_matches_existing_entry() {
     let direct = generate_with_file_bearer_auth(MINIMAL, &opts, &token).unwrap();
     assert_eq!(files(&with_auth), files(&direct));
 }
+
+const LUMEN: &str = "/var/run/secrets/lumen.axiom.dev/token";
+
+#[test]
+fn managed_auth_token_path_defaults_to_the_service_account_path() {
+    assert_eq!(managed().token_path(), MANAGED_TOKEN_PATH);
+}
+
+#[test]
+fn managed_auth_with_token_path_sets_the_path() {
+    let auth = managed().with_token_path(LUMEN).unwrap();
+    assert_eq!(auth.token_path(), LUMEN);
+    assert_eq!(auth.ca_path(), Path::new("/etc/ca/ca.crt"));
+}
+
+#[test]
+fn managed_auth_with_token_path_refuses_bad_values() {
+    assert_eq!(
+        managed().with_token_path(""),
+        Err(ManagedAuthError::EmptyTokenPath)
+    );
+    assert_eq!(
+        managed().with_token_path("relative/token"),
+        Err(ManagedAuthError::RelativeTokenPath)
+    );
+    assert_eq!(
+        managed().with_token_path("token"),
+        Err(ManagedAuthError::RelativeTokenPath)
+    );
+}
+
+#[test]
+fn managed_generation_emits_the_custom_token_path_in_every_language() {
+    let auth = GenerationAuth::new(None, Some(managed().with_token_path(LUMEN).unwrap())).unwrap();
+    let default_path = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+    let cases = [
+        (Lang::Ts, "runtime.ts", format!("\"{LUMEN}\"")),
+        (
+            Lang::Py,
+            "client.py",
+            format!("_MANAGED_TOKEN_PATH = \"{LUMEN}\""),
+        ),
+        (
+            Lang::Rust,
+            "client.rs",
+            format!("const MANAGED_TOKEN_PATH: &str = \"{LUMEN}\";"),
+        ),
+    ];
+    for (lang, rel_path, expected) in cases {
+        let opts = opts_for(lang);
+        let out = files(&generate_with_auth(MINIMAL, &opts, &auth).unwrap());
+        let text = out
+            .iter()
+            .find(|(name, _)| name == rel_path)
+            .map(|(_, text)| text.as_str())
+            .unwrap_or_else(|| panic!("{rel_path} is not emitted"));
+        assert!(text.contains(&expected), "{rel_path} lacks {expected}");
+        assert!(
+            !text.contains(default_path),
+            "{rel_path} keeps the default path"
+        );
+    }
+}
+
+#[test]
+fn managed_generation_without_the_input_is_unchanged() {
+    let default = GenerationAuth::new(None, Some(managed())).unwrap();
+    let explicit = GenerationAuth::new(
+        None,
+        Some(managed().with_token_path(MANAGED_TOKEN_PATH).unwrap()),
+    )
+    .unwrap();
+    for lang in [Lang::Ts, Lang::Py, Lang::Rust] {
+        let opts = opts_for(lang);
+        let a = files(&generate_with_auth(MINIMAL, &opts, &default).unwrap());
+        let b = files(&generate_with_auth(MINIMAL, &opts, &explicit).unwrap());
+        assert_eq!(a, b);
+    }
+}
