@@ -43,6 +43,32 @@ Lease holder applies changes. A follower keeps watching and can take over.
 The controller uses server-side apply. The service remains responsible for
 valid child identity, domain admission, and any external data used by its plan.
 
+## Data retention on deletion
+
+The default is `DataRetention::Retain`: deleting an instance stops its
+workloads and deletes no PVC. `DataRetention::Delete` removes only the PVCs
+that carry the label `service-k8s.axiom.dev/instance-uid` with the UID of the
+instance.
+
+```rust,ignore
+impl ManagedService for Search {
+    fn data_retention(&self) -> Option<RetentionPlan> {
+        Some(RetentionPlan {
+            policy: DataRetention::Retain, // or DataRetention::Delete
+            workloads: vec![("StatefulSet", self.name_any())],
+            pvc_labels: BTreeMap::from([(
+                "app.kubernetes.io/instance".to_string(),
+                self.name_any(),
+            )]),
+        })
+    }
+}
+```
+
+To make the PVCs provable, render the StatefulSet with
+`RenderCtx::new(...).with_instance_uid(uid)`, where `uid` is `metadata.uid` of
+the CR.
+
 ## Compose Kubernetes mechanisms
 
 The public modules are independent mechanisms:

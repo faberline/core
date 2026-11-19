@@ -1,9 +1,18 @@
 use super::*;
 
 fn plan(storage: StatefulStorageAttachment) -> StatefulInstancePlan<'static> {
-    let cx = Box::leak(Box::new(RenderCtx::new(
-        "lumen", "test", "v1", "Lumen", "lumen", "lumen",
-    )));
+    plan_with_uid(storage, None)
+}
+
+fn plan_with_uid(
+    storage: StatefulStorageAttachment,
+    uid: Option<&str>,
+) -> StatefulInstancePlan<'static> {
+    let cx = RenderCtx::new("lumen", "test", "v1", "Lumen", "lumen", "lumen");
+    let cx = Box::leak(Box::new(match uid {
+        Some(uid) => cx.with_instance_uid(uid),
+        None => cx,
+    }));
     let pod = ServicePodTemplate {
         cx,
         component: "serving",
@@ -133,5 +142,57 @@ fn invalid_replica_and_selector_are_rejected() {
     assert_eq!(
         stateful_instance(override_selector),
         Err(StatefulInstanceError::SelectorCoreIdentityOverride)
+    );
+}
+
+#[test]
+fn claim_template_carries_the_instance_uid_label() {
+    let workload = stateful_instance(plan_with_uid(
+        StatefulStorageAttachment::VolumeClaimTemplate(template_claim()),
+        Some("uid-1"),
+    ))
+    .unwrap()
+    .workload;
+    assert_eq!(
+        workload["spec"]["volumeClaimTemplates"][0]["metadata"]["labels"]
+            ["service-k8s.axiom.dev/instance-uid"],
+        "uid-1"
+    );
+}
+
+#[test]
+fn pod_selector_does_not_carry_the_uid_label() {
+    let workload = stateful_instance(plan_with_uid(
+        StatefulStorageAttachment::VolumeClaimTemplate(template_claim()),
+        Some("uid-1"),
+    ))
+    .unwrap()
+    .workload;
+    assert!(workload["spec"]["selector"]["matchLabels"]
+        .get("service-k8s.axiom.dev/instance-uid")
+        .is_none());
+    assert!(workload["spec"]["template"]["metadata"]["labels"]
+        .get("service-k8s.axiom.dev/instance-uid")
+        .is_none());
+}
+
+#[test]
+fn render_without_a_uid_is_unchanged() {
+    let default = stateful_instance(plan(StatefulStorageAttachment::VolumeClaimTemplate(
+        template_claim(),
+    )))
+    .unwrap()
+    .workload;
+    let explicit_none = stateful_instance(plan_with_uid(
+        StatefulStorageAttachment::VolumeClaimTemplate(template_claim()),
+        None,
+    ))
+    .unwrap()
+    .workload;
+    assert_eq!(default, explicit_none);
+    assert!(
+        default["spec"]["volumeClaimTemplates"][0]["metadata"]["labels"]
+            .get("service-k8s.axiom.dev/instance-uid")
+            .is_none()
     );
 }

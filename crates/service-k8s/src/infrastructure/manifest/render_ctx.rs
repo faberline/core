@@ -15,6 +15,7 @@ pub struct RenderCtx<'a> {
     name: &'a str,
     ns: &'a str,
     owner: Option<Value>,
+    instance_uid: Option<String>,
 }
 
 impl<'a> RenderCtx<'a> {
@@ -37,6 +38,7 @@ impl<'a> RenderCtx<'a> {
             name,
             ns,
             owner: None,
+            instance_uid: None,
         }
     }
 
@@ -46,6 +48,19 @@ impl<'a> RenderCtx<'a> {
     pub fn with_owner(mut self, owner: impl Into<Option<Value>>) -> Self {
         self.owner = owner.into();
         self
+    }
+
+    /// The UID of the owner CR. It is stamped on the volume claim templates of
+    /// a StatefulSet so a later Delete can prove that a PVC belongs to this
+    /// instance (#517). `labels()`, `selector()` and `meta()` do not use it.
+    pub fn with_instance_uid(mut self, uid: impl Into<String>) -> Self {
+        self.instance_uid = Some(uid.into());
+        self
+    }
+
+    /// The owner CR's UID, if one was set with [`Self::with_instance_uid`].
+    pub fn instance_uid(&self) -> Option<&str> {
+        self.instance_uid.as_deref()
     }
 
     /// `app.kubernetes.io/name` and `part-of`.
