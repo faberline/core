@@ -8,6 +8,8 @@ pub mod connect;
 /// The `dockerfile` verb: render a service Dockerfile from parameters.
 pub mod dockerfile;
 pub mod issue;
+#[cfg(feature = "k8s")]
+pub mod k8s_render;
 pub mod llm;
 #[cfg(feature = "registry")]
 pub mod registry;
