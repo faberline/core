@@ -9,6 +9,7 @@ pub(crate) mod issue;
 pub(crate) mod llm;
 #[cfg(feature = "registry")]
 pub(crate) mod registry;
+pub(crate) mod spec;
 pub(crate) mod tool_info;
 pub(crate) mod upgrade;
 
