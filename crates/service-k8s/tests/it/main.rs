@@ -22,6 +22,7 @@ mod gke_drill_upgrade_rollback;
 mod gke_drill_zero_downtime;
 mod lifecycle_render;
 mod membership_executor;
+mod peer_tls_mount;
 mod placement;
 mod prune_unserved_api_is_scoped;
 mod reconcile_once_does_not_assume_leadership;
