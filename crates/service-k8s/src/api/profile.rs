@@ -1,8 +1,8 @@
 //! The service profile contract and its pure validation, for apps (ADR 0002 D4).
 
 pub use crate::domain::profile::{
-    validate_profile, AlertRule, Capabilities, Partitioning, ProfileError, ReadScaling,
-    ServiceProfile,
+    validate_profile, AlertRule, Capabilities, ExtraWorkload, Partitioning, ProfileError,
+    ReadScaling, ServiceProfile, WorkloadKind, RESERVED_WORKLOAD_NAMES,
 };
 
 pub use crate::interfaces::service_spec::{
