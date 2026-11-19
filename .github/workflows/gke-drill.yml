@@ -11,10 +11,10 @@ jobs:
       id-token: write
       contents: read
       packages: read
-    uses: faberline/aw/.github/workflows/gke-test.yml@23808be0e47da30b47ce11ae587f422e8469e5e3
+    uses: faberline/aw/.github/workflows/gke-test.yml@f632d2715f8ef55caf48a3243ab1d72505ac1318
     with:
       image: registry.k8s.io/pause:3.10
-      aw-ref: 23808be0e47da30b47ce11ae587f422e8469e5e3
+      aw-ref: f632d2715f8ef55caf48a3243ab1d72505ac1318
       ttl-minutes: 45
       queue-minutes: 30
-      test-command: GKE_DRILL=1 cargo test -p service-k8s --test it gke_drill -- --ignored --test-threads=1
+      test-command: bash ci/run-gke-drill.sh
