@@ -25,6 +25,10 @@ pub use api::llm;
 #[cfg(feature = "http-client")]
 pub use app::run_admin_snapshot_backup;
 pub use app::sink_from_destination;
+#[cfg(feature = "http-client")]
+pub use app::{
+    render_backup_output, run_backup_verb, run_backup_verb_payload, BackupVerbParams, NextMarker,
+};
 pub use application::{run_backup_once, BackupObject, BackupRunResult};
 pub use domain::{
     plan_retention, resume_or_begin, ArtifactEntry, ArtifactStage, ArtifactVerifier,
