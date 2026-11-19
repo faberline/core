@@ -29,16 +29,16 @@ pub use crate::infrastructure::manifest::{
     sharded_statefulset, sharded_statefulsets, token_registry_mount, token_registry_volume,
     AlertRule, BackupCronJobPlan, BackupJobPlan, ClusterRoleBindingPlan, ContainerPlan, CronJob,
     CronJobPlan, DaemonSetPlan, DefaultAlertRule, DeploymentPlan, FailureDomainPlacement,
-    FqdnMatchPlan, FqdnNetworkPolicyPlan, HorizontalPodAutoscaler, HostSeparation, LabelSet,
-    NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
-    PersistentVolumeClaimPlan, PlacementError, PlacementPlan, PodDisruptionBudgetPlan, PodPlan,
-    PodRuntimePolicy, PrometheusRule, RbacRulePlan, RenderCtx, RoleBindingPlan, RolePlan,
-    ServiceAccountPlan, ServiceAccountSubjectPlan, ServiceMonitor, ServicePlan, ServicePortPlan,
-    ServiceStatefulSet, ShardedServices, ShardedStatefulSet, StatefulSetPlan,
-    TokenRegistryProjection, TokenRegistrySource, Toleration, WorkloadPlan, WorkloadPlanError,
-    WorkloadVolumeClaim, ZoneSpread, DEFAULT_ALERT_NAMES, DEFAULT_TOKEN_REGISTRY_CSI_DRIVER,
-    ENV_POD_NAME, ENV_POD_NAMESPACE, ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_SHARD_ID,
-    ENV_VOTER_COUNT,
+    FqdnMatchPlan, FqdnNetworkPolicyPlan, HorizontalPodAutoscaler, HostSeparation,
+    InvalidWorkloadIdentity, LabelSet, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan,
+    NetworkRulePlan, PersistentVolumeClaimPlan, PlacementError, PlacementPlan,
+    PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy, PrometheusRule, RbacRulePlan, RenderCtx,
+    RoleBindingPlan, RolePlan, ServiceAccountIdentityPlan, ServiceAccountPlan,
+    ServiceAccountSubjectPlan, ServiceMonitor, ServicePlan, ServicePortPlan, ServiceStatefulSet,
+    ShardedServices, ShardedStatefulSet, StatefulSetPlan, TokenRegistryProjection,
+    TokenRegistrySource, Toleration, WorkloadPlan, WorkloadPlanError, WorkloadVolumeClaim,
+    ZoneSpread, DEFAULT_ALERT_NAMES, DEFAULT_TOKEN_REGISTRY_CSI_DRIVER, ENV_POD_NAME,
+    ENV_POD_NAMESPACE, ENV_REPLICAS_PER_SHARD, ENV_SHARD_COUNT, ENV_SHARD_ID, ENV_VOTER_COUNT,
 };
 
 pub mod placement {
@@ -82,10 +82,11 @@ pub mod stateful_instance {
 pub mod workload_plan {
     pub use crate::infrastructure::manifest::workload_plan::{
         BackupCronJobPlan, BackupJobPlan, ClusterRoleBindingPlan, ContainerPlan, CronJobPlan,
-        DaemonSetPlan, DeploymentPlan, FqdnMatchPlan, FqdnNetworkPolicyPlan, LabelSet,
-        NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan, NetworkRulePlan,
-        PersistentVolumeClaimPlan, PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy,
-        RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountPlan, ServiceAccountSubjectPlan,
-        ServicePlan, ServicePortPlan, StatefulSetPlan, WorkloadPlan, WorkloadPlanError,
+        DaemonSetPlan, DeploymentPlan, FqdnMatchPlan, FqdnNetworkPolicyPlan,
+        InvalidWorkloadIdentity, LabelSet, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan,
+        NetworkRulePlan, PersistentVolumeClaimPlan, PodDisruptionBudgetPlan, PodPlan,
+        PodRuntimePolicy, RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountIdentityPlan,
+        ServiceAccountPlan, ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan,
+        StatefulSetPlan, WorkloadPlan, WorkloadPlanError,
     };
 }
