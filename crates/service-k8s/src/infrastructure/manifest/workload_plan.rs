@@ -14,6 +14,7 @@ mod access;
 mod backup_cronjob;
 mod backup_job;
 mod network;
+mod peer_tls;
 mod pod;
 mod restore_job;
 mod service;
@@ -31,6 +32,7 @@ pub use network::{
     FqdnMatchPlan, FqdnNetworkPolicyPlan, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan,
     NetworkRulePlan,
 };
+pub use peer_tls::PeerTlsMount;
 pub use pod::{ContainerPlan, PodPlan, PodRuntimePolicy};
 pub use restore_job::RestoreJobPlan;
 pub use service::{ServiceAccountPlan, ServicePlan, ServicePortPlan};
