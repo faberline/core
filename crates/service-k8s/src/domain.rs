@@ -19,10 +19,12 @@ pub(crate) mod membership;
 #[cfg(feature = "controller")]
 pub(crate) mod membership_port;
 pub(crate) mod profile;
+pub(crate) mod replica_status;
 pub(crate) mod reshard;
 pub(crate) mod restore_job;
 pub(crate) mod retention;
 pub(crate) mod rollout;
 pub(crate) mod shard_map;
 pub(crate) mod shard_migration;
+pub(crate) mod spec_defaults;
 pub mod trust_bundle;
