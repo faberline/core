@@ -11,6 +11,7 @@ use crate::service::{self, ReadyFacts};
 mod api_resource;
 mod prune;
 mod reconcile_metrics;
+mod retention;
 mod unserved_prune;
 
 /// A fake apiserver that replays `responses` in order and records the

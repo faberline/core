@@ -11,11 +11,13 @@ use kube::ResourceExt;
 
 use super::children::{
     apply_object, cluster_children_finalizer, patch_finalizers, prune_cluster_scoped_object,
-    prune_object, ready_replicas, ClusterPruneOutcome, PruneOutcome,
+    prune_object, ready_replicas, retention_finalizer, scale_workload_to_zero, ClusterPruneOutcome,
+    PruneOutcome,
 };
 use super::{publish, Ctx, Error};
 use crate::application::condition::status_patch::status_patch;
 use crate::application::operator::managed_service::{ManagedService, ReadyFacts};
+use crate::domain::retention::DataRetention;
 
 /// The instrumented entry point the controller actually calls (#2620).
 ///
@@ -45,6 +47,52 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
         .ok_or(Error::Missing("metadata.namespace"))?;
     let name = obj.name_any();
     let client = &ctx.client;
+
+    // Data retention (#517): install a second finalizer before the first apply.
+    // On deletion, stop the named workloads, wait until no pod is ready, then
+    // remove the finalizer. With `Retain` no PVC is read or deleted.
+    if let Some(plan) = obj.data_retention() {
+        let finalizer = retention_finalizer::<S>();
+        let mut finalizers = obj.meta().finalizers.clone().unwrap_or_default();
+        let api: Api<S> = Api::namespaced(client.clone(), &ns);
+        let present = finalizers.iter().any(|item| item == &finalizer);
+        if obj.meta().deletion_timestamp.is_some() {
+            if present {
+                for (kind, workload) in &plan.workloads {
+                    scale_workload_to_zero(client, &ns, kind, workload).await?;
+                }
+                let mut ready = 0;
+                for (kind, workload) in &plan.workloads {
+                    ready += ready_replicas(client, &ns, kind, workload).await?;
+                }
+                if ready > 0 {
+                    return Ok(Action::requeue(Duration::from_secs(1)));
+                }
+                finalizers.retain(|item| item != &finalizer);
+                patch_finalizers(&api, obj.as_ref(), finalizers).await?;
+                if plan.policy == DataRetention::Retain {
+                    publish(
+                        &ctx.recorder,
+                        obj.as_ref(),
+                        EventType::Normal,
+                        "DataRetained",
+                        "Delete",
+                        format!(
+                            "workloads stopped; the data stays in PVCs that match: {}",
+                            plan.selector()
+                        ),
+                    )
+                    .await;
+                }
+                return Ok(Action::await_change());
+            }
+            // The finalizer is already gone: continue unchanged.
+        } else if !present {
+            finalizers.push(finalizer);
+            patch_finalizers(&api, obj.as_ref(), finalizers).await?;
+            return Ok(Action::await_change());
+        }
+    }
 
     // Cluster-scoped children cannot use an owner reference to a namespaced
     // CR. Install a finalizer before the first apply, and remove only children

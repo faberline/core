@@ -107,6 +107,9 @@ pub use domain::restore_job::{
     RestoreJobPhase, RestoreJobPolicy, RestorePhase, RestoreRequest, RestoreStatus,
     RESTORE_FINALIZER,
 };
+#[cfg(feature = "controller")]
+#[cfg(feature = "controller")]
+pub use domain::retention::{DataRetention, RetentionPlan, INSTANCE_UID_LABEL};
 pub use domain::shard_map::{
     rebuild_shard_map, PodShardReport, ShardMap, ShardMapError, SHARD_MAP_KEY,
 };
