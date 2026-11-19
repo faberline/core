@@ -13,7 +13,7 @@ A promise with no gate under it is not claimed.
 
 | Capability | Root WI | Notes |
 |---|---:|---|
-| Standard Agent CLI Commands | - | shared llm, upgrade, issue, and chainable output APIs |
+| Standard Agent CLI Commands | - | shared llm, upgrade, issue, chainable, and spec output APIs |
 | CLI Module Auto Registration | - | link-time CLI subcommand registry behind the `registry` feature |
 
 ### Standard Agent CLI Commands
@@ -22,12 +22,12 @@ Projects can expose consistent agent-facing CLI commands without duplicating
 GitHub issue, self-update, or LLM orientation logic.
 
 - Root WI: none; this capability predates the tracker.
-- Surfaces: Rust API: `cli_std::{llm, upgrade, issue, chainable}`.
+- Surfaces: Rust API: `cli_std::{llm, upgrade, issue, chainable, spec}`.
 - Gate — behavior: `cargo test -p cli-std` - shared CLI command contract
   coverage
 - Gate: `cargo test -p cli-std`
-- Source: `crates/cli-std/src/application/{llm,upgrade,issue,chainable}.rs`
-- Evidence: `cargo test -p cli-std`; crates/cli-std/src/application/{llm,upgrade,issue,chainable}.rs
+- Source: `crates/cli-std/src/application/{llm,upgrade,issue,chainable,spec}.rs`
+- Evidence: `cargo test -p cli-std`; crates/cli-std/src/application/{llm,upgrade,issue,chainable,spec}.rs
 
 ### CLI Module Auto Registration
 

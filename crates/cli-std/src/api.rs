@@ -11,4 +11,6 @@ pub mod llm;
 pub mod registry;
 /// Deprecated alias of [`issue`] — kept until keep/loom/lumen adopt `issue`.
 pub mod report_issue;
+/// The `spec` verb: print the service API document and run `spec gen`.
+pub mod spec;
 pub mod upgrade;
