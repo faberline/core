@@ -10,9 +10,9 @@ use kube::runtime::events::EventType;
 use kube::ResourceExt;
 
 use super::children::{
-    apply_object, cluster_children_finalizer, patch_finalizers, prune_cluster_scoped_object,
-    prune_object, ready_replicas, retention_finalizer, scale_workload_to_zero, ClusterPruneOutcome,
-    PruneOutcome,
+    apply_object, cluster_children_finalizer, delete_owned_pvcs, patch_finalizers,
+    prune_cluster_scoped_object, prune_object, ready_replicas, retention_finalizer,
+    scale_workload_to_zero, ClusterPruneOutcome, PruneOutcome, PvcCleanup,
 };
 use super::{publish, Ctx, Error};
 use crate::application::condition::status_patch::status_patch;
@@ -67,6 +67,18 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
                 }
                 if ready > 0 {
                     return Ok(Action::requeue(Duration::from_secs(1)));
+                }
+                if plan.policy == DataRetention::Delete {
+                    let uid = obj
+                        .meta()
+                        .uid
+                        .as_deref()
+                        .ok_or(Error::Missing("metadata.uid"))?;
+                    if delete_owned_pvcs(client, &ns, uid, &plan.pvc_labels).await?
+                        == PvcCleanup::Pending
+                    {
+                        return Ok(Action::requeue(Duration::from_secs(1)));
+                    }
                 }
                 finalizers.retain(|item| item != &finalizer);
                 patch_finalizers(&api, obj.as_ref(), finalizers).await?;
