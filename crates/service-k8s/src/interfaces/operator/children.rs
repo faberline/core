@@ -1,11 +1,16 @@
 //! Generic child-object adapters: dynamic server-side apply, owner-checked prune,
 //! cluster-scoped child finalizers and ready-replica reads.
 
-use kube::api::{Api, ApiResource, DeleteParams, DynamicObject, Patch, PatchParams, Preconditions};
+use std::collections::BTreeMap;
+
+use kube::api::{
+    Api, ApiResource, DeleteParams, DynamicObject, ListParams, Patch, PatchParams, Preconditions,
+};
 use kube::{Client, ResourceExt};
 use serde_json::{json, Value};
 
 use super::Error;
+use crate::domain::retention::INSTANCE_UID_LABEL;
 use crate::service::{self, ManagedService};
 
 /// Plural for a kind. Covers the kinds the toolkit + services render; falls back
@@ -222,6 +227,78 @@ pub(super) async fn scale_workload_to_zero(
         Err(kube::Error::Api(e)) if e.code == 404 => Ok(()),
         Err(err) => Err(err.into()),
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PvcCleanup {
+    Done,
+    Pending,
+}
+
+/// Delete the PVCs of one instance on a `Delete` policy (#519). Only PVCs whose
+/// labels hold this instance's UID are deleted; a server-side selector is not
+/// proof, so every object is checked again. A terminating PVC is waited for.
+pub(super) async fn delete_owned_pvcs(
+    client: &Client,
+    ns: &str,
+    owner_uid: &str,
+    selector: &BTreeMap<String, String>,
+) -> Result<PvcCleanup, Error> {
+    let ar = api_resource("v1", "PersistentVolumeClaim");
+    let api: Api<DynamicObject> = Api::namespaced_with(client.clone(), ns, &ar);
+    let mut wanted = selector.clone();
+    wanted.insert(INSTANCE_UID_LABEL.to_string(), owner_uid.to_string());
+    let selector_string = wanted
+        .iter()
+        .map(|(key, value)| format!("{key}={value}"))
+        .collect::<Vec<_>>()
+        .join(",");
+    let list = api
+        .list(&ListParams::default().labels(&selector_string))
+        .await?;
+
+    let mut pending = false;
+    for pvc in list.items {
+        let labels_match = wanted.iter().all(|(key, value)| {
+            pvc.metadata
+                .labels
+                .as_ref()
+                .and_then(|labels| labels.get(key))
+                == Some(value)
+        });
+        if !labels_match {
+            continue;
+        }
+        if pvc.metadata.deletion_timestamp.is_some() {
+            pending = true;
+            continue;
+        }
+        let name = pvc.name_any();
+        let Some(uid) = pvc.metadata.uid.clone() else {
+            return Err(Error::ClusterOwnership {
+                kind: "PersistentVolumeClaim".to_string(),
+                name,
+                reason: "live object has no UID for a safe delete precondition".to_string(),
+            });
+        };
+        let delete_params = DeleteParams {
+            preconditions: Some(Preconditions {
+                uid: Some(uid),
+                resource_version: pvc.metadata.resource_version.clone(),
+            }),
+            ..DeleteParams::default()
+        };
+        match api.delete(&name, &delete_params).await {
+            Ok(_) => {}
+            Err(kube::Error::Api(error)) if error.code == 404 => {}
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Ok(if pending {
+        PvcCleanup::Pending
+    } else {
+        PvcCleanup::Done
+    })
 }
 
 pub(super) async fn patch_finalizers<S: ManagedService>(

@@ -23,7 +23,7 @@ pub enum DataRetention {
     /// Keep the data: stop the workloads and delete no PVC.
     #[default]
     Retain,
-    /// Delete the data with the instance (a later change adds the PVC path).
+    /// Delete the instance's own PVCs with the instance (see #519).
     Delete,
 }
 
