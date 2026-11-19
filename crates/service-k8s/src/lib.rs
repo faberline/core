@@ -96,6 +96,9 @@ pub use domain::membership::{
     plan_membership_step, DesiredMembership, MemberRole, MemberState, MembershipStep,
     ObservedMembership, ReadScalingMode, ShardMembership,
 };
+pub use domain::replica_status::{
+    flat_status_patch, replica_phase, replicas_message, ReplicaPhase,
+};
 pub use domain::reshard::{
     decide_split, next_action, rollback_plan, BucketData, BucketDataError, CopyPass, CopyReport,
     ObservedReshard, ReshardAction, ReshardState, ReshardStep, ReshardWait, RollbackAction,
@@ -113,6 +116,9 @@ pub use domain::shard_map::{
 };
 pub use domain::shard_migration::{
     plan_shard_migration, ShardMigrationError, ShardMigrationPlan, StatefulSetShape,
+};
+pub use domain::spec_defaults::{
+    DEFAULT_AUTH_MODE, DEFAULT_BODY_LIMIT_BYTES, DEFAULT_GRACE_SECS, DEFAULT_STORAGE_SIZE,
 };
 #[cfg(feature = "certificate")]
 pub use infrastructure::certificate::csr::RcgenCsrGenerator;
