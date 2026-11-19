@@ -39,7 +39,8 @@ defer, keep, loom, lumen, relay, sift and tape use it to generate their clients.
   file before each eligible request, for one DNS suffix and chosen schemes.
 - **Managed profile** — `ManagedAuth` (with `GenerationAuth`): a
   generation-time opt-in that makes the client trust one CA bundle, accept only
-  `https:` URLs and send the token at a fixed path on every request; a missing
+  `https:` URLs and send the token at a path (the service-account token path by
+  default; `with_token_path` sets another absolute path) on every request; a missing
   or empty token or CA stops the request before transport.
 - **Generated output** — `GeneratedOutput`: the `GeneratedFile`s plus the
   selected target and its requirements. `GenerationManifest` is the

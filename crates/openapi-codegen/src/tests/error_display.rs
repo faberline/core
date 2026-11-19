@@ -102,6 +102,14 @@ fn managed_auth_errors_are_pinned() {
             "managed auth CA path must not be empty",
         ),
         (
+            ManagedAuthError::EmptyTokenPath,
+            "managed auth token path must not be empty",
+        ),
+        (
+            ManagedAuthError::RelativeTokenPath,
+            "managed auth token path must be absolute",
+        ),
+        (
             ManagedAuthError::NoSchemes,
             "managed auth needs the https scheme",
         ),
@@ -123,6 +131,19 @@ fn managed_auth_non_utf8_ca_path_error_is_pinned() {
     let path = PathBuf::from(std::ffi::OsStr::from_bytes(b"/etc/\xff"));
     let error = ManagedAuth::new(path, [FileBearerScheme::Https]).unwrap_err();
     let message = "managed auth CA path must be valid UTF-8";
+    assert_eq!(chain(error), pair(message, message));
+}
+
+#[cfg(unix)]
+#[test]
+fn managed_auth_non_utf8_token_path_error_is_pinned() {
+    use std::os::unix::ffi::OsStrExt;
+    let path = PathBuf::from(std::ffi::OsStr::from_bytes(b"/run/\xff"));
+    let error = ManagedAuth::new("/etc/ca/ca.crt", [FileBearerScheme::Https])
+        .unwrap()
+        .with_token_path(path)
+        .unwrap_err();
+    let message = "managed auth token path must be valid UTF-8";
     assert_eq!(chain(error), pair(message, message));
 }
 
