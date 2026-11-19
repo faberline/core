@@ -63,6 +63,8 @@ jobs:
         run: bash ci/test-select-jobs.sh
       - name: Test the kind rows runner
         run: bash ci/test-run-kind-rows.sh
+      - name: Test the gke-drill runner
+        run: bash ci/test-run-gke-drill.sh
       - name: Test the upgrade doc commands
         run: bash ci/test-upgrade-doc-commands.sh
       - name: Test the upgrade doc command runner
