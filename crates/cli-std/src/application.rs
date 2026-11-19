@@ -5,6 +5,7 @@
 pub(crate) mod chainable;
 #[cfg(feature = "k8s")]
 pub(crate) mod connect;
+pub(crate) mod dockerfile;
 pub(crate) mod issue;
 pub(crate) mod llm;
 #[cfg(feature = "registry")]

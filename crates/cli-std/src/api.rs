@@ -5,6 +5,8 @@ pub mod artifact;
 pub mod chainable;
 #[cfg(feature = "k8s")]
 pub mod connect;
+/// The `dockerfile` verb: render a service Dockerfile from parameters.
+pub mod dockerfile;
 pub mod issue;
 pub mod llm;
 #[cfg(feature = "registry")]
