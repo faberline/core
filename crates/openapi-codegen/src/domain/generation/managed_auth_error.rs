@@ -13,4 +13,13 @@ pub enum ManagedAuthError {
     /// A scheme other than HTTPS was allowed.
     #[error("managed auth accepts only the https scheme")]
     NonHttpsScheme,
+    /// The token path is empty.
+    #[error("managed auth token path must not be empty")]
+    EmptyTokenPath,
+    /// The token path is not valid UTF-8, so a generated client could not embed it.
+    #[error("managed auth token path must be valid UTF-8")]
+    NonUtf8TokenPath,
+    /// The token path is not absolute.
+    #[error("managed auth token path must be absolute")]
+    RelativeTokenPath,
 }
