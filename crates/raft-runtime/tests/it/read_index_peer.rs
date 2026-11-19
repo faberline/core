@@ -3,16 +3,11 @@
 //! route the path by group.
 
 use std::sync::Arc;
-use std::time::Duration;
 
 use raft_runtime::{HostConfig, RaftHost, RaftRegistry};
 
 use crate::support::cluster;
 use cluster::{await_leader_with_tick, bind, cluster_with_config};
-
-fn read_cfg() -> HostConfig {
-    HostConfig::default().with_propose_timeout(Duration::from_millis(600))
-}
 
 fn h2c_client() -> reqwest::Client {
     reqwest::Client::builder()
@@ -27,7 +22,7 @@ fn read_index_url(base_url: &str) -> String {
 
 #[tokio::test]
 async fn leader_read_index_endpoint_returns_the_index() {
-    let cfg = read_cfg();
+    let cfg = HostConfig::default();
     let nodes = cluster_with_config(3, cfg).await;
     let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
@@ -67,7 +62,7 @@ async fn leader_read_index_endpoint_returns_the_index() {
 
 #[tokio::test]
 async fn follower_read_index_endpoint_answers_421_with_a_leader_hint() {
-    let cfg = read_cfg();
+    let cfg = HostConfig::default();
     let nodes = cluster_with_config(3, cfg).await;
     let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
@@ -108,7 +103,7 @@ async fn follower_read_index_endpoint_answers_421_with_a_leader_hint() {
 
 #[tokio::test]
 async fn read_index_endpoint_rejects_a_foreign_group() {
-    let cfg = read_cfg();
+    let cfg = HostConfig::default();
     let nodes = cluster_with_config(3, cfg).await;
     let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
@@ -134,7 +129,7 @@ async fn read_index_endpoint_rejects_a_foreign_group() {
 
 #[tokio::test]
 async fn registry_read_index_endpoint_routes_by_group_and_404s_unknown() {
-    let cfg = read_cfg();
+    let cfg = HostConfig::default();
     let nodes = cluster_with_config(3, cfg).await;
     let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
