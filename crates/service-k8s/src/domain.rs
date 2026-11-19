@@ -20,6 +20,7 @@ pub(crate) mod membership;
 pub(crate) mod membership_port;
 pub(crate) mod profile;
 pub(crate) mod reshard;
+pub(crate) mod restore_job;
 pub(crate) mod rollout;
 pub(crate) mod shard_map;
 pub(crate) mod shard_migration;

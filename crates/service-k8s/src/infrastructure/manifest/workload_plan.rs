@@ -15,6 +15,7 @@ mod backup_cronjob;
 mod backup_job;
 mod network;
 mod pod;
+mod restore_job;
 mod service;
 mod service_account_identity;
 mod workload;
@@ -31,6 +32,7 @@ pub use network::{
     NetworkRulePlan,
 };
 pub use pod::{ContainerPlan, PodPlan, PodRuntimePolicy};
+pub use restore_job::RestoreJobPlan;
 pub use service::{ServiceAccountPlan, ServicePlan, ServicePortPlan};
 pub use service_account_identity::{InvalidWorkloadIdentity, ServiceAccountIdentityPlan};
 pub use workload::{

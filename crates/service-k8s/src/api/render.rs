@@ -33,7 +33,7 @@ pub use crate::infrastructure::manifest::{
     InvalidWorkloadIdentity, LabelSet, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan,
     NetworkRulePlan, PersistentVolumeClaimPlan, PlacementError, PlacementPlan,
     PodDisruptionBudgetPlan, PodPlan, PodRuntimePolicy, PrometheusRule, RbacRulePlan, RenderCtx,
-    RoleBindingPlan, RolePlan, ServiceAccountIdentityPlan, ServiceAccountPlan,
+    RestoreJobPlan, RoleBindingPlan, RolePlan, ServiceAccountIdentityPlan, ServiceAccountPlan,
     ServiceAccountSubjectPlan, ServiceMonitor, ServicePlan, ServicePortPlan, ServiceStatefulSet,
     ShardedServices, ShardedStatefulSet, StatefulSetPlan, TokenRegistryProjection,
     TokenRegistrySource, Toleration, WorkloadPlan, WorkloadPlanError, WorkloadVolumeClaim,
@@ -85,8 +85,8 @@ pub mod workload_plan {
         DaemonSetPlan, DeploymentPlan, FqdnMatchPlan, FqdnNetworkPolicyPlan,
         InvalidWorkloadIdentity, LabelSet, NetworkPeerPlan, NetworkPolicyPlan, NetworkPortPlan,
         NetworkRulePlan, PersistentVolumeClaimPlan, PodDisruptionBudgetPlan, PodPlan,
-        PodRuntimePolicy, RbacRulePlan, RoleBindingPlan, RolePlan, ServiceAccountIdentityPlan,
-        ServiceAccountPlan, ServiceAccountSubjectPlan, ServicePlan, ServicePortPlan,
-        StatefulSetPlan, WorkloadPlan, WorkloadPlanError,
+        PodRuntimePolicy, RbacRulePlan, RestoreJobPlan, RoleBindingPlan, RolePlan,
+        ServiceAccountIdentityPlan, ServiceAccountPlan, ServiceAccountSubjectPlan, ServicePlan,
+        ServicePortPlan, StatefulSetPlan, WorkloadPlan, WorkloadPlanError,
     };
 }
