@@ -13,8 +13,16 @@ use raft_runtime::{
 use crate::support::cluster;
 use cluster::*;
 
+/// Default timeouts: a proposal or a read round may take long on a loaded runner (#555).
 fn read_cfg() -> HostConfig {
-    HostConfig::default().with_propose_timeout(Duration::from_millis(600))
+    HostConfig::default()
+}
+
+/// The only read-index test that needs a short `propose_timeout`: the
+/// partitioned leader must give up inside the test's 5 s outer timeout.
+/// 2 s leaves the setup proposal room on a loaded runner.
+fn partition_cfg() -> HostConfig {
+    HostConfig::default().with_propose_timeout(Duration::from_secs(2))
 }
 
 #[tokio::test]
@@ -193,7 +201,7 @@ fn cut_off(node: &Node, conns: &Conns) {
 
 #[tokio::test]
 async fn partitioned_leader_times_out() {
-    let cfg = read_cfg();
+    let cfg = partition_cfg();
     let (nodes, conns) = cuttable_cluster(3, cfg).await;
     let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
@@ -251,4 +259,17 @@ async fn single_voter_returns_at_once() {
         .await
         .expect("single voter answers within 2 seconds");
     assert_eq!(read, Ok(Index::new(base + 1)));
+}
+
+#[test]
+fn read_cfg_keeps_the_default_proposal_timeout() {
+    assert_eq!(
+        read_cfg().propose_timeout(),
+        HostConfig::default().propose_timeout()
+    );
+}
+
+#[test]
+fn partition_cfg_stays_inside_the_five_second_outer_timeout() {
+    assert_eq!(partition_cfg().propose_timeout(), Duration::from_secs(2));
 }
