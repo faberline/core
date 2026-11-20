@@ -7,7 +7,9 @@ use tower::service_fn;
 
 use crate::application::condition::status_patch::status_patch;
 use crate::domain::condition::ConditionStatus;
-use crate::domain::profile::{AlertRule, Capabilities, Partitioning, ReadScaling};
+use crate::domain::profile::{
+    AlertRule, Capabilities, ExtraWorkload, Partitioning, ReadScaling, WorkloadKind,
+};
 use crate::infrastructure::manifest::instance_render::render_operator;
 
 fn inert_client() -> Client {
@@ -104,6 +106,93 @@ impl ProfileApi for NoKind {
     const GROUP: &'static str = "nokind.example";
     const MANAGER: &'static str = "nokind-operator";
     const CRD_NAME: &'static str = "nokinds.nokind.example";
+}
+
+/// A profile with three extra workloads: a Deployment, a CronJob (no readiness) and a DaemonSet.
+#[derive(Clone, Debug)]
+struct Pair;
+
+impl ServiceProfile for Pair {
+    const KIND: &'static str = "Pair";
+    const PREFIX: &'static str = "PAIR";
+    type Config = Value;
+
+    fn capabilities() -> Capabilities {
+        Capabilities {
+            partitioning: Partitioning::Single,
+            read_scaling: ReadScaling::None,
+        }
+    }
+
+    fn alerts() -> Vec<AlertRule> {
+        Vec::new()
+    }
+
+    fn extra_workloads() -> Vec<ExtraWorkload> {
+        vec![
+            ExtraWorkload {
+                name: "collector".into(),
+                kind: WorkloadKind::Deployment,
+            },
+            ExtraWorkload {
+                name: "sweeper".into(),
+                kind: WorkloadKind::CronJob,
+            },
+            ExtraWorkload {
+                name: "agent".into(),
+                kind: WorkloadKind::DaemonSet,
+            },
+        ]
+    }
+}
+
+impl ProfileApi for Pair {
+    const GROUP: &'static str = "pair.example";
+    const MANAGER: &'static str = "pair-operator";
+    const CRD_NAME: &'static str = "pairs.pair.example";
+}
+
+/// A profile whose app reports a dimension with the same type as its extra workload's condition.
+#[derive(Clone, Debug)]
+struct Clash;
+
+impl ServiceProfile for Clash {
+    const KIND: &'static str = "Clash";
+    const PREFIX: &'static str = "CLASH";
+    type Config = Value;
+
+    fn capabilities() -> Capabilities {
+        Capabilities {
+            partitioning: Partitioning::Single,
+            read_scaling: ReadScaling::None,
+        }
+    }
+
+    fn alerts() -> Vec<AlertRule> {
+        Vec::new()
+    }
+
+    fn extra_workloads() -> Vec<ExtraWorkload> {
+        vec![ExtraWorkload {
+            name: "collector".into(),
+            kind: WorkloadKind::Deployment,
+        }]
+    }
+}
+
+impl ProfileApi for Clash {
+    const GROUP: &'static str = "clash.example";
+    const MANAGER: &'static str = "clash-operator";
+    const CRD_NAME: &'static str = "clashes.clash.example";
+
+    fn domain_dimensions(_spec: &ServiceSpec<Value>, _ready_replicas: u32) -> Vec<ConditionFact> {
+        vec![ConditionFact::new(
+            "CollectorReady",
+            ConditionStatus::Unknown,
+            "App",
+            "",
+        )]
+    }
 }
 
 fn service<P: ProfileApi<Config = Value>>() -> ProfileService<P> {
@@ -238,4 +327,117 @@ fn observed_conditions_are_read_back_from_the_status() {
     let observed = svc.observed_conditions();
     assert_eq!(observed.len(), 1);
     assert_eq!(observed[0].type_, "Ready");
+}
+
+fn condition_types(body: &Value) -> Vec<String> {
+    body["status"]["conditions"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["type"].as_str().unwrap().to_string())
+        .collect()
+}
+
+#[test]
+fn a_profile_without_extra_workloads_keeps_one_readiness_target_and_six_conditions() {
+    let svc = service::<Lumen>();
+    assert_eq!(svc.readiness_targets().len(), 1);
+
+    let patch = status_patch(&svc, &ReadyFacts::new(HashMap::new()), &Value::Null, &[]).unwrap();
+    assert_eq!(
+        condition_types(patch.body()),
+        [
+            "Ready",
+            "Progressing",
+            "StorageHealthy",
+            "BackupConfigured",
+            "BackupSucceeded",
+            "ShardMapHealthy",
+        ]
+    );
+}
+
+#[test]
+fn extra_workloads_with_replicas_become_readiness_targets_after_the_statefulset() {
+    let svc = service::<Pair>();
+    let core = svc.readiness_targets()[0].name().to_string();
+
+    let targets: Vec<(&str, String)> = svc
+        .readiness_targets()
+        .iter()
+        .map(|target| (target.kind(), target.name().to_string()))
+        .collect();
+    assert_eq!(
+        targets,
+        [
+            ("StatefulSet", core),
+            ("Deployment", "search-collector".to_string()),
+            ("DaemonSet", "search-agent".to_string()),
+        ]
+    );
+}
+
+#[test]
+fn each_extra_workload_has_one_condition_true_when_ready_and_false_otherwise() {
+    let svc = service::<Pair>();
+    let core = svc.readiness_targets()[0].name().to_string();
+
+    let ready = ReadyFacts::new(HashMap::from([
+        (core.clone(), 3),
+        ("search-collector".to_string(), 1),
+    ]));
+    let body = status_patch(&svc, &ready, &Value::Null, &[]).unwrap();
+    let conditions = body.body()["status"]["conditions"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(
+        condition_types(body.body()),
+        [
+            "Ready",
+            "Progressing",
+            "StorageHealthy",
+            "BackupConfigured",
+            "BackupSucceeded",
+            "CollectorReady",
+            "AgentReady",
+        ]
+    );
+    assert_eq!(conditions[5]["status"], "True");
+    assert_eq!(conditions[5]["reason"], "WorkloadReady");
+    assert_eq!(conditions[6]["status"], "False");
+    assert_eq!(conditions[6]["reason"], "WorkloadNotReady");
+
+    let ready = ReadyFacts::new(HashMap::from([
+        (core, 3),
+        ("search-agent".to_string(), 2),
+        ("search-collector".to_string(), 0),
+    ]));
+    let body = status_patch(&svc, &ready, &Value::Null, &[]).unwrap();
+    let conditions = body.body()["status"]["conditions"]
+        .as_array()
+        .unwrap()
+        .clone();
+    assert_eq!(conditions[5]["status"], "False");
+    assert_eq!(conditions[6]["status"], "True");
+}
+
+#[test]
+fn a_domain_condition_wins_over_a_workload_condition_with_the_same_type() {
+    let svc = service::<Clash>();
+    let core = svc.readiness_targets()[0].name().to_string();
+    let ready = ReadyFacts::new(HashMap::from([
+        (core, 3),
+        ("search-collector".to_string(), 1),
+    ]));
+
+    let body = status_patch(&svc, &ready, &Value::Null, &[]).unwrap();
+    let conditions = body.body()["status"]["conditions"].as_array().unwrap();
+    let matching: Vec<&Value> = conditions
+        .iter()
+        .filter(|c| c["type"] == "CollectorReady")
+        .collect();
+    assert_eq!(matching.len(), 1);
+    assert_eq!(matching[0]["status"], "Unknown");
+    assert_eq!(matching[0]["reason"], "App");
 }
