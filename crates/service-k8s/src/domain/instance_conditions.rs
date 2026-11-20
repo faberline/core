@@ -43,6 +43,37 @@ fn status(flag: bool) -> ConditionStatus {
     }
 }
 
+/// The condition type of an extra workload: its name in CamelCase plus `Ready`, for example
+/// `web-api` gives `WebApiReady`. Empty pieces of the name are dropped.
+pub fn workload_condition_type(name: &str) -> String {
+    let camel: String = name
+        .split('-')
+        .filter(|piece| !piece.is_empty())
+        .map(|piece| {
+            let mut chars = piece.chars();
+            chars.next().map_or_else(String::new, |first| {
+                first.to_ascii_uppercase().to_string() + chars.as_str()
+            })
+        })
+        .collect();
+    camel + "Ready"
+}
+
+/// The condition of one extra workload: True with at least one ready replica, else False.
+pub fn workload_condition(name: &str, ready_replicas: u32) -> ConditionFact {
+    let ready = ready_replicas >= 1;
+    ConditionFact::new(
+        workload_condition_type(name),
+        status(ready),
+        if ready {
+            "WorkloadReady"
+        } else {
+            "WorkloadNotReady"
+        },
+        format!("{name}: {ready_replicas} replicas ready"),
+    )
+}
+
 /// The five standard facts (in the order of [`STANDARD_CONDITION_TYPES`]), then the facts of
 /// `domain` in the order the app gave them. A domain fact whose `type_` is a standard type
 /// is dropped: the standard one wins.
