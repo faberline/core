@@ -1,12 +1,13 @@
 //! Entry surfaces: serving, probes, request tracing, the admission, body-limit
-//! and Server-Timing middleware, request decoding, the error envelope, the
-//! reverse proxy and the signal bridge.
+//! and Server-Timing middleware, the opt-in request id middleware, request
+//! decoding, the error envelope, the reverse proxy and the signal bridge.
 
 mod admission_middleware;
 mod body_limit;
 mod content_decode;
 mod error;
 mod probes;
+mod request_id;
 mod reverse_proxy;
 mod server_timing;
 mod signal;
@@ -26,6 +27,7 @@ pub use probes::{
     lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
     standard_probe_routes_canonical_json,
 };
+pub use request_id::{request_id_middleware, RequestId, REQUEST_ID_HEADER};
 pub use reverse_proxy::{reverse_proxy_router, ReverseProxyPolicy, ReverseProxySelectionError};
 pub use server_timing::{server_timing_middleware, ServerTimingDisclosure, ServerTimingExt};
 pub use signal::{

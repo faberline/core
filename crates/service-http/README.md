@@ -58,6 +58,7 @@ lifecycle-aware forms.
 | Error and request protection | `crates/service-http/src/interfaces/error.rs`, `interfaces/body_limit.rs`, `interfaces/admission_middleware.rs`, and `application/admission.rs` |
 | Request trace and access logging | `crates/service-http/src/interfaces/transport/trace_context.rs` and `access_log.rs` |
 | Server timing | `crates/service-http/src/interfaces/server_timing.rs` |
+| Request id | `crates/service-http/src/interfaces/request_id.rs` |
 | Lifecycle adapters | `crates/service-http/src/interfaces/transport/serve.rs` and `interfaces/signal.rs` |
 | Executable behavior | `cargo test -p service-http` |
 
