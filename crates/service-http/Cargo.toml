@@ -43,6 +43,7 @@ tracing-opentelemetry = { version = "0.34", optional = true }
 server-http = { path = "../server-http" }
 server-lifecycle = { path = "../server-lifecycle" }
 service-observability = { path = "../service-observability" }
+metrics-prometheus = { path = "../metrics-prometheus" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }

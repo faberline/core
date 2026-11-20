@@ -5,7 +5,8 @@
 //! standard probe/admin endpoints (`/healthz` `/readyz` `/metrics`
 //! `/openapi.json` `/docs`), observability compatibility adapters, lifecycle
 //! readiness/shutdown re-exports, runtime delegation, per-request
-//! `Server-Timing` attribution ([`server_timing_middleware`]), request
+//! `Server-Timing` attribution ([`server_timing_middleware`]), opt-in
+//! per-operation request metrics ([`operation_metrics_middleware`]), request
 //! correlation ([`request_id_middleware`]), the shared
 //! request-body byte cap ([`body_limit_layer`]), and the
 //! `{"error", "message"}` HTTP error envelope
@@ -119,6 +120,7 @@ pub use interfaces::{
     lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
     standard_probe_routes_canonical_json,
 };
+pub use interfaces::{operation_metrics_middleware, OperationMetrics, UNMATCHED_OPERATION};
 pub use interfaces::{request_id_middleware, RequestId, REQUEST_ID_HEADER};
 pub use interfaces::{
     retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorEnvelope,
