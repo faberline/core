@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Repeat the nine raft-runtime tests of issue #556 under CPU load: LOAD_RUNS
+# Repeat the ten raft-runtime tests of issue #556 under CPU load: LOAD_RUNS
 # runs in a row, while LOAD_WORKERS busy-loop processes keep every core busy.
-# A run passes when cargo exits 0 and prints "9 passed" (a renamed test must
+# A run passes when cargo exits 0 and prints "10 passed" (a renamed test must
 # not pass silently). The first failed run stops the script at once.
 # Usage: bash ci/run-raft-load-repeat.sh
 # Env: LOAD_RUNS (default 20), LOAD_WORKERS (default nproc), CARGO (default cargo).
@@ -21,6 +21,7 @@ TESTS=(
   "read_index_peer::registry_read_index_endpoint_routes_by_group_and_404s_unknown"
   "shutdown_idempotency::concurrent_shutdown_from_scratch_executes_once_and_returns_identical_phases"
   "shutdown_idempotency::repeat_shutdown_after_completion_emits_no_new_messages_and_returns_joined_report"
+  "snapshot_preflight_release::preflight_does_not_hold_apply_and_stale_explicit_prefix_refuses"
 )
 
 # Build first, so that the compile is not starved by the load.
@@ -42,7 +43,7 @@ for ((i = 1; i <= LOAD_RUNS; i++)); do
   out="$("$CARGO" test --locked -p raft-runtime --test it -- --exact "${TESTS[@]}" 2>&1)"
   rc=$?
   set -e
-  if [ "$rc" -eq 0 ] && grep -q 'test result: ok. 9 passed' <<<"$out"; then
+  if [ "$rc" -eq 0 ] && grep -q 'test result: ok. 10 passed' <<<"$out"; then
     echo "run $i/$LOAD_RUNS: pass"
   else
     echo "run $i/$LOAD_RUNS: FAIL"

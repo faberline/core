@@ -127,13 +127,20 @@ impl PreflightGate {
     }
 
     fn enter_and_wait(&self) {
-        self.entered
+        // The host calls the preflight hook again when the snapshot lease is busy
+        // (`preflight_snapshot_with_serial` in the host loops on `try_lock_owned`).
+        // Only the first call reports "entered"; a later call waits for the release
+        // like the first one and then returns.
+        let entered = self
+            .entered
             .lock()
             .expect("preflight entered mutex poisoned")
-            .take()
-            .expect("preflight is entered once")
-            .send(())
-            .expect("test keeps the preflight observation receiver alive");
+            .take();
+        if let Some(entered) = entered {
+            entered
+                .send(())
+                .expect("test keeps the preflight observation receiver alive");
+        }
         let mut released = self
             .released
             .lock()
@@ -922,4 +929,16 @@ async fn prepared_snapshot_failures_refuse_compaction_and_keep_the_old_prefix() 
     assert_failed_prepared_snapshot_retains_prefix(FailureStage::Preflight).await;
     assert_failed_prepared_snapshot_retains_prefix(FailureStage::Capture).await;
     assert_failed_prepared_snapshot_retains_prefix(FailureStage::Export).await;
+}
+
+#[test]
+fn preflight_gate_accepts_a_repeated_call_after_release() {
+    let (gate, mut rx) = PreflightGate::new();
+    gate.release();
+    gate.enter_and_wait();
+    gate.enter_and_wait();
+    assert!(
+        rx.try_recv().is_ok(),
+        "the first call reports that it entered"
+    );
 }
