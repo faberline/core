@@ -43,6 +43,7 @@ fn status(flag: bool) -> ConditionStatus {
     }
 }
 
+#[cfg(feature = "controller")]
 /// The condition type of an extra workload: its name in CamelCase plus `Ready`, for example
 /// `web-api` gives `WebApiReady`. Empty pieces of the name are dropped.
 pub fn workload_condition_type(name: &str) -> String {
@@ -59,6 +60,7 @@ pub fn workload_condition_type(name: &str) -> String {
     camel + "Ready"
 }
 
+#[cfg(feature = "controller")]
 /// The condition of one extra workload: True with at least one ready replica, else False.
 pub fn workload_condition(name: &str, ready_replicas: u32) -> ConditionFact {
     let ready = ready_replicas >= 1;

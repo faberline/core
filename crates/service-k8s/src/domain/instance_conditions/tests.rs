@@ -160,6 +160,7 @@ fn storage_and_backup_configured_follow_their_flags() {
 }
 
 #[test]
+#[cfg(feature = "controller")]
 fn workload_condition_type_is_camel_case_and_ends_in_ready() {
     assert_eq!(workload_condition_type("collector"), "CollectorReady");
     assert_eq!(workload_condition_type("web-api"), "WebApiReady");
@@ -168,6 +169,7 @@ fn workload_condition_type_is_camel_case_and_ends_in_ready() {
 }
 
 #[test]
+#[cfg(feature = "controller")]
 fn a_workload_with_a_ready_replica_is_true() {
     assert_eq!(
         workload_condition("collector", 1),
@@ -181,6 +183,7 @@ fn a_workload_with_a_ready_replica_is_true() {
 }
 
 #[test]
+#[cfg(feature = "controller")]
 fn a_workload_with_no_ready_replica_is_false() {
     assert_eq!(
         workload_condition("collector", 0),
@@ -194,6 +197,7 @@ fn a_workload_with_no_ready_replica_is_false() {
 }
 
 #[test]
+#[cfg(feature = "controller")]
 fn a_workload_condition_type_never_equals_a_standard_type() {
     for name in ["a", "ready", "backup-succeeded", "x"] {
         assert!(!STANDARD_CONDITION_TYPES.contains(&workload_condition_type(name).as_str()));
