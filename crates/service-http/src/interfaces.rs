@@ -1,11 +1,12 @@
 //! Entry surfaces: serving, probes, request tracing, the admission, body-limit
 //! and Server-Timing middleware, the opt-in request id and request timeout
 //! middleware, request decoding, the error envelope, the opt-in per-operation metrics middleware,
-//! the reverse proxy and the signal bridge.
+//! the reverse proxy, the signal bridge and the opaque cursor codec.
 
 mod admission_middleware;
 mod body_limit;
 mod content_decode;
+mod cursor;
 mod error;
 mod operation_metrics;
 mod probes;
@@ -22,6 +23,7 @@ pub use content_decode::{
     decode_request_body, ContentDecodeError, ContentDecodeErrorKind, ContentDecodeLimitError,
     ContentDecodeLimits,
 };
+pub use cursor::{decode_cursor, encode_cursor, CursorDecodeError};
 pub use error::{
     error_code, retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorDetail,
     ErrorEnvelope, ErrorEnvelopeWithDetails, ProjectionMetadata,
