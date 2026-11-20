@@ -8,6 +8,7 @@ mod body_limit;
 mod content_decode;
 mod cursor;
 mod error;
+mod idempotency;
 mod operation_metrics;
 mod precondition;
 mod probes;
@@ -25,6 +26,7 @@ pub use content_decode::{
     ContentDecodeLimits,
 };
 pub use cursor::{decode_cursor, encode_cursor, CursorDecodeError};
+pub use idempotency::{IdempotencyStore, IDEMPOTENCY_TTL};
 pub use error::{
     error_code, retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorDetail,
     ErrorEnvelope, ErrorEnvelopeWithDetails, ProjectionMetadata,
