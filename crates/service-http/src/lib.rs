@@ -113,8 +113,10 @@ pub use infrastructure::{
     init_tracing, init_tracing_with_identity, tracing_mode, OtelFallback, TracingMode,
 };
 pub use infrastructure::{HttpConfig, LogFormat, ServiceIdentity};
+pub use interfaces::UuidV7Maker;
 pub use interfaces::{admission_middleware, AdmissionMiddleware};
 pub use interfaces::{body_limit_layer, BodyLimitLayer, BodyLimitService};
+pub use interfaces::{check_if_match, decode_cursor, encode_cursor, CursorDecodeError};
 pub use interfaces::{
     decode_request_body, ContentDecodeError, ContentDecodeErrorKind, ContentDecodeLimitError,
     ContentDecodeLimits,
@@ -137,6 +139,7 @@ pub use interfaces::{
 };
 pub use interfaces::{serve, serve_tls, serve_with_lifecycle, trace_layer, PropagatingMakeSpan};
 pub use interfaces::{server_timing_middleware, ServerTimingDisclosure, ServerTimingExt};
+pub use interfaces::{IdempotencyStore, IDEMPOTENCY_TTL};
 /// Re-exported so a service can build a [`serve_tls`] configuration source
 /// without depending on `server-http` directly (#3113 R1).
 pub use server_http::{config_source, HttpServerOptions, ServerConfigSource};
