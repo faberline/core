@@ -289,10 +289,6 @@ impl IntoResponse for ApiErr {
                 .into_response();
         };
 
-        let status = self.status;
-        let error = self.kind.to_string();
-        let message = self.message;
-        let retryable = details.retryable;
         let projection = details.projection;
         let retry_after_seconds = details.retry_after_seconds;
         let error_details = details.error_details;
