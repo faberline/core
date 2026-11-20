@@ -55,6 +55,35 @@ impl AuthConfig {
                 env.mode
             ),
         };
+        Self::finish(env, required, registry_file, legacy_tokens_json)
+    }
+
+    /// Like `resolve`, but an empty mode means required, so an unset variable fails fast when no
+    /// token registry is given. `open` (also `off` and `disabled`) switches auth off. `resolve`
+    /// keeps empty = off. Opt-in.
+    pub fn resolve_required_by_default(
+        env: AuthEnv,
+        mode: &str,
+        registry_file: Option<&str>,
+        legacy_tokens_json: Option<&str>,
+    ) -> Result<Self> {
+        let required = match mode.trim().to_ascii_lowercase().as_str() {
+            "" | "required" => true,
+            "open" | "off" | "disabled" => false,
+            other => bail!(
+                "{} must be `open`, `off`, `disabled`, or `required`; got `{other}`",
+                env.mode
+            ),
+        };
+        Self::finish(env, required, registry_file, legacy_tokens_json)
+    }
+
+    fn finish(
+        env: AuthEnv,
+        required: bool,
+        registry_file: Option<&str>,
+        legacy_tokens_json: Option<&str>,
+    ) -> Result<Self> {
         let tokens = load_registry(
             required,
             env.registry_file,
