@@ -1,6 +1,10 @@
 //! The offline `k8s ... render` rules the service CLIs share: the names of the
 //! rendered files, the `--out` rules and the `next:` marker. Each service
-//! passes its own names, rule and marker.
+//! passes its own names, rule and marker. It also holds the CRD and operator
+//! render rules.
 
-pub use crate::domain::k8s_render::{next_line, Artifact, DefaultFileNames, NextMarker, OutRule};
+pub use crate::domain::k8s_render::{
+    next_line, render_crd, render_operator, validate_image, validate_namespace, validate_token,
+    Artifact, DefaultFileNames, NamespaceRule, NextMarker, OperatorParts, OutRule, RenderError,
+};
 pub use crate::interfaces::k8s_render::{emit, out_target};
