@@ -15,8 +15,10 @@ use serde_json::{json, Value};
 
 use super::managed_service::{ManagedService, ReadinessTarget, ReadyFacts, ReconcilePlan};
 use crate::domain::condition::{Condition, ConditionFact};
-use crate::domain::instance_conditions::{instance_conditions, DomainReadiness, InstanceFacts};
-use crate::domain::profile::ServiceProfile;
+use crate::domain::instance_conditions::{
+    instance_conditions, workload_condition, DomainReadiness, InstanceFacts,
+};
+use crate::domain::profile::{ExtraWorkload, ServiceProfile, WorkloadKind};
 use crate::infrastructure::manifest::instance_render::{render_operator, InstanceRenderError};
 use crate::infrastructure::manifest::{owner_ref, RenderCtx};
 use crate::interfaces::service_spec::{crd_for, ServiceSpec};
@@ -160,6 +162,25 @@ where
                 .flatten()
         })
     }
+
+    /// The extra workloads with replicas, in declaration order: the workload, its kind and its
+    /// object name (`<instance>-<name>`). A CronJob has no replicas, so it is left out.
+    fn extra_workload_targets(&self) -> Vec<(ExtraWorkload, &'static str, String)> {
+        let instance = self.metadata.name.clone().unwrap_or_default();
+        P::extra_workloads()
+            .into_iter()
+            .filter_map(|workload| {
+                let kind = match workload.kind {
+                    WorkloadKind::StatefulSet => "StatefulSet",
+                    WorkloadKind::Deployment => "Deployment",
+                    WorkloadKind::DaemonSet => "DaemonSet",
+                    WorkloadKind::CronJob => return None,
+                };
+                let object = format!("{instance}-{}", workload.name);
+                Some((workload, kind, object))
+            })
+            .collect()
+    }
 }
 
 impl<P: ProfileApi> ManagedService for ProfileService<P>
@@ -178,9 +199,16 @@ where
     }
 
     fn readiness_targets(&self) -> Vec<ReadinessTarget> {
-        self.statefulset_name()
-            .map(|name| vec![ReadinessTarget::new("StatefulSet", name)])
-            .unwrap_or_default()
+        let Some(core) = self.statefulset_name() else {
+            return Vec::new();
+        };
+        let mut targets = vec![ReadinessTarget::new("StatefulSet", core)];
+        targets.extend(
+            self.extra_workload_targets()
+                .into_iter()
+                .map(|(_, kind, object)| ReadinessTarget::new(kind, object)),
+        );
+        targets
     }
 
     fn status_patch(&self, ready: &ReadyFacts) -> Value {
@@ -203,7 +231,16 @@ where
             backup_configured: self.spec.backup.schedule.is_some(),
             last_backup_succeeded: None,
         };
-        let domain = Dimensions(P::domain_dimensions(&self.spec, ready_replicas));
+        let mut dimensions = P::domain_dimensions(&self.spec, ready_replicas);
+        for (workload, _kind, object) in self.extra_workload_targets() {
+            let count = u32::try_from(ready.get(&object).max(0)).unwrap_or(u32::MAX);
+            let fact = workload_condition(&workload.name, count);
+            // A condition the app reports itself wins over the workload's one of the same type.
+            if !dimensions.iter().any(|dim| dim.type_ == fact.type_) {
+                dimensions.push(fact);
+            }
+        }
+        let domain = Dimensions(dimensions);
         instance_conditions(&facts, &domain)
     }
 
