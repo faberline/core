@@ -3,7 +3,7 @@
 # A stub cargo stands in for the real one. Cases:
 #   pass   20 runs pass: 20 pass lines, the load line, the final line.
 #   fail3  run 3 fails: the runner stops there, no run 4.
-#   zero   a run with 0 passed tests fails (the "9 passed" check is needed).
+#   zero   a run with 0 passed tests fails (the "10 passed" check is needed).
 # Usage: bash ci/test-run-raft-load-repeat.sh
 set -euo pipefail
 
@@ -31,15 +31,15 @@ n=$((n + 1))
 echo "$n" > "$COUNT_FILE"
 case "$STUB_MODE" in
   pass)
-    echo "test result: ok. 9 passed; 0 failed"
+    echo "test result: ok. 10 passed; 0 failed"
     exit 0
     ;;
   fail3)
     if [ "$n" -eq 3 ]; then
-      echo "test result: FAILED. 8 passed; 1 failed"
+      echo "test result: FAILED. 9 passed; 1 failed"
       exit 101
     fi
-    echo "test result: ok. 9 passed; 0 failed"
+    echo "test result: ok. 10 passed; 0 failed"
     exit 0
     ;;
   zero)
@@ -79,7 +79,7 @@ grep -qx 'run 3/5: FAIL' "$tmp/fail3.out" || fail "fail3 case must print 'run 3/
 [ "$(cat "$tmp/count")" -eq 3 ] || fail "fail3 case must stop at run 3, count was $(cat "$tmp/count")"
 ! grep -q 'run 4/5' "$tmp/fail3.out" || fail "fail3 case must not start run 4"
 
-# (c) zero: a run that ran 0 tests must fail (negative control for the 9 passed check).
+# (c) zero: a run that ran 0 tests must fail (negative control for the 10 passed check).
 run_case zero 5 "$tmp/zero.out"
 [ "$rc" -ne 0 ] || fail "zero case must exit non-zero"
 grep -qx 'run 1/5: FAIL' "$tmp/zero.out" || fail "zero case must print 'run 1/5: FAIL'"
