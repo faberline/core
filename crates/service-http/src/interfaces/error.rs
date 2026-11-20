@@ -140,9 +140,9 @@ pub struct DetailedErrorEnvelope {
 
 /// The detailed error body plus an ordered `details` array.
 ///
-/// [`ApiErr`] renders this shape only when [`ApiErr::with_details`] was
-/// given a non-empty list. [`DetailedErrorEnvelope`] stays the shape of
-/// every other detailed error, so its fields never change.
+/// [`ApiErr`] renders this shape only when [`ApiErr::with_details`] was given
+/// a non-empty list. [`DetailedErrorEnvelope`] stays the shape of every other
+/// detailed error, so its fields never change.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct ErrorEnvelopeWithDetails {
     pub error: String,
@@ -296,16 +296,17 @@ impl IntoResponse for ApiErr {
         let projection = details.projection;
         let retry_after_seconds = details.retry_after_seconds;
         let error_details = details.error_details;
+        let error = self.kind.to_string();
         let projection_name = projection.as_ref().map(|value| value.projection.clone());
         let required_cursor = projection.as_ref().map(|value| value.required_cursor);
         let current_cursor = projection.as_ref().map(|value| value.current_cursor);
         let mut response = if error_details.is_empty() {
             (
-                status,
+                self.status,
                 Json(DetailedErrorEnvelope {
                     error,
-                    message,
-                    retryable,
+                    message: self.message,
+                    retryable: details.retryable,
                     projection: projection_name,
                     required_cursor,
                     current_cursor,
@@ -315,11 +316,11 @@ impl IntoResponse for ApiErr {
                 .into_response()
         } else {
             (
-                status,
+                self.status,
                 Json(ErrorEnvelopeWithDetails {
                     error,
-                    message,
-                    retryable,
+                    message: self.message,
+                    retryable: details.retryable,
                     projection: projection_name,
                     required_cursor,
                     current_cursor,

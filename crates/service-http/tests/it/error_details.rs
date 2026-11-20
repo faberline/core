@@ -131,6 +131,8 @@ async fn empty_details_list_renders_no_details_key() {
 
 #[test]
 fn detailed_envelope_keeps_its_seven_fields() {
+    // A struct literal without `..`: adding a field to DetailedErrorEnvelope
+    // stops this test from compiling, which guards the semver gate.
     let value = DetailedErrorEnvelope {
         error: "e".into(),
         message: "m".into(),
