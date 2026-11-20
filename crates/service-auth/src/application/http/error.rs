@@ -39,8 +39,8 @@ pub enum AuthError {
     Unavailable(String),
 }
 
-impl IntoResponse for AuthError {
-    fn into_response(self) -> Response {
+impl AuthError {
+    fn render(self, unavailable_code: &'static str) -> Response {
         match self {
             AuthError::Unauthenticated => (
                 StatusCode::UNAUTHORIZED,
@@ -61,11 +61,24 @@ impl IntoResponse for AuthError {
             AuthError::Unavailable(message) => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(ErrorBody {
-                    error: "auth_unavailable".into(),
+                    error: unavailable_code.into(),
                     message,
                 }),
             )
                 .into_response(),
         }
+    }
+
+    /// Opt-in catalog rendering: `Unavailable` gets the code `unavailable` instead of
+    /// `auth_unavailable`. The status is 503 both ways; `Unauthenticated` and `Forbidden`
+    /// render exactly as `IntoResponse` does. The existing `IntoResponse` keeps `auth_unavailable`.
+    pub fn into_catalog_response(self) -> Response {
+        self.render("unavailable")
+    }
+}
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        self.render("auth_unavailable")
     }
 }
