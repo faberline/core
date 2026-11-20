@@ -191,27 +191,31 @@ async fn cuttable_cluster(n: u64, cfg: HostConfig) -> (Vec<Node>, Vec<Conns>) {
     (nodes, conns_by_node)
 }
 
-/// Stop accepting and drop every open connection of one node.
-fn cut_off(node: &Node, conns: &Conns) {
+/// Stop accepting and drop every open connection of one node. Returns when the
+/// accept task and every connection task have ended, so the listener is closed.
+async fn cut_off(node: &mut Node, conns: &Conns) {
     node._serve.abort();
-    for conn in conns.lock().unwrap().drain(..) {
-        conn.abort();
+    let _ = (&mut node._serve).await;
+    let handles: Vec<JoinHandle<()>> = conns.lock().unwrap().drain(..).collect();
+    for handle in handles {
+        handle.abort();
+        let _ = handle.await;
     }
 }
 
 #[tokio::test]
 async fn partitioned_leader_times_out() {
     let cfg = partition_cfg();
-    let (nodes, conns) = cuttable_cluster(3, cfg).await;
+    let (mut nodes, conns) = cuttable_cluster(3, cfg).await;
     let leader = await_leader_with_tick(&nodes, cfg.tick())
         .await
         .expect("a leader is elected");
     nodes[leader].host.propose(vec![1]).await.unwrap();
 
     // Cut the leader off from both followers.
-    for (i, node) in nodes.iter().enumerate() {
+    for (i, node) in nodes.iter_mut().enumerate() {
         if i != leader {
-            cut_off(node, &conns[i]);
+            cut_off(node, &conns[i]).await;
         }
     }
 
@@ -220,8 +224,35 @@ async fn partitioned_leader_times_out() {
         .expect("read_index returns within 5 seconds");
     match res {
         Err(ReadIndexError::TimedOut) | Err(ReadIndexError::LeadershipLost) => {}
-        other => panic!("partitioned leader must not grant an index, got {other:?}"),
+        other => {
+            let mut states = Vec::new();
+            for node in &nodes {
+                let s = node.host.status().await;
+                states.push(format!(
+                    "{}:{}:t{}:c{}:l{:?}",
+                    s.id, s.role, s.term, s.commit_index, s.leader
+                ));
+            }
+            panic!(
+                "partitioned leader must not grant an index, got {other:?}; leader index {leader}; node states: {}",
+                states.join(", ")
+            );
+        }
     }
+}
+
+#[tokio::test]
+async fn cut_off_closes_the_listener_before_it_returns() {
+    let cfg = partition_cfg();
+    let (mut nodes, conns) = cuttable_cluster(3, cfg).await;
+    let addr = nodes[1].url.trim_start_matches("http://").to_string();
+
+    cut_off(&mut nodes[1], &conns[1]).await;
+
+    let err = tokio::net::TcpStream::connect(&addr)
+        .await
+        .expect_err("a cut-off node still accepts connections");
+    assert_eq!(err.kind(), std::io::ErrorKind::ConnectionRefused);
 }
 
 #[tokio::test]
