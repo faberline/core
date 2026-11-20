@@ -1,7 +1,8 @@
 //! Entry surfaces: serving, probes, request tracing, the admission, body-limit
 //! and Server-Timing middleware, the opt-in request id and request timeout
 //! middleware, request decoding, the error envelope, the opt-in per-operation metrics middleware,
-//! the reverse proxy, the signal bridge and the opaque cursor codec.
+//! the reverse proxy, the signal bridge, the If-Match check, the idempotency store,
+//! the cursor codec and the UUIDv7 maker.
 
 mod admission_middleware;
 mod body_limit;
@@ -18,6 +19,7 @@ mod reverse_proxy;
 mod server_timing;
 mod signal;
 mod transport;
+mod uuid_v7;
 
 pub use admission_middleware::{admission_middleware, AdmissionMiddleware};
 pub use body_limit::{body_limit_layer, BodyLimitLayer, BodyLimitService};
@@ -26,13 +28,13 @@ pub use content_decode::{
     ContentDecodeLimits,
 };
 pub use cursor::{decode_cursor, encode_cursor, CursorDecodeError};
-pub use idempotency::{IdempotencyStore, IDEMPOTENCY_TTL};
 pub use error::{
     error_code, retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorDetail,
     ErrorEnvelope, ErrorEnvelopeWithDetails, ProjectionMetadata,
 };
-pub use precondition::check_if_match;
+pub use idempotency::{IdempotencyStore, IDEMPOTENCY_TTL};
 pub use operation_metrics::{operation_metrics_middleware, OperationMetrics, UNMATCHED_OPERATION};
+pub use precondition::check_if_match;
 pub use probes::{
     lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
     standard_probe_routes_canonical_json,
@@ -49,3 +51,4 @@ pub use transport::{
     request_trace_context, serve, serve_tls, serve_with_lifecycle, trace_layer, AccessLogOnRequest,
     AccessLogOnResponse, CorrelatingMakeSpan, PropagatingMakeSpan, RequestTraceContext,
 };
+pub use uuid_v7::UuidV7Maker;

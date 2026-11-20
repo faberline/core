@@ -4,6 +4,8 @@ use crate::interfaces::{error_code, ApiErr};
 use axum::http::{header, HeaderMap, Method, StatusCode};
 
 /// Check the `If-Match` header of a request against the current ETag of the resource.
+// `ApiErr` is the crate-wide error type; the signature stays as the spec gives it.
+#[allow(clippy::result_large_err)]
 pub fn check_if_match(
     method: &Method,
     headers: &HeaderMap,
@@ -85,7 +87,10 @@ mod tests {
         // A weak tag never matches under the strong comparison.
         let headers = headers_with_if_match("W/\"v2\"");
         let err = check_if_match(&Method::PUT, &headers, "\"v2\"").unwrap_err();
-        assert_eq!(status_and_body(err).await.0, StatusCode::PRECONDITION_FAILED);
+        assert_eq!(
+            status_and_body(err).await.0,
+            StatusCode::PRECONDITION_FAILED
+        );
     }
 
     #[tokio::test]

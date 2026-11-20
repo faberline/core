@@ -15,9 +15,7 @@ pub fn encode_cursor(bytes: &[u8]) -> String {
 
 /// Decode an opaque cursor string back to the caller bytes.
 pub fn decode_cursor(text: &str) -> Result<Vec<u8>, CursorDecodeError> {
-    URL_SAFE_NO_PAD
-        .decode(text)
-        .map_err(|_| CursorDecodeError)
+    URL_SAFE_NO_PAD.decode(text).map_err(|_| CursorDecodeError)
 }
 
 #[cfg(test)]
