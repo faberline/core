@@ -24,7 +24,7 @@ pub use content_decode::{
 };
 pub use error::{
     error_code, retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorDetail,
-    ErrorEnvelope, ProjectionMetadata,
+    ErrorEnvelope, ErrorEnvelopeWithDetails, ProjectionMetadata,
 };
 pub use operation_metrics::{operation_metrics_middleware, OperationMetrics, UNMATCHED_OPERATION};
 pub use probes::{

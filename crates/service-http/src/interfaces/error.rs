@@ -8,7 +8,8 @@
 //! here.
 //!
 //! [`error_code`] names the twelve catalog codes, and [`ErrorDetail`] is one
-//! problem inside an error that [`ApiErr::with_details`] renders as a `details` array.
+//! problem inside an error that [`ApiErr::with_details`] renders as a `details`
+//! array in [`ErrorEnvelopeWithDetails`].
 //!
 //! [`ErrorEnvelope`] is the wire shape; [`ApiErr`] pairs a `StatusCode` with
 //! a short machine-stable `kind` and a human `message`, and renders as
@@ -124,6 +125,26 @@ pub struct ProjectionMetadata {
 /// is called.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub struct DetailedErrorEnvelope {
+    pub error: String,
+    pub message: String,
+    pub retryable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub projection: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required_cursor: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub current_cursor: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retry_after_seconds: Option<u64>,
+}
+
+/// The detailed error body plus an ordered `details` array.
+///
+/// [`ApiErr`] renders this shape only when [`ApiErr::with_details`] was
+/// given a non-empty list. [`DetailedErrorEnvelope`] stays the shape of
+/// every other detailed error, so its fields never change.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub struct ErrorEnvelopeWithDetails {
     pub error: String,
     pub message: String,
     pub retryable: bool,
@@ -268,23 +289,46 @@ impl IntoResponse for ApiErr {
                 .into_response();
         };
 
+        let status = self.status;
+        let error = self.kind.to_string();
+        let message = self.message;
+        let retryable = details.retryable;
         let projection = details.projection;
         let retry_after_seconds = details.retry_after_seconds;
         let error_details = details.error_details;
-        let mut response = (
-            self.status,
-            Json(DetailedErrorEnvelope {
-                error: self.kind.to_string(),
-                message: self.message,
-                retryable: details.retryable,
-                projection: projection.as_ref().map(|value| value.projection.clone()),
-                required_cursor: projection.as_ref().map(|value| value.required_cursor),
-                current_cursor: projection.as_ref().map(|value| value.current_cursor),
-                retry_after_seconds,
-                details: error_details,
-            }),
-        )
-            .into_response();
+        let projection_name = projection.as_ref().map(|value| value.projection.clone());
+        let required_cursor = projection.as_ref().map(|value| value.required_cursor);
+        let current_cursor = projection.as_ref().map(|value| value.current_cursor);
+        let mut response = if error_details.is_empty() {
+            (
+                status,
+                Json(DetailedErrorEnvelope {
+                    error,
+                    message,
+                    retryable,
+                    projection: projection_name,
+                    required_cursor,
+                    current_cursor,
+                    retry_after_seconds,
+                }),
+            )
+                .into_response()
+        } else {
+            (
+                status,
+                Json(ErrorEnvelopeWithDetails {
+                    error,
+                    message,
+                    retryable,
+                    projection: projection_name,
+                    required_cursor,
+                    current_cursor,
+                    retry_after_seconds,
+                    details: error_details,
+                }),
+            )
+                .into_response()
+        };
         if let Some(seconds) = retry_after_seconds {
             if let Ok(value) = HeaderValue::from_str(&seconds.to_string()) {
                 response.headers_mut().insert(header::RETRY_AFTER, value);
