@@ -280,7 +280,7 @@ infrastructure = "crates/service-executor/src"
 
 [[contexts]]
 name = "service-http"
-depends_on = ["server-http", "server-lifecycle", "service-observability"]
+depends_on = ["metrics-prometheus", "server-http", "server-lifecycle", "service-observability"]
 [contexts.layers]
 application = "crates/service-http/src/application"
 infrastructure = "crates/service-http/src/infrastructure"

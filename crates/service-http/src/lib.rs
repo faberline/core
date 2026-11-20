@@ -5,7 +5,8 @@
 //! standard probe/admin endpoints (`/healthz` `/readyz` `/metrics`
 //! `/openapi.json` `/docs`), observability compatibility adapters, lifecycle
 //! readiness/shutdown re-exports, runtime delegation, per-request
-//! `Server-Timing` attribution ([`server_timing_middleware`]), the shared
+//! `Server-Timing` attribution ([`server_timing_middleware`]), per-operation
+//! request metrics ([`operation_metrics_middleware`]), the shared
 //! request-body byte cap ([`body_limit_layer`]), and the
 //! `{"error", "message"}` HTTP error envelope
 //! ([`ErrorEnvelope`], [`ApiErr`]) each service renders for its error responses. This crate is
@@ -118,6 +119,7 @@ pub use interfaces::{
     lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
     standard_probe_routes_canonical_json,
 };
+pub use interfaces::{operation_metrics_middleware, OperationMetrics, UNMATCHED_OPERATION};
 pub use interfaces::{
     retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorEnvelope,
     ProjectionMetadata,

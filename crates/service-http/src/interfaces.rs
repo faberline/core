@@ -1,11 +1,12 @@
-//! Entry surfaces: serving, probes, request tracing, the admission, body-limit
-//! and Server-Timing middleware, request decoding, the error envelope, the
-//! reverse proxy and the signal bridge.
+//! Entry surfaces: serving, probes, request tracing, the admission, body-limit,
+//! Server-Timing and per-operation metrics middleware, request decoding, the
+//! error envelope, the reverse proxy and the signal bridge.
 
 mod admission_middleware;
 mod body_limit;
 mod content_decode;
 mod error;
+mod operation_metrics;
 mod probes;
 mod reverse_proxy;
 mod server_timing;
@@ -22,6 +23,7 @@ pub use error::{
     retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorEnvelope,
     ProjectionMetadata,
 };
+pub use operation_metrics::{operation_metrics_middleware, OperationMetrics, UNMATCHED_OPERATION};
 pub use probes::{
     lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
     standard_probe_routes_canonical_json,

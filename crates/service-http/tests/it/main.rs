@@ -6,6 +6,7 @@ mod ingest_runtime;
 mod lifecycle_observability;
 mod lifecycle_probes;
 mod lifecycle_signal;
+mod operation_metrics;
 mod otlp_tracing;
 mod property_traceparent;
 mod request_trace_context;
