@@ -286,6 +286,77 @@ pub fn render_operator(
     })
 }
 
+/// The collector render: validate the namespace (and the image when given),
+/// replace the placeholder by the namespace, replace the image text, and end
+/// the text with exactly one trailing newline.
+pub fn render_collector(
+    embedded: &str,
+    placeholder: &str,
+    namespace: &str,
+    image: Option<(&str, &str)>,
+) -> Result<String, RenderError> {
+    validate_namespace(namespace)?;
+    if let Some((from, to)) = image {
+        validate_token("operator image source", from)?;
+        validate_image(to)?;
+    }
+    let mut text = embedded.replace(placeholder, namespace);
+    if let Some((from, to)) = image {
+        text = text.replace(from, to);
+    }
+    if !text.ends_with('\n') {
+        text.push('\n');
+    }
+    Ok(text)
+}
+
+/// The default operator behavior of a service when it is run without a
+/// subcommand.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OperatorDefault {
+    /// Running the service without a subcommand starts the operator.
+    Run,
+    /// Running the service without a subcommand requires a subcommand.
+    RequireSubcommand,
+}
+
+/// `true` when the service starts its operator without a subcommand.
+pub fn operator_default_is_run(d: OperatorDefault) -> bool {
+    matches!(d, OperatorDefault::Run)
+}
+
+/// The message of a build without the `operator` feature. `suffix` is added
+/// in parentheses when given.
+pub fn no_operator_feature_message(service: &str, suffix: Option<&str>) -> String {
+    let base = format!(
+        "this {service} build was compiled without operator support; rebuild with `--features operator`"
+    );
+    match suffix {
+        Some(s) => format!("{base} ({s})"),
+        None => base,
+    }
+}
+
+/// The log format of a service, from its log format variable.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LogFormat {
+    /// Human-readable lines (the default).
+    Pretty,
+    /// One JSON object per line.
+    Json,
+}
+
+/// Parse a log format variable: unset gives `Pretty`; `pretty` and `json`
+/// (case-sensitive, no trim) give the variants; any other value is an error
+/// that names the variable.
+pub fn parse_log_format(var_name: &str, value: Option<&str>) -> Result<LogFormat, String> {
+    match value {
+        None | Some("pretty") => Ok(LogFormat::Pretty),
+        Some("json") => Ok(LogFormat::Json),
+        Some(v) => Err(format!("{var_name} must be `pretty` or `json`, got `{v}`")),
+    }
+}
+
 /// A profile of `instance render`. The index order of the spec's arrays is
 /// Dev, Staging, Prod, Template.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -804,6 +875,130 @@ mod tests {
             Profile::Template,
         ] {
             assert_eq!(Profile::parse(p.as_str()), Some(p));
+        }
+    }
+
+    #[test]
+    fn collector_replaces_placeholder_and_image() {
+        let out = render_collector(
+            "namespace: REPLACE_NAMESPACE\nimage: example/c:1\n",
+            "REPLACE_NAMESPACE",
+            "staging",
+            Some(("example/c:1", "ghcr.io/x/c:2")),
+        );
+        assert_eq!(
+            out,
+            Ok("namespace: staging\nimage: ghcr.io/x/c:2\n".to_string())
+        );
+    }
+
+    #[test]
+    fn collector_without_image_replaces_only_placeholder() {
+        let out = render_collector(
+            "a: REPLACE_NAMESPACE\nb: REPLACE_NAMESPACE\n",
+            "REPLACE_NAMESPACE",
+            "prod",
+            None,
+        );
+        assert_eq!(out, Ok("a: prod\nb: prod\n".to_string()));
+    }
+
+    #[test]
+    fn collector_adds_missing_trailing_newline() {
+        let missing = render_collector("ns: REPLACE_NAMESPACE", "REPLACE_NAMESPACE", "prod", None);
+        assert_eq!(missing, Ok("ns: prod\n".to_string()));
+        let present =
+            render_collector("ns: REPLACE_NAMESPACE\n", "REPLACE_NAMESPACE", "prod", None);
+        assert_eq!(present, Ok("ns: prod\n".to_string()));
+    }
+
+    #[test]
+    fn collector_rejects_invalid_namespace() {
+        let out = render_collector("x", "REPLACE_NAMESPACE", "Bad_NS", None);
+        assert_eq!(out, Err(RenderError::InvalidNamespace));
+    }
+
+    #[test]
+    fn collector_rejects_invalid_image() {
+        let bad_target = render_collector(
+            "x",
+            "REPLACE_NAMESPACE",
+            "prod",
+            Some(("example/c:1", "a b")),
+        );
+        assert_eq!(bad_target, Err(RenderError::InvalidImage));
+        let empty_source = render_collector("x", "REPLACE_NAMESPACE", "prod", Some(("", "a:1")));
+        assert_eq!(
+            empty_source,
+            Err(RenderError::InvalidToken {
+                name: "operator image source".to_string()
+            })
+        );
+    }
+
+    #[test]
+    fn operator_default_per_service() {
+        assert!(operator_default_is_run(OperatorDefault::Run));
+        assert!(!operator_default_is_run(OperatorDefault::RequireSubcommand));
+    }
+
+    #[test]
+    fn no_operator_message_with_suffix() {
+        assert_eq!(
+            no_operator_feature_message("tape", Some("the published image includes it")),
+            "this tape build was compiled without operator support; rebuild with `--features operator` (the published image includes it)"
+        );
+    }
+
+    #[test]
+    fn no_operator_message_without_suffix() {
+        let msg = no_operator_feature_message("sift", None);
+        assert_eq!(
+            msg,
+            "this sift build was compiled without operator support; rebuild with `--features operator`"
+        );
+        assert!(!msg.contains('('));
+    }
+
+    #[test]
+    fn parse_log_format_values() {
+        assert_eq!(
+            parse_log_format("KEEP_LOG_FORMAT", None),
+            Ok(LogFormat::Pretty)
+        );
+        assert_eq!(
+            parse_log_format("KEEP_LOG_FORMAT", Some("pretty")),
+            Ok(LogFormat::Pretty)
+        );
+        assert_eq!(
+            parse_log_format("KEEP_LOG_FORMAT", Some("json")),
+            Ok(LogFormat::Json)
+        );
+    }
+
+    #[test]
+    fn parse_log_format_rejects_other() {
+        assert_eq!(
+            parse_log_format("KEEP_LOG_FORMAT", Some("xml")),
+            Err("KEEP_LOG_FORMAT must be `pretty` or `json`, got `xml`".to_string())
+        );
+        assert!(parse_log_format("KEEP_LOG_FORMAT", Some("JSON")).is_err());
+    }
+
+    #[test]
+    fn per_service_differences_are_parameters() {
+        let a = render_collector("a: REPLACE_NAMESPACE\n", "REPLACE_NAMESPACE", "prod", None);
+        let b = render_collector("a: __NS__\n", "__NS__", "prod", None);
+        assert_eq!(a, b);
+        assert_eq!(a, Ok("a: prod\n".to_string()));
+        for service in ["tape", "keep", "relay"] {
+            let msg = no_operator_feature_message(service, Some("s"));
+            assert_eq!(
+                msg,
+                format!(
+                    "this {service} build was compiled without operator support; rebuild with `--features operator` (s)"
+                )
+            );
         }
     }
 }
