@@ -43,6 +43,10 @@ impl Error for AdmissionConfigError {}
 impl AdmissionConfig {
     pub const DEFAULT_REFILL_SECS: u64 = 60;
     pub const DEFAULT_MAX_KEYS: usize = 1024;
+    /// Read capacity of the catalog defaults (`catalog_defaults`).
+    pub const CATALOG_READ_CAPACITY: u32 = 600;
+    /// Write capacity of the catalog defaults (`catalog_defaults`).
+    pub const CATALOG_WRITE_CAPACITY: u32 = 120;
 
     /// Parse configuration from process environment.
     pub fn from_env(prefix: &str) -> Result<Self, AdmissionConfigError> {
@@ -52,6 +56,40 @@ impl AdmissionConfig {
     /// Parse configuration from an injected lookup seam. This keeps tests and
     /// embedding callers independent of process-global environment mutation.
     pub fn from_lookup<F>(prefix: &str, lookup: F) -> Result<Self, AdmissionConfigError>
+    where
+        F: Fn(&str) -> Option<String>,
+    {
+        Self::parse_lookup(prefix, lookup, None, None)
+    }
+
+    /// Parse the catalog values from `lookup`: read 600, write 120, a 60 second window and 1024
+    /// keys unless the environment sets them. Opt-in. The environment still overrides each value,
+    /// and the admin class stays off unless its variable is set. The result is always enabled, so
+    /// a lone `REFILL_SECS` or `MAX_KEYS` is not an orphan here. `from_lookup` keeps "off when no
+    /// capacity".
+    pub fn catalog_defaults<F>(prefix: &str, lookup: F) -> Result<Self, AdmissionConfigError>
+    where
+        F: Fn(&str) -> Option<String>,
+    {
+        Self::parse_lookup(
+            prefix,
+            lookup,
+            Some(Self::CATALOG_READ_CAPACITY),
+            Some(Self::CATALOG_WRITE_CAPACITY),
+        )
+    }
+
+    /// `catalog_defaults` read from the process environment.
+    pub fn catalog_from_env(prefix: &str) -> Result<Self, AdmissionConfigError> {
+        Self::catalog_defaults(prefix, |key| std::env::var(key).ok())
+    }
+
+    fn parse_lookup<F>(
+        prefix: &str,
+        lookup: F,
+        default_read: Option<u32>,
+        default_write: Option<u32>,
+    ) -> Result<Self, AdmissionConfigError>
     where
         F: Fn(&str) -> Option<String>,
     {
@@ -73,8 +111,8 @@ impl AdmissionConfig {
                     value,
                 }),
         };
-        let read_capacity = parse(&read_key)?;
-        let write_capacity = parse(&write_key)?;
+        let read_capacity = parse(&read_key)?.or(default_read);
+        let write_capacity = parse(&write_key)?.or(default_write);
         let admin_capacity = parse(&admin_key)?;
         let enabled =
             read_capacity.is_some() || write_capacity.is_some() || admin_capacity.is_some();
@@ -206,5 +244,68 @@ mod config_tests {
         assert!(error.to_string().contains("TAPE_ADMISSION_READ_CAPACITY"));
         let error = config(&[("TAPE_ADMISSION_REFILL_SECS", "10")]).unwrap_err();
         assert!(error.to_string().contains("TAPE_ADMISSION_REFILL_SECS"));
+    }
+
+    fn catalog(entries: &[(&str, &str)]) -> Result<AdmissionConfig, AdmissionConfigError> {
+        let values = entries
+            .iter()
+            .map(|(key, value)| ((*key).to_owned(), (*value).to_owned()))
+            .collect::<BTreeMap<_, _>>();
+        AdmissionConfig::catalog_defaults("TAPE", |key| values.get(key).cloned())
+    }
+
+    #[test]
+    fn catalog_defaults_with_empty_environment() {
+        let config = catalog(&[]).unwrap();
+        assert_eq!(config.read_capacity, Some(600));
+        assert_eq!(config.write_capacity, Some(120));
+        assert_eq!(config.admin_capacity, None);
+        assert_eq!(config.refill_window, Duration::from_secs(60));
+        assert_eq!(config.max_keys, 1024);
+        assert!(config.is_enabled());
+        assert!(config
+            .controller("tape.read", "tape.write", "tape.admin")
+            .is_some());
+    }
+
+    #[test]
+    fn catalog_defaults_let_the_environment_override_each_value() {
+        let read_only = catalog(&[("TAPE_ADMISSION_READ_CAPACITY", "10")]).unwrap();
+        assert_eq!(read_only.read_capacity, Some(10));
+        assert_eq!(read_only.write_capacity, Some(120));
+
+        let all = catalog(&[
+            ("TAPE_ADMISSION_WRITE_CAPACITY", "5"),
+            ("TAPE_ADMISSION_ADMIN_CAPACITY", "7"),
+            ("TAPE_ADMISSION_REFILL_SECS", "30"),
+            ("TAPE_ADMISSION_MAX_KEYS", "8"),
+        ])
+        .unwrap();
+        assert_eq!(all.read_capacity, Some(600));
+        assert_eq!(all.write_capacity, Some(5));
+        assert_eq!(all.admin_capacity, Some(7));
+        assert_eq!(all.refill_window, Duration::from_secs(30));
+        assert_eq!(all.max_keys, 8);
+    }
+
+    #[test]
+    fn catalog_defaults_still_reject_invalid_values() {
+        let err = catalog(&[("TAPE_ADMISSION_READ_CAPACITY", "many")]).unwrap_err();
+        assert!(err.to_string().contains("TAPE_ADMISSION_READ_CAPACITY"));
+    }
+
+    #[test]
+    fn from_lookup_default_is_unchanged() {
+        assert!(!config(&[]).unwrap().is_enabled());
+        assert!(matches!(
+            config(&[("TAPE_ADMISSION_REFILL_SECS", "10")]),
+            Err(AdmissionConfigError::OrphanedCommonSetting { .. })
+        ));
+        assert_eq!(
+            catalog(&[("TAPE_ADMISSION_REFILL_SECS", "10")])
+                .unwrap()
+                .refill_window,
+            Duration::from_secs(10)
+        );
     }
 }
