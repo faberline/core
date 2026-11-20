@@ -12,7 +12,8 @@
 //! `{"error", "message"}` HTTP error envelope
 //! ([`ErrorEnvelope`], [`ApiErr`]) each service renders for its error responses. This crate is
 //! the one place that HTTP shape lives. [`error_code`] names the catalog codes,
-//! [`ErrorDetail`] adds problems to an error, and [`request_timeout_middleware`]
+//! [`ErrorDetail`] adds problems to an error (rendered as [`ErrorEnvelopeWithDetails`]),
+//! and [`request_timeout_middleware`]
 //! is an opt-in request time limit. Protocol-neutral logging, tracing,
 //! metric-provider, and lifecycle metric ownership belongs to
 //! `service-observability`. This crate operationalizes the CONTRIBUTING "standard
@@ -120,7 +121,7 @@ pub use interfaces::{
 };
 pub use interfaces::{
     error_code, retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorDetail,
-    ErrorEnvelope, ProjectionMetadata,
+    ErrorEnvelope, ErrorEnvelopeWithDetails, ProjectionMetadata,
 };
 pub use interfaces::{
     lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
