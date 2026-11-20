@@ -11,7 +11,9 @@
 //! request-body byte cap ([`body_limit_layer`]), and the
 //! `{"error", "message"}` HTTP error envelope
 //! ([`ErrorEnvelope`], [`ApiErr`]) each service renders for its error responses. This crate is
-//! the one place that HTTP shape lives. Protocol-neutral logging, tracing,
+//! the one place that HTTP shape lives. [`error_code`] names the catalog codes,
+//! [`ErrorDetail`] adds problems to an error, and [`request_timeout_middleware`]
+//! is an opt-in request time limit. Protocol-neutral logging, tracing,
 //! metric-provider, and lifecycle metric ownership belongs to
 //! `service-observability`. This crate operationalizes the CONTRIBUTING "standard
 //! endpoints" convention: every service exposes the same probe surface,
@@ -117,15 +119,16 @@ pub use interfaces::{
     ContentDecodeLimits,
 };
 pub use interfaces::{
+    error_code, retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorDetail,
+    ErrorEnvelope, ProjectionMetadata,
+};
+pub use interfaces::{
     lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
     standard_probe_routes_canonical_json,
 };
 pub use interfaces::{operation_metrics_middleware, OperationMetrics, UNMATCHED_OPERATION};
 pub use interfaces::{request_id_middleware, RequestId, REQUEST_ID_HEADER};
-pub use interfaces::{
-    retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorEnvelope,
-    ProjectionMetadata,
-};
+pub use interfaces::{request_timeout_middleware, RequestTimeout};
 pub use interfaces::{reverse_proxy_router, ReverseProxyPolicy, ReverseProxySelectionError};
 pub use interfaces::{
     run_signal_bridge, shutdown_on_signal, shutdown_with_drain, wait_shutdown_signal,

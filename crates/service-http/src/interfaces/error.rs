@@ -7,6 +7,9 @@
 //! rendering predates this module and is a later convergence — untouched
 //! here.
 //!
+//! [`error_code`] names the twelve catalog codes, and [`ErrorDetail`] is one
+//! problem inside an error that [`ApiErr::with_details`] renders as a `details` array.
+//!
 //! [`ErrorEnvelope`] is the wire shape; [`ApiErr`] pairs a `StatusCode` with
 //! a short machine-stable `kind` and a human `message`, and renders as
 //! [`ErrorEnvelope`] JSON via `IntoResponse`. A service builds one per
@@ -20,6 +23,78 @@ use axum::http::{header, HeaderMap, HeaderValue, StatusCode};
 use axum::response::{IntoResponse, Json, Response};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+
+/// The twelve catalog error codes. Constants only: a service still picks the
+/// `kind` of each error, and the existing `kind` strings do not change.
+pub mod error_code {
+    /// The request is malformed.
+    pub const INVALID_REQUEST: &str = "invalid_request";
+    /// The caller is not authenticated.
+    pub const UNAUTHENTICATED: &str = "unauthenticated";
+    /// The caller may not perform this action.
+    pub const FORBIDDEN: &str = "forbidden";
+    /// The resource does not exist.
+    pub const NOT_FOUND: &str = "not_found";
+    /// The request conflicts with the current state.
+    pub const CONFLICT: &str = "conflict";
+    /// A precondition of the request does not hold.
+    pub const PRECONDITION_FAILED: &str = "precondition_failed";
+    /// The request body is too large.
+    pub const PAYLOAD_TOO_LARGE: &str = "payload_too_large";
+    /// The request content failed validation.
+    pub const VALIDATION_FAILED: &str = "validation_failed";
+    /// A precondition header is required.
+    pub const PRECONDITION_REQUIRED: &str = "precondition_required";
+    /// The caller exceeded a rate limit.
+    pub const RATE_LIMITED: &str = "rate_limited";
+    /// An unexpected internal failure.
+    pub const INTERNAL: &str = "internal";
+    /// The service is unavailable, for example after a timeout.
+    pub const UNAVAILABLE: &str = "unavailable";
+
+    /// All twelve codes, in the order above.
+    pub const ALL: [&str; 12] = [
+        INVALID_REQUEST,
+        UNAUTHENTICATED,
+        FORBIDDEN,
+        NOT_FOUND,
+        CONFLICT,
+        PRECONDITION_FAILED,
+        PAYLOAD_TOO_LARGE,
+        VALIDATION_FAILED,
+        PRECONDITION_REQUIRED,
+        RATE_LIMITED,
+        INTERNAL,
+        UNAVAILABLE,
+    ];
+}
+
+/// One problem inside one error. `field` names the offending input and is left
+/// out of the JSON when it is `None`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
+pub struct ErrorDetail {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub field: Option<String>,
+    pub code: String,
+    pub message: String,
+}
+
+impl ErrorDetail {
+    /// A problem with no field.
+    pub fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            field: None,
+            code: code.into(),
+            message: message.into(),
+        }
+    }
+
+    /// Name the input field that this problem is about.
+    pub fn with_field(mut self, field: impl Into<String>) -> Self {
+        self.field = Some(field.into());
+        self
+    }
+}
 
 /// The `{error, message}` JSON body every ecosystem HTTP error response
 /// renders. `error` is a short machine-stable classification
@@ -60,6 +135,8 @@ pub struct DetailedErrorEnvelope {
     pub current_cursor: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retry_after_seconds: Option<u64>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub details: Vec<ErrorDetail>,
 }
 
 /// Return the bounded client's requested delay for one detailed retryable
@@ -98,6 +175,7 @@ struct DetailedErrorMetadata {
     retryable: bool,
     retry_after_seconds: Option<u64>,
     projection: Option<ProjectionMetadata>,
+    error_details: Vec<ErrorDetail>,
 }
 
 /// Status-code + `kind` classification wrapper. Build one with
@@ -128,6 +206,7 @@ impl ApiErr {
                 retryable,
                 retry_after_seconds: None,
                 projection: None,
+                error_details: Vec::new(),
             })
             .retryable = retryable;
         self
@@ -140,6 +219,7 @@ impl ApiErr {
             retryable: true,
             retry_after_seconds: None,
             projection: None,
+            error_details: Vec::new(),
         });
         details.retryable = true;
         details.retry_after_seconds = Some(seconds);
@@ -153,8 +233,24 @@ impl ApiErr {
                 retryable: false,
                 retry_after_seconds: None,
                 projection: None,
+                error_details: Vec::new(),
             })
             .projection = Some(projection);
+        self
+    }
+
+    /// Attach the ordered problems of this error. Selects the detailed wire shape;
+    /// an empty list renders no `details` key. The other builder methods keep
+    /// working in any order.
+    pub fn with_details(mut self, details: Vec<ErrorDetail>) -> Self {
+        self.details
+            .get_or_insert(DetailedErrorMetadata {
+                retryable: false,
+                retry_after_seconds: None,
+                projection: None,
+                error_details: Vec::new(),
+            })
+            .error_details = details;
         self
     }
 }
@@ -174,6 +270,7 @@ impl IntoResponse for ApiErr {
 
         let projection = details.projection;
         let retry_after_seconds = details.retry_after_seconds;
+        let error_details = details.error_details;
         let mut response = (
             self.status,
             Json(DetailedErrorEnvelope {
@@ -184,6 +281,7 @@ impl IntoResponse for ApiErr {
                 required_cursor: projection.as_ref().map(|value| value.required_cursor),
                 current_cursor: projection.as_ref().map(|value| value.current_cursor),
                 retry_after_seconds,
+                details: error_details,
             }),
         )
             .into_response();

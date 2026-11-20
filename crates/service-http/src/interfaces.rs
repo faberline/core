@@ -1,6 +1,6 @@
 //! Entry surfaces: serving, probes, request tracing, the admission, body-limit
-//! and Server-Timing middleware, the opt-in request id middleware, request
-//! decoding, the error envelope, the opt-in per-operation metrics middleware,
+//! and Server-Timing middleware, the opt-in request id and request timeout
+//! middleware, request decoding, the error envelope, the opt-in per-operation metrics middleware,
 //! the reverse proxy and the signal bridge.
 
 mod admission_middleware;
@@ -10,6 +10,7 @@ mod error;
 mod operation_metrics;
 mod probes;
 mod request_id;
+mod request_timeout;
 mod reverse_proxy;
 mod server_timing;
 mod signal;
@@ -22,8 +23,8 @@ pub use content_decode::{
     ContentDecodeLimits,
 };
 pub use error::{
-    retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorEnvelope,
-    ProjectionMetadata,
+    error_code, retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorDetail,
+    ErrorEnvelope, ProjectionMetadata,
 };
 pub use operation_metrics::{operation_metrics_middleware, OperationMetrics, UNMATCHED_OPERATION};
 pub use probes::{
@@ -31,6 +32,7 @@ pub use probes::{
     standard_probe_routes_canonical_json,
 };
 pub use request_id::{request_id_middleware, RequestId, REQUEST_ID_HEADER};
+pub use request_timeout::{request_timeout_middleware, RequestTimeout};
 pub use reverse_proxy::{reverse_proxy_router, ReverseProxyPolicy, ReverseProxySelectionError};
 pub use server_timing::{server_timing_middleware, ServerTimingDisclosure, ServerTimingExt};
 pub use signal::{
