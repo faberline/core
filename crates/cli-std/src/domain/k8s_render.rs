@@ -286,6 +286,105 @@ pub fn render_operator(
     })
 }
 
+/// A profile of `instance render`. The index order of the spec's arrays is
+/// Dev, Staging, Prod, Template.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Profile {
+    Dev,
+    Staging,
+    Prod,
+    Template,
+}
+
+impl Profile {
+    /// Parses an exact, lowercase profile name.
+    pub fn parse(s: &str) -> Option<Profile> {
+        match s {
+            "dev" => Some(Profile::Dev),
+            "staging" => Some(Profile::Staging),
+            "prod" => Some(Profile::Prod),
+            "template" => Some(Profile::Template),
+            _ => None,
+        }
+    }
+
+    /// The profile name as the CLI spells it.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Profile::Dev => "dev",
+            Profile::Staging => "staging",
+            Profile::Prod => "prod",
+            Profile::Template => "template",
+        }
+    }
+
+    fn index(self) -> usize {
+        match self {
+            Profile::Dev => 0,
+            Profile::Staging => 1,
+            Profile::Prod => 2,
+            Profile::Template => 3,
+        }
+    }
+}
+
+/// The optional `instance render` inputs; `None` takes the spec's value.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct InstanceInputs {
+    pub name: Option<String>,
+    pub namespace: Option<String>,
+    pub image: Option<String>,
+}
+
+/// The per-service parameters of `instance render`.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct InstanceSpec {
+    pub api_group: String,
+    pub kind: String,
+    pub default_name: String,
+    pub profile_namespaces: [String; 4],
+    pub profile_images: [String; 4],
+    pub template_name: Option<String>,
+}
+
+/// Renders one instance manifest: the fixed header, then the service's spec
+/// body for the profile, unchanged.
+pub fn render_instance(
+    spec: &InstanceSpec,
+    profile: Profile,
+    inputs: &InstanceInputs,
+    body: &dyn Fn(Profile) -> String,
+) -> String {
+    let index = profile.index();
+    let template = if profile == Profile::Template {
+        spec.template_name.as_ref()
+    } else {
+        None
+    };
+    let name = inputs
+        .name
+        .clone()
+        .or_else(|| template.cloned())
+        .unwrap_or_else(|| spec.default_name.clone());
+    let namespace = inputs
+        .namespace
+        .clone()
+        .unwrap_or_else(|| spec.profile_namespaces[index].clone());
+    let image = inputs
+        .image
+        .clone()
+        .unwrap_or_else(|| spec.profile_images[index].clone());
+    format!(
+        "apiVersion: {}/v1alpha1\nkind: {}\nmetadata:\n  name: {}\n  namespace: {}\nspec:\n  image: {}\n{}",
+        spec.api_group,
+        spec.kind,
+        name,
+        namespace,
+        image,
+        body(profile)
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -553,5 +652,158 @@ mod tests {
             .to_string(),
             "tag must be a nonempty single bounded token"
         );
+    }
+
+    fn instance_spec(template_name: Option<&str>) -> InstanceSpec {
+        InstanceSpec {
+            api_group: "example.dev".to_string(),
+            kind: "Tape".to_string(),
+            default_name: "tape".to_string(),
+            profile_namespaces: [
+                "default".to_string(),
+                "staging".to_string(),
+                "production".to_string(),
+                "REPLACE_ME__APP_NAMESPACE".to_string(),
+            ],
+            profile_images: [
+                "img/dev:1".to_string(),
+                "img/staging:1".to_string(),
+                "img/prod:1".to_string(),
+                "REPLACE_ME__IMAGE".to_string(),
+            ],
+            template_name: template_name.map(str::to_string),
+        }
+    }
+
+    fn instance_body(profile: Profile) -> String {
+        match profile {
+            Profile::Template => "  replicasPerShard: REPLACE_ME__REPLICAS_PER_SHARD\n".to_string(),
+            _ => "  replicasPerShard: 1\n".to_string(),
+        }
+    }
+
+    #[test]
+    fn instance_dev_exact_yaml() {
+        let out = render_instance(
+            &instance_spec(None),
+            Profile::Dev,
+            &InstanceInputs::default(),
+            &instance_body,
+        );
+        assert_eq!(
+            out,
+            "apiVersion: example.dev/v1alpha1\nkind: Tape\nmetadata:\n  name: tape\n  namespace: default\nspec:\n  image: img/dev:1\n  replicasPerShard: 1\n"
+        );
+    }
+
+    #[test]
+    fn instance_dev_has_no_placeholder() {
+        let out = render_instance(
+            &instance_spec(None),
+            Profile::Dev,
+            &InstanceInputs::default(),
+            &instance_body,
+        );
+        assert!(!out.contains("REPLACE_ME"));
+    }
+
+    #[test]
+    fn instance_template_uses_placeholders() {
+        let out = render_instance(
+            &instance_spec(None),
+            Profile::Template,
+            &InstanceInputs::default(),
+            &instance_body,
+        );
+        assert_eq!(
+            out,
+            "apiVersion: example.dev/v1alpha1\nkind: Tape\nmetadata:\n  name: tape\n  namespace: REPLACE_ME__APP_NAMESPACE\nspec:\n  image: REPLACE_ME__IMAGE\n  replicasPerShard: REPLACE_ME__REPLICAS_PER_SHARD\n"
+        );
+    }
+
+    #[test]
+    fn instance_inputs_override() {
+        let inputs = InstanceInputs {
+            name: Some("n1".to_string()),
+            namespace: Some("ns1".to_string()),
+            image: Some("i1".to_string()),
+        };
+        let out = render_instance(
+            &instance_spec(None),
+            Profile::Staging,
+            &inputs,
+            &instance_body,
+        );
+        assert_eq!(
+            out,
+            "apiVersion: example.dev/v1alpha1\nkind: Tape\nmetadata:\n  name: n1\n  namespace: ns1\nspec:\n  image: i1\n  replicasPerShard: 1\n"
+        );
+
+        let only_ns = InstanceInputs {
+            name: None,
+            namespace: Some("ns2".to_string()),
+            image: None,
+        };
+        let out = render_instance(
+            &instance_spec(None),
+            Profile::Prod,
+            &only_ns,
+            &instance_body,
+        );
+        assert!(out.contains("  name: tape\n"));
+        assert!(out.contains("  namespace: ns2\n"));
+        assert!(out.contains("  image: img/prod:1\n"));
+    }
+
+    #[test]
+    fn instance_template_name_only_for_template() {
+        let spec = instance_spec(Some("REPLACE_ME__KEEP_NAME"));
+        let template = render_instance(
+            &spec,
+            Profile::Template,
+            &InstanceInputs::default(),
+            &instance_body,
+        );
+        assert!(template.contains("  name: REPLACE_ME__KEEP_NAME\n"));
+
+        let dev = render_instance(
+            &spec,
+            Profile::Dev,
+            &InstanceInputs::default(),
+            &instance_body,
+        );
+        assert!(dev.contains("  name: tape\n"));
+
+        let named = InstanceInputs {
+            name: Some("n1".to_string()),
+            namespace: None,
+            image: None,
+        };
+        let template_named = render_instance(&spec, Profile::Template, &named, &instance_body);
+        assert!(template_named.contains("  name: n1\n"));
+    }
+
+    #[test]
+    fn profile_parse_and_as_str() {
+        assert_eq!(Profile::parse("prod"), Some(Profile::Prod));
+        assert_eq!(Profile::parse("dev"), Some(Profile::Dev));
+        assert_eq!(Profile::parse("staging"), Some(Profile::Staging));
+        assert_eq!(Profile::parse("template"), Some(Profile::Template));
+        assert_eq!(Profile::parse("x"), None);
+        assert_eq!(Profile::parse("Dev"), None);
+        assert_eq!(Profile::parse(""), None);
+
+        assert_eq!(Profile::Dev.as_str(), "dev");
+        assert_eq!(Profile::Staging.as_str(), "staging");
+        assert_eq!(Profile::Prod.as_str(), "prod");
+        assert_eq!(Profile::Template.as_str(), "template");
+        for p in [
+            Profile::Dev,
+            Profile::Staging,
+            Profile::Prod,
+            Profile::Template,
+        ] {
+            assert_eq!(Profile::parse(p.as_str()), Some(p));
+        }
     }
 }
