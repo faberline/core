@@ -115,7 +115,7 @@ pub use infrastructure::{
 pub use infrastructure::{HttpConfig, LogFormat, ServiceIdentity};
 pub use interfaces::{admission_middleware, AdmissionMiddleware};
 pub use interfaces::{body_limit_layer, BodyLimitLayer, BodyLimitService};
-pub use interfaces::{decode_cursor, encode_cursor, CursorDecodeError};
+pub use interfaces::{check_if_match, decode_cursor, encode_cursor, CursorDecodeError};
 pub use interfaces::{
     decode_request_body, ContentDecodeError, ContentDecodeErrorKind, ContentDecodeLimitError,
     ContentDecodeLimits,

@@ -9,6 +9,7 @@ mod content_decode;
 mod cursor;
 mod error;
 mod operation_metrics;
+mod precondition;
 mod probes;
 mod request_id;
 mod request_timeout;
@@ -28,6 +29,7 @@ pub use error::{
     error_code, retry_delay_from_detailed_error, ApiErr, DetailedErrorEnvelope, ErrorDetail,
     ErrorEnvelope, ErrorEnvelopeWithDetails, ProjectionMetadata,
 };
+pub use precondition::check_if_match;
 pub use operation_metrics::{operation_metrics_middleware, OperationMetrics, UNMATCHED_OPERATION};
 pub use probes::{
     lifecycle_probe_routes, lifecycle_probe_routes_canonical_json, standard_probe_routes,
