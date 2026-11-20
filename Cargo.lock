@@ -4696,6 +4696,7 @@ dependencies = [
  "flate2",
  "futures-util",
  "http-body-util",
+ "metrics-prometheus",
  "opentelemetry 0.33.1",
  "proptest",
  "raft-runtime",
