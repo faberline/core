@@ -14,10 +14,14 @@ use super::{
     service_statefulset, PrometheusRule, RenderCtx, ServiceMonitor, ServiceStatefulSet,
     WorkloadVolumeClaim,
 };
+use super::{
+    ContainerPlan, CronJobPlan, DaemonSetPlan, DeploymentPlan, PersistentVolumeClaimPlan, PodPlan,
+    PodRuntimePolicy, StatefulSetPlan, WorkloadPlan, WorkloadPlanError,
+};
 use crate::domain::config_env::{
     config_env, config_map, env_from, secret_volume_mounts, secret_volumes, ConfigEnvError,
 };
-use crate::domain::profile::{validate_profile, ProfileError, ServiceProfile};
+use crate::domain::profile::{validate_profile, ProfileError, ServiceProfile, WorkloadKind};
 use crate::interfaces::service_spec::ServiceSpec;
 
 /// The `app.kubernetes.io/component` label of every child of an instance.
@@ -28,6 +32,8 @@ pub const INSTANCE_HTTP_PORT: i32 = 8080;
 pub const INSTANCE_DATA_VOLUME: &str = "data";
 /// Where the data volume is mounted in the container.
 pub const INSTANCE_DATA_MOUNT_PATH: &str = "/data";
+/// The fixed schedule of an extra CronJob. Part 1 declares no schedule.
+pub const EXTRA_CRONJOB_SCHEDULE: &str = "0 3 * * *";
 
 /// Why an instance is not rendered.
 #[derive(Debug, PartialEq, Eq, thiserror::Error)]
@@ -50,6 +56,9 @@ pub enum InstanceRenderError {
     /// `render_static` was called with `replicas == 0`.
     #[error("replicas must be at least 1")]
     NoReplicas,
+    /// An extra workload of the profile cannot be planned.
+    #[error("{0}")]
+    ExtraWorkload(WorkloadPlanError),
 }
 
 impl From<ProfileError> for InstanceRenderError {
@@ -139,7 +148,8 @@ fn alert_rules<P: ServiceProfile>(ctx: &RenderCtx<'_>) -> Vec<OwnedAlert> {
 /// `<name>`, StatefulSet `<name>`, PodDisruptionBudget `<name>`, NetworkPolicy `<name>`
 /// (`<name>` is `ctx.name()`). It does not render a ServiceAccount, so the pods use the
 /// namespace's default one. With `spec.monitoring.enabled` it appends a ServiceMonitor
-/// `<name>` and a PrometheusRule `<name>-alerts`.
+/// `<name>` and a PrometheusRule `<name>-alerts`. Then, for each `P::extra_workloads()` in
+/// declaration order, the objects of that workload (see `extra_workload_children`).
 ///
 /// `validate_profile::<P>()` runs first, then the shard check (`shards != 1` is
 /// `MultiShardUnsupported`), then `config_env::<P>`.
@@ -275,7 +285,64 @@ where
             rules,
         }));
     }
+    children.extend(
+        extra_workload_children::<P>(ctx, spec, &config_map_name, &headless_name)
+            .map_err(InstanceRenderError::ExtraWorkload)?,
+    );
     Ok(children)
+}
+
+/// The objects of the profile's extra workloads, in declaration order: one object per
+/// workload, named `<name>-<workload>`, with the instance's image, resources and config.
+fn extra_workload_children<P: ServiceProfile>(
+    ctx: &RenderCtx<'_>,
+    spec: &ServiceSpec<P::Config>,
+    config_map_name: &str,
+    headless_name: &str,
+) -> Result<Vec<Value>, WorkloadPlanError> {
+    let mut plan = WorkloadPlan::new(ctx);
+    for workload in P::extra_workloads() {
+        let name = format!("{}-{}", ctx.name(), workload.name);
+        let component = workload.name.as_str();
+        let mut container =
+            ContainerPlan::new(workload.name.clone(), spec.image.image.clone(), Vec::new());
+        container.image_pull_policy = Some(
+            spec.image
+                .image_pull_policy
+                .clone()
+                .unwrap_or_else(|| "IfNotPresent".to_string()),
+        );
+        container.env_from = Vec::from([env_from(config_map_name)]);
+        container.resources = Some(requested_resources(
+            &spec.resources.cpu,
+            &spec.resources.memory,
+        ));
+        let pod = PodPlan::new(
+            component,
+            container,
+            PodRuntimePolicy::restricted("default", json!({})),
+        );
+        match workload.kind {
+            WorkloadKind::StatefulSet => plan.add_stateful_set(StatefulSetPlan::new(
+                name,
+                headless_name,
+                1,
+                pod,
+                PersistentVolumeClaimPlan::new(
+                    INSTANCE_DATA_VOLUME,
+                    component,
+                    spec.storage.size.clone(),
+                    INSTANCE_DATA_MOUNT_PATH,
+                ),
+            )),
+            WorkloadKind::Deployment => plan.add_deployment(DeploymentPlan::new(name, 1, pod)),
+            WorkloadKind::DaemonSet => plan.add_daemon_set(DaemonSetPlan::new(name, pod)),
+            WorkloadKind::CronJob => {
+                plan.add_cron_job(CronJobPlan::new(name, EXTRA_CRONJOB_SCHEDULE, pod))
+            }
+        }
+    }
+    plan.render()
 }
 
 /// Render one profile instance for the operator: the one renderer with one shard.

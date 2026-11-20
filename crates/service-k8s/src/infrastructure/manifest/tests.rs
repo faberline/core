@@ -1,6 +1,7 @@
 use super::*;
 
 mod children;
+mod extra_workloads;
 mod monitoring;
 mod statefulset;
 
