@@ -24,6 +24,10 @@ impl CommittedCommandPin {
                 "Raft log artifact exceeds address space",
             )
         })?;
+        // SAFETY: the file was opened read-only for this pinned artifact and
+        // `mapped_len` was checked to be at most its length just above.
+        // Writers only append or atomically replace the path, so the mapped
+        // range stays valid for the life of `map`.
         let map =
             unsafe { MmapOptions::new().len(mapped_len).map(&file) }.map_err(io::Error::other)?;
         validate_pinned_frame(&map, self.frame)?;
