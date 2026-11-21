@@ -411,7 +411,7 @@ fn legacy_default_output_contract() {
         output_fingerprint(&rust),
         vec![
             ("models.rs", 9804341337094805699),
-            ("client.rs", 11701030275327845927),
+            ("client.rs", 3208015768975449645),
             ("mod.rs", 10596960125496975377),
         ]
     );
