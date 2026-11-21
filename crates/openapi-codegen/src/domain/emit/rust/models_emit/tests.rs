@@ -378,3 +378,173 @@ fn forcing_value_would_break_round_trip_guard() {
     let out = emit(&spec, &tm, RustTarget::Rust2021);
     assert!(!out.contains("pub type Pet = serde_json::Value;"));
 }
+
+fn render_with_warnings(spec_json: &str) -> (String, Vec<String>) {
+    let spec = parse_spec(spec_json);
+    let tm = build_type_map(&spec);
+    emit_with_warnings(&spec, &tm, RustTarget::Rust2021)
+}
+
+#[test]
+fn inline_union_with_distinct_required_is_typed_enum() {
+    let (out, _) = render_with_warnings(
+        r##"{
+        "openapi": "3.1.0", "info": { "title": "Test", "version": "1.0.0" }, "paths": {},
+        "components": { "schemas": { "Outcome": { "oneOf": [
+            { "type": "object", "required": ["rows"], "properties": { "rows": { "type": "array", "items": { "type": "string" } } } },
+            { "type": "object", "required": ["total"], "properties": { "total": { "type": "integer" } } }
+        ] } } }
+    }"##,
+    );
+    assert!(out.contains("pub struct OutcomeRows {"), "{out}");
+    assert!(out.contains("    pub rows: Vec<String>,\n"), "{out}");
+    assert!(out.contains("pub struct OutcomeTotal {"), "{out}");
+    assert!(out.contains("    pub total: i64,\n"), "{out}");
+    assert!(
+        out.contains(
+            "#[serde(untagged)]\npub enum Outcome {\n    OutcomeRows(OutcomeRows),\n    OutcomeTotal(OutcomeTotal),\n}\n"
+        ),
+        "{out}"
+    );
+    assert!(out.find("pub struct OutcomeRows").unwrap() < out.find("pub enum Outcome").unwrap());
+    assert!(
+        !out.contains("pub type Outcome = serde_json::Value;"),
+        "{out}"
+    );
+}
+
+#[test]
+fn inline_union_names_use_variant_index_when_not_one_required() {
+    let (out, _) = render_with_warnings(
+        r##"{
+        "openapi": "3.1.0", "info": { "title": "Test", "version": "1.0.0" }, "paths": {},
+        "components": { "schemas": { "Pair": { "oneOf": [
+            { "type": "object", "required": ["a", "b"], "properties": { "a": { "type": "string" }, "b": { "type": "string" } } },
+            { "type": "object", "required": ["c", "d"], "properties": { "c": { "type": "string" }, "d": { "type": "string" } } }
+        ] } } }
+    }"##,
+    );
+    assert!(out.contains("pub struct PairVariant1 {"), "{out}");
+    assert!(out.contains("pub struct PairVariant2 {"), "{out}");
+}
+
+#[test]
+fn inline_union_same_required_stays_value() {
+    let (out, warnings) = render_with_warnings(
+        r##"{
+        "openapi": "3.1.0", "info": { "title": "Test", "version": "1.0.0" }, "paths": {},
+        "components": { "schemas": { "Clash": { "oneOf": [
+            { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } },
+            { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } }
+        ] } } }
+    }"##,
+    );
+    assert!(out.contains("pub type Clash = serde_json::Value;"), "{out}");
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].contains("`Clash`"), "{warnings:?}");
+}
+
+#[test]
+fn inline_union_with_ref_and_primitive_branches_is_typed() {
+    let (out, _) = render_with_warnings(
+        r##"{
+        "openapi": "3.1.0", "info": { "title": "Test", "version": "1.0.0" }, "paths": {},
+        "components": { "schemas": {
+            "Cat": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" } } },
+            "Mixed": { "oneOf": [
+                { "$ref": "#/components/schemas/Cat" },
+                { "type": "object", "required": ["bark"], "properties": { "bark": { "type": "boolean" } } },
+                { "type": "string" }
+            ] }
+        } }
+    }"##,
+    );
+    assert!(out.contains("pub struct MixedBark {"), "{out}");
+    assert!(out.contains("pub enum Mixed {"), "{out}");
+    assert!(out.contains("    Cat(Cat),\n"), "{out}");
+    assert!(out.contains("    MixedBark(MixedBark),\n"), "{out}");
+    assert!(out.contains("    String(String),\n"), "{out}");
+}
+
+#[test]
+fn inline_union_branch_without_required_stays_value() {
+    let (out, warnings) = render_with_warnings(
+        r##"{
+        "openapi": "3.1.0", "info": { "title": "Test", "version": "1.0.0" }, "paths": {},
+        "components": { "schemas": { "Gap": { "oneOf": [
+            { "type": "object", "required": ["a"], "properties": { "a": { "type": "string" } } },
+            { "type": "object", "properties": { "b": { "type": "string" } } }
+        ] } } }
+    }"##,
+    );
+    assert!(out.contains("pub type Gap = serde_json::Value;"), "{out}");
+    assert!(warnings.iter().any(|w| w.contains("`Gap`")), "{warnings:?}");
+}
+
+#[test]
+fn union_without_inline_object_is_unchanged() {
+    let (out, _) = render_with_warnings(UNIONS);
+    assert!(
+        out.contains("#[serde(untagged)]\npub enum Shape {\n    Cat(Cat),\n    Dog(Dog),\n}"),
+        "{out}"
+    );
+    assert!(!out.contains("Variant1"), "{out}");
+}
+
+const INLINE_A: &str = r##"{"type":"object","required":["id","x"],"properties":{"id":{"type":"string"},"x":{"type":"string"}}}"##;
+
+/// Each body must leave the union as `serde_json::Value` with one warning.
+fn assert_inline_union_stays_value(body: &str) {
+    let json = r##"{
+        "openapi": "3.1.0", "info": { "title": "Test", "version": "1.0.0" }, "paths": {},
+        "components": { "schemas": {
+            "Label": { "type": "string", "enum": ["x"] },
+            "Cat": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" } } },
+            "Odd": { "oneOf": [BODY] }
+        } }
+    }"##
+    .replace("BODY", body);
+    let (out, warnings) = render_with_warnings(&json);
+    assert!(out.contains("pub type Odd = serde_json::Value;"), "{out}");
+    assert!(warnings.iter().any(|w| w.contains("`Odd`")), "{warnings:?}");
+}
+
+#[test]
+fn inline_union_repeated_primitive_stays_value() {
+    assert_inline_union_stays_value(&format!(
+        r#"{INLINE_A}, {{"type":"string"}}, {{"type":"string"}}"#
+    ));
+}
+
+#[test]
+fn inline_union_integer_and_number_stay_value() {
+    assert_inline_union_stays_value(&format!(
+        r#"{INLINE_A}, {{"type":"integer"}}, {{"type":"number"}}"#
+    ));
+}
+
+#[test]
+fn inline_union_non_struct_ref_stays_value() {
+    assert_inline_union_stays_value(&format!(
+        r##"{INLINE_A}, {{"$ref":"#/components/schemas/Label"}}"##
+    ));
+}
+
+#[test]
+fn inline_union_repeated_ref_stays_value() {
+    assert_inline_union_stays_value(&format!(
+        r##"{INLINE_A}, {{"$ref":"#/components/schemas/Cat"}}, {{"$ref":"#/components/schemas/Cat"}}"##
+    ));
+}
+
+#[test]
+fn inline_union_bare_object_branch_stays_value() {
+    assert_inline_union_stays_value(&format!(r#"{INLINE_A}, {{"type":"object"}}"#));
+}
+
+#[test]
+fn inline_union_subset_required_stays_value() {
+    assert_inline_union_stays_value(&format!(
+        r#"{{"type":"object","required":["id"],"properties":{{"id":{{"type":"string"}},"y":{{"type":"string"}}}}}}, {INLINE_A}"#
+    ));
+}
