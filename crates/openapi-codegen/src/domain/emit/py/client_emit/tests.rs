@@ -74,7 +74,7 @@ fn query_operation_sends_query_method_with_json_body_by_default() {
     assert!(out.contains("_path = f\"/pets\""));
     assert!(out.contains("_method = \"QUERY\""));
     assert!(out.contains(
-        "_resp = self._client.request(_method, self._base_url + _path, params=_params, headers=_headers, json=_json)"
+        "_resp = self._client.request(_method, self._base_url + _path, params=_params, headers=_headers, json=_json, timeout=timeout)"
     ));
 }
 
@@ -101,7 +101,7 @@ fn non_query_operation_has_no_fallback_branch() {
     let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
     assert!(!out.contains("if self._use_post_fallback:"));
     assert!(out.contains(
-        "_resp = self._client.request(\"GET\", self._base_url + _path, params=_params, headers=_headers)"
+        "_resp = self._client.request(\"GET\", self._base_url + _path, params=_params, headers=_headers, timeout=timeout)"
     ));
 }
 
@@ -332,4 +332,50 @@ fn non_managed_client_is_unchanged() {
     assert!(!plain.contains("_MANAGED_"));
     assert!(!plain.contains("_managed_headers"));
     assert!(!plain.contains("ca_path"));
+}
+
+#[test]
+fn python_methods_take_timeout_and_async_takes_cancel_event() {
+    let s = spec(
+        r##"{"paths":{"/pets":{"get":{"operationId":"listPets",
+  "responses":{"200":{"description":"ok","content":{"application/json":{"schema":{"type":"object"}}}}}}}}}"##,
+    );
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    assert!(
+        out.contains("    def list_pets(self, *, timeout: float | None = None)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("    async def list_pets(self, *, timeout: float | None = None, cancel_event: asyncio.Event | None = None)"),
+        "{out}"
+    );
+    assert!(
+        out.contains("class DeadlineExceededError(Exception):"),
+        "{out}"
+    );
+    assert!(out.contains("class CancelledError(Exception):"), "{out}");
+    assert!(out.contains("import asyncio\n"), "{out}");
+    assert!(out.contains("timeout=timeout)"), "{out}");
+}
+
+#[test]
+fn ndjson_methods_are_unchanged_by_timeout() {
+    let s = spec(
+        r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs",
+  "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
+  "responses":{"200":{"description":"ok","content":{"application/x-ndjson":{"schema":{"type":"string"}}}}}}}}}"##,
+    );
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    assert!(
+        out.contains(
+            "    def upload_logs(self, *, body: Iterable[dict[str, Any]]) -> Iterator[str]:\n"
+        ),
+        "{out}"
+    );
+    assert!(
+        !out.contains("def upload_logs(self, *, body: Iterable[dict[str, Any]], timeout"),
+        "{out}"
+    );
 }
