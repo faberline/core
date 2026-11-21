@@ -86,7 +86,7 @@ fn h2c_default_client_method_is_typed_and_validated() {
     let out = generate(SPEC, &opts()).unwrap();
     let client = file(&out, "client.py");
     assert!(client.contains("class SupportsRequest(Protocol):"));
-    assert!(client.contains("from .h2c_runtime import AsyncH2CClient, H2CClient"));
+    assert!(client.contains("from .h2c_runtime import AsyncH2CClient, H2CClient, H2CTimeout"));
     assert!(client.contains("class Client:"));
     assert!(client.contains("client: Optional[SupportsRequest] = None"));
     assert!(client.contains("default_headers: Optional[Mapping[str, Any]] = None"));
@@ -96,7 +96,9 @@ fn h2c_default_client_method_is_typed_and_validated() {
     assert!(client.contains("self._default_headers[\"Authorization\"] = f\"Bearer {auth_token}\""));
     assert!(client.contains("def __enter__(self) -> \"Client\":"));
     assert!(client.contains("def close(self) -> None:"));
-    assert!(client.contains("def get_pet_by_id(self, *, pet_id: int) -> Pet:"));
+    assert!(client.contains(
+        "def get_pet_by_id(self, *, pet_id: int, timeout: Optional[float] = None) -> Pet:"
+    ));
     assert!(client.contains("_path = f\"/pets/{pet_id}\""));
     assert!(client.contains("_headers: dict[str, Any] = dict(self._default_headers)"));
     assert!(client.contains("self._client.request(\"GET\""));
@@ -106,8 +108,10 @@ fn h2c_default_client_method_is_typed_and_validated() {
     assert!(client.contains("self._client = client or AsyncH2CClient(ssl_context=ssl_context)"));
     assert!(client.contains("async def __aenter__(self) -> \"AsyncClient\":"));
     assert!(client.contains("async def aclose(self) -> None:"));
-    assert!(client.contains("async def get_pet_by_id(self, *, pet_id: int) -> Pet:"));
-    assert!(client.contains("_resp = await self._client.request(\"GET\""));
+    assert!(client.contains(
+        "async def get_pet_by_id(self, *, pet_id: int, timeout: Optional[float] = None, cancel_event: Optional[asyncio.Event] = None) -> Pet:"
+    ));
+    assert!(client.contains("_resp = await _call(self._client.request(\"GET\""));
 
     let init = file(&out, "__init__.py");
     assert!(init.contains("from .client import AsyncClient, Client"));

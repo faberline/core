@@ -96,6 +96,20 @@ pub(super) fn emit_method(
         }
     }
 
+    // A non-NDJSON call takes a deadline; an async call also takes a cancel event.
+    if !is_ndjson(ir) {
+        sig.push(format!(
+            "timeout: {} = None",
+            pymap::optional("float", target)
+        ));
+        if is_async {
+            sig.push(format!(
+                "cancel_event: {} = None",
+                pymap::optional("asyncio.Event", target)
+            ));
+        }
+    }
+
     let (ret_ann, ret_stmt) = response(ir, tm, target, is_async);
     let sig_str = if sig.is_empty() {
         String::new()
@@ -192,15 +206,21 @@ pub(super) fn emit_method(
         return m;
     }
 
+    // A timeout ends the call with DeadlineExceededError; the request is sent once.
+    // asyncio.CancelledError is a BaseException, so `except Exception` leaves a task cancel alone.
     if is_async {
         m.push_str(&format!(
-            "        _resp = await self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg})\n"
+            "        try:\n            _resp = await _call(self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg}, timeout=timeout), timeout, cancel_event)\n"
         ));
     } else {
         m.push_str(&format!(
-            "        _resp = self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg})\n"
+            "        try:\n            _resp = self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg}, timeout=timeout)\n"
         ));
     }
+    m.push_str("        except Exception as _exc:\n");
+    m.push_str("            if _is_timeout(_exc):\n");
+    m.push_str("                raise DeadlineExceededError(timeout) from _exc\n");
+    m.push_str("            raise\n");
     m.push_str("        _resp.raise_for_status()\n");
     m.push_str(&format!("        {ret_stmt}\n"));
     m
