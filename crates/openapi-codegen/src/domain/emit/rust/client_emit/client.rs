@@ -97,6 +97,7 @@ pub fn emit_with(
     out.push_str("use crate::models::*;\n\n");
     out.push_str("use std::fmt;\n");
     out.push_str("use std::sync::{Arc, Condvar, Mutex};\n");
+    out.push_str("use std::sync::atomic::{AtomicBool, Ordering};\n");
     out.push_str("use std::time::{Duration, Instant};\n\n");
     if let Some(auth) = auth {
         out.push_str(&format!(
@@ -168,6 +169,10 @@ pub fn emit_with(
     out.push_str("pub enum ClientError {\n");
     out.push_str("    Http(reqwest::Error),\n");
     out.push_str("    PoolTimeout(Duration),\n");
+    out.push_str("    /// The request did not finish within `CallOptions::deadline`.\n");
+    out.push_str("    DeadlineExceeded(Duration),\n");
+    out.push_str("    /// The `CancelToken` of the call was set.\n");
+    out.push_str("    Cancelled,\n");
     out.push_str("    /// The private trust anchor could not be used as configured.\n");
     out.push_str("    Trust(String),\n");
     if headers_support {
@@ -195,6 +200,8 @@ pub fn emit_with(
     out.push_str("        match self {\n");
     out.push_str("            Self::Http(err) => write!(f, \"{err}\"),\n");
     out.push_str("            Self::PoolTimeout(timeout) => write!(f, \"pool timeout after {timeout:?}\"),\n");
+    out.push_str("            Self::DeadlineExceeded(deadline) => write!(f, \"deadline of {deadline:?} exceeded\"),\n");
+    out.push_str("            Self::Cancelled => f.write_str(\"request cancelled\"),\n");
     out.push_str("            Self::Trust(why) => write!(f, \"{why}\"),\n");
     if headers_support {
         out.push_str(
@@ -215,7 +222,9 @@ pub fn emit_with(
     out.push_str("    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {\n");
     out.push_str("        match self {\n");
     out.push_str("            Self::Http(err) => Some(err),\n");
-    out.push_str("            Self::PoolTimeout(_) => None,\n");
+    out.push_str(
+        "            Self::PoolTimeout(_) | Self::DeadlineExceeded(_) | Self::Cancelled => None,\n",
+    );
     if any_ndjson {
         out.push_str("            Self::Trust(_) | Self::Ndjson { .. } => None,\n");
     } else {
@@ -232,6 +241,22 @@ pub fn emit_with(
     out.push_str("    }\n");
     out.push_str("}\n\n");
     out.push_str("pub type ClientResult<T> = std::result::Result<T, ClientError>;\n\n");
+    out.push_str(
+        "/// A handle that another thread sets to cancel a call. Clones share the flag.\n",
+    );
+    out.push_str("#[derive(Clone, Default)]\n");
+    out.push_str("pub struct CancelToken(Arc<AtomicBool>);\n\n");
+    out.push_str("impl CancelToken {\n");
+    out.push_str("    pub fn new() -> Self { Self::default() }\n");
+    out.push_str("    pub fn cancel(&self) { self.0.store(true, Ordering::SeqCst); }\n");
+    out.push_str("    pub fn is_cancelled(&self) -> bool { self.0.load(Ordering::SeqCst) }\n");
+    out.push_str("}\n\n");
+    out.push_str("/// Per-call options. `CallOptions::default()` means: no deadline, no cancel.\n");
+    out.push_str("#[derive(Clone, Default)]\n");
+    out.push_str("pub struct CallOptions {\n");
+    out.push_str("    pub deadline: Option<Duration>,\n");
+    out.push_str("    pub cancel: Option<CancelToken>,\n");
+    out.push_str("}\n\n");
     if ops.iter().any(|op| has_declared_errors(op, tm)) {
         out.push_str("/// A failure of an operation with declared error responses: transport\n");
         out.push_str("/// trouble (`Client`) or a declared, decoded response (`Api`).\n");
@@ -448,18 +473,23 @@ pub fn emit_with(
     if managed.is_none() {
         push_private_ca_ctor(&mut out, auth.is_some());
     }
-    out.push_str("\n    fn acquire_slot(&self) -> ClientResult<SlotGuard> {\n");
+    out.push_str("\n    fn acquire_slot(&self) -> ClientResult<SlotGuard> { self.acquire_slot_with(None) }\n\n");
+    out.push_str("    fn acquire_slot_with(&self, cancel: Option<&CancelToken>) -> ClientResult<SlotGuard> {\n");
     out.push_str("        let max = self.policy.max_in_flight_per_origin.max(1);\n");
     out.push_str("        let deadline = Instant::now() + self.policy.pool_timeout;\n");
     out.push_str("        let (lock, cv) = &*self.admission;\n");
     out.push_str("        let mut state = lock.lock().expect(\"admission lock poisoned\");\n");
     out.push_str("        while state.in_flight >= max {\n");
+    out.push_str("            if cancel.is_some_and(CancelToken::is_cancelled) { return Err(ClientError::Cancelled); }\n");
     out.push_str("            let now = Instant::now();\n");
     out.push_str("            if now >= deadline { return Err(ClientError::PoolTimeout(self.policy.pool_timeout)); }\n");
-    out.push_str("            let wait = deadline.saturating_duration_since(now);\n");
-    out.push_str("            let (next, timeout) = cv.wait_timeout(state, wait).expect(\"admission lock poisoned\");\n");
+    out.push_str("            let mut wait = deadline.saturating_duration_since(now);\n");
+    out.push_str(
+        "            if cancel.is_some() { wait = wait.min(Duration::from_millis(10)); }\n",
+    );
+    out.push_str("            let (next, _timed_out) = cv.wait_timeout(state, wait).expect(\"admission lock poisoned\");\n");
     out.push_str("            state = next;\n");
-    out.push_str("            if timeout.timed_out() && state.in_flight >= max { return Err(ClientError::PoolTimeout(self.policy.pool_timeout)); }\n");
+    out.push_str("            if Instant::now() >= deadline && state.in_flight >= max { return Err(ClientError::PoolTimeout(self.policy.pool_timeout)); }\n");
     out.push_str("        }\n");
     out.push_str("        state.in_flight += 1;\n");
     out.push_str("        Ok(SlotGuard { admission: Arc::clone(&self.admission) })\n");
@@ -479,6 +509,39 @@ pub fn emit_with(
     }
     out.push_str("}\n");
     out.push_str(&error_enums);
+    out.push_str(r#"
+/// Sends one request. With a cancel token the blocking send runs on a helper
+/// thread and this thread polls the token; a cancelled request ends when its own
+/// timeout ends, and nothing is re-sent.
+#[allow(dead_code)]
+fn send_with_options(req: reqwest::blocking::RequestBuilder, options: &CallOptions) -> ClientResult<reqwest::blocking::Response> {
+    if options.cancel.as_ref().is_some_and(CancelToken::is_cancelled) {
+        return Err(ClientError::Cancelled);
+    }
+    let req = match options.deadline { Some(deadline) => req.timeout(deadline), None => req };
+    let send = move || req.send();
+    let result = match options.cancel.clone() {
+        None => send(),
+        Some(cancel) => {
+            let (tx, rx) = std::sync::mpsc::channel();
+            std::thread::spawn(move || { let _ = tx.send(send()); });
+            loop {
+                match rx.recv_timeout(Duration::from_millis(10)) {
+                    Ok(result) => break result,
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                        if cancel.is_cancelled() { return Err(ClientError::Cancelled); }
+                    }
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return Err(ClientError::Cancelled),
+                }
+            }
+        }
+    };
+    result.map_err(|err| match options.deadline {
+        Some(deadline) if err.is_timeout() => ClientError::DeadlineExceeded(deadline),
+        _ => ClientError::Http(err),
+    })
+}
+"#);
     out
 }
 
