@@ -24,7 +24,15 @@ const SPEC: &str = r##"{
       },
       "Shape": { "oneOf": [ { "$ref": "#/components/schemas/Cat" }, { "$ref": "#/components/schemas/Dog" } ] },
       "Id": { "anyOf": [ { "type": "string" }, { "type": "integer" } ] },
-      "Blob": { "oneOf": [ { "type": "object" }, { "type": "object" } ] }
+      "Blob": { "oneOf": [ { "type": "object" }, { "type": "object" } ] },
+      "Outcome": { "oneOf": [
+        { "type": "object", "required": ["rows"], "properties": { "rows": { "type": "array", "items": { "type": "string" } } } },
+        { "type": "object", "required": ["total"], "properties": { "total": { "type": "integer" } } }
+      ] },
+      "Clash": { "oneOf": [
+        { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } },
+        { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } }
+      ] }
     }
   }
 }"##;
@@ -71,8 +79,9 @@ fn generated_rust_unions_round_trip() {
     let target = TargetProfile::Rust(RustTarget::Rust2021);
     let generated =
         generate_for_target(SPEC, &opts(target), target).expect("generate Rust union models");
-    assert_eq!(generated.warnings().len(), 1);
-    assert!(generated.warnings()[0].contains("`Blob`"));
+    assert_eq!(generated.warnings().len(), 2);
+    assert!(generated.warnings().iter().any(|w| w.contains("`Blob`")));
+    assert!(generated.warnings().iter().any(|w| w.contains("`Clash`")));
     materialize(&generated, &source);
     fs::rename(source.join("mod.rs"), source.join("lib.rs")).expect("install Rust lib root");
     fs::write(
@@ -90,7 +99,7 @@ serde_json = "1"
     .expect("write generated Rust manifest");
     fs::write(
         source.join("main.rs"),
-        r##"use generated_unions::models::{Blob, Id, Pet, Shape};
+        r##"use generated_unions::models::{Blob, Id, Outcome, Pet, Shape};
 
 fn main() {
     let pet: Pet = serde_json::from_str(r#"{"kind":"cat","name":"Tom"}"#).expect("cat");
@@ -142,6 +151,20 @@ fn main() {
 
     let b: Blob = serde_json::json!({"x": 1});
     println!("blob:{b}");
+
+    let outcome: Outcome = serde_json::from_str(r#"{"rows":["a"]}"#).expect("outcome rows");
+    match &outcome {
+        Outcome::OutcomeRows(r) => println!("outcome:rows:{}", r.rows.len()),
+        other => panic!("expected rows outcome, got {}", serde_json::to_string(other).unwrap()),
+    }
+    println!("{}", serde_json::to_string(&outcome).expect("serialize outcome rows"));
+
+    let outcome: Outcome = serde_json::from_str(r#"{"total":3}"#).expect("outcome total");
+    match &outcome {
+        Outcome::OutcomeTotal(t) => println!("outcome:total:{}", t.total),
+        other => panic!("expected total outcome, got {}", serde_json::to_string(other).unwrap()),
+    }
+    println!("{}", serde_json::to_string(&outcome).expect("serialize outcome total"));
 }
 "##,
     )
@@ -184,6 +207,10 @@ fn main() {
             "id:int",
             "7",
             r#"blob:{"x":1}"#,
+            "outcome:rows:1",
+            r#"{"rows":["a"]}"#,
+            "outcome:total:3",
+            r#"{"total":3}"#,
         ]
     );
     let _ = fs::remove_dir_all(&root);
