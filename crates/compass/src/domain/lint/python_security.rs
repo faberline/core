@@ -158,6 +158,26 @@ pub(super) fn check_hardcoded_secrets(lines: &[&str]) -> Vec<Diagnostic> {
                     || after_trimmed.starts_with("b\"")
                     || after_trimmed.starts_with("b'")
                 {
+                    // A `token` name holds a plain word or a test name, not a secret
+                    if pattern.starts_with("token") {
+                        let idx = lower.find(pattern).unwrap();
+                        let prefix = &lower[..idx];
+                        let body = after_trimmed
+                            .trim_start_matches('b')
+                            .trim_start_matches(['"', '\'']);
+                        let literal = body.split(['"', '\'']).next().unwrap_or("");
+                        let name_ends_in_token = prefix
+                            .chars()
+                            .next_back()
+                            .is_some_and(|c| c.is_alphanumeric() || c == '_');
+                        let plain = !literal
+                            .chars()
+                            .any(|c| c.is_ascii_digit() || "-+/=".contains(c))
+                            && literal.len() <= 24;
+                        if literal.starts_with("test_") || (name_ends_in_token && plain) {
+                            continue;
+                        }
+                    }
                     diagnostics.push(Diagnostic::warning(
                         Range::new(
                             Position::new(line_num as u32, 0),
@@ -206,4 +226,46 @@ fn check_function_call(
     });
 
     diagnostics
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn py305_ignores_token_name_with_test_name_value() {
+        assert_eq!(
+            check_hardcoded_secrets(&["    token = \"test_threat_model\""]).len(),
+            0
+        );
+    }
+
+    #[test]
+    fn py305_ignores_csrf_token_word_value() {
+        assert_eq!(check_hardcoded_secrets(&["csrf_token = \"form\""]).len(), 0);
+    }
+
+    #[test]
+    fn py305_still_reports_password_literal() {
+        assert_eq!(
+            check_hardcoded_secrets(&["password = \"hunter2\""]).len(),
+            1
+        );
+    }
+
+    #[test]
+    fn py305_still_reports_long_token_literal() {
+        assert_eq!(
+            check_hardcoded_secrets(&["token = \"abcd-1234-efgh-5678-ijkl\""]).len(),
+            1
+        );
+    }
+
+    #[test]
+    fn py305_still_reports_prefixed_token_with_secret_like_value() {
+        assert_eq!(
+            check_hardcoded_secrets(&["api_token = \"ab12cd34ef56\""]).len(),
+            1
+        );
+    }
 }

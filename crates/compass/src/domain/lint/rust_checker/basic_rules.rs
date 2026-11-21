@@ -9,7 +9,7 @@ impl RustChecker {
         let mut diagnostics = Vec::new();
 
         file.walk(|node, _depth| {
-            if node.kind() == "unsafe_block" {
+            if node.kind() == "unsafe_block" && !Self::unsafe_is_documented_or_test(file, node) {
                 diagnostics.push(Diagnostic::new(
                     node.to_range(),
                     DiagnosticSeverity::Information,
@@ -22,6 +22,80 @@ impl RustChecker {
         });
 
         diagnostics
+    }
+
+    /// True when an unsafe block has a `// SAFETY:` comment on its line or in the
+    /// comment lines above it, or when it is in test code.
+    fn unsafe_is_documented_or_test(file: &ParsedFile, node: &tree_sitter::Node<'_>) -> bool {
+        let lines: Vec<&str> = file.source.lines().collect();
+        let row = node.start_position().row;
+        if lines
+            .get(row)
+            .is_some_and(|line| line.contains("// SAFETY:"))
+        {
+            return true;
+        }
+
+        // Comment lines above the block; a split `let x =` line may sit between them
+        let mut c = row.saturating_sub(1);
+        if c > 0
+            && lines
+                .get(c)
+                .is_some_and(|line| line.trim_end().ends_with('='))
+        {
+            c -= 1;
+        }
+        while let Some(line) = lines.get(c) {
+            let text = line.trim_start();
+            if !text.starts_with("//") {
+                break;
+            }
+            if text.contains("SAFETY:") {
+                return true;
+            }
+            let Some(previous) = c.checked_sub(1) else {
+                break;
+            };
+            c = previous;
+        }
+
+        // Test code: a `mod tests`, or an item with a `#[test]` or `#[cfg(test)]` attribute
+        let mut current = node.parent();
+        while let Some(ancestor) = current {
+            if ancestor.kind() == "mod_item" {
+                if let Some(name) = ancestor.child_by_field_name("name") {
+                    if file.node_text(&name) == "tests" {
+                        return true;
+                    }
+                }
+            }
+            if matches!(ancestor.kind(), "mod_item" | "function_item")
+                && Self::has_test_attribute(file, &ancestor)
+            {
+                return true;
+            }
+            current = ancestor.parent();
+        }
+        false
+    }
+
+    /// True when an item has a `#[test]` or `#[cfg(test)]` attribute directly above it
+    fn has_test_attribute(file: &ParsedFile, item: &tree_sitter::Node<'_>) -> bool {
+        let mut previous = item.prev_sibling();
+        while let Some(sibling) = previous {
+            match sibling.kind() {
+                "attribute_item" => {
+                    let text = file.node_text(&sibling);
+                    if text.contains("cfg(test)") || text == "#[test]" {
+                        return true;
+                    }
+                }
+                "line_comment" => {}
+                _ => break,
+            }
+            previous = sibling.prev_sibling();
+        }
+        false
     }
 
     /// Check for .clone() calls that might be unnecessary
@@ -127,5 +201,68 @@ impl RustChecker {
             true
         });
         diagnostics
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::RustChecker;
+    use crate::{Checker, Language, LintConfig, MultiParser};
+
+    fn rs201(source: &str) -> usize {
+        let mut parser = MultiParser::new().unwrap();
+        let file = parser.parse(source, Language::Rust).unwrap();
+        RustChecker::new()
+            .check(&file, &LintConfig::default())
+            .iter()
+            .filter(|d| d.code.as_str() == "RS201")
+            .count()
+    }
+
+    #[test]
+    fn rs201_ignores_unsafe_with_safety_comment() {
+        assert_eq!(
+            rs201("fn f() {\n    // SAFETY: the pointer is valid.\n    unsafe { g() };\n}\n"),
+            0
+        );
+    }
+
+    #[test]
+    fn rs201_ignores_safety_comment_above_split_let() {
+        assert_eq!(
+            rs201("fn f() {\n    // SAFETY: valid.\n    // more text.\n    let m =\n        unsafe { g() };\n}\n"),
+            0
+        );
+    }
+
+    #[test]
+    fn rs201_ignores_unsafe_in_test_module() {
+        assert_eq!(
+            rs201("#[cfg(test)]\nmod tests {\n    #[test]\n    fn t() {\n        unsafe { g() };\n    }\n}\n"),
+            0
+        );
+    }
+
+    #[test]
+    fn rs201_ignores_unsafe_in_test_function() {
+        assert_eq!(rs201("#[test]\nfn t() {\n    unsafe { g() };\n}\n"), 0);
+    }
+
+    #[test]
+    fn rs201_still_reports_bare_unsafe() {
+        assert_eq!(rs201("fn f() {\n    unsafe { g() };\n}\n"), 1);
+    }
+
+    #[test]
+    fn rs201_still_reports_unsafe_with_unrelated_comment() {
+        assert_eq!(
+            rs201("fn f() {\n    // call g\n    unsafe { g() };\n}\n"),
+            1
+        );
+    }
+
+    #[test]
+    fn rs201_unsafe_on_first_line_does_not_panic() {
+        let _ = rs201("unsafe { g() }\n");
     }
 }

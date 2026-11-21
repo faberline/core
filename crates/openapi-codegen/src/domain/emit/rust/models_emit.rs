@@ -74,7 +74,7 @@ fn emit_schema(
         RefOr::Ref(_) => format!("pub type {name} = {};\n", rsmap::type_expr(node, tm)),
         RefOr::Item(schema) if is_string_enum(schema) => emit_enum(name, schema),
         RefOr::Item(schema) if is_union(schema) => {
-            emit_union(key, name, schema, spec, tm, warnings)
+            emit_union(key, name, schema, spec, tm, target, warnings)
         }
         RefOr::Item(schema) if schema.properties.is_empty() => {
             format!("pub type {name} = {};\n", rsmap::type_expr(node, tm))
@@ -155,6 +155,9 @@ fn union_plan(schema: &Schema, branches: &[&RefOr<Schema>], spec: &Spec) -> Unio
             UnionPlan::Ambiguous
         };
     }
+    if branches.iter().any(|b| is_inline_object(b)) {
+        return inline_union_plan(branches, spec);
+    }
     let mut refs = BTreeSet::new();
     let mut json_types = BTreeSet::new();
     for b in branches {
@@ -174,6 +177,66 @@ fn union_plan(schema: &Schema, branches: &[&RefOr<Schema>], spec: &Spec) -> Unio
         return UnionPlan::Ambiguous;
     }
     UnionPlan::Untagged
+}
+
+/// An inline object branch: a schema with its own properties.
+fn is_inline_object(b: &RefOr<Schema>) -> bool {
+    matches!(b, RefOr::Item(s) if !s.properties.is_empty())
+}
+
+/// A union with at least one inline object branch and no discriminator. It is
+/// typed when every object-like branch (inline, or a `$ref` struct) has a
+/// `required` list, and no branch's `required` names are all properties of another.
+fn inline_union_plan(branches: &[&RefOr<Schema>], spec: &Spec) -> UnionPlan {
+    let mut refs = BTreeSet::new();
+    let mut json_types = BTreeSet::new();
+    let mut objects: Vec<&Schema> = Vec::new();
+    for b in branches {
+        match b {
+            RefOr::Ref(r) => {
+                let Some(s) = struct_component(spec, &r.reference) else {
+                    return UnionPlan::Ambiguous;
+                };
+                if !refs.insert(r.reference.as_str()) {
+                    return UnionPlan::Ambiguous;
+                }
+                objects.push(s);
+            }
+            RefOr::Item(s) if is_inline_object(b) => objects.push(s),
+            RefOr::Item(s) => {
+                let Some((json, _, _)) = primitive_branch(s) else {
+                    return UnionPlan::Ambiguous;
+                };
+                if !json_types.insert(json) {
+                    return UnionPlan::Ambiguous;
+                }
+            }
+        }
+    }
+    if json_types.contains(&"integer") && json_types.contains(&"number") {
+        return UnionPlan::Ambiguous;
+    }
+    if objects.iter().any(|s| s.required.is_empty()) {
+        return UnionPlan::Ambiguous;
+    }
+    for (i, a) in objects.iter().enumerate() {
+        for (j, b) in objects.iter().enumerate() {
+            if i != j && a.required.iter().all(|r| b.properties.contains_key(r)) {
+                return UnionPlan::Ambiguous;
+            }
+        }
+    }
+    UnionPlan::Untagged
+}
+
+/// The struct name of an inline branch, as the Python emitter names it: the parent
+/// and its one required property, or the parent and the branch position.
+fn inline_struct_name(parent: &str, schema: &Schema, idx: usize) -> String {
+    if schema.required.len() == 1 && schema.properties.contains_key(&schema.required[0]) {
+        format!("{parent}{}", to_pascal(&schema.required[0]))
+    } else {
+        format!("{parent}Variant{}", idx + 1)
+    }
 }
 
 /// The tag value for a variant: the mapping key whose value names the branch,
@@ -198,6 +261,7 @@ fn emit_union(
     schema: &Schema,
     spec: &Spec,
     tm: &TypeMap,
+    target: RustTarget,
     warnings: &mut Vec<String>,
 ) -> String {
     let source = if schema.one_of.is_empty() {
@@ -223,7 +287,11 @@ fn emit_union(
     s.push_str(&header);
     s.push_str(&format!("pub enum {name} {{\n"));
     let mut reg = NameRegistry::new();
-    for branch in &branches {
+    let mut structs: Vec<String> = Vec::new();
+    for (idx, branch) in source.iter().enumerate() {
+        if is_null_branch(branch) {
+            continue;
+        }
         match branch {
             RefOr::Ref(r) => {
                 let Some(ty) = tm.resolve_ref(&r.reference) else {
@@ -236,6 +304,12 @@ fn emit_union(
                 }
                 s.push_str(&format!("    {variant}({ty}),\n"));
             }
+            RefOr::Item(p) if is_inline_object(branch) => {
+                let sname = inline_struct_name(name, p, idx);
+                structs.push(emit_struct(&sname, p, tm, target));
+                let variant = reg.unique(&sname);
+                s.push_str(&format!("    {variant}({sname}),\n"));
+            }
             RefOr::Item(p) => {
                 let Some((_, variant, ty)) = primitive_branch(p) else {
                     continue;
@@ -246,7 +320,10 @@ fn emit_union(
         }
     }
     s.push_str("}\n");
-    s
+    if structs.is_empty() {
+        return s;
+    }
+    format!("{}\n{s}", structs.join("\n"))
 }
 
 /// True when a component schema is a string enum eligible for a Rust enum definition.
