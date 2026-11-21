@@ -112,8 +112,8 @@ def _managed_context(ca_path: str) -> ssl.SSLContext:
 
 
 # Runs before every transport call. A managed client has no anonymous mode:
-# every failure here stops the request, and a method makes exactly one
-# transport call, so a 401 is never retried without the token.
+# every failure here stops the request. Every attempt of a retried call sends
+# the token, and a 401 is never retried (only 429 and 5xx are).
 def _managed_headers(base_url: str, ca_path: str, headers: dict[str, Any]) -> dict[str, Any]:
     if urlsplit(base_url).scheme != "https":
         raise ValueError("managed clients accept only https: URLs")
@@ -147,10 +147,11 @@ fn managed_helpers(managed: &ManagedAuth) -> String {
 fn managed_init_head(target: Option<PythonTarget>, request_ty: &str, transport: &str) -> String {
     let mut out = String::new();
     out.push_str(&format!(
-        "    def __init__(self, base_url: str, *, client: {} = None, default_headers: {} = None, ca_path: {} = None, use_post_fallback: bool = False) -> None:\n",
+        "    def __init__(self, base_url: str, *, client: {} = None, default_headers: {} = None, ca_path: {} = None, use_post_fallback: bool = False, retry: {} = None) -> None:\n",
         pymap::optional(request_ty, target),
         pymap::optional("Mapping[str, Any]", target),
         pymap::optional("str", target),
+        pymap::optional("RetryPolicy", target),
     ));
     out.push_str("        self._base_url = base_url.rstrip(\"/\")\n");
     out.push_str("        self._ca_path = ca_path if ca_path is not None else _MANAGED_CA_PATH\n");
@@ -216,6 +217,52 @@ async def _call(awaitable: Any, timeout: __FLOAT_OPT__, cancel_event: __EVENT_OP
 
 "#;
 
+/// Module-level retry helpers. The `__RETRY_OPT__` mark is filled in per target
+/// (`RetryPolicy | None` or `Optional[RetryPolicy]`).
+const RETRY_HELPERS: &str = r#"def _default_delay(attempt: int) -> float:
+    return 0.1 * attempt
+
+
+@dataclass(frozen=True)
+class RetryPolicy:
+    """Opt-in retry. Without a policy a call is sent once. Only an operation
+    whose `x-retry-class` allows it is retried."""
+
+    #: Total attempts, including the first.
+    max_attempts: int = 3
+    #: Seconds to wait after attempt `attempt` (counts from 1). No jitter.
+    delay: Callable[[int], float] = _default_delay
+
+
+_RETRY_STATUSES = frozenset((429, 500, 502, 503, 504))
+
+
+def _retry_attempts(retry: __RETRY_OPT__, retry_class: str, headers: Mapping[str, Any]) -> int:
+    if retry is None:
+        return 1
+    if retry_class == "idempotency-key":
+        if not any(str(name).casefold() == "idempotency-key" and str(value) != "" for name, value in headers.items()):
+            return 1
+    elif retry_class != "safe-read":
+        return 1
+    return max(1, int(retry.max_attempts))
+
+
+def _retry_delay(retry: __RETRY_OPT__, attempt: int) -> float:
+    return 0.0 if retry is None else float(retry.delay(attempt))
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, (DeadlineExceededError, CancelledError)):
+        return False
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    if isinstance(status, int):
+        return status in _RETRY_STATUSES
+    return isinstance(exc, (OSError, H2CConnectionClosed))
+
+
+"#;
+
 pub fn emit_with(
     ops: &[OperationIR],
     tm: &TypeMap,
@@ -228,6 +275,7 @@ pub fn emit_with(
     out.push_str("from __future__ import annotations\n");
     out.push_str("import asyncio\n");
     out.push_str("import ssl\n");
+    out.push_str("import time\n");
     let any_ndjson = ops.iter().any(super::method::is_ndjson);
     if any_ndjson {
         out.push_str("import json\n");
@@ -247,15 +295,16 @@ pub fn emit_with(
     };
     if target.is_some() {
         out.push_str(&format!(
-            "from typing import {stream_names}Any, Literal, Mapping, Protocol, Self\n"
+            "from typing import {stream_names}Any, Callable, Literal, Mapping, Protocol, Self\n"
         ));
     } else {
         out.push_str(&format!(
-            "from typing import {stream_names}Any, Literal, Mapping, Optional, Protocol\n"
+            "from typing import {stream_names}Any, Callable, Literal, Mapping, Optional, Protocol\n"
         ));
     }
     out.push_str("from pydantic import BaseModel\n");
     out.push_str("from .h2c_runtime import AsyncH2CClient, H2CClient, H2CTimeout\n");
+    out.push_str("from .h2c_runtime import H2CConnectionClosed\n");
     out.push_str("from .models import *  # noqa: F401,F403\n\n\n");
 
     if let Some(auth) = auth {
@@ -407,6 +456,7 @@ pub fn emit_with(
             .replace("__FLOAT_OPT__", &pymap::optional("float", target))
             .replace("__EVENT_OPT__", &pymap::optional("asyncio.Event", target)),
     );
+    out.push_str(&RETRY_HELPERS.replace("__RETRY_OPT__", &pymap::optional("RetryPolicy", target)));
     if any_ndjson {
         out.push_str(NDJSON_HELPERS);
     }
@@ -415,11 +465,12 @@ pub fn emit_with(
         out.push_str(&managed_init_head(target, "SupportsRequest", "H2CClient"));
     } else {
         out.push_str(&format!(
-            "    def __init__(self, base_url: str, *, client: {} = None, default_headers: {} = None, auth_token: {} = None, trust: {} = None, use_post_fallback: bool = False) -> None:\n",
+            "    def __init__(self, base_url: str, *, client: {} = None, default_headers: {} = None, auth_token: {} = None, trust: {} = None, use_post_fallback: bool = False, retry: {} = None) -> None:\n",
             pymap::optional("SupportsRequest", target),
             pymap::optional("Mapping[str, Any]", target),
             pymap::optional("str", target),
             pymap::optional("PrivateTrust", target),
+            pymap::optional("RetryPolicy", target),
         ));
         out.push_str("        self._base_url = base_url.rstrip(\"/\")\n");
         out.push_str("        if trust is None:\n");
@@ -443,6 +494,7 @@ pub fn emit_with(
     out.push_str("        # Epic #1296 POST-twin fallback: route QUERY operations through their\n");
     out.push_str("        # documented POST twin instead of the HTTP QUERY method (RFC 10008).\n");
     out.push_str("        self._use_post_fallback = use_post_fallback\n");
+    out.push_str("        self._retry = retry\n");
     if managed.is_none() {
         out.push_str("        if auth_token is not None:\n");
         out.push_str(
@@ -489,11 +541,12 @@ pub fn emit_with(
         ));
     } else {
         out.push_str(&format!(
-            "    def __init__(self, base_url: str, *, client: {} = None, default_headers: {} = None, auth_token: {} = None, trust: {} = None, use_post_fallback: bool = False) -> None:\n",
+            "    def __init__(self, base_url: str, *, client: {} = None, default_headers: {} = None, auth_token: {} = None, trust: {} = None, use_post_fallback: bool = False, retry: {} = None) -> None:\n",
             pymap::optional("AsyncSupportsRequest", target),
             pymap::optional("Mapping[str, Any]", target),
             pymap::optional("str", target),
             pymap::optional("PrivateTrust", target),
+            pymap::optional("RetryPolicy", target),
         ));
         out.push_str("        self._base_url = base_url.rstrip(\"/\")\n");
         out.push_str("        if trust is None:\n");
@@ -517,6 +570,7 @@ pub fn emit_with(
     out.push_str("        # Epic #1296 POST-twin fallback: route QUERY operations through their\n");
     out.push_str("        # documented POST twin instead of the HTTP QUERY method (RFC 10008).\n");
     out.push_str("        self._use_post_fallback = use_post_fallback\n");
+    out.push_str("        self._retry = retry\n");
     if managed.is_none() {
         out.push_str("        if auth_token is not None:\n");
         out.push_str(
