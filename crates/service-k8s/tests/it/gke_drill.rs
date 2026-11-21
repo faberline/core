@@ -52,8 +52,15 @@ pub fn render_drill_objects() -> Vec<Value> {
         env_from: vec![],
         resources: requested_resources("100m", "128Mi"),
         pod_annotations: None,
-        pod_security_context: None,
-        container_security_context: None,
+        pod_security_context: Some(json!({
+            "runAsNonRoot": true,
+            "runAsUser": 10001,
+            "seccompProfile": {"type": "RuntimeDefault"}
+        })),
+        container_security_context: Some(json!({
+            "allowPrivilegeEscalation": false,
+            "capabilities": {"drop": ["ALL"]}
+        })),
         termination_grace_period_seconds: None,
         readiness_probe: None,
         liveness_probe: None,
@@ -209,6 +216,29 @@ fn drill_statefulset_obeys_the_gke_pool_rules() {
     assert!(placement
         .workload_placement_error("drill", &without_selector)
         .is_some());
+}
+
+#[test]
+fn drill_statefulset_has_security_contexts() {
+    let objects = render_drill_objects();
+    let pod_spec = &objects[0]["spec"]["template"]["spec"];
+
+    assert_eq!(pod_spec["securityContext"]["runAsNonRoot"], true);
+    assert_eq!(pod_spec["securityContext"]["runAsUser"], 10001);
+    assert_eq!(
+        pod_spec["securityContext"]["seccompProfile"]["type"],
+        "RuntimeDefault"
+    );
+
+    let container = &pod_spec["containers"][0];
+    assert_eq!(
+        container["securityContext"]["allowPrivilegeEscalation"],
+        false
+    );
+    assert_eq!(
+        container["securityContext"]["capabilities"]["drop"],
+        json!(["ALL"])
+    );
 }
 
 #[test]
