@@ -2,7 +2,7 @@ use super::literal::esc;
 use crate::domain::emit::py::pymap;
 use crate::domain::ir::names::{to_snake, NameRegistry};
 use crate::domain::ir::openapi::RefOr;
-use crate::domain::ir::operations::{MediaKind, OperationIR, ParamIR};
+use crate::domain::ir::operations::{MediaKind, OperationIR, ParamIR, RetryClassIR};
 use crate::domain::ir::typemap::TypeMap;
 use crate::domain::PythonTarget;
 
@@ -206,23 +206,59 @@ pub(super) fn emit_method(
         return m;
     }
 
-    // A timeout ends the call with DeadlineExceededError; the request is sent once.
-    // asyncio.CancelledError is a BaseException, so `except Exception` leaves a task cancel alone.
-    if is_async {
+    if let Some(class) = retry_class_literal(ir.retry_class) {
+        // A timeout ends the call with DeadlineExceededError. The retry loop sends
+        // the request again only for a retryable failure; each attempt uses `timeout`.
+        // A cancel ends the whole call: `_call` ends the send, and the sleep before
+        // a retry checks `cancel_event`.
+        let (send, sleep) = if is_async {
+            (
+                format!("await _call(self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg}, timeout=timeout), timeout, cancel_event)"),
+                "            await asyncio.sleep(_retry_delay(self._retry, _attempt))\n            if cancel_event is not None and cancel_event.is_set():\n                raise CancelledError()\n".to_string(),
+            )
+        } else {
+            (
+                format!("self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg}, timeout=timeout)"),
+                "            time.sleep(_retry_delay(self._retry, _attempt))\n".to_string(),
+            )
+        };
         m.push_str(&format!(
-            "        try:\n            _resp = await _call(self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg}, timeout=timeout), timeout, cancel_event)\n"
+            "        _attempts = _retry_attempts(self._retry, \"{class}\", _headers)\n"
         ));
+        m.push_str("        _attempt = 0\n");
+        m.push_str("        while True:\n");
+        m.push_str("            _attempt += 1\n");
+        m.push_str("            try:\n");
+        m.push_str(&format!("                _resp = {send}\n"));
+        m.push_str("                _resp.raise_for_status()\n");
+        m.push_str("                break\n");
+        m.push_str("            except Exception as _exc:\n");
+        m.push_str("                if _is_timeout(_exc):\n");
+        m.push_str("                    raise DeadlineExceededError(timeout) from _exc\n");
+        m.push_str("                if _attempt >= _attempts or not _is_retryable(_exc):\n");
+        m.push_str("                    raise\n");
+        m.push_str(&sleep);
+        m.push_str(&format!("        {ret_stmt}\n"));
     } else {
-        m.push_str(&format!(
-            "        try:\n            _resp = self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg}, timeout=timeout)\n"
-        ));
+        // A timeout ends the call with DeadlineExceededError; without a retry class the
+        // request is sent once.
+        // asyncio.CancelledError is a BaseException, so `except Exception` leaves a task cancel alone.
+        if is_async {
+            m.push_str(&format!(
+                "        try:\n            _resp = await _call(self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg}, timeout=timeout), timeout, cancel_event)\n"
+            ));
+        } else {
+            m.push_str(&format!(
+                "        try:\n            _resp = self._client.request({method_expr}, self._base_url + _path, params=_params, headers=_headers{json_arg}, timeout=timeout)\n"
+            ));
+        }
+        m.push_str("        except Exception as _exc:\n");
+        m.push_str("            if _is_timeout(_exc):\n");
+        m.push_str("                raise DeadlineExceededError(timeout) from _exc\n");
+        m.push_str("            raise\n");
+        m.push_str("        _resp.raise_for_status()\n");
+        m.push_str(&format!("        {ret_stmt}\n"));
     }
-    m.push_str("        except Exception as _exc:\n");
-    m.push_str("            if _is_timeout(_exc):\n");
-    m.push_str("                raise DeadlineExceededError(timeout) from _exc\n");
-    m.push_str("            raise\n");
-    m.push_str("        _resp.raise_for_status()\n");
-    m.push_str(&format!("        {ret_stmt}\n"));
     m
 }
 
@@ -258,6 +294,17 @@ fn response(
             ),
         },
         _ => ("None".to_string(), "return None".to_string()),
+    }
+}
+
+/// The `x-retry-class` value that the generated retry loop checks. `None` means
+/// the operation has no retry class, so the method keeps its single send.
+fn retry_class_literal(class: RetryClassIR) -> Option<&'static str> {
+    match class {
+        RetryClassIR::SafeRead => Some("safe-read"),
+        RetryClassIR::IdempotencyKey => Some("idempotency-key"),
+        RetryClassIR::NonRetryable => Some("non-retryable"),
+        RetryClassIR::Unclassified => None,
     }
 }
 

@@ -7,6 +7,7 @@ mod operation_selection;
 mod optional_untyped_field;
 mod property_spec_parser;
 mod py_deadline_cancel;
+mod py_retry;
 mod run_entry;
 mod rust_deadline_cancel;
 mod rust_server_errors;
