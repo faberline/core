@@ -393,7 +393,7 @@ fn legacy_default_output_contract() {
         output_fingerprint(&typescript),
         vec![
             ("types.ts", 11271619169474842166),
-            ("runtime.ts", 5470300766310230073),
+            ("runtime.ts", 10583920005976164407),
             ("client.ts", 2626699975202142277),
             ("index.ts", 14572872411216220858),
         ]

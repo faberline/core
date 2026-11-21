@@ -6,7 +6,7 @@
 use crate::domain::emit::ts::tsmap::{type_expr, TypeMap};
 use crate::domain::ir::names::{to_camel, to_pascal, NameRegistry};
 use crate::domain::ir::openapi::Spec;
-use crate::domain::ir::operations::{self, MediaKind, OperationIR, ParamIR};
+use crate::domain::ir::operations::{self, MediaKind, OperationIR, ParamIR, RetryClassIR};
 
 /// One named field inside a grouped request sub-object (`path`/`query`/`headers`).
 #[derive(Debug)]
@@ -54,6 +54,8 @@ pub struct OperationPlan {
     /// POST-twin fallback path for `QUERY` operations; see
     /// [`crate::ir::operations::OperationIR::post_twin_path`].
     pub post_twin_path: Option<String>,
+    /// Retry class from `x-retry-class`; `Unclassified` when the operation has none.
+    pub retry_class: RetryClassIR,
 }
 
 impl OperationPlan {
@@ -147,6 +149,7 @@ fn build_one(
         data_type_name,
         response_type_name,
         post_twin_path: ir.post_twin_path.clone(),
+        retry_class: ir.retry_class,
     }
 }
 

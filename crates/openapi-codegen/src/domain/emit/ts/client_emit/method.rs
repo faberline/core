@@ -1,5 +1,6 @@
 use crate::domain::emit::ts::plan::OperationPlan;
 use crate::domain::ir::names::{self, is_ident};
+use crate::domain::ir::operations::RetryClassIR;
 
 pub(super) fn emit_method(p: &OperationPlan) -> String {
     let ndjson_body = p.body.as_ref().is_some_and(|b| b.ndjson);
@@ -74,6 +75,12 @@ pub(super) fn emit_method(p: &OperationPlan) -> String {
     if p.response_type == "void" {
         args.push("expectBody: false".to_string());
     }
+    // An NDJSON method is a one-shot stream, so it never gets a retry class.
+    if !options {
+        if let Some(class) = retry_class_literal(p.retry_class) {
+            args.push(format!("retryClass: \"{class}\""));
+        }
+    }
 
     let resp = &p.response_type_name;
     let args = args.join(", ");
@@ -97,6 +104,16 @@ pub(super) fn emit_method(p: &OperationPlan) -> String {
         "    {name}{sig}: {ret} {{\n      return {call};\n    }},\n",
         name = p.fn_name,
     )
+}
+
+/// The `RetryClass` literal of an operation, or `None` when it is unclassified.
+fn retry_class_literal(class: RetryClassIR) -> Option<&'static str> {
+    match class {
+        RetryClassIR::SafeRead => Some("safe-read"),
+        RetryClassIR::IdempotencyKey => Some("idempotency-key"),
+        RetryClassIR::NonRetryable => Some("non-retryable"),
+        RetryClassIR::Unclassified => None,
+    }
 }
 
 /// `/pets/{petId}` → `` `/pets/${data.path.petId}` ``. Takes a raw path

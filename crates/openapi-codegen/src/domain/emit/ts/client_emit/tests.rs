@@ -488,3 +488,106 @@ fn runtimes_export_call_options_and_errors() {
         );
     }
 }
+
+#[test]
+fn retry_class_is_emitted_only_when_classified() {
+    let out = render(
+        r##"{"paths":{
+          "/read":{"get":{"operationId":"readThing","x-retry-class":"safe-read","responses":{"200":{"content":{"application/json":{"schema":{"type":"boolean"}}}}}}},
+          "/write":{"post":{"operationId":"writeThing","x-retry-class":"idempotency-key","responses":{"200":{"content":{"application/json":{"schema":{"type":"boolean"}}}}}}},
+          "/mutate":{"delete":{"operationId":"mutateThing","x-retry-class":"non-retryable","responses":{"200":{"content":{"application/json":{"schema":{"type":"boolean"}}}}}}},
+          "/plain":{"get":{"operationId":"plainThing","responses":{"200":{"content":{"application/json":{"schema":{"type":"boolean"}}}}}}}}}"##,
+    );
+    assert!(
+        out.contains(
+            r##"request<ReadThingResponse>(config, { method: "GET", path: `/read`, retryClass: "safe-read" }, options)"##
+        ),
+        "{out}"
+    );
+    assert!(
+        out.contains(
+            r##"request<WriteThingResponse>(config, { method: "POST", path: `/write`, retryClass: "idempotency-key" }, options)"##
+        ),
+        "{out}"
+    );
+    assert!(
+        out.contains(
+            r##"request<MutateThingResponse>(config, { method: "DELETE", path: `/mutate`, retryClass: "non-retryable" }, options)"##
+        ),
+        "{out}"
+    );
+    assert!(
+        out.contains(
+            r##"request<PlainThingResponse>(config, { method: "GET", path: `/plain` }, options)"##
+        ),
+        "{out}"
+    );
+    assert_eq!(out.matches("retryClass").count(), 3, "{out}");
+}
+
+#[test]
+fn ndjson_methods_emit_no_retry_class() {
+    let out = render(
+        r##"{"paths":{"/items":{"post":{"operationId":"uploadItems","x-retry-class":"safe-read",
+          "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object","properties":{"id":{"type":"integer"}}}}}},
+          "responses":{"200":{"content":{"application/json":{"schema":{"type":"string"}}}}}}}}}"##,
+    );
+    assert!(!out.contains("retryClass"), "{out}");
+}
+
+#[test]
+fn retry_class_is_copied_into_the_plan() {
+    use crate::ir::operations::RetryClassIR;
+    let s: Spec = serde_json::from_str(
+        r##"{"paths":{
+          "/read":{"get":{"operationId":"readThing","x-retry-class":"safe-read","responses":{"200":{"content":{"application/json":{"schema":{"type":"boolean"}}}}}}},
+          "/plain":{"get":{"operationId":"plainThing","responses":{"200":{"content":{"application/json":{"schema":{"type":"boolean"}}}}}}}}}"##,
+    )
+    .unwrap();
+    let tm = build_type_map(&s);
+    let plans = plan::build(&s, &tm);
+    let read = plans.iter().find(|p| p.fn_name == "readThing").unwrap();
+    let plain = plans.iter().find(|p| p.fn_name == "plainThing").unwrap();
+    assert_eq!(read.retry_class, RetryClassIR::SafeRead);
+    assert_eq!(plain.retry_class, RetryClassIR::Unclassified);
+}
+
+#[test]
+fn runtimes_export_retry_types_and_one_send_loop() {
+    let mut runtimes: Vec<(HttpClient, String)> = [HttpClient::Fetch, HttpClient::Axios]
+        .into_iter()
+        .map(|client| (client, emit_runtime(client, None)))
+        .collect();
+    runtimes.extend(managed_runtimes());
+    for (client, runtime) in runtimes {
+        assert!(
+            runtime.contains(
+                "export type RetryClass = \"safe-read\" | \"idempotency-key\" | \"non-retryable\";"
+            ),
+            "{client:?}"
+        );
+        assert!(
+            runtime.contains("export interface RetryPolicy"),
+            "{client:?}"
+        );
+        assert!(runtime.contains("retry?: RetryPolicy;"), "{client:?}");
+        assert!(runtime.contains("retryClass?: RetryClass;"), "{client:?}");
+        assert_eq!(
+            runtime
+                .matches("for (let attempt = 1; ; attempt += 1)")
+                .count(),
+            1,
+            "{client:?}"
+        );
+        if client == HttpClient::Fetch {
+            assert!(
+                runtime.contains("export class HttpError extends Error"),
+                "{client:?}"
+            );
+            assert!(
+                runtime.contains("throw new HttpError(response.status);"),
+                "{client:?}"
+            );
+        }
+    }
+}
