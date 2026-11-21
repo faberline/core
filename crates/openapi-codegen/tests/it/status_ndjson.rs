@@ -66,3 +66,42 @@ fn roadmap_keeps_the_stable_id() {
         "ROADMAP has no Remaining: bullet"
     );
 }
+
+#[test]
+fn retry_hooks_row_is_limited() {
+    let status = read("STATUS.md");
+    let row = line_containing(&status, "`operation-aware-retry-hooks`");
+    assert!(row.contains("| Limited |"), "row: {row}");
+    assert!(!row.contains("Not supported"), "row: {row}");
+}
+
+#[test]
+fn retry_hooks_row_names_the_proving_tests() {
+    let status = read("STATUS.md");
+    let row = line_containing(&status, "`operation-aware-retry-hooks`");
+    for needle in [
+        "ts_retry::fetch_backend_retry",
+        "ts_retry::axios_backend_retry",
+        "py_retry::generated_python_client_retry",
+        "rust_retry::generated_rust_client_retry_hooks",
+        "cargo test -p openapi-codegen",
+    ] {
+        assert!(row.contains(needle), "row misses {needle}: {row}");
+    }
+}
+
+#[test]
+fn retry_hooks_row_states_the_scope_and_limits() {
+    let status = read("STATUS.md");
+    let row = line_containing(&status, "`operation-aware-retry-hooks`");
+    for needle in [
+        "x-retry-class",
+        "deadline",
+        "cancel",
+        "Retry-After",
+        "backoff",
+    ] {
+        assert!(row.contains(needle), "row misses {needle}: {row}");
+    }
+    assert!(!row.contains("GKE"), "row claims GKE evidence: {row}");
+}
