@@ -25,6 +25,37 @@ impl DockerfileChecker {
         Some((instruction, rest))
     }
 
+    /// Names of the build stages (`FROM <image> AS <name>`) in the lines, lower-cased.
+    fn stage_aliases(lines: &[&str]) -> Vec<String> {
+        let mut aliases = Vec::new();
+        for line in lines {
+            if let Some((inst, rest)) = Self::parse_instruction(line) {
+                if !inst.eq_ignore_ascii_case("FROM") {
+                    continue;
+                }
+                let tokens: Vec<&str> = rest.split_whitespace().collect();
+                if tokens.len() >= 2 && tokens[tokens.len() - 2].eq_ignore_ascii_case("AS") {
+                    aliases.push(tokens[tokens.len() - 1].to_lowercase());
+                }
+            }
+        }
+        aliases
+    }
+
+    /// Index of the last FROM line, or None when there is no FROM line.
+    fn last_from_line(lines: &[&str]) -> Option<usize> {
+        lines
+            .iter()
+            .enumerate()
+            .rev()
+            .find(|(_, line)| {
+                Self::parse_instruction(line)
+                    .map(|(inst, _)| inst.eq_ignore_ascii_case("FROM"))
+                    .unwrap_or(false)
+            })
+            .map(|(i, _)| i)
+    }
+
     /// DK001: Missing FROM instruction
     fn check_missing_from(&self, lines: &[&str]) -> Vec<Diagnostic> {
         let has_from = lines.iter().any(|line| {
@@ -57,6 +88,10 @@ impl DockerfileChecker {
                 // Extract the image reference (first token of rest, ignore AS alias)
                 let image = rest.split_whitespace().next().unwrap_or("");
                 if image.is_empty() || image == "scratch" {
+                    continue;
+                }
+                // A name of an earlier build stage is not an image (`FROM build`)
+                if Self::stage_aliases(&lines[..line_num]).contains(&image.to_lowercase()) {
                     continue;
                 }
                 // Check for :latest or missing tag
@@ -213,12 +248,20 @@ impl DockerfileChecker {
     /// DK004: COPY/ADD without --chown
     fn check_copy_without_chown(&self, lines: &[&str]) -> Vec<Diagnostic> {
         let mut diagnostics = Vec::new();
+        let last_from = Self::last_from_line(lines);
 
         for (line_num, line) in lines.iter().enumerate() {
             if let Some((inst, rest)) = Self::parse_instruction(line) {
                 let is_copy = inst.eq_ignore_ascii_case("COPY");
                 let is_add = inst.eq_ignore_ascii_case("ADD");
-                if (is_copy || is_add) && !rest.contains("--chown") {
+                // Copies between stages (`--from=`) and copies in an intermediate stage
+                // do not reach the final image, so the owner does not matter there
+                let in_intermediate_stage = last_from.is_some_and(|l| line_num < l);
+                if (is_copy || is_add)
+                    && !rest.contains("--chown")
+                    && !rest.contains("--from=")
+                    && !in_intermediate_stage
+                {
                     diagnostics.push(Diagnostic::warning(
                         Range::new(
                             Position::new(line_num as u32, 0),
@@ -349,3 +392,6 @@ impl super::checker::Checker for DockerfileChecker {
         ]
     }
 }
+
+#[cfg(test)]
+mod tests;
