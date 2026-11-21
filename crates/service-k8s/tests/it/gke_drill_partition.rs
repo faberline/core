@@ -64,6 +64,22 @@ pub fn probe_command(ip: &str) -> String {
     format!("wget -T 3 -q -O- http://{ip}:8080 2>&1; true")
 }
 
+const LOGS_RETRY_TIMEOUT: Duration = Duration::from_secs(30);
+
+/// Empty or blank logs are not a probe result yet: the caller retries.
+fn nonempty_logs(text: &str) -> Result<String, String> {
+    if text.trim().is_empty() {
+        Err("probe logs are empty".to_string())
+    } else {
+        Ok(text.to_string())
+    }
+}
+
+/// The panic text for a probe: it names the probe and the pod phase.
+fn probe_failure(label: &str, phase: &str, error: &str) -> String {
+    format!("probe-{label} (pod phase {phase}): {error}")
+}
+
 /// Runs the one-off probe pod on the client pool; its container is named `name`.
 pub fn probe_overrides(name: &str) -> Value {
     json!({"spec": {
@@ -125,9 +141,28 @@ fn probe(kube: &e2e_support::Kube, label: &str, ip: &str) -> Probe {
         &format!("pod/{name}"),
         "--timeout=600s",
     ]);
-    let text = kube.run(&["logs", &name]);
+    let deadline = std::time::Instant::now() + LOGS_RETRY_TIMEOUT;
+    let text = loop {
+        match nonempty_logs(&kube.run(&["logs", &name])) {
+            Ok(text) => break text,
+            Err(_) if std::time::Instant::now() >= deadline => {
+                let phase = kube.run(&[
+                    "get",
+                    &format!("pod/{name}"),
+                    "-o",
+                    "jsonpath={.status.phase}",
+                ]);
+                let _ = kube.try_run(&["delete", "pod", &name, "--wait=true"]);
+                panic!(
+                    "{}",
+                    probe_failure(label, &phase, "logs stayed empty for 30s")
+                );
+            }
+            Err(_) => std::thread::sleep(Duration::from_secs(2)),
+        }
+    };
     kube.run(&["delete", "pod", &name, "--wait=true"]);
-    probe_outcome(&text).unwrap_or_else(|e| panic!("{e}"))
+    probe_outcome(&text).unwrap_or_else(|e| panic!("{}", probe_failure(label, "Succeeded", &e)))
 }
 
 #[test]
@@ -190,6 +225,31 @@ fn probe_overrides_run_on_the_client_pool() {
     assert_eq!(overrides["spec"]["nodeSelector"][POOL_KEY], CLIENT_POOL);
     assert_eq!(overrides["spec"]["tolerations"][0]["value"], CLIENT_POOL);
     assert_eq!(overrides["spec"]["containers"][0]["name"], "probe-x");
+}
+
+#[test]
+fn nonempty_logs_rejects_empty_and_blank_text() {
+    assert_eq!(nonempty_logs(""), Err("probe logs are empty".to_string()));
+    assert_eq!(
+        nonempty_logs("  \n"),
+        Err("probe logs are empty".to_string())
+    );
+}
+
+#[test]
+fn nonempty_logs_passes_text_through() {
+    assert_eq!(
+        nonempty_logs("wget: download timed out\n"),
+        Ok("wget: download timed out\n".to_string())
+    );
+}
+
+#[test]
+fn probe_failure_names_the_label_and_the_phase() {
+    assert_eq!(
+        probe_failure("isolated", "Succeeded", "unexpected probe output: "),
+        "probe-isolated (pod phase Succeeded): unexpected probe output: "
+    );
 }
 
 #[test]
