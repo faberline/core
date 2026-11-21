@@ -11,6 +11,8 @@ pub(super) fn emit_method(p: &OperationPlan) -> String {
     }
     if options {
         params.push("options?: NdjsonOptions".to_string());
+    } else {
+        params.push("options?: CallOptions".to_string());
     }
     let sig = format!("({})", params.join(", "));
 
@@ -88,7 +90,7 @@ pub(super) fn emit_method(p: &OperationPlan) -> String {
     } else {
         (
             format!("Promise<{resp}>"),
-            format!("request<{resp}>(config, {{ {args} }})"),
+            format!("request<{resp}>(config, {{ {args} }}, options)"),
         )
     };
     format!(
