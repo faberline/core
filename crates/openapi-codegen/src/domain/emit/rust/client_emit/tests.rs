@@ -396,3 +396,42 @@ fn declared_error_operations_keep_their_result_type_in_the_twin() {
     );
     assert!(out.contains("send_with_options(req, &options)?;"), "{out}");
 }
+
+#[test]
+fn a_classified_operation_emits_its_retry_class() {
+    let out = render_spec(
+        r##"{"paths":{
+  "/thing":{"get":{"operationId":"getThing","x-retry-class":"safe-read","responses":{"200":{"description":"ok"}}}},
+  "/thing/create":{"post":{"operationId":"postThing","x-retry-class":"idempotency-key","responses":{"200":{"description":"ok"}}}}
+}}"##,
+    );
+    assert!(
+        out.contains("pub const GET_THING_RETRY_CLASS: RetryClass = RetryClass::SafeRead;"),
+        "{out}"
+    );
+    assert!(
+        out.contains("pub const POST_THING_RETRY_CLASS: RetryClass = RetryClass::IdempotencyKey;"),
+        "{out}"
+    );
+    assert!(
+        out.contains("send_with_retry(&self.policy, req, &options, RetryClass::SafeRead)"),
+        "{out}"
+    );
+}
+
+#[test]
+fn an_unclassified_operation_emits_no_retry_class() {
+    let out = render_spec(
+        r##"{"paths":{"/thing":{"get":{"operationId":"getThing","responses":{"200":{"description":"ok"}}}}}}"##,
+    );
+    assert!(!out.contains("_RETRY_CLASS"), "{out}");
+    assert!(!out.contains("send_with_retry(&self.policy"), "{out}");
+    assert!(out.contains("send_with_options(req, &options)"), "{out}");
+}
+
+#[test]
+fn the_retry_policy_is_opt_in() {
+    let out = render();
+    assert!(out.contains("pub retry: Option<RetryPolicy>,"), "{out}");
+    assert!(out.contains("retry: None,"), "{out}");
+}

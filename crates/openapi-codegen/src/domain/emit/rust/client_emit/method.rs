@@ -2,7 +2,7 @@ use super::literal::esc;
 use crate::domain::emit::rust::rsmap;
 use crate::domain::ir::names::{to_pascal, to_snake, NameRegistry};
 use crate::domain::ir::openapi::RefOr;
-use crate::domain::ir::operations::{MediaKind, OperationIR, ParamIR};
+use crate::domain::ir::operations::{MediaKind, OperationIR, ParamIR, RetryClassIR};
 use crate::domain::ir::typemap::TypeMap;
 
 pub(in crate::domain::emit::rust) fn fn_name(ir: &OperationIR) -> String {
@@ -107,6 +107,17 @@ fn emit_error_enum(enum_name: &str, variants: &[ErrorVariant]) -> String {
     out
 }
 
+/// The `RetryClass` variant of an operation's `x-retry-class`. `None` means the
+/// operation has no retry class and keeps its plain send.
+fn retry_class_name(class: RetryClassIR) -> Option<&'static str> {
+    match class {
+        RetryClassIR::SafeRead => Some("SafeRead"),
+        RetryClassIR::IdempotencyKey => Some("IdempotencyKey"),
+        RetryClassIR::NonRetryable => Some("NonRetryable"),
+        RetryClassIR::Unclassified => None,
+    }
+}
+
 pub(super) fn emit_method(
     ir: &OperationIR,
     tm: &TypeMap,
@@ -179,7 +190,14 @@ pub(super) fn emit_method(
     } else {
         name.clone()
     };
+    let retry_class = retry_class_name(ir.retry_class);
     let mut m = String::new();
+    if let (true, Some(class)) = (twin, retry_class) {
+        m.push_str(&format!(
+            "    pub const {}_RETRY_CLASS: RetryClass = RetryClass::{class};\n\n",
+            name.to_uppercase()
+        ));
+    }
     let mut twin_sig = sig.clone();
     if twin {
         let mut call_args: Vec<String> = path_anns.iter().map(|(n, _, _)| n.clone()).collect();
@@ -340,9 +358,14 @@ pub(super) fn emit_method(
         m.push_str(&format!("        let {slot} = self.acquire_slot()?;\n"));
     }
     let send = if twin {
-        "send_with_options(req, &options)"
+        match retry_class {
+            Some(class) => {
+                format!("send_with_retry(&self.policy, req, &options, RetryClass::{class})")
+            }
+            None => "send_with_options(req, &options)".to_string(),
+        }
     } else {
-        "req.send()"
+        "req.send()".to_string()
     };
     match &error_enum {
         None => m.push_str(&format!(

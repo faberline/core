@@ -84,6 +84,16 @@ pub fn emit(ops: &[OperationIR], tm: &TypeMap, auth: Option<&FileBearerAuth>) ->
     emit_with(ops, tm, auth, None)
 }
 
+/// The retry types, written once per generated client. A document with no
+/// `x-retry-class` gets only this text.
+const RETRY_TYPES: &str = r#"#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RetryClass { SafeRead, IdempotencyKey, NonRetryable }
+#[derive(Debug, Clone)]
+pub struct RetryPolicy { pub max_attempts: u32, pub delay: fn(u32) -> Duration }
+fn default_retry_delay(attempt: u32) -> Duration { Duration::from_millis(100 * u64::from(attempt)) }
+impl Default for RetryPolicy { fn default() -> Self { Self { max_attempts: 3, delay: default_retry_delay } } }
+"#;
+
 pub fn emit_with(
     ops: &[OperationIR],
     tm: &TypeMap,
@@ -145,6 +155,7 @@ pub fn emit_with(
     out.push_str("    pub max_keepalive_connections: usize,\n");
     out.push_str("    pub keepalive_expiry: Duration,\n");
     out.push_str("    pub pool_timeout: Duration,\n");
+    out.push_str("    pub retry: Option<RetryPolicy>,\n");
     out.push_str("}\n\n");
     out.push_str("impl Default for TransportPolicy {\n");
     out.push_str("    fn default() -> Self {\n");
@@ -155,6 +166,7 @@ pub fn emit_with(
     out.push_str("            max_keepalive_connections: DEFAULT_MAX_KEEPALIVE_CONNECTIONS,\n");
     out.push_str("            keepalive_expiry: DEFAULT_KEEPALIVE_EXPIRY,\n");
     out.push_str("            pool_timeout: DEFAULT_POOL_TIMEOUT,\n");
+    out.push_str("            retry: None,\n");
     out.push_str("        }\n");
     out.push_str("    }\n");
     out.push_str("}\n\n");
@@ -257,6 +269,7 @@ pub fn emit_with(
     out.push_str("    pub deadline: Option<Duration>,\n");
     out.push_str("    pub cancel: Option<CancelToken>,\n");
     out.push_str("}\n\n");
+    out.push_str(RETRY_TYPES);
     if ops.iter().any(|op| has_declared_errors(op, tm)) {
         out.push_str("/// A failure of an operation with declared error responses: transport\n");
         out.push_str("/// trouble (`Client`) or a declared, decoded response (`Api`).\n");
@@ -540,6 +553,41 @@ fn send_with_options(req: reqwest::blocking::RequestBuilder, options: &CallOptio
         Some(deadline) if err.is_timeout() => ClientError::DeadlineExceeded(deadline),
         _ => ClientError::Http(err),
     })
+}
+
+/// Sends with the retry policy of the client. Only a safe-read call, or an
+/// idempotency-key call that carries the key, is sent again; a deadline, a
+/// cancel and every other error are not. A body that cannot be cloned is sent once.
+#[allow(dead_code)]
+fn send_with_retry(policy: &TransportPolicy, req: reqwest::blocking::RequestBuilder, options: &CallOptions, class: RetryClass) -> ClientResult<reqwest::blocking::Response> {
+    let Some(retry) = policy.retry.as_ref() else { return send_with_options(req, options); };
+    let allowed = match class {
+        RetryClass::SafeRead => true,
+        RetryClass::IdempotencyKey => req.try_clone().and_then(|r| r.build().ok()).is_some_and(|r| r.headers().contains_key("idempotency-key")),
+        RetryClass::NonRetryable => false,
+    };
+    if !allowed { return send_with_options(req, options); }
+    let max = retry.max_attempts.max(1);
+    let mut req = req;
+    let mut attempt = 1u32;
+    loop {
+        let next = if attempt < max { req.try_clone() } else { None };
+        let result = send_with_options(req, options);
+        let failed = match &result {
+            Ok(resp) => matches!(resp.status().as_u16(), 429 | 502 | 503 | 504),
+            Err(ClientError::Http(_)) => true,
+            Err(_) => false,
+        };
+        match next {
+            Some(next) if failed => {
+                std::thread::sleep((retry.delay)(attempt));
+                if options.cancel.as_ref().is_some_and(CancelToken::is_cancelled) { return Err(ClientError::Cancelled); }
+                req = next;
+                attempt += 1;
+            }
+            _ => return result,
+        }
+    }
 }
 "#);
     out
