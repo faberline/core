@@ -172,6 +172,50 @@ pub fn emit(
 
 /// Emit a client for one auth selection: the file-bearer `auth` or the Managed
 /// `managed` contract, never both.
+/// Module-level deadline and cancel helpers. The `__FLOAT_OPT__` and
+/// `__EVENT_OPT__` marks are filled in per target (`float | None` or `Optional[...]`).
+const CALL_HELPERS: &str = r#"class DeadlineExceededError(Exception):
+    """The call did not finish within `timeout` seconds."""
+
+    def __init__(self, timeout: __FLOAT_OPT__) -> None:
+        super().__init__(f"deadline of {timeout}s exceeded")
+        self.timeout = timeout
+
+
+class CancelledError(Exception):
+    """`cancel_event` was set before the call finished."""
+
+
+def _is_timeout(exc: BaseException) -> bool:
+    if isinstance(exc, (TimeoutError, asyncio.TimeoutError, H2CTimeout)):
+        return True
+    return any(cls.__name__ == "TimeoutException" for cls in type(exc).__mro__)
+
+
+async def _call(awaitable: Any, timeout: __FLOAT_OPT__, cancel_event: __EVENT_OPT__) -> Any:
+    if timeout is not None:
+        awaitable = asyncio.wait_for(awaitable, timeout)
+    if cancel_event is None:
+        return await awaitable
+    if cancel_event.is_set():
+        awaitable.close()
+        raise CancelledError()
+    task = asyncio.ensure_future(awaitable)
+    waiter = asyncio.ensure_future(cancel_event.wait())
+    try:
+        await asyncio.wait({task, waiter}, return_when=asyncio.FIRST_COMPLETED)
+        if task.done():
+            return task.result()
+        raise CancelledError()
+    finally:
+        for pending in (task, waiter):
+            if not pending.done():
+                pending.cancel()
+        await asyncio.gather(task, waiter, return_exceptions=True)
+
+
+"#;
+
 pub fn emit_with(
     ops: &[OperationIR],
     tm: &TypeMap,
@@ -182,6 +226,7 @@ pub fn emit_with(
     debug_assert!(auth.is_none() || managed.is_none());
     let mut out = String::from(HEADER);
     out.push_str("from __future__ import annotations\n");
+    out.push_str("import asyncio\n");
     out.push_str("import ssl\n");
     let any_ndjson = ops.iter().any(super::method::is_ndjson);
     if any_ndjson {
@@ -210,7 +255,7 @@ pub fn emit_with(
         ));
     }
     out.push_str("from pydantic import BaseModel\n");
-    out.push_str("from .h2c_runtime import AsyncH2CClient, H2CClient\n");
+    out.push_str("from .h2c_runtime import AsyncH2CClient, H2CClient, H2CTimeout\n");
     out.push_str("from .models import *  # noqa: F401,F403\n\n\n");
 
     if let Some(auth) = auth {
@@ -357,6 +402,11 @@ pub fn emit_with(
         pymap::optional("float", target),
     ));
 
+    out.push_str(
+        &CALL_HELPERS
+            .replace("__FLOAT_OPT__", &pymap::optional("float", target))
+            .replace("__EVENT_OPT__", &pymap::optional("asyncio.Event", target)),
+    );
     if any_ndjson {
         out.push_str(NDJSON_HELPERS);
     }
