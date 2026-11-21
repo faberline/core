@@ -23,14 +23,12 @@ impl Default for SqlChecker {
 /// Detect SQL injection patterns in Python/JS/Go source code.
 pub fn detect_sql_injection(source: &str, language: &str) -> Vec<Diagnostic> {
     let mut diags = Vec::new();
-    let kws = ["SELECT", "INSERT", "UPDATE", "DELETE", "DROP", "CREATE"];
     for (i, line) in source.lines().enumerate() {
         let t = line.trim();
         if t.starts_with('#') || t.starts_with("//") {
             continue;
         }
-        let u = t.to_uppercase();
-        if !kws.iter().any(|kw| u.contains(kw)) {
+        if !looks_like_sql(t) {
             continue;
         }
         let ln = i as u32;
@@ -75,6 +73,24 @@ pub fn detect_sql_injection(source: &str, language: &str) -> Vec<Diagnostic> {
         }
     }
     diags
+}
+
+/// True when the line holds a SQL statement shape, not just a SQL word.
+fn looks_like_sql(line: &str) -> bool {
+    let u = line.to_uppercase();
+    has_then(&u, "SELECT ", " FROM ")
+        || u.contains("INSERT INTO ")
+        || has_then(&u, "UPDATE ", " SET ")
+        || u.contains("DELETE FROM ")
+        || u.contains("DROP TABLE ")
+        || u.contains("DROP DATABASE ")
+        || u.contains("CREATE TABLE ")
+}
+
+/// True when `second` occurs after the first occurrence of `first`.
+fn has_then(u: &str, first: &str, second: &str) -> bool {
+    u.find(first)
+        .is_some_and(|i| u[i + first.len()..].contains(second))
 }
 
 fn inj(line: u32, msg: &str) -> Diagnostic {
