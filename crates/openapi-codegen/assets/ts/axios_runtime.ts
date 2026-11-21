@@ -120,6 +120,66 @@ async function acquireAdmission(config: ClientConfig, url: URL): Promise<() => v
   return admission.acquire(p.poolTimeoutMs);
 }
 
+export interface CallOptions {
+  /** Abort the request. A caller abort rejects with `CancelledError`. */
+  signal?: AbortSignal;
+  /** Give up after this many milliseconds. Rejects with `DeadlineExceededError`. */
+  timeoutMs?: number;
+}
+
+export class DeadlineExceededError extends Error {
+  readonly timeoutMs: number;
+  constructor(timeoutMs: number) {
+    super(`deadline of ${timeoutMs}ms exceeded`);
+    this.name = "DeadlineExceededError";
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+export class CancelledError extends Error {
+  constructor() {
+    super("request cancelled");
+    this.name = "CancelledError";
+  }
+}
+
+interface CallScope {
+  signal: AbortSignal | undefined;
+  failure(): Error | undefined;
+  dispose(): void;
+}
+
+function openCallScope(options?: CallOptions): CallScope {
+  const signal = options?.signal;
+  const timeoutMs = options?.timeoutMs;
+  if (signal === undefined && timeoutMs === undefined) {
+    return { signal: undefined, failure: () => undefined, dispose: () => {} };
+  }
+  const controller = new AbortController();
+  let failure: Error | undefined;
+  const onAbort = () => {
+    failure ??= new CancelledError();
+    controller.abort();
+  };
+  if (signal?.aborted) onAbort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  if (timeoutMs !== undefined) {
+    timer = setTimeout(() => {
+      failure ??= new DeadlineExceededError(timeoutMs);
+      controller.abort();
+    }, timeoutMs);
+  }
+  return {
+    signal: controller.signal,
+    failure: () => failure,
+    dispose: () => {
+      if (timer !== undefined) clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+    },
+  };
+}
+
 export interface RequestArgs {
   method: string;
   path: string;
@@ -179,11 +239,12 @@ export async function privateCaAxios(trust: PrivateTrust): Promise<AxiosInstance
   });
 }
 
-export async function request<T>(config: ClientConfig, args: RequestArgs): Promise<T> {
+export async function request<T>(config: ClientConfig, args: RequestArgs, options?: CallOptions): Promise<T> {
   const instance = config.axios ?? axios.create();
   assertTrustIsHonoured(config, config.axios);
   const url = new URL(config.baseUrl + args.path);
   const release = await acquireAdmission(config, url);
+  const scope = openCallScope(options);
   try {
     const response = await instance.request<T>({
       method: args.method,
@@ -192,12 +253,16 @@ export async function request<T>(config: ClientConfig, args: RequestArgs): Promi
       params: args.query,
       data: args.body,
       headers: { "Content-Type": "application/json", ...config.headers, ...args.headers },
+      signal: scope.signal,
     });
     if (args.expectBody === false) {
       return undefined as T;
     }
     return response.data;
+  } catch (error) {
+    throw scope.failure() ?? error;
   } finally {
+    scope.dispose();
     release();
   }
 }
@@ -207,6 +272,8 @@ export type NdjsonItem<S> = S extends AsyncIterable<infer U> ? U : never;
 export interface NdjsonOptions {
   /** Abort the request and the stream. */
   signal?: AbortSignal;
+  /** Abort the request and the stream after this many milliseconds. */
+  timeoutMs?: number;
 }
 
 export interface NdjsonRequestArgs extends RequestArgs {
@@ -272,6 +339,7 @@ async function sendNdjson(
   const url = new URL(config.baseUrl + args.path);
   const headers = { "Content-Type": args.ndjsonBody ? "application/x-ndjson" : "application/json", Accept: accept, ...config.headers, ...args.headers };
   const release = await acquireAdmission(config, url);
+  const scope = openCallScope(options);
   try {
     let data: unknown = args.body;
     if (args.ndjsonBody) {
@@ -287,12 +355,19 @@ async function sendNdjson(
       data,
       headers,
       responseType,
-      signal: options.signal,
+      signal: scope.signal,
     });
-    return { response, release };
+    return {
+      response,
+      release: () => {
+        scope.dispose();
+        release();
+      },
+    };
   } catch (error) {
+    scope.dispose();
     release();
-    throw error;
+    throw scope.failure() ?? error;
   }
 }
 

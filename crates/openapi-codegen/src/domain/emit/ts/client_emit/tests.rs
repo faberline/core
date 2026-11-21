@@ -31,8 +31,10 @@ fn client_method_takes_grouped_data() {
               "responses":{"200":{"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Pet"}}}}}}}}}"##,
     );
     assert!(out.contains("import type { GetPetByIdData, GetPetByIdResponse } from \"./types\";"));
-    assert!(out.contains("getPetById(data: GetPetByIdData): Promise<GetPetByIdResponse> {"));
-    assert!(out.contains("return request<GetPetByIdResponse>(config, { method: \"GET\", path: `/pets/${data.path.petId}` });"));
+    assert!(out.contains(
+        "getPetById(data: GetPetByIdData, options?: CallOptions): Promise<GetPetByIdResponse> {"
+    ));
+    assert!(out.contains("return request<GetPetByIdResponse>(config, { method: \"GET\", path: `/pets/${data.path.petId}` }, options);"));
 }
 
 #[test]
@@ -44,9 +46,13 @@ fn client_query_and_body_access() {
               "post":{"operationId":"createPet","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"}}}},
                 "responses":{"201":{"content":{"application/json":{"schema":{"type":"string"}}}}}}}}}"##,
     );
-    assert!(out.contains("listPets(data: ListPetsData): Promise<ListPetsResponse> {"));
+    assert!(out.contains(
+        "listPets(data: ListPetsData, options?: CallOptions): Promise<ListPetsResponse> {"
+    ));
     assert!(out.contains("query: { limit: data.query?.limit }"));
-    assert!(out.contains("createPet(data: CreatePetData): Promise<CreatePetResponse> {"));
+    assert!(out.contains(
+        "createPet(data: CreatePetData, options?: CallOptions): Promise<CreatePetResponse> {"
+    ));
     assert!(out.contains("body: data.body"));
 }
 
@@ -55,7 +61,7 @@ fn no_input_operation_takes_no_arg() {
     let out = render(
         r##"{"paths":{"/health":{"get":{"operationId":"health","responses":{"200":{"content":{"application/json":{"schema":{"type":"boolean"}}}}}}}}}"##,
     );
-    assert!(out.contains("health(): Promise<HealthResponse> {"));
+    assert!(out.contains("health(options?: CallOptions): Promise<HealthResponse> {"));
     assert!(out.contains("import type { HealthResponse } from \"./types\";"));
 }
 
@@ -64,9 +70,9 @@ fn void_operation_marks_runtime_to_skip_body_parse() {
     let out = render(
         r##"{"paths":{"/health":{"get":{"operationId":"health","responses":{"200":{"description":"ok"}}}}}}"##,
     );
-    assert!(out.contains("health(): Promise<HealthResponse> {"));
+    assert!(out.contains("health(options?: CallOptions): Promise<HealthResponse> {"));
     assert!(out.contains(
-        "return request<HealthResponse>(config, { method: \"GET\", path: `/health`, expectBody: false });"
+        "return request<HealthResponse>(config, { method: \"GET\", path: `/health`, expectBody: false }, options);"
     ));
 }
 
@@ -78,7 +84,9 @@ fn query_operation_emits_query_method_with_post_fallback_ternary() {
                 "requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object"}}}},
                 "responses":{"200":{"content":{"application/json":{"schema":{"type":"array","items":{"type":"string"}}}}}}}}}}"##,
     );
-    assert!(out.contains("searchPets(data: SearchPetsData): Promise<SearchPetsResponse> {"));
+    assert!(out.contains(
+        "searchPets(data: SearchPetsData, options?: CallOptions): Promise<SearchPetsResponse> {"
+    ));
     assert!(out.contains("method: config.usePostFallback ? \"POST\" : \"QUERY\""));
     assert!(out.contains("path: config.usePostFallback ? `/pets` : `/pets`"));
     assert!(out.contains("body: data.body"));
@@ -240,7 +248,7 @@ fn fetch_runtime_has_ndjson_helpers() {
     assert!(fetch.contains("export async function* requestNdjsonStream<T>("));
     assert!(fetch.contains("export async function requestNdjsonUpload<T>("));
     assert!(fetch.contains("export class NdjsonParseError extends Error"));
-    assert!(fetch.contains("signal: options.signal"));
+    assert!(fetch.contains("signal: scope.signal"));
     assert!(fetch.contains("init.duplex = \"half\""));
 }
 
@@ -433,5 +441,50 @@ fn non_managed_runtime_is_unchanged() {
         assert!(!runtime.contains("MANAGED_"), "{client:?}");
         assert!(!runtime.contains("prepareManaged"), "{client:?}");
         assert!(!runtime.contains("caPath"), "{client:?}");
+    }
+}
+
+#[test]
+fn call_options_import_only_when_a_method_uses_it() {
+    let ndjson_only = render(
+        r##"{"paths":{"/items":{"post":{"operationId":"uploadItems",
+          "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object","properties":{"id":{"type":"integer"}}}}}},
+          "responses":{"200":{"content":{"application/json":{"schema":{"type":"string"}}}}}}}}}"##,
+    );
+    assert!(!ndjson_only.contains("CallOptions"), "{ndjson_only}");
+
+    let plain = render(
+        r##"{"paths":{"/health":{"get":{"operationId":"health","responses":{"200":{"content":{"application/json":{"schema":{"type":"boolean"}}}}}}}}}"##,
+    );
+    assert!(
+        plain.contains("import type { CallOptions } from \"./runtime\";"),
+        "{plain}"
+    );
+}
+
+#[test]
+fn runtimes_export_call_options_and_errors() {
+    for client in [HttpClient::Fetch, HttpClient::Axios] {
+        let runtime = emit_runtime(client, None);
+        assert!(
+            runtime.contains("export interface CallOptions"),
+            "{client:?}"
+        );
+        assert!(
+            runtime.contains("export class DeadlineExceededError"),
+            "{client:?}"
+        );
+        assert!(
+            runtime.contains("export class CancelledError"),
+            "{client:?}"
+        );
+        assert!(runtime.contains("signal: scope.signal"), "{client:?}");
+    }
+    for (client, runtime) in managed_runtimes() {
+        assert!(runtime.contains("openCallScope(options)"), "{client:?}");
+        assert!(
+            runtime.contains("export class CancelledError"),
+            "{client:?}"
+        );
     }
 }

@@ -117,6 +117,66 @@ async function acquireAdmission(config: ClientConfig, url: URL): Promise<() => v
   return admission.acquire(p.poolTimeoutMs);
 }
 
+export interface CallOptions {
+  /** Abort the request. A caller abort rejects with `CancelledError`. */
+  signal?: AbortSignal;
+  /** Give up after this many milliseconds. Rejects with `DeadlineExceededError`. */
+  timeoutMs?: number;
+}
+
+export class DeadlineExceededError extends Error {
+  readonly timeoutMs: number;
+  constructor(timeoutMs: number) {
+    super(`deadline of ${timeoutMs}ms exceeded`);
+    this.name = "DeadlineExceededError";
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+export class CancelledError extends Error {
+  constructor() {
+    super("request cancelled");
+    this.name = "CancelledError";
+  }
+}
+
+interface CallScope {
+  signal: AbortSignal | undefined;
+  failure(): Error | undefined;
+  dispose(): void;
+}
+
+function openCallScope(options?: CallOptions): CallScope {
+  const signal = options?.signal;
+  const timeoutMs = options?.timeoutMs;
+  if (signal === undefined && timeoutMs === undefined) {
+    return { signal: undefined, failure: () => undefined, dispose: () => {} };
+  }
+  const controller = new AbortController();
+  let failure: Error | undefined;
+  const onAbort = () => {
+    failure ??= new CancelledError();
+    controller.abort();
+  };
+  if (signal?.aborted) onAbort();
+  else signal?.addEventListener("abort", onAbort, { once: true });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  if (timeoutMs !== undefined) {
+    timer = setTimeout(() => {
+      failure ??= new DeadlineExceededError(timeoutMs);
+      controller.abort();
+    }, timeoutMs);
+  }
+  return {
+    signal: controller.signal,
+    failure: () => failure,
+    dispose: () => {
+      if (timer !== undefined) clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+    },
+  };
+}
+
 export interface RequestArgs {
   method: string;
   path: string;
@@ -176,7 +236,7 @@ export async function privateCaFetch(trust: PrivateTrust): Promise<typeof fetch>
     fetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
 }
 
-export async function request<T>(config: ClientConfig, args: RequestArgs): Promise<T> {
+export async function request<T>(config: ClientConfig, args: RequestArgs, options?: CallOptions): Promise<T> {
   const doFetch = config.fetch ?? fetch;
   assertTrustIsHonoured(config, config.fetch);
   const url = new URL(config.baseUrl + args.path);
@@ -188,11 +248,13 @@ export async function request<T>(config: ClientConfig, args: RequestArgs): Promi
     }
   }
   const release = await acquireAdmission(config, url);
+  const scope = openCallScope(options);
   try {
     const response = await doFetch(url.toString(), {
       method: args.method,
       headers: { "Content-Type": "application/json", ...config.headers, ...args.headers },
       body: args.body !== undefined ? JSON.stringify(args.body) : undefined,
+      signal: scope.signal,
     });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
@@ -201,7 +263,10 @@ export async function request<T>(config: ClientConfig, args: RequestArgs): Promi
       return undefined as T;
     }
     return (await response.json()) as T;
+  } catch (error) {
+    throw scope.failure() ?? error;
   } finally {
+    scope.dispose();
     release();
   }
 }
@@ -211,6 +276,8 @@ export type NdjsonItem<S> = S extends AsyncIterable<infer U> ? U : never;
 export interface NdjsonOptions {
   /** Abort the request and the stream. */
   signal?: AbortSignal;
+  /** Abort the request and the stream after this many milliseconds. */
+  timeoutMs?: number;
 }
 
 export interface NdjsonRequestArgs extends RequestArgs {
@@ -308,8 +375,9 @@ async function sendNdjson(
   }
   const headers = { "Content-Type": args.ndjsonBody ? "application/x-ndjson" : "application/json", Accept: accept, ...config.headers, ...args.headers };
   const release = await acquireAdmission(config, url);
+  const scope = openCallScope(options);
   try {
-    const init: Record<string, unknown> = { method: args.method, headers, signal: options.signal };
+    const init: Record<string, unknown> = { method: args.method, headers, signal: scope.signal };
     if (args.ndjsonBody) {
       init.body = toReadableStream(encodeNdjson(args.ndjsonBody));
       init.duplex = "half";
@@ -320,10 +388,17 @@ async function sendNdjson(
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    return { response, release };
+    return {
+      response,
+      release: () => {
+        scope.dispose();
+        release();
+      },
+    };
   } catch (error) {
+    scope.dispose();
     release();
-    throw error;
+    throw scope.failure() ?? error;
   }
 }
 
