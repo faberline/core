@@ -144,10 +144,15 @@ fn union_plan(schema: &Schema, branches: &[&RefOr<Schema>], spec: &Spec) -> Unio
     if let Some(d) = &schema.discriminator {
         // serde removes the tag before it reads the variant, so a variant that
         // declares the tag property itself cannot be read back.
+        let mut inline_tags = BTreeSet::new();
         let tagged = branches.iter().all(|b| match b {
             RefOr::Ref(r) => struct_component(spec, &r.reference)
                 .is_some_and(|s| !s.properties.contains_key(&d.property_name)),
-            RefOr::Item(_) => false,
+            RefOr::Item(s) => {
+                is_inline_object(b)
+                    && inline_tag_value(s, &d.property_name)
+                        .is_some_and(|tag| inline_tags.insert(tag))
+            }
         });
         return if tagged {
             UnionPlan::Tagged(d.property_name.clone())
@@ -182,6 +187,18 @@ fn union_plan(schema: &Schema, branches: &[&RefOr<Schema>], spec: &Spec) -> Unio
 /// An inline object branch: a schema with its own properties.
 fn is_inline_object(b: &RefOr<Schema>) -> bool {
     matches!(b, RefOr::Item(s) if !s.properties.is_empty())
+}
+
+/// The tag value of an inline branch: the one JSON string in the `enum` of its
+/// tag property. `None` when the property is missing, a `$ref`, or not a single value.
+fn inline_tag_value<'a>(schema: &'a Schema, property: &str) -> Option<&'a str> {
+    match schema.properties.get(property)? {
+        RefOr::Item(p) => match p.enum_values.as_slice() {
+            [v] => v.as_str(),
+            _ => None,
+        },
+        RefOr::Ref(_) => None,
+    }
 }
 
 /// A union with at least one inline object branch and no discriminator. It is
@@ -281,7 +298,11 @@ fn emit_union(
         UnionPlan::Tagged(tag) => format!("#[serde(tag = \"{}\")]\n", esc(tag)),
         UnionPlan::Untagged => "#[serde(untagged)]\n".to_string(),
     };
-    let tagged = matches!(plan, UnionPlan::Tagged(_));
+    let tag_property = match &plan {
+        UnionPlan::Tagged(property) => Some(property.as_str()),
+        UnionPlan::Untagged | UnionPlan::Ambiguous => None,
+    };
+    let tagged = tag_property.is_some();
 
     let mut s = String::from("#[derive(Debug, Clone, Serialize, Deserialize)]\n");
     s.push_str(&header);
@@ -306,7 +327,16 @@ fn emit_union(
             }
             RefOr::Item(p) if is_inline_object(branch) => {
                 let sname = inline_struct_name(name, p, idx);
-                structs.push(emit_struct(&sname, p, tm, target));
+                match tag_property {
+                    Some(property) => {
+                        // The plan gives every inline branch one tag value.
+                        let tag = inline_tag_value(p, property)
+                            .expect("tagged plan has a tag value for each inline branch");
+                        structs.push(emit_struct_skipping(&sname, p, tm, target, Some(property)));
+                        s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(tag)));
+                    }
+                    None => structs.push(emit_struct(&sname, p, tm, target)),
+                }
                 let variant = reg.unique(&sname);
                 s.push_str(&format!("    {variant}({sname}),\n"));
             }
@@ -357,9 +387,24 @@ fn emit_enum(name: &str, schema: &Schema) -> String {
 }
 
 fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) -> String {
+    emit_struct_skipping(name, schema, tm, target, None)
+}
+
+/// Like `emit_struct`, but leaves out the property `skip`. An internally tagged
+/// variant must not declare its tag: serde removes the tag before it reads the variant.
+fn emit_struct_skipping(
+    name: &str,
+    schema: &Schema,
+    tm: &TypeMap,
+    target: RustTarget,
+    skip: Option<&str>,
+) -> String {
     let mut s = String::from("#[derive(Debug, Clone, Serialize, Deserialize)]\n");
     s.push_str(&format!("pub struct {name} {{\n"));
     for (key, prop) in &schema.properties {
+        if skip == Some(key.as_str()) {
+            continue;
+        }
         let required = schema.required.iter().any(|r| r == key);
         let ty = rsmap::type_expr(prop, tm);
         let ty = if required { ty } else { rsmap::optional(&ty) };
