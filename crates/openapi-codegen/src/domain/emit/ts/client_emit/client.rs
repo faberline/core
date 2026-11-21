@@ -11,6 +11,12 @@ pub fn emit_client(plans: &[OperationPlan], opts: &GenOptions) -> String {
     let mut out = String::from(HEADER);
     out.push_str("import type { ClientConfig } from \"./runtime\";\n");
     out.push_str("import { request } from \"./runtime\";\n");
+    if plans
+        .iter()
+        .any(|p| !(p.body.as_ref().is_some_and(|b| b.ndjson) || p.response_stream))
+    {
+        out.push_str("import type { CallOptions } from \"./runtime\";\n");
+    }
     // A streaming operation uses `requestNdjsonStream` only, so the upload
     // helper is imported only for an NDJSON body that returns a plain value.
     if plans
