@@ -278,7 +278,7 @@ mod tests {
         assert!(client.contains("pub fn get_pet_by_id(&self, pet_id: i64) -> ClientResult<Pet> {"));
         assert!(client.contains("let url = format!(\"{}/pets/{}\", self.base_url, pet_id);"));
         assert!(client.contains("self.http.get(url)"));
-        assert!(client.contains("let _slot = self.acquire_slot()?;"));
+        assert!(client.contains("let _slot = self.acquire_slot_with(options.cancel.as_ref())?;"));
         assert!(client.contains("Ok(resp.json()?)"));
     }
 

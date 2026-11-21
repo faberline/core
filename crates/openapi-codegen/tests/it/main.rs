@@ -8,6 +8,7 @@ mod optional_untyped_field;
 mod property_spec_parser;
 mod py_deadline_cancel;
 mod run_entry;
+mod rust_deadline_cancel;
 mod rust_server_errors;
 mod rust_server_handler;
 mod rust_server_router;

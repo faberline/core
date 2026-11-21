@@ -171,14 +171,56 @@ pub(super) fn emit_method(
         Some(enum_name) => format!("ApiResult<{ret}, {enum_name}>"),
         None => format!("ClientResult<{ret}>"),
     };
-    let mut m = format!(
-        "    pub fn {name}(&self{}) -> {result_ty} {{\n",
-        if sig.is_empty() {
+    // Every non-NDJSON method gets a `<name>_with` twin that takes `CallOptions`.
+    // The old `<name>` keeps its signature and delegates with the default options.
+    let twin = !is_ndjson(ir);
+    let with_name = if twin {
+        reg.unique(&format!("{name}_with"))
+    } else {
+        name.clone()
+    };
+    let mut m = String::new();
+    let mut twin_sig = sig.clone();
+    if twin {
+        let mut call_args: Vec<String> = path_anns.iter().map(|(n, _, _)| n.clone()).collect();
+        call_args.extend(
+            query_anns
+                .iter()
+                .chain(header_anns.iter())
+                .map(|(n, _, _)| n.clone()),
+        );
+        if body_ty.is_some() {
+            call_args.push("body".to_string());
+        }
+        let plain = if sig.is_empty() {
             String::new()
         } else {
             format!(", {}", sig.join(", "))
+        };
+        let mut call = call_args.join(", ");
+        if !call.is_empty() {
+            call.push_str(", ");
         }
-    );
+        m.push_str(&format!(
+            "    pub fn {name}(&self{plain}) -> {result_ty} {{\n"
+        ));
+        m.push_str(&format!(
+            "        self.{with_name}({call}CallOptions::default())\n"
+        ));
+        m.push_str("    }\n\n");
+        m.push_str(&format!(
+            "    /// Like [`{name}`], with a deadline and a cancel token.\n"
+        ));
+        twin_sig.push("options: CallOptions".to_string());
+    }
+    m.push_str(&format!(
+        "    pub fn {with_name}(&self{}) -> {result_ty} {{\n",
+        if twin_sig.is_empty() {
+            String::new()
+        } else {
+            format!(", {}", twin_sig.join(", "))
+        }
+    ));
 
     // URL with path params substituted into a format string.
     let mut fmt = ir.path.clone();
@@ -290,11 +332,24 @@ pub(super) fn emit_method(
 
     // An NDJSON response keeps the admission slot for as long as its iterator lives.
     let slot = if ndjson_resp { "slot" } else { "_slot" };
-    m.push_str(&format!("        let {slot} = self.acquire_slot()?;\n"));
+    if twin {
+        m.push_str(&format!(
+            "        let {slot} = self.acquire_slot_with(options.cancel.as_ref())?;\n"
+        ));
+    } else {
+        m.push_str(&format!("        let {slot} = self.acquire_slot()?;\n"));
+    }
+    let send = if twin {
+        "send_with_options(req, &options)"
+    } else {
+        "req.send()"
+    };
     match &error_enum {
-        None => m.push_str("        let resp = req.send()?.error_for_status()?;\n"),
+        None => m.push_str(&format!(
+            "        let resp = {send}?.error_for_status()?;\n"
+        )),
         Some(enum_name) => {
-            m.push_str("        let resp = req.send()?;\n");
+            m.push_str(&format!("        let resp = {send}?;\n"));
             m.push_str(
                 "        if resp.status().is_client_error() || resp.status().is_server_error() {\n",
             );

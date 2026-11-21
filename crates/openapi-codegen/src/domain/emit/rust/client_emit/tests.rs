@@ -249,7 +249,7 @@ fn managed_client_refuses_non_https_before_transport() {
         .find("attach_managed(&self.base_url, &self.ca_path, &mut request_headers)?;")
         .expect("managed method attaches the token before sending");
     let slot = out
-        .find("let _slot = self.acquire_slot()?;")
+        .find("let _slot = self.acquire_slot_with(options.cancel.as_ref())?;")
         .expect("method acquires a slot");
     let send = out.find("req.send()").expect("method sends");
     assert!(guard < slot, "{out}");
@@ -329,4 +329,70 @@ fn non_managed_client_is_unchanged() {
     for needle in ["MANAGED_", "attach_managed", "ca_path", "Managed("] {
         assert!(!plain.contains(needle), "{needle} leaked into {plain}");
     }
+}
+
+const PING_SPEC: &str = r##"{
+  "paths": {
+    "/ping": {
+      "get": {
+        "operationId": "ping",
+        "responses": {
+          "200": {"description": "ok", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Pong"}}}}
+        }
+      }
+    }
+  },
+  "components": {"schemas": {
+    "Pong": {"type": "object", "properties": {"ok": {"type": "boolean"}}, "required": ["ok"]}
+  }}
+}"##;
+
+#[test]
+fn rust_methods_have_a_with_twin_and_the_old_signature() {
+    let out = render_spec(PING_SPEC);
+    assert!(out.contains("pub fn ping(&self) -> ClientResult<"), "{out}");
+    assert!(
+        out.contains("pub fn ping_with(&self, options: CallOptions) -> ClientResult<"),
+        "{out}"
+    );
+    assert!(
+        out.contains("self.ping_with(CallOptions::default())"),
+        "{out}"
+    );
+    assert!(out.contains("DeadlineExceeded(Duration),"), "{out}");
+    assert!(out.contains("    Cancelled,"), "{out}");
+    assert!(out.contains("pub struct CancelToken("), "{out}");
+    assert!(out.contains("pub struct CallOptions {"), "{out}");
+}
+
+#[test]
+fn ndjson_methods_get_no_with_twin() {
+    let out = render_spec(
+        r##"{
+  "paths": {
+    "/items": {
+      "post": {
+        "operationId": "uploadItems",
+        "requestBody": {"required": true, "content": {"application/x-ndjson": {"schema": {"type": "object"}}}},
+        "responses": {"204": {"description": "stored"}}
+      }
+    }
+  },
+  "components": {"schemas": {}}
+}"##,
+    );
+    assert!(out.contains("pub fn upload_items(&self"), "{out}");
+    assert!(!out.contains("upload_items_with"), "{out}");
+}
+
+#[test]
+fn declared_error_operations_keep_their_result_type_in_the_twin() {
+    let out = render_spec(GET_TASK_SPEC);
+    assert!(
+        out.contains(
+            "pub fn get_task_with(&self, id: String, options: CallOptions) -> ApiResult<Task, GetTaskError> {"
+        ),
+        "{out}"
+    );
+    assert!(out.contains("send_with_options(req, &options)?;"), "{out}");
 }
