@@ -16,3 +16,4 @@ mod rust_unions;
 mod status_ndjson;
 mod target_profile_matrix;
 mod ts_deadline_cancel;
+mod ts_retry;

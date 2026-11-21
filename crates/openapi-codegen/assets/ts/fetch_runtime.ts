@@ -14,6 +14,11 @@ export interface ClientConfig {
    * the HTTP `QUERY` method (RFC 10008). Off by default.
    */
   usePostFallback?: boolean;
+  /**
+   * Opt-in retry. Without it a call is sent once. Only an operation whose
+   * retry class allows it is retried (see `RetryClass`).
+   */
+  retry?: RetryPolicy;
 }
 
 
@@ -140,6 +145,15 @@ export class CancelledError extends Error {
   }
 }
 
+export class HttpError extends Error {
+  readonly status: number;
+  constructor(status: number) {
+    super(`HTTP ${status}`);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
 interface CallScope {
   signal: AbortSignal | undefined;
   failure(): Error | undefined;
@@ -177,6 +191,16 @@ function openCallScope(options?: CallOptions): CallScope {
   };
 }
 
+/** The `x-retry-class` of an operation. */
+export type RetryClass = "safe-read" | "idempotency-key" | "non-retryable";
+
+export interface RetryPolicy {
+  /** Total attempts including the first. Default 3. */
+  maxAttempts?: number;
+  /** Wait before attempt `attempt + 1`; `attempt` counts from 1. Default `100 * attempt`. No jitter. */
+  delayMs?: (attempt: number) => number;
+}
+
 export interface RequestArgs {
   method: string;
   path: string;
@@ -184,6 +208,7 @@ export interface RequestArgs {
   body?: unknown;
   headers?: Record<string, string>;
   expectBody?: boolean;
+  retryClass?: RetryClass;
 }
 
 
@@ -236,6 +261,37 @@ export async function privateCaFetch(trust: PrivateTrust): Promise<typeof fetch>
     fetch(input, { ...init, dispatcher })) as unknown as typeof fetch;
 }
 
+const RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+function hasIdempotencyKey(config: ClientConfig, args: RequestArgs): boolean {
+  const headers = { ...config.headers, ...args.headers };
+  return Object.entries(headers).some(
+    ([name, value]) => name.toLowerCase() === "idempotency-key" && String(value) !== "",
+  );
+}
+
+/** Total attempts for this call: 1 unless a policy is set and the class allows a retry. */
+function retryAttempts(config: ClientConfig, args: RequestArgs): number {
+  const retry = config.retry;
+  if (retry === undefined) return 1;
+  const allowed =
+    args.retryClass === "safe-read" ||
+    (args.retryClass === "idempotency-key" && hasIdempotencyKey(config, args));
+  if (!allowed) return 1;
+  return Math.max(1, Math.floor(retry.maxAttempts ?? 3));
+}
+
+function isRetryable(error: unknown): boolean {
+  if (error instanceof DeadlineExceededError || error instanceof CancelledError) return false;
+  const status = error instanceof HttpError ? error.status : undefined;
+  if (typeof status === "number") return RETRY_STATUSES.has(status);
+  return true;
+}
+
+function pause(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function request<T>(config: ClientConfig, args: RequestArgs, options?: CallOptions): Promise<T> {
   const doFetch = config.fetch ?? fetch;
   assertTrustIsHonoured(config, config.fetch);
@@ -247,27 +303,33 @@ export async function request<T>(config: ClientConfig, args: RequestArgs, option
       }
     }
   }
-  const release = await acquireAdmission(config, url);
-  const scope = openCallScope(options);
-  try {
-    const response = await doFetch(url.toString(), {
-      method: args.method,
-      headers: { "Content-Type": "application/json", ...config.headers, ...args.headers },
-      body: args.body !== undefined ? JSON.stringify(args.body) : undefined,
-      signal: scope.signal,
-    });
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+  const attempts = retryAttempts(config, args);
+  for (let attempt = 1; ; attempt += 1) {
+    const release = await acquireAdmission(config, url);
+    const scope = openCallScope(options);
+    try {
+      const response = await doFetch(url.toString(), {
+        method: args.method,
+        headers: { "Content-Type": "application/json", ...config.headers, ...args.headers },
+        body: args.body !== undefined ? JSON.stringify(args.body) : undefined,
+        signal: scope.signal,
+      });
+      if (!response.ok) {
+        throw new HttpError(response.status);
+      }
+      if (args.expectBody === false || response.status === 204) {
+        return undefined as T;
+      }
+      return (await response.json()) as T;
+    } catch (error) {
+      const failure = scope.failure() ?? error;
+      if (attempt >= attempts || !isRetryable(failure)) throw failure;
+    } finally {
+      scope.dispose();
+      release();
     }
-    if (args.expectBody === false || response.status === 204) {
-      return undefined as T;
-    }
-    return (await response.json()) as T;
-  } catch (error) {
-    throw scope.failure() ?? error;
-  } finally {
-    scope.dispose();
-    release();
+    await pause((config.retry?.delayMs ?? ((n: number) => 100 * n))(attempt));
+    if (options?.signal?.aborted) throw new CancelledError();
   }
 }
 
