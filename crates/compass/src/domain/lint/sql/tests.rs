@@ -116,3 +116,48 @@ fn test_injection_go() {
     );
     assert!(d.iter().any(|d| d.code == "SQL-INJ"), "expected SQL-INJ");
 }
+
+#[test]
+fn injection_ignores_wait_message_with_delete_word() {
+    let d = detect_sql_injection(
+        "print(f\"waiting for delete of {name} to finish\")\n",
+        "python",
+    );
+    assert!(d.is_empty(), "expected no finding, got {:?}", codes(&d));
+}
+
+#[test]
+fn injection_ignores_log_line_with_update_word() {
+    let d = detect_sql_injection("log.info(f\"update {n} done\")\n", "python");
+    assert!(d.is_empty(), "expected no finding, got {:?}", codes(&d));
+}
+
+#[test]
+fn injection_ignores_js_template_with_create_word() {
+    let d = detect_sql_injection("const m = `create ${x} now`;\n", "javascript");
+    assert!(d.is_empty(), "expected no finding, got {:?}", codes(&d));
+}
+
+#[test]
+fn injection_ignores_go_sprintf_with_drop_word() {
+    let d = detect_sql_injection("m := fmt.Sprintf(\"drop %s\", x)\n", "go");
+    assert!(d.is_empty(), "expected no finding, got {:?}", codes(&d));
+}
+
+#[test]
+fn injection_still_reports_python_percent_format() {
+    let d = detect_sql_injection(
+        "q = \"SELECT * FROM users WHERE id = %s\" % uid\n",
+        "python",
+    );
+    assert!(d.iter().any(|d| d.code == "SQL-INJ"), "expected SQL-INJ");
+}
+
+#[test]
+fn injection_still_reports_python_format_call() {
+    let d = detect_sql_injection(
+        "q = \"DELETE FROM users WHERE id = {}\".format(uid)\n",
+        "python",
+    );
+    assert!(d.iter().any(|d| d.code == "SQL-INJ"), "expected SQL-INJ");
+}
