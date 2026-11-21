@@ -4,7 +4,7 @@ use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use openapi_codegen::{
-    generate_for_target, GenOptions, GeneratedOutput, Lang, RustTarget, TargetProfile,
+    generate, generate_for_target, GenOptions, GeneratedOutput, Lang, RustTarget, TargetProfile,
 };
 
 const SPEC: &str = r##"{
@@ -32,7 +32,21 @@ const SPEC: &str = r##"{
       "Clash": { "oneOf": [
         { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } },
         { "type": "object", "required": ["id"], "properties": { "id": { "type": "string" } } }
-      ] }
+      ] },
+      "Node": {
+        "oneOf": [
+          { "type": "object", "required": ["kind", "rows"], "properties": { "kind": { "type": "string", "enum": ["rows"] }, "rows": { "type": "array", "items": { "type": "string" } } } },
+          { "type": "object", "required": ["kind", "total"], "properties": { "kind": { "type": "string", "enum": ["total"] }, "total": { "type": "integer" } } }
+        ],
+        "discriminator": { "propertyName": "kind" }
+      },
+      "Loose": {
+        "oneOf": [
+          { "type": "object", "required": ["kind", "rows"], "properties": { "kind": { "type": "string", "enum": ["a", "b"] }, "rows": { "type": "string" } } },
+          { "type": "object", "required": ["kind", "total"], "properties": { "kind": { "type": "string", "enum": ["c"] }, "total": { "type": "integer" } } }
+        ],
+        "discriminator": { "propertyName": "kind" }
+      }
     }
   }
 }"##;
@@ -79,9 +93,10 @@ fn generated_rust_unions_round_trip() {
     let target = TargetProfile::Rust(RustTarget::Rust2021);
     let generated =
         generate_for_target(SPEC, &opts(target), target).expect("generate Rust union models");
-    assert_eq!(generated.warnings().len(), 2);
+    assert_eq!(generated.warnings().len(), 3);
     assert!(generated.warnings().iter().any(|w| w.contains("`Blob`")));
     assert!(generated.warnings().iter().any(|w| w.contains("`Clash`")));
+    assert!(generated.warnings().iter().any(|w| w.contains("`Loose`")));
     materialize(&generated, &source);
     fs::rename(source.join("mod.rs"), source.join("lib.rs")).expect("install Rust lib root");
     fs::write(
@@ -99,7 +114,7 @@ serde_json = "1"
     .expect("write generated Rust manifest");
     fs::write(
         source.join("main.rs"),
-        r##"use generated_unions::models::{Blob, Id, Outcome, Pet, Shape};
+        r##"use generated_unions::models::{Blob, Id, Loose, Node, Outcome, Pet, Shape};
 
 fn main() {
     let pet: Pet = serde_json::from_str(r#"{"kind":"cat","name":"Tom"}"#).expect("cat");
@@ -165,6 +180,27 @@ fn main() {
         other => panic!("expected total outcome, got {}", serde_json::to_string(other).unwrap()),
     }
     println!("{}", serde_json::to_string(&outcome).expect("serialize outcome total"));
+
+    let node: Node = serde_json::from_str(r#"{"kind":"rows","rows":["a"]}"#).expect("node rows");
+    match &node {
+        Node::NodeVariant1(r) => println!("node:rows:{}", r.rows.len()),
+        other => panic!("expected rows node, got {}", serde_json::to_string(other).unwrap()),
+    }
+    println!("{}", serde_json::to_string(&node).expect("serialize node rows"));
+
+    let node: Node = serde_json::from_str(r#"{"kind":"total","total":3}"#).expect("node total");
+    match &node {
+        Node::NodeVariant2(t) => println!("node:total:{}", t.total),
+        other => panic!("expected total node, got {}", serde_json::to_string(other).unwrap()),
+    }
+    println!("{}", serde_json::to_string(&node).expect("serialize node total"));
+
+    if serde_json::from_str::<Node>(r#"{"kind":"other","rows":["a"]}"#).is_err() {
+        println!("node:unknown:err");
+    }
+
+    let loose: Loose = serde_json::json!({"kind": "a"});
+    println!("loose:{loose}");
 }
 "##,
     )
@@ -211,7 +247,73 @@ fn main() {
             r#"{"rows":["a"]}"#,
             "outcome:total:3",
             r#"{"total":3}"#,
+            "node:rows:1",
+            r#"{"kind":"rows","rows":["a"]}"#,
+            "node:total:3",
+            r#"{"kind":"total","total":3}"#,
+            "node:unknown:err",
+            r#"loose:{"kind":"a"}"#,
         ]
     );
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn inline_union_names_match_across_targets() {
+    let rust = generate_for_target(
+        SPEC,
+        &opts(TargetProfile::Rust(RustTarget::Rust2021)),
+        TargetProfile::Rust(RustTarget::Rust2021),
+    )
+    .expect("generate Rust union models");
+    let rust_models = &rust
+        .files
+        .iter()
+        .find(|f| f.rel_path.ends_with("models.rs"))
+        .expect("Rust models file")
+        .contents;
+    assert!(
+        rust_models.contains("pub struct NodeVariant1 {"),
+        "{rust_models}"
+    );
+    assert!(
+        rust_models.contains("pub struct NodeVariant2 {"),
+        "{rust_models}"
+    );
+
+    let py_opts = GenOptions::new(Lang::Py, PathBuf::new(), PathBuf::new(), "createClient");
+    let py = generate(SPEC, &py_opts).expect("generate Python union models");
+    let py_models = &py
+        .files
+        .iter()
+        .find(|f| f.rel_path.ends_with("models.py"))
+        .expect("Python models file")
+        .contents;
+    assert!(
+        py_models.contains("class NodeVariant1(BaseModel):"),
+        "{py_models}"
+    );
+    assert!(
+        py_models.contains("class NodeVariant2(BaseModel):"),
+        "{py_models}"
+    );
+    assert!(
+        py_models.contains("class Node(RootModel[Union[NodeVariant1, NodeVariant2]]):"),
+        "{py_models}"
+    );
+
+    let ts_opts = GenOptions::new(Lang::Ts, PathBuf::new(), PathBuf::new(), "createClient");
+    let ts = generate(SPEC, &ts_opts).expect("generate TypeScript union models");
+    let ts_types = &ts
+        .files
+        .iter()
+        .find(|f| f.rel_path.ends_with("types.ts"))
+        .expect("TypeScript types file")
+        .contents;
+    assert!(
+        ts_types.contains(
+            r#"export type Node = { kind: "rows"; rows: string[] } | { kind: "total"; total: number };"#
+        ),
+        "{ts_types}"
+    );
 }

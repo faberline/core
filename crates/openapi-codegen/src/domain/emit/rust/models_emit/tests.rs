@@ -548,3 +548,121 @@ fn inline_union_subset_required_stays_value() {
         r#"{{"type":"object","required":["id"],"properties":{{"id":{{"type":"string"}},"y":{{"type":"string"}}}}}}, {INLINE_A}"#
     ));
 }
+
+const TAG_ROWS: &str = r##"{"type":"object","required":["kind","rows"],"properties":{"kind":{"type":"string","enum":["rows"]},"rows":{"type":"array","items":{"type":"string"}}}}"##;
+const TAG_TOTAL: &str = r##"{"type":"object","required":["kind","total"],"properties":{"kind":{"type":"string","enum":["total"]},"total":{"type":"integer"}}}"##;
+
+fn tagged_spec(branches: &str) -> String {
+    format!(
+        r##"{{
+        "openapi": "3.1.0", "info": {{ "title": "Test", "version": "1.0.0" }}, "paths": {{}},
+        "components": {{ "schemas": {{
+            "Cat": {{ "type": "object", "required": ["name"], "properties": {{ "name": {{ "type": "string" }} }} }},
+            "Node": {{ "oneOf": [{branches}], "discriminator": {{ "propertyName": "kind" }} }}
+        }} }}
+    }}"##
+    )
+}
+
+#[test]
+fn inline_tagged_union_is_internally_tagged_enum() {
+    let (out, warnings) = render_with_warnings(&tagged_spec(&format!("{TAG_ROWS}, {TAG_TOTAL}")));
+    assert!(out.contains("pub struct NodeVariant1 {"), "{out}");
+    assert!(out.contains("    pub rows: Vec<String>,\n"), "{out}");
+    assert!(out.contains("pub struct NodeVariant2 {"), "{out}");
+    assert!(out.contains("    pub total: i64,\n"), "{out}");
+    assert!(!out.contains("pub kind:"), "{out}");
+    assert!(
+        out.contains(
+            "#[serde(tag = \"kind\")]\npub enum Node {\n    #[serde(rename = \"rows\")]\n    NodeVariant1(NodeVariant1),\n    #[serde(rename = \"total\")]\n    NodeVariant2(NodeVariant2),\n}\n"
+        ),
+        "{out}"
+    );
+    assert!(!out.contains("pub type Node = serde_json::Value;"), "{out}");
+    assert!(out.find("pub struct NodeVariant1").unwrap() < out.find("pub enum Node").unwrap());
+    assert!(warnings.is_empty(), "{warnings:?}");
+}
+
+#[test]
+fn inline_tagged_union_with_one_required_uses_property_name() {
+    let rows = r##"{"type":"object","required":["rows"],"properties":{"kind":{"type":"string","enum":["rows"]},"rows":{"type":"array","items":{"type":"string"}}}}"##;
+    let total = r##"{"type":"object","required":["total"],"properties":{"kind":{"type":"string","enum":["total"]},"total":{"type":"integer"}}}"##;
+    let (out, _) = render_with_warnings(&tagged_spec(&format!("{rows}, {total}")));
+    assert!(out.contains("pub struct NodeRows {"), "{out}");
+    assert!(out.contains("pub struct NodeTotal {"), "{out}");
+    assert!(
+        out.contains("    #[serde(rename = \"rows\")]\n    NodeRows(NodeRows),"),
+        "{out}"
+    );
+    assert!(!out.contains("pub kind:"), "{out}");
+}
+
+#[test]
+fn inline_tagged_union_mixes_inline_and_ref_branches() {
+    let (out, _) = render_with_warnings(&tagged_spec(&format!(
+        r##"{{"$ref":"#/components/schemas/Cat"}}, {TAG_TOTAL}"##
+    )));
+    assert!(
+        out.contains("#[serde(tag = \"kind\")]\npub enum Node {"),
+        "{out}"
+    );
+    assert!(
+        out.contains("    #[serde(rename = \"Cat\")]\n    Cat(Cat),"),
+        "{out}"
+    );
+    assert!(
+        out.contains("    #[serde(rename = \"total\")]\n    NodeVariant2(NodeVariant2),"),
+        "{out}"
+    );
+    assert!(!out.contains("pub kind:"), "{out}");
+}
+
+/// Each body must leave the tagged union as `serde_json::Value` with one warning.
+fn assert_tagged_inline_stays_value(body: &str) {
+    let json = r##"{
+        "openapi": "3.1.0", "info": { "title": "Test", "version": "1.0.0" }, "paths": {},
+        "components": { "schemas": {
+            "Label": { "type": "string", "enum": ["x"] },
+            "Cat": { "type": "object", "required": ["name"], "properties": { "name": { "type": "string" } } },
+            "Tagged": { "type": "object", "required": ["kind"], "properties": { "kind": { "type": "string" } } },
+            "Odd": { "oneOf": [BODY], "discriminator": { "propertyName": "kind" } }
+        } }
+    }"##
+    .replace("BODY", body);
+    let (out, warnings) = render_with_warnings(&json);
+    assert!(out.contains("pub type Odd = serde_json::Value;"), "{out}");
+    assert!(warnings.iter().any(|w| w.contains("`Odd`")), "{warnings:?}");
+}
+
+const TAG_A1: &str = r##"{"type":"object","required":["rows"],"properties":{"kind":{"type":"string","enum":["rows"]},"rows":{"type":"string"}}}"##;
+
+#[test]
+fn inline_tagged_union_without_tag_enum_stays_value() {
+    assert_tagged_inline_stays_value(&format!(
+        r#"{TAG_A1}, {{"type":"object","required":["total"],"properties":{{"total":{{"type":"integer"}}}}}}"#
+    ));
+}
+
+#[test]
+fn inline_tagged_union_with_two_value_enum_stays_value() {
+    assert_tagged_inline_stays_value(&format!(
+        r#"{TAG_A1}, {{"type":"object","required":["total"],"properties":{{"kind":{{"type":"string","enum":["a","b"]}},"total":{{"type":"integer"}}}}}}"#
+    ));
+}
+
+#[test]
+fn inline_tagged_union_with_repeated_tag_stays_value() {
+    assert_tagged_inline_stays_value(&format!(r#"{TAG_A1}, {TAG_A1}"#));
+}
+
+#[test]
+fn inline_tagged_union_with_primitive_branch_stays_value() {
+    assert_tagged_inline_stays_value(&format!(r#"{TAG_A1}, {{"type":"string"}}"#));
+}
+
+#[test]
+fn inline_tagged_union_ref_declaring_tag_stays_value() {
+    assert_tagged_inline_stays_value(&format!(
+        r##"{TAG_A1}, {{"$ref":"#/components/schemas/Tagged"}}"##
+    ));
+}
