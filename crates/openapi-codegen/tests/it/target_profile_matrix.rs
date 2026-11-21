@@ -403,7 +403,7 @@ fn legacy_default_output_contract() {
         vec![
             ("models.py", 16913750451280483632),
             ("h2c_runtime.py", 4689983979577879353),
-            ("client.py", 14383352487060706853),
+            ("client.py", 296099678688780965),
             ("__init__.py", 9994428160985782841),
         ]
     );

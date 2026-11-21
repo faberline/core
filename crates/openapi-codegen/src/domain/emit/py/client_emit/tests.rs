@@ -379,3 +379,142 @@ fn ndjson_methods_are_unchanged_by_timeout() {
         "{out}"
     );
 }
+
+/// The text of one generated method: from `head` to the next method or class.
+fn method_body<'a>(out: &'a str, head: &str) -> &'a str {
+    let start = out
+        .find(head)
+        .unwrap_or_else(|| panic!("no `{head}` in output:\n{out}"));
+    let rest = &out[start + 1..];
+    let end = ["\n    def ", "\n    async def ", "\n\n\nclass "]
+        .iter()
+        .filter_map(|marker| rest.find(marker))
+        .min()
+        .unwrap_or(rest.len());
+    &out[start..start + 1 + end]
+}
+
+#[test]
+fn retry_loop_is_emitted_only_for_classified_operations() {
+    let s = spec(
+        r##"{"paths":{
+  "/read":{"get":{"operationId":"readThing","x-retry-class":"safe-read","responses":{"200":{"description":"ok","content":{"application/json":{"schema":{"type":"object"}}}}}}},
+  "/write":{"post":{"operationId":"writeThing","x-retry-class":"idempotency-key","responses":{"200":{"description":"ok","content":{"application/json":{"schema":{"type":"object"}}}}}}},
+  "/mutate":{"delete":{"operationId":"mutateThing","x-retry-class":"non-retryable","responses":{"200":{"description":"ok","content":{"application/json":{"schema":{"type":"object"}}}}}}},
+  "/plain":{"get":{"operationId":"plainThing","responses":{"200":{"description":"ok","content":{"application/json":{"schema":{"type":"object"}}}}}}}
+}}"##,
+    );
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+
+    // Each classified operation has one sync and one async loop.
+    assert_eq!(
+        out.matches("_retry_attempts(self._retry, \"safe-read\", _headers)")
+            .count(),
+        2,
+        "{out}"
+    );
+    assert_eq!(
+        out.matches("_retry_attempts(self._retry, \"idempotency-key\", _headers)")
+            .count(),
+        2,
+        "{out}"
+    );
+    assert_eq!(
+        out.matches("_retry_attempts(self._retry, \"non-retryable\", _headers)")
+            .count(),
+        2,
+        "{out}"
+    );
+    assert_eq!(out.matches("while True:").count(), 6, "{out}");
+    // One transport call per method: the send is never written once per attempt.
+    assert_eq!(out.matches("self._client.request(").count(), 8, "{out}");
+    assert_eq!(
+        out.matches("time.sleep(_retry_delay(self._retry, _attempt))")
+            .count(),
+        3,
+        "{out}"
+    );
+    assert_eq!(
+        out.matches("await asyncio.sleep(_retry_delay(self._retry, _attempt))")
+            .count(),
+        3,
+        "{out}"
+    );
+    assert!(out.matches("raise CancelledError()").count() >= 3, "{out}");
+
+    // An unclassified operation keeps its single send and has no loop.
+    for head in ["    def plain_thing(", "    async def plain_thing("] {
+        let body = method_body(&out, head);
+        assert!(!body.contains("_retry_attempts"), "{body}");
+        assert!(!body.contains("while True:"), "{body}");
+        assert_eq!(body.matches("self._client.request(").count(), 1, "{body}");
+    }
+}
+
+#[test]
+fn ndjson_methods_get_no_retry_loop() {
+    let s = spec(
+        r##"{"paths":{"/logs":{"post":{"operationId":"uploadLogs","x-retry-class":"safe-read",
+  "requestBody":{"required":true,"content":{"application/x-ndjson":{"schema":{"type":"object"}}}},
+  "responses":{"200":{"description":"ok","content":{"application/x-ndjson":{"schema":{"type":"string"}}}}}}}}}"##,
+    );
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    assert!(!out.contains("_retry_attempts(self._retry"), "{out}");
+    assert!(!out.contains("while True:"), "{out}");
+}
+
+#[test]
+fn clients_take_a_retry_policy() {
+    let s = spec(r##"{"paths":{}}"##);
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    assert_eq!(
+        out.matches("use_post_fallback: bool = False, retry: RetryPolicy | None = None) -> None:")
+            .count(),
+        2,
+        "{out}"
+    );
+    assert_eq!(out.matches("self._retry = retry").count(), 2, "{out}");
+
+    let managed = managed_out();
+    assert_eq!(
+        managed
+            .matches("use_post_fallback: bool = False, retry: RetryPolicy | None = None) -> None:")
+            .count(),
+        2,
+        "{managed}"
+    );
+    assert_eq!(
+        managed.matches("self._retry = retry").count(),
+        2,
+        "{managed}"
+    );
+
+    let untyped = emit(&operations::build(&s), &tm, None, None);
+    assert!(
+        untyped.contains("retry: Optional[RetryPolicy] = None"),
+        "{untyped}"
+    );
+}
+
+#[test]
+fn retry_helpers_are_emitted() {
+    let s = spec(r##"{"paths":{}}"##);
+    let tm = build_type_map(&s);
+    let out = emit(&operations::build(&s), &tm, Some(PythonTarget::Py311), None);
+    for needle in [
+        "class RetryPolicy:",
+        "max_attempts: int = 3",
+        "delay: Callable[[int], float] = _default_delay",
+        "_RETRY_STATUSES = frozenset((429, 500, 502, 503, 504))",
+        "def _retry_attempts(retry: RetryPolicy | None, retry_class: str, headers: Mapping[str, Any]) -> int:",
+        "def _is_retryable(exc: BaseException) -> bool:",
+        "import time\n",
+        "Any, Callable, Literal, Mapping, Protocol, Self",
+        "from .h2c_runtime import H2CConnectionClosed\n",
+    ] {
+        assert!(out.contains(needle), "missing `{needle}` in:\n{out}");
+    }
+}
