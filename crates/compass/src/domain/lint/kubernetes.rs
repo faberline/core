@@ -102,6 +102,10 @@ impl KubernetesChecker {
                 if image.is_empty() {
                     continue;
                 }
+                // A placeholder is filled in later (`$IMAGE`, `{{ .Values.image }}`, `<image>`)
+                if Self::is_placeholder_image(image) {
+                    continue;
+                }
                 let uses_latest = image.ends_with(":latest");
                 let has_tag = image.contains(':') || image.contains('@');
                 if uses_latest || !has_tag {
@@ -227,7 +231,22 @@ impl KubernetesChecker {
         Some(stripped.trim())
     }
 
+    /// Helper: an image value that a template fills in later (`$IMAGE`, `${IMAGE}`, `{{ ... }}`, `<image>`)
+    fn is_placeholder_image(image: &str) -> bool {
+        image.starts_with('$') || image.starts_with("{{") || image.starts_with('<')
+    }
+
     fn has_pod_containers(lines: &[&str]) -> bool {
+        // A Kustomization file lists resources; it is not a pod workload itself
+        let is_kustomization = lines.iter().any(|line| {
+            Self::strip_yaml_key(line.trim(), "kind")
+                .map(|kind| kind.trim_matches('"').trim_matches('\''))
+                == Some("Kustomization")
+        });
+        if is_kustomization {
+            return false;
+        }
+
         let pod_workload = lines.iter().any(|line| {
             matches!(
                 Self::strip_yaml_key(line.trim(), "kind")
@@ -311,6 +330,28 @@ impl super::checker::Checker for KubernetesChecker {
 #[cfg(test)]
 mod tests {
     use super::KubernetesChecker;
+    use crate::domain::check::lint_config::LintConfig;
+    use crate::domain::lint::checker::Checker;
+    use crate::syntax::{Language, ParsedFile};
+
+    fn codes(source: &str) -> Vec<String> {
+        let file = ParsedFile::line_based(source.to_string(), Language::Yaml);
+        KubernetesChecker::new()
+            .check(&file, &LintConfig::default())
+            .iter()
+            .map(|d| d.code.as_str().to_string())
+            .collect()
+    }
+
+    fn count(source: &str, code: &str) -> usize {
+        codes(source).iter().filter(|c| c.as_str() == code).count()
+    }
+
+    fn deployment(image: &str) -> String {
+        format!(
+            "apiVersion: apps/v1\nkind: Deployment\nspec:\n  template:\n    spec:\n      containers:\n      - name: a\n        image: {image}\n"
+        )
+    }
 
     #[test]
     fn pod_workload_with_containers_needs_runtime_security_checks() {
@@ -339,5 +380,53 @@ mod tests {
         ];
 
         assert!(!KubernetesChecker::has_pod_containers(&lines));
+    }
+
+    #[test]
+    fn kustomization_is_not_a_pod_workload() {
+        let lines = [
+            "apiVersion: kustomize.config.k8s.io/v1beta1",
+            "kind: Kustomization",
+            "patches:",
+            "- patch: |-",
+            "    kind: Deployment",
+            "    containers:",
+        ];
+
+        assert!(!KubernetesChecker::has_pod_containers(&lines));
+    }
+
+    #[test]
+    fn placeholder_image_is_not_reported() {
+        assert_eq!(count(&deployment("${SIFT_IMAGE}"), "K8003"), 0);
+    }
+
+    #[test]
+    fn placeholder_forms_are_not_reported() {
+        for image in ["$IMAGE", "{{ .Values.image }}", "<image>"] {
+            assert_eq!(count(&deployment(image), "K8003"), 0, "image {image}");
+        }
+    }
+
+    #[test]
+    fn latest_image_is_still_reported() {
+        assert_eq!(count(&deployment("nginx:latest"), "K8003"), 1);
+    }
+
+    #[test]
+    fn untagged_image_is_still_reported() {
+        assert_eq!(count(&deployment("nginx"), "K8003"), 1);
+    }
+
+    #[test]
+    fn missing_run_as_non_root_is_still_reported() {
+        assert_eq!(count(&deployment("nginx:1.27"), "K8006"), 1);
+    }
+
+    #[test]
+    fn gke_test_statefulset_has_run_as_non_root() {
+        let source = include_str!("../../../../../k8s/overlays/gke-test/resources.yaml");
+
+        assert_eq!(count(source, "K8006"), 0);
     }
 }

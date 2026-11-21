@@ -27,10 +27,19 @@ spec:
         app.kubernetes.io/managed-by: core-drill
         app.kubernetes.io/part-of: core-drill
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: server
         image: core
         imagePullPolicy: IfNotPresent
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
         command: []
         ports:
         - name: http
