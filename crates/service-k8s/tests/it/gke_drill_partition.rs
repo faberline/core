@@ -60,8 +60,9 @@ pub fn probe_outcome(text: &str) -> Result<Probe, String> {
     }
 }
 
+/// Runs wget without `-q` and ends with a `wget-exit=<code>` marker line, so the log is never empty.
 pub fn probe_command(ip: &str) -> String {
-    format!("wget -T 3 -q -O- http://{ip}:8080 2>&1; true")
+    format!("wget -T 3 -O- http://{ip}:8080 2>&1; echo \"wget-exit=$?\"")
 }
 
 const LOGS_RETRY_TIMEOUT: Duration = Duration::from_secs(30);
@@ -215,8 +216,42 @@ fn probe_outcome_rejects_unknown_text() {
 fn probe_command_targets_port_8080() {
     assert_eq!(
         probe_command("10.0.0.5"),
-        "wget -T 3 -q -O- http://10.0.0.5:8080 2>&1; true"
+        "wget -T 3 -O- http://10.0.0.5:8080 2>&1; echo \"wget-exit=$?\""
     );
+}
+
+#[test]
+fn probe_command_is_not_quiet_and_ends_with_an_exit_marker() {
+    let cmd = probe_command("10.0.0.5");
+    assert!(!cmd.contains(" -q "), "{cmd}");
+    assert!(cmd.contains("echo \"wget-exit=$?\""), "{cmd}");
+}
+
+#[test]
+fn probe_outcome_blocked_on_timeout_with_marker() {
+    assert_eq!(
+        probe_outcome(
+            "Connecting to 10.0.0.5:8080 (10.0.0.5:8080)\nwget: download timed out\nwget-exit=1\n"
+        ),
+        Ok(Probe::Blocked)
+    );
+}
+
+#[test]
+fn probe_outcome_reachable_on_refusal_with_marker() {
+    assert_eq!(
+        probe_outcome(
+            "Connecting to 10.0.0.5:8080 (10.0.0.5:8080)\nwget: can't connect to remote host (10.0.0.5): Connection refused\nwget-exit=1\n"
+        ),
+        Ok(Probe::Reachable)
+    );
+}
+
+#[test]
+fn probe_outcome_rejects_marker_only_text() {
+    let err = probe_outcome("wget-exit=1\n").expect_err("a marker alone is not a probe result");
+    assert!(err.contains("unexpected probe output"), "{err}");
+    assert!(err.contains("wget-exit=1"), "{err}");
 }
 
 #[test]
