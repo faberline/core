@@ -81,6 +81,46 @@ fn probe_failure(label: &str, phase: &str, error: &str) -> String {
     format!("probe-{label} (pod phase {phase}): {error}")
 }
 
+/// Runs the probe and also writes its result to the termination log, so the result survives an empty log read.
+fn probe_script(ip: &str) -> String {
+    format!(
+        "{{ {}; }} 2>&1 | tee /dev/termination-log",
+        probe_command(ip)
+    )
+}
+
+/// The termination message of the probe container, when it has one.
+fn terminated_message(pod: &Value) -> Option<String> {
+    pod["status"]["containerStatuses"][0]["state"]["terminated"]["message"]
+        .as_str()
+        .map(str::to_string)
+}
+
+/// The probe's text: the logs when they are not empty, else the termination message.
+fn probe_text(logs: &str, termination_message: &str) -> Result<String, String> {
+    nonempty_logs(logs)
+        .or_else(|_| nonempty_logs(termination_message))
+        .map_err(|_| "probe logs and termination message are empty".to_string())
+}
+
+/// The evidence for a probe that got no text: the log call, the pod and its events.
+fn empty_probe_diagnostic(pod: &Value, raw_log: &Result<String, String>, events: &str) -> String {
+    let log_line = match raw_log {
+        Ok(body) => format!("log call: ok, body length {}", body.len()),
+        Err(e) => format!("log call: error: {e}"),
+    };
+    let uid = pod["metadata"]["uid"].as_str().unwrap_or("unknown");
+    let terminated = &pod["status"]["containerStatuses"][0]["state"]["terminated"];
+    let exit_code = terminated["exitCode"]
+        .as_i64()
+        .map_or("unknown".to_string(), |code| code.to_string());
+    let reason = terminated["reason"].as_str().unwrap_or("unknown");
+    let message = terminated["message"].as_str().unwrap_or("unknown");
+    format!(
+        "{log_line}\npod uid: {uid}\nterminated: exit code {exit_code}, reason {reason}, message {message}\nevents:\n{events}"
+    )
+}
+
 /// Runs the one-off probe pod on the client pool; its container is named `name`.
 pub fn probe_overrides(name: &str) -> Value {
     json!({"spec": {
@@ -134,7 +174,7 @@ fn probe(kube: &e2e_support::Kube, label: &str, ip: &str) -> Probe {
         "--",
         "sh",
         "-c",
-        &probe_command(ip),
+        &probe_script(ip),
     ]);
     kube.run(&[
         "wait",
@@ -144,19 +184,34 @@ fn probe(kube: &e2e_support::Kube, label: &str, ip: &str) -> Probe {
     ]);
     let deadline = std::time::Instant::now() + LOGS_RETRY_TIMEOUT;
     let text = loop {
-        match nonempty_logs(&kube.run(&["logs", &name])) {
+        let logs = kube.run(&["logs", &name]);
+        let pod = kube.get(&format!("pod/{name}"));
+        match probe_text(&logs, &terminated_message(&pod).unwrap_or_default()) {
             Ok(text) => break text,
             Err(_) if std::time::Instant::now() >= deadline => {
-                let phase = kube.run(&[
+                let raw_log = kube.try_run(&[
                     "get",
-                    &format!("pod/{name}"),
-                    "-o",
-                    "jsonpath={.status.phase}",
+                    "--raw",
+                    &format!("/api/v1/namespaces/{}/pods/{name}/log", kube.namespace),
                 ]);
+                let events = kube
+                    .try_run(&[
+                        "get",
+                        "events",
+                        "--field-selector",
+                        &format!("involvedObject.name={name}"),
+                    ])
+                    .unwrap_or_else(|e| e);
+                let phase = pod["status"]["phase"].as_str().unwrap_or("unknown");
+                let diagnostic = empty_probe_diagnostic(&pod, &raw_log, &events);
                 let _ = kube.try_run(&["delete", "pod", &name, "--wait=true"]);
                 panic!(
                     "{}",
-                    probe_failure(label, &phase, "logs stayed empty for 30s")
+                    probe_failure(
+                        label,
+                        phase,
+                        &format!("logs and termination message stayed empty for 30s\n{diagnostic}"),
+                    )
                 );
             }
             Err(_) => std::thread::sleep(Duration::from_secs(2)),
@@ -297,6 +352,112 @@ fn pod_ip_finds_the_named_pod() {
     });
     assert_eq!(pod_ip(&pods, "drill-1"), Some("10.0.0.2".to_string()));
     assert_eq!(pod_ip(&pods, "drill-9"), None);
+}
+
+fn terminated_pod(message: &str) -> Value {
+    json!({
+        "metadata": { "uid": "abc-123" },
+        "status": {
+            "phase": "Succeeded",
+            "containerStatuses": [{
+                "state": { "terminated": {
+                    "exitCode": 0, "reason": "Completed", "message": message
+                } }
+            }]
+        }
+    })
+}
+
+#[test]
+fn probe_script_tees_the_result_to_the_termination_log() {
+    let script = probe_script("10.0.0.5");
+    assert_eq!(
+        script,
+        "{ wget -T 3 -O- http://10.0.0.5:8080 2>&1; echo \"wget-exit=$?\"; } 2>&1 | tee /dev/termination-log"
+    );
+    assert!(script.contains(&probe_command("10.0.0.5")), "{script}");
+}
+
+#[test]
+fn terminated_message_reads_the_container_status() {
+    assert_eq!(
+        terminated_message(&terminated_pod("wget-exit=1\n")),
+        Some("wget-exit=1\n".to_string())
+    );
+}
+
+#[test]
+fn terminated_message_is_none_without_a_terminated_state() {
+    assert_eq!(
+        terminated_message(&json!({"status": {"containerStatuses": [{"state": {"running": {}}}]}})),
+        None
+    );
+    assert_eq!(terminated_message(&json!({})), None);
+}
+
+#[test]
+fn probe_text_prefers_the_logs() {
+    assert_eq!(
+        probe_text("wget: download timed out\n", "wget-exit=1\n"),
+        Ok("wget: download timed out\n".to_string())
+    );
+}
+
+#[test]
+fn probe_text_falls_back_to_the_termination_message() {
+    assert_eq!(
+        probe_text("", "wget: download timed out\nwget-exit=1\n"),
+        Ok("wget: download timed out\nwget-exit=1\n".to_string())
+    );
+    assert_eq!(probe_text("  \n", "x"), Ok("x".to_string()));
+}
+
+#[test]
+fn probe_text_fails_when_both_are_empty() {
+    assert_eq!(
+        probe_text("", " \n"),
+        Err("probe logs and termination message are empty".to_string())
+    );
+}
+
+#[test]
+fn probe_text_feeds_probe_outcome() {
+    let message = terminated_message(&terminated_pod(
+        "Connecting to 10.0.0.5:8080\nwget: download timed out\nwget-exit=1\n",
+    ))
+    .expect("the terminated container has a message");
+    let text = probe_text("", &message).expect("the termination message is used");
+    assert_eq!(probe_outcome(&text), Ok(Probe::Blocked));
+}
+
+#[test]
+fn empty_probe_diagnostic_names_every_field() {
+    let text = empty_probe_diagnostic(
+        &terminated_pod(""),
+        &Ok(String::new()),
+        "Normal Started pod/probe-before",
+    );
+    assert!(text.contains("log call: ok, body length 0"), "{text}");
+    assert!(text.contains("pod uid: abc-123"), "{text}");
+    assert!(
+        text.contains("terminated: exit code 0, reason Completed, message "),
+        "{text}"
+    );
+    assert!(
+        text.contains("events:\nNormal Started pod/probe-before"),
+        "{text}"
+    );
+}
+
+#[test]
+fn empty_probe_diagnostic_reports_a_failed_log_call_and_missing_fields() {
+    let text = empty_probe_diagnostic(&json!({}), &Err("Forbidden".to_string()), "");
+    assert!(text.contains("log call: error: Forbidden"), "{text}");
+    assert!(text.contains("pod uid: unknown"), "{text}");
+    assert!(
+        text.contains("terminated: exit code unknown, reason unknown, message unknown"),
+        "{text}"
+    );
 }
 
 #[test]
