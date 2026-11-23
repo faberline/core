@@ -24,6 +24,7 @@ mod lifecycle_render;
 mod membership_executor;
 mod peer_tls_mount;
 mod placement;
+mod probe_pod_kind;
 mod prune_unserved_api_is_scoped;
 mod reconcile_once_does_not_assume_leadership;
 mod restore_job;
