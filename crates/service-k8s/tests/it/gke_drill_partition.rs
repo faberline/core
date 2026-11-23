@@ -82,7 +82,7 @@ fn probe_failure(label: &str, phase: &str, error: &str) -> String {
 }
 
 /// Runs the probe and also writes its result to the termination log, so the result survives an empty log read.
-fn probe_script(ip: &str) -> String {
+pub fn probe_script(ip: &str) -> String {
     format!(
         "{{ {}; }} 2>&1 | tee /dev/termination-log",
         probe_command(ip)
@@ -97,7 +97,7 @@ fn terminated_message(pod: &Value) -> Option<String> {
 }
 
 /// The probe's text: the logs when they are not empty, else the termination message.
-fn probe_text(logs: &str, termination_message: &str) -> Result<String, String> {
+pub fn probe_text(logs: &str, termination_message: &str) -> Result<String, String> {
     nonempty_logs(logs)
         .or_else(|_| nonempty_logs(termination_message))
         .map_err(|_| "probe logs and termination message are empty".to_string())
@@ -121,8 +121,18 @@ fn empty_probe_diagnostic(pod: &Value, raw_log: &Result<String, String>, events:
     )
 }
 
-/// Runs the one-off probe pod on the client pool; its container is named `name`.
-pub fn probe_overrides(name: &str) -> Value {
+/// The container of the probe pod: it carries its own command, so a merge patch cannot drop it.
+pub fn probe_container(name: &str, script: &str) -> Value {
+    json!({
+        "name": name,
+        "image": PROBE_IMAGE,
+        "command": ["sh", "-c", script],
+        "resources": { "requests": { "cpu": "50m", "memory": "32Mi" } }
+    })
+}
+
+/// Runs the one-off probe pod on the client pool; its container is named `name` and runs `script`.
+pub fn probe_overrides(name: &str, script: &str) -> Value {
     json!({"spec": {
         "nodeSelector": { POOL_KEY: CLIENT_POOL },
         "tolerations": [{
@@ -131,11 +141,7 @@ pub fn probe_overrides(name: &str) -> Value {
             "value": CLIENT_POOL,
             "effect": "NoSchedule"
         }],
-        "containers": [{
-            "name": name,
-            "image": PROBE_IMAGE,
-            "resources": { "requests": { "cpu": "50m", "memory": "32Mi" } }
-        }]
+        "containers": [probe_container(name, script)]
     }})
 }
 
@@ -162,6 +168,7 @@ impl Drop for PolicyGuard<'_> {
 
 fn probe(kube: &e2e_support::Kube, label: &str, ip: &str) -> Probe {
     let name = format!("probe-{label}");
+    let script = probe_script(ip);
     kube.run(&[
         "run",
         &name,
@@ -169,12 +176,7 @@ fn probe(kube: &e2e_support::Kube, label: &str, ip: &str) -> Probe {
         "--image",
         PROBE_IMAGE,
         "--overrides",
-        &probe_overrides(&name).to_string(),
-        "--command",
-        "--",
-        "sh",
-        "-c",
-        &probe_script(ip),
+        &probe_overrides(&name, &script).to_string(),
     ]);
     kube.run(&[
         "wait",
@@ -310,8 +312,28 @@ fn probe_outcome_rejects_marker_only_text() {
 }
 
 #[test]
+fn probe_overrides_carry_the_probe_command() {
+    let overrides = probe_overrides("probe-x", "echo hi");
+    assert_eq!(
+        overrides["spec"]["containers"][0]["command"],
+        json!(["sh", "-c", "echo hi"])
+    );
+    assert_eq!(overrides["spec"]["containers"][0]["name"], "probe-x");
+}
+
+#[test]
+fn probe_overrides_command_runs_the_probe_script() {
+    let script = probe_script("10.0.0.5");
+    let overrides = probe_overrides("probe-y", &script);
+    assert_eq!(
+        overrides["spec"]["containers"][0]["command"][2],
+        json!(script)
+    );
+}
+
+#[test]
 fn probe_overrides_run_on_the_client_pool() {
-    let overrides = probe_overrides("probe-x");
+    let overrides = probe_overrides("probe-x", "echo hi");
     assert_eq!(overrides["spec"]["nodeSelector"][POOL_KEY], CLIENT_POOL);
     assert_eq!(overrides["spec"]["tolerations"][0]["value"], CLIENT_POOL);
     assert_eq!(overrides["spec"]["containers"][0]["name"], "probe-x");

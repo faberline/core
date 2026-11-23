@@ -18,6 +18,11 @@ To add a drill: add one `#[ignore = "needs the shared GKE cluster: ..."]` test i
 ignored test of service-k8s with `--include-ignored`. Then use
 `e2e_support::Kube::from_env()`, `DRILL_POD_LABEL` and `ready_pod`.
 
+The probe pod of the partition drill carries its `command` in the `--overrides`
+container, because `kubectl run` applies `--overrides` as a merge patch that
+replaces the `containers` array. `probe_pod_kind::probe_pod_prints_its_marker_and_termination_message`
+proves it on kind.
+
 To regenerate the overlay after a render change:
 `UPDATE_GKE_OVERLAY=1 cargo test -p service-k8s --test it gke_drill::overlay_file_matches_the_render`.
 
