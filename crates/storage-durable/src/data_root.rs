@@ -64,6 +64,15 @@ pub struct DataRoot<P: DataRootPolicy> {
 }
 
 impl<P: DataRootPolicy> DataRoot<P> {
+    /// Open or create the data root at `root` and take its exclusive lock.
+    ///
+    /// The root is set to mode `0700`. When the process does not own the root
+    /// and that `chmod` is refused (for example a volume that `fsGroup`
+    /// prepared), `open` continues only when `other` has no access to the root
+    /// and the process can read it. A root that is open to `other` returns the
+    /// `chmod` error as [`DataRootError::Io`]. The lock, manifest and
+    /// sub-directory writes still need write access, and they fail with
+    /// [`DataRootError::Io`] when the process lacks it.
     pub fn open(root: impl AsRef<Path>, policy: P) -> Result<Self, DataRootError> {
         let root = root.as_ref();
         check_not_symlink(root)?;

@@ -102,6 +102,21 @@ fn legacy_and_symlink_roots_fail_without_overwrite() {
     }
 }
 
+#[cfg(unix)]
+#[test]
+fn owner_still_sets_0700_on_a_group_writable_root() {
+    use std::os::unix::fs::PermissionsExt;
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("data");
+    std::fs::create_dir(&path).unwrap();
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o770)).unwrap();
+    let _root = DataRoot::open(&path, Policy).unwrap();
+    assert_eq!(
+        std::fs::metadata(&path).unwrap().permissions().mode() & 0o777,
+        0o700
+    );
+}
+
 #[test]
 fn service_can_update_its_manifest_through_the_shared_atomic_path() {
     let temp = tempfile::tempdir().unwrap();
