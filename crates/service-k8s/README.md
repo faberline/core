@@ -27,6 +27,25 @@ meaning. Topology, scaling, and rollout policy are moving into core under
 The shared controller watches the CR cluster-wide. Only the leader-election
 Lease holder applies changes. A follower keeps watching and can take over.
 
+### Limit the watch to namespaces
+
+To watch the CR only in a list of namespaces, call `run_in_namespaces` with a
+`WatchScope`. The crate reads no fixed variable name; the operator process picks
+one. For example, `WATCH_NAMESPACES=team-a,team-b`:
+
+```rust
+service_k8s::run_in_namespaces::<Service>(WatchScope::from_env("WATCH_NAMESPACES")).await
+```
+
+An empty or unset list watches cluster-wide, the same as `run::<Service>()`.
+An object in a namespace that is not listed is never watched and gets no
+reconcile. The RBAC that each mode needs:
+
+| Mode | Needed rights |
+|---|---|
+| `run::<Service>()` (cluster-wide) | A ClusterRole and ClusterRoleBinding with `get, list, watch` on the CR kind, and `patch, update` on the CR and its status. The child kinds as today. |
+| `run_in_namespaces` (listed namespaces) | For each listed namespace, a Role and RoleBinding with the same verbs on the CR and its namespaced children. No ClusterRole for the CR or the namespaced children. A cluster-scoped child, such as a `ClusterRoleBinding`, still needs cluster rights. The leader-election Lease needs a Role for `leases` in the `POD_NAMESPACE` namespace. |
+
 ## Reconcile a managed service
 
 `ManagedService` is the main composition point.

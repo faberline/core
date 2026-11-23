@@ -8,7 +8,7 @@ pub const TOPIC: cli_std::llm::Topic = cli_std::llm::Topic::new(
 
 ## Ownership boundary
 The `service-k8s` crate owns the reusable Kubernetes controller scaffold:
-cluster-wide watch, leader-election `Lease`, server-side apply, status patching,
+cluster-wide or per-namespace watch, leader-election `Lease`, server-side apply, status patching,
 and render helpers for common service objects. Each service supplies a
 `ManagedService`: its CRD type, service-specific render policy, readiness facts,
 status shape, and public CLI commands.
