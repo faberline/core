@@ -13,7 +13,9 @@ pub fn reject_symlink(path: &Path) -> anyhow::Result<()> {
     check_not_symlink(path).map_err(DataRootError::into_anyhow)
 }
 
-/// Set `path` to mode `0700` on unix. Elsewhere this does nothing.
+/// Set `path` to mode `0700` on unix. When the process does not own `path`, the
+/// `chmod` fails; the call then succeeds only if `other` has no access to `path`
+/// and the process can read it. Elsewhere this does nothing.
 pub fn set_private_directory_mode(path: &Path) -> anyhow::Result<()> {
     private_directory_mode(path).map_err(DataRootError::into_anyhow)
 }
@@ -59,8 +61,46 @@ pub(super) fn require_regular_file(path: &Path) -> Result<(), DataRootError> {
 #[cfg(unix)]
 pub(super) fn private_directory_mode(path: &Path) -> Result<(), DataRootError> {
     use std::os::unix::fs::PermissionsExt;
-    fs::set_permissions(path, fs::Permissions::from_mode(0o700))
-        .io_context(|| format!("set private directory mode on {}", path.display()))
+    private_directory_mode_with(path, |path| {
+        fs::set_permissions(path, fs::Permissions::from_mode(0o700))
+    })
+}
+
+/// Run `set_mode` on `path`. When it is refused with `PermissionDenied` (the
+/// process does not own `path`, as with an `fsGroup` volume), the call still
+/// succeeds if [`foreign_owned_root_is_usable`] accepts `path`. Any other
+/// error is returned as it is.
+#[cfg(unix)]
+fn private_directory_mode_with(
+    path: &Path,
+    set_mode: impl FnOnce(&Path) -> io::Result<()>,
+) -> Result<(), DataRootError> {
+    match set_mode(path) {
+        Ok(()) => Ok(()),
+        Err(error)
+            if error.kind() == io::ErrorKind::PermissionDenied
+                && foreign_owned_root_is_usable(path) =>
+        {
+            Ok(())
+        }
+        Err(error) => {
+            Err(error).io_context(|| format!("set private directory mode on {}", path.display()))
+        }
+    }
+}
+
+/// True when `other` has no access to `path` and the process can read and
+/// search it. The mode is never changed here.
+#[cfg(unix)]
+fn foreign_owned_root_is_usable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    let Ok(metadata) = fs::metadata(path) else {
+        return false;
+    };
+    if metadata.permissions().mode() & 0o007 != 0 {
+        return false;
+    }
+    fs::read_dir(path).is_ok()
 }
 
 #[cfg(not(unix))]
@@ -79,3 +119,6 @@ pub(super) fn private_file_mode(path: &Path) -> Result<(), DataRootError> {
 pub(super) fn private_file_mode(_path: &Path) -> Result<(), DataRootError> {
     Ok(())
 }
+
+#[cfg(all(test, unix))]
+mod tests;
