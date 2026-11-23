@@ -3,7 +3,8 @@
 //! Every axiom service that ships a CRD reconciles the same way: a controller
 //! that watches the CR cluster-wide, server-side-applies the rendered child
 //! objects, and writes back a status — gated by a leader-election Lease so
-//! `replicas > 1` is safe. This crate centralizes that loop + the lease + a
+//! `replicas > 1` is safe. The watch can be limited to a list of namespaces
+//! with `run_in_namespaces`. This crate centralizes that loop + the lease + a
 //! render toolkit for the common sharded-HA objects and maintenance CronJobs,
 //! so a service supplies only a [`ManagedService`] (its CRD type +
 //! `render`/`status_patch`/readiness) and its service-specific rendering.
@@ -41,7 +42,7 @@ pub use api::stateful;
 pub use api::trust_bundle;
 
 #[cfg(feature = "controller")]
-pub use app::operator::run;
+pub use app::operator::{run, run_in_namespaces};
 #[cfg(feature = "certificate")]
 pub use application::certificate::reconcile::Reconciler;
 #[cfg(feature = "controller")]
@@ -132,6 +133,8 @@ pub use interfaces::cluster_spec::{ClusterSpec, ResourceSpec};
 pub use interfaces::metrics::ControllerMetrics;
 #[cfg(feature = "controller")]
 pub use interfaces::operator::Error;
+#[cfg(feature = "controller")]
+pub use interfaces::operator::WatchScope;
 
 #[cfg(feature = "controller")]
 pub use application::access_reconcile::{reconcile_access, AccessReport};

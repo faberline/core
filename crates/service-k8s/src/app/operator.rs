@@ -12,7 +12,7 @@ use crate::application::operator::managed_service::ManagedService;
 use crate::domain::leadership::Election;
 use crate::infrastructure::lease::KubeLease;
 use crate::interfaces::metrics::{self, ControllerMetrics};
-use crate::interfaces::operator::{reconcile_one, watch, Error};
+use crate::interfaces::operator::{reconcile_one, watch, Error, WatchScope};
 
 /// This replica's leader-election identity (pod name in k8s, else the manager).
 fn identity(manager: &str) -> String {
@@ -28,8 +28,26 @@ fn lease_namespace(manager: &str) -> String {
 
 /// Run the operator for `S` until the process is terminated. Every replica
 /// watches + reconciles, but only the Lease holder applies (HA-safe at
-/// `replicas > 1`).
+/// `replicas > 1`). The CR is watched cluster-wide.
 pub async fn run<S: ManagedService>() -> anyhow::Result<()> {
+    run_scoped::<S>(WatchScope::AllNamespaces).await
+}
+
+/// Run the operator for `S` with the CR watched only in the namespaces of
+/// `scope`, until the process is terminated.
+///
+/// With `WatchScope::Namespaces`, the operator makes no cluster-wide `list` or
+/// `watch` for `S`. Its RBAC needs `get, list, watch, patch, update` on the CR
+/// and its children through a Role and RoleBinding in each listed namespace,
+/// not a ClusterRole. The leader-election Lease lives in `POD_NAMESPACE` and
+/// needs a Role for `leases` there. Children that are cluster-scoped, such as a
+/// `ClusterRoleBinding`, still need cluster rights. An object in a namespace
+/// that is not listed gets no reconcile.
+pub async fn run_in_namespaces<S: ManagedService>(scope: WatchScope) -> anyhow::Result<()> {
+    run_scoped::<S>(scope).await
+}
+
+async fn run_scoped<S: ManagedService>(scope: WatchScope) -> anyhow::Result<()> {
     let client = Client::try_default().await?;
     let lease = KubeLease::new(
         client.clone(),
@@ -52,7 +70,7 @@ pub async fn run<S: ManagedService>() -> anyhow::Result<()> {
         ));
     }
 
-    watch::<S>(client, leadership, controller_metrics).await;
+    watch::<S>(client, leadership, controller_metrics, scope).await;
     Ok(())
 }
 

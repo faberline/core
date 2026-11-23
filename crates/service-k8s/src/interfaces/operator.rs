@@ -82,22 +82,83 @@ impl Ctx {
     }
 }
 
-/// Watch every `S` cluster-wide and reconcile each under `leadership` until the
+/// Which namespaces the operator reads its CR in.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum WatchScope {
+    /// Watch the CR cluster-wide with one `list` and `watch` call.
+    AllNamespaces,
+    /// Watch the CR only in these namespaces, one namespaced call for each.
+    Namespaces(Vec<String>),
+}
+
+impl WatchScope {
+    /// Parse a comma-separated list of namespaces. Blank parts and duplicates
+    /// are dropped, and the first order is kept. An empty list means
+    /// [`WatchScope::AllNamespaces`].
+    pub fn from_list(raw: &str) -> Self {
+        let mut parts: Vec<String> = Vec::new();
+        for part in raw
+            .split(',')
+            .map(str::trim)
+            .filter(|part| !part.is_empty())
+        {
+            if !parts.iter().any(|known| known == part) {
+                parts.push(part.to_string());
+            }
+        }
+        if parts.is_empty() {
+            Self::AllNamespaces
+        } else {
+            Self::Namespaces(parts)
+        }
+    }
+
+    /// Read the list from the environment variable `var`. An unset variable
+    /// means [`WatchScope::AllNamespaces`].
+    pub fn from_env(var: &str) -> Self {
+        match std::env::var(var) {
+            Ok(value) => Self::from_list(&value),
+            Err(_) => Self::AllNamespaces,
+        }
+    }
+}
+
+/// One API handle for each watch that `scope` needs.
+fn scoped_apis<S: ManagedService>(client: &Client, scope: &WatchScope) -> Vec<Api<S>> {
+    match scope {
+        WatchScope::AllNamespaces => vec![Api::all(client.clone())],
+        WatchScope::Namespaces(list) => list
+            .iter()
+            .map(|ns| Api::namespaced(client.clone(), ns))
+            .collect(),
+    }
+}
+
+/// Watch `S` in `scope` and reconcile each under `leadership` until the
 /// process is terminated. Every replica watches + reconciles, but only the
-/// leader applies (HA-safe at `replicas > 1`).
+/// leader applies (HA-safe at `replicas > 1`). A listed-namespace scope makes
+/// no cluster-wide `list` or `watch` for `S`.
 pub(crate) async fn watch<S: ManagedService>(
     client: Client,
     leadership: Leadership,
     metrics: Arc<ControllerMetrics>,
+    scope: WatchScope,
 ) {
-    let objs = Api::<S>::all(client.clone());
-    tracing::info!(identity = %leadership.identity(), manager = S::MANAGER, "operator starting; watching CR cluster-wide");
-    Controller::new(objs, watcher::Config::default())
-        .run(
-            reconcile_entry::<S>,
-            error_policy::<S>,
-            Arc::new(Ctx::new::<S>(client, leadership, metrics)),
-        )
+    match &scope {
+        WatchScope::AllNamespaces => {
+            tracing::info!(identity = %leadership.identity(), manager = S::MANAGER, "operator starting; watching CR cluster-wide");
+        }
+        WatchScope::Namespaces(list) => {
+            tracing::info!(identity = %leadership.identity(), manager = S::MANAGER, namespaces = ?list, "operator starting; watching CR in listed namespaces");
+        }
+    }
+    let ctx = Arc::new(Ctx::new::<S>(client.clone(), leadership, metrics));
+    let streams = scoped_apis::<S>(&client, &scope).into_iter().map(|api| {
+        Controller::new(api, watcher::Config::default())
+            .run(reconcile_entry::<S>, error_policy::<S>, ctx.clone())
+            .boxed()
+    });
+    futures::stream::select_all(streams)
         .for_each(|res| async move {
             match res {
                 Ok((obj, _)) => tracing::debug!(object = ?obj, "reconciled"),

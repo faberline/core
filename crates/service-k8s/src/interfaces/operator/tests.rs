@@ -13,6 +13,7 @@ mod prune;
 mod reconcile_metrics;
 mod retention;
 mod unserved_prune;
+mod watch_scope;
 
 /// A fake apiserver that replays `responses` in order and records the
 /// method+path of every request, so a test can assert on the call that was
