@@ -26,6 +26,7 @@ Measured with `cargo deny check advisories` (cargo-deny 0.20.2, RustSec database
 | RUSTSEC-2025-0012 | backoff | 0.4.0 | kube-runtime 0.98 (`service-k8s`) | none (unmaintained) | Reasoned ignore; leaves with a kube upgrade: group B |
 | RUSTSEC-2024-0384 | instant | 0.1.13 | backoff, and notify-types (notify 7, `compass`) | none (unmaintained) | Reasoned ignore; leaves with kube and notify upgrades: group B |
 | RUSTSEC-2024-0370 | proc-macro-error | 1.0.4 | utoipa-gen 4.3.1 (utoipa 4, `service-http`, `service-projection`) | none (unmaintained) | Reasoned ignore; leaves with the utoipa 4 to 5 upgrade: group B |
+| RUSTSEC-2026-0600 | kube-client | 0.98.0 | `service-k8s`, `service-auth` (`kube = "0.98"`) | 4.2.1 or 5.2.0 | Reasoned ignore: only the `openssl-tls` connector is affected and the workspace builds `rustls-tls`; leaves with the kube upgrade: group B (B3) |
 
 ## Group A: upgrade (14 advisories)
 
