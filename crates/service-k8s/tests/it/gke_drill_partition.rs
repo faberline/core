@@ -166,6 +166,36 @@ impl Drop for PolicyGuard<'_> {
     }
 }
 
+/// How long the dataplane may take to enforce a new NetworkPolicy. Each probe
+/// takes about 10 s (pod start + wget -T 3), so 90 s allows several probes.
+/// Run 45864219273 probed once, a few seconds after `kubectl apply`, and saw `Reachable`.
+const ENFORCE_TIMEOUT: Duration = Duration::from_secs(90);
+
+/// Calls `probe` until it returns `Blocked`, for at most `timeout`.
+/// Returns the number of probes that it made. At least one probe always runs.
+/// On timeout the error is `"still reachable after <n> probes in <secs>s"`.
+pub fn wait_until_blocked(
+    timeout: Duration,
+    interval: Duration,
+    mut probe: impl FnMut() -> Probe,
+) -> Result<u32, String> {
+    let started = std::time::Instant::now();
+    let mut probes = 0;
+    loop {
+        probes += 1;
+        if probe() == Probe::Blocked {
+            return Ok(probes);
+        }
+        if started.elapsed() >= timeout {
+            return Err(format!(
+                "still reachable after {probes} probes in {}s",
+                timeout.as_secs()
+            ));
+        }
+        std::thread::sleep(interval);
+    }
+}
+
 fn probe(kube: &e2e_support::Kube, label: &str, ip: &str) -> Probe {
     let name = format!("probe-{label}");
     let script = probe_script(ip);
@@ -483,17 +513,73 @@ fn empty_probe_diagnostic_reports_a_failed_log_call_and_missing_fields() {
 }
 
 #[test]
+fn wait_until_blocked_returns_at_once_when_the_first_probe_is_blocked() {
+    let result = wait_until_blocked(Duration::from_secs(5), Duration::ZERO, || Probe::Blocked);
+    assert_eq!(result, Ok(1));
+}
+
+#[test]
+fn wait_until_blocked_retries_while_the_policy_is_not_enforced_yet() {
+    let mut answers = vec![Probe::Reachable, Probe::Reachable, Probe::Blocked].into_iter();
+    let result = wait_until_blocked(Duration::from_secs(5), Duration::ZERO, || {
+        answers.next().expect("probed at most three times")
+    });
+    assert_eq!(result, Ok(3));
+}
+
+#[test]
+fn wait_until_blocked_fails_when_the_pod_stays_reachable() {
+    let result = wait_until_blocked(Duration::from_millis(50), Duration::from_millis(10), || {
+        Probe::Reachable
+    });
+    let text = result.expect_err("a pod that stays reachable fails");
+    assert!(text.starts_with("still reachable after "), "{text}");
+    assert!(text.contains(" probes in 0s"), "{text}");
+}
+
+#[test]
+fn wait_until_blocked_probes_once_even_with_a_zero_timeout() {
+    let mut calls = 0;
+    let result = wait_until_blocked(Duration::ZERO, Duration::ZERO, || {
+        calls += 1;
+        Probe::Reachable
+    });
+    assert!(result.is_err());
+    assert_eq!(calls, 1);
+}
+
+#[test]
+fn isolation_policy_selects_labels_that_the_drill_pods_carry() {
+    let objects = crate::gke_drill::render_drill_objects();
+    let pod_labels = &objects[0]["spec"]["template"]["metadata"]["labels"];
+    let policy = isolation_policy();
+    let selector = policy["spec"]["podSelector"]["matchLabels"]
+        .as_object()
+        .expect("the selector is a map");
+    assert!(selector.contains_key(POD_NAME_LABEL));
+    for (key, value) in selector {
+        if key == POD_NAME_LABEL {
+            continue;
+        }
+        assert_eq!(&pod_labels[key], value, "pod template lacks {key}");
+    }
+}
+
+#[test]
 #[ignore = "needs the shared GKE cluster: run by .github/workflows/gke-drill.yml (core#381), which sets GKE_DRILL=1, KUBECONFIG and NAMESPACE"]
 fn partition_isolates_one_pod_and_heals_when_the_policy_is_removed() {
     if !on_gke_drill_cluster("partition_isolates_one_pod_and_heals_when_the_policy_is_removed") {
         return;
     }
     let kube = e2e_support::Kube::from_env();
+    // Declared before _dump: locals drop in reverse order, so the dump runs before the policy is deleted.
+    let _guard = PolicyGuard { kube: &kube };
     let _dump = e2e_support::DumpOnFailure {
         suite: "gke-drill",
         kube: &kube,
         dump_commands: vec![
             vec!["get".into(), "pods".into(), "-o".into(), "wide".into()],
+            vec!["get".into(), "pods".into(), "--show-labels".into()],
             vec![
                 "get".into(),
                 "networkpolicy".into(),
@@ -526,13 +612,11 @@ fn partition_isolates_one_pod_and_heals_when_the_policy_is_removed() {
         "-f",
         policy_path.to_str().expect("temp path is UTF-8"),
     ]);
-    let _guard = PolicyGuard { kube: &kube };
-
-    assert_eq!(
-        probe(&kube, "isolated", &isolated_ip),
-        Probe::Blocked,
-        "drill-0 is still reachable under the policy"
-    );
+    let probes = wait_until_blocked(ENFORCE_TIMEOUT, Duration::from_secs(2), || {
+        probe(&kube, "isolated", &isolated_ip)
+    })
+    .unwrap_or_else(|e| panic!("drill-0 is still reachable under the policy: {e}"));
+    e2e_support::say(format!("drill-0 blocked after {probes} probe(s)"));
     assert_eq!(
         probe(&kube, "control", &control_ip),
         Probe::Reachable,
