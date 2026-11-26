@@ -130,7 +130,7 @@ impl TokenMinter for KubeTokenMinter {
         let expires_at_millis = status
             .expiration_timestamp
             .0
-            .timestamp_millis()
+            .as_millisecond()
             .max(0)
             .unsigned_abs();
         let now = SystemClock.now_millis();

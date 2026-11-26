@@ -135,12 +135,15 @@ pub(super) async fn prune_object(
 ) -> Result<PruneOutcome, Error> {
     let ar = api_resource(target.api_version(), target.kind());
     let api: Api<DynamicObject> = Api::namespaced_with(client.clone(), ns, &ar);
-    let live = match api.get_opt(target.name()).await {
-        Ok(Some(live)) => live,
-        Ok(None) => return Ok(PruneOutcome::Settled),
-        // A 404 that reaches this arm is not an absent object. `get_opt` maps
-        // exactly one shape to `Ok(None)` — an `Error::Api` whose `reason`
-        // reads `NotFound` — so a 404 that surfaces as an error here is one
+    // `get` and not `get_opt`: kube 5 also maps a bare 404 (no reason, or a
+    // reason it does not know) to `Ok(None)`, which would report an unserved
+    // API as settled. Only the `NotFound` reason means the object is absent.
+    let live = match api.get(target.name()).await {
+        Ok(live) => live,
+        Err(kube::Error::Api(e)) if e.reason == "NotFound" => {
+            return Ok(PruneOutcome::Settled);
+        }
+        // A 404 that reaches this arm is not an absent object. It is one
         // the apiserver mux answered because nothing routed the request: the
         // cluster does not serve this API. Restarting the operator cannot fix
         // that, and neither can retrying faster, so it is reported as a value

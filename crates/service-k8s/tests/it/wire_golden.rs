@@ -9,7 +9,6 @@
 
 use std::fmt::Debug;
 
-use schemars::schema::RootSchema;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
@@ -23,15 +22,16 @@ fn both_ways<T: Serialize + DeserializeOwned + PartialEq + Debug>(value: &T, tex
     assert_eq!(&serde_json::from_str::<T>(text).unwrap(), value, "decode");
 }
 
-/// The pretty-printed schema is `text`, and `text` decodes to the same schema.
-fn schema_both_ways(schema: RootSchema, text: &str) {
+/// The schema is `text` as JSON (key order and spacing do not count), and
+/// `text` decodes to the same schema.
+fn schema_both_ways(schema: schemars::Schema, text: &str) {
     assert_eq!(
-        serde_json::to_string_pretty(&schema).unwrap(),
-        text,
+        serde_json::to_value(&schema).unwrap(),
+        serde_json::from_str::<serde_json::Value>(text).unwrap(),
         "encode"
     );
     assert_eq!(
-        serde_json::from_str::<RootSchema>(text).unwrap(),
+        serde_json::from_str::<schemars::Schema>(text).unwrap(),
         schema,
         "decode"
     );
@@ -155,38 +155,38 @@ fn the_replica_layer_policy_schema_is_pinned() {
     schema_both_ways(
         schemars::schema_for!(ReplicaLayerPolicy),
         r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ReplicaLayerPolicy",
-  "description": "Autoscaling policy for a whole replica layer.\n\n`min_replicas_per_shard` is the starting/floor value represented by an app's `replicasPerShard`. The maximum and utilization targets are policy; observation and stabilization belong to the operator control loop.",
+  "description": "Autoscaling policy for a whole replica layer.\n\n`min_replicas_per_shard` is the starting/floor value represented by an\napp's `replicasPerShard`. The maximum and utilization targets are policy;\nobservation and stabilization belong to the operator control loop.",
   "type": "object",
-  "required": [
-    "maxReplicasPerShard",
-    "minReplicasPerShard",
-    "targetCpuUtilization",
-    "targetMemoryUtilization"
-  ],
   "properties": {
-    "maxReplicasPerShard": {
-      "type": "integer",
-      "format": "uint32",
-      "minimum": 0.0
-    },
     "minReplicasPerShard": {
       "type": "integer",
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 0
+    },
+    "maxReplicasPerShard": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
     },
     "targetCpuUtilization": {
       "type": "integer",
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 0
     },
     "targetMemoryUtilization": {
       "type": "integer",
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 0
     }
-  }
+  },
+  "required": [
+    "minReplicasPerShard",
+    "maxReplicasPerShard",
+    "targetCpuUtilization",
+    "targetMemoryUtilization"
+  ]
 }"##,
     );
 }
@@ -196,28 +196,28 @@ fn the_shard_split_policy_schema_is_pinned() {
     schema_both_ways(
         schemars::schema_for!(ShardSplitPolicy),
         r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ShardSplitPolicy",
-  "description": "Storage-pressure policy for adding physical shards.\n\nThe default is intentionally small enough for low-cost integration proof: a busiest shard must exceed one GiB. Production deployments may raise the threshold while preserving the same one-shard-at-a-time transition.",
+  "description": "Storage-pressure policy for adding physical shards.\n\nThe default is intentionally small enough for low-cost integration proof:\na busiest shard must exceed one GiB. Production deployments may raise the\nthreshold while preserving the same one-shard-at-a-time transition.",
   "type": "object",
-  "required": [
-    "splitThresholdBytes"
-  ],
   "properties": {
+    "splitThresholdBytes": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
     "maxShards": {
       "type": [
         "integer",
         "null"
       ],
       "format": "uint32",
-      "minimum": 0.0
-    },
-    "splitThresholdBytes": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     }
-  }
+  },
+  "required": [
+    "splitThresholdBytes"
+  ]
 }"##,
     );
 }
@@ -227,24 +227,30 @@ fn the_condition_schema_is_pinned() {
     schema_both_ways(
         schemars::schema_for!(Condition),
         r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Condition",
-  "description": "One entry of a Kubernetes `status.conditions[]` array, in the shape every controller-aware tool already reads — `kubectl wait --for=condition=…`, Argo CD health assessment, Flux readiness gates.\n\nHand-written rather than reused from `k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition` because that type does not derive `JsonSchema`, so it cannot be embedded in a CRD schema generated by `kube`'s derive.",
+  "description": "One entry of a Kubernetes `status.conditions[]` array, in the shape every\ncontroller-aware tool already reads — `kubectl wait --for=condition=…`,\nArgo CD health assessment, Flux readiness gates.\n\nHand-written rather than reused from\n`k8s_openapi::apimachinery::pkg::apis::meta::v1::Condition` because that type\ndoes not derive `JsonSchema`, so it cannot be embedded in a CRD schema\ngenerated by `kube`'s derive.",
   "type": "object",
-  "required": [
-    "lastTransitionTime",
-    "reason",
-    "status",
-    "type"
-  ],
   "properties": {
-    "lastTransitionTime": {
-      "description": "RFC3339 instant the status last *changed* — not the last time it was observed. Carried across reconciles by [`project`].",
+    "type": {
+      "description": "CamelCase condition name, e.g. `Ready`.",
+      "type": "string"
+    },
+    "status": {
+      "description": "`\"True\" | \"False\" | \"Unknown\"`.",
+      "type": "string"
+    },
+    "reason": {
+      "description": "CamelCase machine-readable cause of the current status.",
       "type": "string"
     },
     "message": {
       "description": "Human-readable detail. May be empty.",
-      "default": "",
+      "type": "string",
+      "default": ""
+    },
+    "lastTransitionTime": {
+      "description": "RFC3339 instant the status last *changed* — not the last time it was\nobserved. Carried across reconciles by [`project`].",
       "type": "string"
     },
     "observedGeneration": {
@@ -254,20 +260,14 @@ fn the_condition_schema_is_pinned() {
         "null"
       ],
       "format": "int64"
-    },
-    "reason": {
-      "description": "CamelCase machine-readable cause of the current status.",
-      "type": "string"
-    },
-    "status": {
-      "description": "`\"True\" | \"False\" | \"Unknown\"`.",
-      "type": "string"
-    },
-    "type": {
-      "description": "CamelCase condition name, e.g. `Ready`.",
-      "type": "string"
     }
-  }
+  },
+  "required": [
+    "type",
+    "status",
+    "reason",
+    "lastTransitionTime"
+  ]
 }"##,
     );
 }
@@ -277,38 +277,38 @@ fn the_probe_timing_schema_is_pinned() {
     schema_both_ways(
         schemars::schema_for!(ProbeTiming),
         r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ProbeTiming",
   "description": "Configured timing for Kubernetes container probes.",
   "type": "object",
-  "required": [
-    "failureThreshold",
-    "periodSeconds",
-    "successThreshold",
-    "timeoutSeconds"
-  ],
   "properties": {
-    "failureThreshold": {
-      "type": "integer",
-      "format": "uint32",
-      "minimum": 0.0
-    },
     "periodSeconds": {
       "type": "integer",
       "format": "uint32",
-      "minimum": 0.0
-    },
-    "successThreshold": {
-      "type": "integer",
-      "format": "uint32",
-      "minimum": 0.0
+      "minimum": 0
     },
     "timeoutSeconds": {
       "type": "integer",
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 0
+    },
+    "failureThreshold": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
+    },
+    "successThreshold": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0
     }
-  }
+  },
+  "required": [
+    "periodSeconds",
+    "timeoutSeconds",
+    "failureThreshold",
+    "successThreshold"
+  ]
 }"##,
     );
 }
@@ -318,21 +318,30 @@ fn the_lifecycle_policy_schema_is_pinned() {
     schema_both_ways(
         schemars::schema_for!(LifecyclePolicy),
         r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "LifecyclePolicy",
   "description": "Unvalidated input configuration for a workload's termination lifecycle policy.",
   "type": "object",
-  "required": [
-    "minHookDurationSeconds",
-    "runtimeDeadlineSeconds",
-    "sigkillReserveSeconds",
-    "totalGracePeriodSeconds"
-  ],
   "properties": {
+    "totalGracePeriodSeconds": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "runtimeDeadlineSeconds": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
+    "sigkillReserveSeconds": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0
+    },
     "minHookDurationSeconds": {
       "type": "integer",
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "prestopCostSeconds": {
       "type": [
@@ -340,69 +349,56 @@ fn the_lifecycle_policy_schema_is_pinned() {
         "null"
       ],
       "format": "uint64",
-      "minimum": 0.0
+      "minimum": 0
     },
     "probeTiming": {
+      "$ref": "#/$defs/ProbeTiming",
       "default": {
         "periodSeconds": 10,
         "timeoutSeconds": 1,
         "failureThreshold": 3,
         "successThreshold": 1
-      },
-      "allOf": [
-        {
-          "$ref": "#/definitions/ProbeTiming"
-        }
-      ]
-    },
-    "runtimeDeadlineSeconds": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "sigkillReserveSeconds": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "totalGracePeriodSeconds": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+      }
     }
   },
-  "definitions": {
+  "required": [
+    "totalGracePeriodSeconds",
+    "runtimeDeadlineSeconds",
+    "sigkillReserveSeconds",
+    "minHookDurationSeconds"
+  ],
+  "$defs": {
     "ProbeTiming": {
       "description": "Configured timing for Kubernetes container probes.",
       "type": "object",
-      "required": [
-        "failureThreshold",
-        "periodSeconds",
-        "successThreshold",
-        "timeoutSeconds"
-      ],
       "properties": {
-        "failureThreshold": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0.0
-        },
         "periodSeconds": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
-        },
-        "successThreshold": {
-          "type": "integer",
-          "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
         },
         "timeoutSeconds": {
           "type": "integer",
           "format": "uint32",
-          "minimum": 0.0
+          "minimum": 0
+        },
+        "failureThreshold": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
+        },
+        "successThreshold": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0
         }
-      }
+      },
+      "required": [
+        "periodSeconds",
+        "timeoutSeconds",
+        "failureThreshold",
+        "successThreshold"
+      ]
     }
   }
 }"##,
