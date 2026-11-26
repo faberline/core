@@ -85,8 +85,10 @@ pub use domain::condition::{Condition, ConditionFact, ConditionStatus};
 pub use domain::fleet;
 #[cfg(feature = "controller")]
 pub use domain::fleet::{
-    canonicalize_json, desired_hash, plan_fleet, AdoptionPolicy, ChildKey, DesiredChild,
-    FleetAction, FleetPlan, FleetPlanError, ObservedChild, Ownership, PrunePolicy,
+    aggregate_fleet_condition, canonicalize_json, desired_hash, plan_fleet, plan_rollout_order,
+    reject_duplicate_targets, AdoptionPolicy, ChildKey, DesiredChild, FleetAction, FleetAggregate,
+    FleetEntry, FleetEntryPhase, FleetEntryStatus, FleetPlan, FleetPlanError, FleetTarget,
+    ObservedChild, Ownership, PrunePolicy, RolloutState,
 };
 #[cfg(feature = "controller")]
 pub use domain::leadership::Election;
