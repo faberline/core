@@ -74,12 +74,14 @@ fn rbac_verbs_are_exactly_create_get_and_patch() {
 #[test]
 fn error_classification_and_retryability() {
     let make_api_err = |code: u16, reason: &str, message: &str| {
-        kube::Error::Api(kube::error::ErrorResponse {
-            status: "Failure".into(),
+        kube::Error::Api(Box::new(kube::core::Status {
+            status: Some(kube::core::response::StatusSummary::Failure),
             message: message.into(),
             reason: reason.into(),
             code,
-        })
+            metadata: None,
+            details: None,
+        }))
     };
 
     // 403 Forbidden -> not retryable
@@ -120,12 +122,14 @@ fn error_classification_and_retryability() {
 
 #[test]
 fn error_redaction_prevents_leaking_secrets_and_tokens() {
-    let raw_err = kube::Error::Api(kube::error::ErrorResponse {
-        status: "Failure".into(),
+    let raw_err = kube::Error::Api(Box::new(kube::core::Status {
+        status: Some(kube::core::response::StatusSummary::Failure),
         message: "Failed for Bearer secrettoken123 and -----BEGIN PRIVATE KEY-----\nkeydata\n-----END PRIVATE KEY-----".into(),
         reason: "Forbidden".into(),
         code: 403,
-    });
+        metadata: None,
+        details: None,
+    }));
     let classified = classify_kube_error(&raw_err);
     assert_eq!(
         classified,

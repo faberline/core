@@ -1,7 +1,7 @@
 //! Minimal Lease-based leader election (coordination.k8s.io/v1): the kube side
 //! of the [`LeaderLease`] port.
 //!
-//! kube-rs 0.98 ships no built-in elector, so this is a small hand-rolled one:
+//! kube-rs 5.2 ships no built-in elector, so this is a small hand-rolled one:
 //! every operator replica runs the watch + reconcile loop, but only the replica
 //! that currently holds the `<manager>` Lease actually applies changes (the
 //! reconcile loop gates on [`Election::is_leader`]). A background task
@@ -32,13 +32,13 @@ const RENEW_INTERVAL: Duration = Duration::from_secs(5);
 /// attempt. Any API error → treat as "not leader" (fail safe: a follower never
 /// applies).
 async fn acquire_or_renew(api: &Api<Lease>, lease_name: &str, identity: &str) -> bool {
-    let now = chrono::Utc::now();
-    let now_secs = now.timestamp();
+    let now = k8s_openapi::jiff::Timestamp::now();
+    let now_secs = now.as_second();
     match api.get_opt(lease_name).await {
         Ok(Some(mut lease)) => {
             let spec = lease.spec.get_or_insert_with(LeaseSpec::default);
             let holder = spec.holder_identity.clone();
-            let renew_secs = spec.renew_time.as_ref().map(|MicroTime(t)| t.timestamp());
+            let renew_secs = spec.renew_time.as_ref().map(|MicroTime(t)| t.as_second());
             let dur = spec.lease_duration_seconds.unwrap_or(LEASE_DURATION_SECS) as i64;
             if !may_acquire(holder.as_deref(), renew_secs, dur, identity, now_secs) {
                 return false;
@@ -121,5 +121,17 @@ impl LeaderLease for KubeLease {
             self.lease_name.clone(),
             election,
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn jiff_timestamp_seconds_match_may_acquire_input() {
+        let t = MicroTime(k8s_openapi::jiff::Timestamp::from_second(1_700_000_000).unwrap());
+        let MicroTime(ts) = t;
+        assert_eq!(ts.as_second(), 1_700_000_000);
     }
 }

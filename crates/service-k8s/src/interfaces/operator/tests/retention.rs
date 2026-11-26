@@ -59,7 +59,7 @@ fn retained_obj(deleting: bool, finalized: bool) -> Arc<RetainedService> {
     let mut obj = RetainedService::new("search", RetainedServiceSpec { replicas: 1 });
     obj.metadata.namespace = Some("acme".to_string());
     if deleting {
-        obj.metadata.deletion_timestamp = Some(Time(chrono::Utc::now()));
+        obj.metadata.deletion_timestamp = Some(Time(k8s_openapi::jiff::Timestamp::now()));
     }
     if finalized {
         obj.metadata.finalizers = Some(vec![FINALIZER.to_string()]);
@@ -219,7 +219,7 @@ fn policy_obj(policy: DataRetention) -> Arc<PolicyService> {
     let mut obj = PolicyService::new("search", PolicyServiceSpec { policy });
     obj.metadata.namespace = Some("acme".to_string());
     obj.metadata.uid = Some("uid-1".to_string());
-    obj.metadata.deletion_timestamp = Some(Time(chrono::Utc::now()));
+    obj.metadata.deletion_timestamp = Some(Time(k8s_openapi::jiff::Timestamp::now()));
     obj.metadata.finalizers = Some(vec![POLICY_FINALIZER.to_string()]);
     Arc::new(obj)
 }

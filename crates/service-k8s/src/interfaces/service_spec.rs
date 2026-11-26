@@ -165,7 +165,7 @@ fn one() -> u32 {
     1
 }
 
-fn preserve_unknown_object(_: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+fn preserve_unknown_object(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
     serde_json::from_value(json!({
         "type": "object",
         "x-kubernetes-preserve-unknown-fields": true
@@ -173,9 +173,7 @@ fn preserve_unknown_object(_: &mut schemars::gen::SchemaGenerator) -> schemars::
     .expect("static schema is valid")
 }
 
-fn preserve_unknown_object_list(
-    _: &mut schemars::gen::SchemaGenerator,
-) -> schemars::schema::Schema {
+fn preserve_unknown_object_list(_: &mut schemars::SchemaGenerator) -> schemars::Schema {
     serde_json::from_value(json!({
         "type": "array",
         "items": {"type": "object", "x-kubernetes-preserve-unknown-fields": true}
@@ -195,17 +193,18 @@ where
 {
     validate_profile::<P>()?;
 
-    let settings = schemars::gen::SchemaSettings::openapi3().with(|s| {
+    let settings = schemars::generate::SchemaSettings::openapi3().with(|s| {
         s.inline_subschemas = true;
     });
     let generator = settings.into_generator();
     let root = generator.into_root_schema_for::<ServiceSpec<P::Config>>();
-    let mut spec = serde_json::to_value(root.schema).expect("schema serializes");
+    let mut spec = serde_json::to_value(&root).expect("schema serializes");
     normalize_unsigned_integer_formats(&mut spec);
     if let Value::Object(map) = &mut spec {
         map.remove("$schema");
         map.remove("title");
         map.remove("definitions");
+        map.remove("$defs");
     }
 
     let singular = P::KIND.to_ascii_lowercase();
