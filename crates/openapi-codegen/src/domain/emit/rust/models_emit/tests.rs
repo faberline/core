@@ -666,3 +666,76 @@ fn inline_tagged_union_ref_declaring_tag_stays_value() {
         r##"{TAG_A1}, {{"$ref":"#/components/schemas/Tagged"}}"##
     ));
 }
+
+const TRACK_TOTAL_MODE: &str = r##""TrackTotalMode":{"type":"string","enum":["exact","bounded"]}"##;
+const TRACK_TOTAL: &str = r##""TrackTotal":{"oneOf":[
+  {"type":"object","required":["mode"],"properties":{"mode":{"$ref":"#/components/schemas/TrackTotalMode"}}},
+  {"type":"object","required":["limit"],"properties":{"limit":{"type":"integer"}}}]}"##;
+const QUERY_NODE: &str = r##""QueryNode":{"oneOf":[
+  {"type":"object","required":["not"],"properties":{"not":{"$ref":"#/components/schemas/QueryNode"}}},
+  {"type":"object","required":["term"],"properties":{"term":{"type":"string"}}}]}"##;
+
+fn components(schemas: &[&str]) -> String {
+    format!(
+        r#"{{"paths":{{}},"components":{{"schemas":{{{}}}}}}}"#,
+        schemas.join(",")
+    )
+}
+
+#[test]
+fn inline_branch_name_avoids_component_name() {
+    let out = render(&components(&[TRACK_TOTAL_MODE, TRACK_TOTAL]));
+    assert_eq!(out.matches("pub enum TrackTotalMode {").count(), 1);
+    assert!(!out.contains("pub struct TrackTotalMode {"));
+    assert!(out.contains("pub struct TrackTotalModeInline {"));
+    assert!(out.contains("TrackTotalModeInline(TrackTotalModeInline),"));
+}
+
+#[test]
+fn inline_branch_name_avoids_inline_suffix_collision() {
+    let out = render(&components(&[
+        TRACK_TOTAL_MODE,
+        r##""TrackTotalModeInline":{"type":"string","enum":["a"]}"##,
+        TRACK_TOTAL,
+    ]));
+    assert!(out.contains("pub struct TrackTotalModeInline2 {"));
+    assert!(out.contains("TrackTotalModeInline2(TrackTotalModeInline2),"));
+}
+
+#[test]
+fn inline_branch_without_collision_keeps_name() {
+    let out = render(&components(&[r##""Outcome":{"oneOf":[
+  {"type":"object","required":["rows"],"properties":{"rows":{"type":"array","items":{"type":"string"}}}},
+  {"type":"object","required":["total"],"properties":{"total":{"type":"integer"}}}]}"##]));
+    assert!(out.contains("pub struct OutcomeRows {"));
+    assert!(out.contains("pub struct OutcomeTotal {"));
+}
+
+#[test]
+fn recursive_inline_branch_field_is_boxed() {
+    let out = render(&components(&[QUERY_NODE]));
+    assert!(out.contains("    pub not: Box<QueryNode>,\n"));
+    assert!(out.contains("    pub term: String,\n"));
+}
+
+#[test]
+fn recursive_struct_fields_are_boxed_but_vec_is_not() {
+    let out = render(&components(&[
+        r##""Tree":{"type":"object","required":["name"],"properties":{
+  "name":{"type":"string"},
+  "next":{"$ref":"#/components/schemas/Tree"},
+  "kids":{"type":"array","items":{"$ref":"#/components/schemas/Tree"}}}}"##,
+    ]));
+    assert!(out.contains("pub next: Option<Box<Tree>>,"));
+    assert!(out.contains("pub kids: Option<Vec<Tree>>,"));
+}
+
+#[test]
+fn mutual_recursion_is_boxed_on_both_sides() {
+    let out = render(&components(&[
+        r##""A":{"type":"object","required":["b"],"properties":{"b":{"$ref":"#/components/schemas/B"}}}"##,
+        r##""B":{"type":"object","required":["a"],"properties":{"a":{"$ref":"#/components/schemas/A"}}}"##,
+    ]));
+    assert!(out.contains("pub b: Box<B>,"));
+    assert!(out.contains("pub a: Box<A>,"));
+}

@@ -1,6 +1,6 @@
 //! Emit serde structs / aliases for the spec's component schemas.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::domain::emit::rust::rsmap;
 use crate::domain::ir::names::{to_pascal, to_snake, NameRegistry};
@@ -42,6 +42,10 @@ pub fn emit_with_warnings(spec: &Spec, tm: &TypeMap, target: RustTarget) -> (Str
 
     let mut warnings = Vec::new();
     let mut blocks: Vec<String> = Vec::new();
+    // Every component name is taken before any inline branch gets one, so an
+    // inline name never equals a component name, whatever the order.
+    let mut taken: BTreeSet<String> = tm.names.values().cloned().collect();
+    let cycles = Cycles::build(spec, tm);
     for (key, node) in &spec.components.schemas {
         let name = tm.names.get(key).cloned().unwrap_or_else(|| to_pascal(key));
         blocks.push(emit_schema(
@@ -51,6 +55,8 @@ pub fn emit_with_warnings(spec: &Spec, tm: &TypeMap, target: RustTarget) -> (Str
             spec,
             tm,
             target,
+            &cycles,
+            &mut taken,
             &mut warnings,
         ));
     }
@@ -68,18 +74,20 @@ fn emit_schema(
     spec: &Spec,
     tm: &TypeMap,
     target: RustTarget,
+    cycles: &Cycles,
+    taken: &mut BTreeSet<String>,
     warnings: &mut Vec<String>,
 ) -> String {
     match node {
         RefOr::Ref(_) => format!("pub type {name} = {};\n", rsmap::type_expr(node, tm)),
         RefOr::Item(schema) if is_string_enum(schema) => emit_enum(name, schema),
         RefOr::Item(schema) if is_union(schema) => {
-            emit_union(key, name, schema, spec, tm, target, warnings)
+            emit_union(key, name, schema, spec, tm, target, cycles, taken, warnings)
         }
         RefOr::Item(schema) if schema.properties.is_empty() => {
             format!("pub type {name} = {};\n", rsmap::type_expr(node, tm))
         }
-        RefOr::Item(schema) => emit_struct(name, schema, tm, target),
+        RefOr::Item(schema) => emit_struct(name, schema, tm, target, name, cycles),
     }
 }
 
@@ -279,6 +287,8 @@ fn emit_union(
     spec: &Spec,
     tm: &TypeMap,
     target: RustTarget,
+    cycles: &Cycles,
+    taken: &mut BTreeSet<String>,
     warnings: &mut Vec<String>,
 ) -> String {
     let source = if schema.one_of.is_empty() {
@@ -326,16 +336,24 @@ fn emit_union(
                 s.push_str(&format!("    {variant}({ty}),\n"));
             }
             RefOr::Item(p) if is_inline_object(branch) => {
-                let sname = inline_struct_name(name, p, idx);
+                let sname = unique_inline_name(taken, inline_struct_name(name, p, idx));
                 match tag_property {
                     Some(property) => {
                         // The plan gives every inline branch one tag value.
                         let tag = inline_tag_value(p, property)
                             .expect("tagged plan has a tag value for each inline branch");
-                        structs.push(emit_struct_skipping(&sname, p, tm, target, Some(property)));
+                        structs.push(emit_struct_skipping(
+                            &sname,
+                            p,
+                            tm,
+                            target,
+                            Some(property),
+                            name,
+                            cycles,
+                        ));
                         s.push_str(&format!("    #[serde(rename = \"{}\")]\n", esc(tag)));
                     }
-                    None => structs.push(emit_struct(&sname, p, tm, target)),
+                    None => structs.push(emit_struct(&sname, p, tm, target, name, cycles)),
                 }
                 let variant = reg.unique(&sname);
                 s.push_str(&format!("    {variant}({sname}),\n"));
@@ -386,8 +404,17 @@ fn emit_enum(name: &str, schema: &Schema) -> String {
     s
 }
 
-fn emit_struct(name: &str, schema: &Schema, tm: &TypeMap, target: RustTarget) -> String {
-    emit_struct_skipping(name, schema, tm, target, None)
+/// `owner` is the type whose cycles decide the `Box` of a field: the struct itself,
+/// or the union that holds an inline branch struct.
+fn emit_struct(
+    name: &str,
+    schema: &Schema,
+    tm: &TypeMap,
+    target: RustTarget,
+    owner: &str,
+    cycles: &Cycles,
+) -> String {
+    emit_struct_skipping(name, schema, tm, target, None, owner, cycles)
 }
 
 /// Like `emit_struct`, but leaves out the property `skip`. An internally tagged
@@ -398,6 +425,8 @@ fn emit_struct_skipping(
     tm: &TypeMap,
     target: RustTarget,
     skip: Option<&str>,
+    owner: &str,
+    cycles: &Cycles,
 ) -> String {
     let mut s = String::from("#[derive(Debug, Clone, Serialize, Deserialize)]\n");
     s.push_str(&format!("pub struct {name} {{\n"));
@@ -406,7 +435,12 @@ fn emit_struct_skipping(
             continue;
         }
         let required = schema.required.iter().any(|r| r == key);
-        let ty = rsmap::type_expr(prop, tm);
+        let mut ty = rsmap::type_expr(prop, tm);
+        if let Some(target_type) = direct_type(&ty, tm) {
+            if cycles.must_box(owner, &target_type) {
+                ty = ty.replacen(&target_type, &format!("Box<{target_type}>"), 1);
+            }
+        }
         let ty = if required { ty } else { rsmap::optional(&ty) };
         let (field, rename) = field_name(key, target);
         if let Some(orig) = rename {
@@ -425,6 +459,105 @@ fn emit_struct_skipping(
     }
     s.push_str("}\n");
     s
+}
+
+/// A name for an inline branch struct that no component and no earlier inline
+/// struct has: `base`, else `{base}Inline`, else `{base}Inline{n}`.
+fn unique_inline_name(taken: &mut BTreeSet<String>, base: String) -> String {
+    if taken.insert(base.clone()) {
+        return base;
+    }
+    let inline = format!("{base}Inline");
+    if taken.insert(inline.clone()) {
+        return inline;
+    }
+    (2..)
+        .map(|n| format!("{inline}{n}"))
+        .find(|candidate| taken.insert(candidate.clone()))
+        .expect("an unbounded counter finds a free name")
+}
+
+/// The component type that `ty` names directly, with at most one `Option<..>` around
+/// it. `Vec`, maps and `serde_json::Value` are not direct: they hold their content on the heap.
+fn direct_type(ty: &str, tm: &TypeMap) -> Option<String> {
+    let rest = ty
+        .strip_prefix("Option<")
+        .and_then(|inner| inner.strip_suffix('>'))
+        .unwrap_or(ty);
+    tm.names
+        .values()
+        .any(|name| name == rest)
+        .then(|| rest.to_string())
+}
+
+/// The direct component types of the properties of an object schema.
+fn property_types(schema: &Schema, tm: &TypeMap) -> Vec<String> {
+    schema
+        .properties
+        .values()
+        .filter_map(|prop| direct_type(&rsmap::type_expr(prop, tm), tm))
+        .collect()
+}
+
+/// The direct type edges between component types. A field whose type reaches its
+/// own owner through these edges is `Box`ed, or the Rust type has infinite size.
+struct Cycles {
+    edges: BTreeMap<String, Vec<String>>,
+}
+
+impl Cycles {
+    fn build(spec: &Spec, tm: &TypeMap) -> Cycles {
+        let mut edges: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for (key, node) in &spec.components.schemas {
+            let Some(name) = tm.names.get(key) else {
+                continue;
+            };
+            let list = edges.entry(name.clone()).or_default();
+            match node {
+                RefOr::Ref(r) => list.extend(tm.resolve_ref(&r.reference)),
+                RefOr::Item(s) if is_string_enum(s) => {}
+                RefOr::Item(s) if is_union(s) => {
+                    let source = if s.one_of.is_empty() {
+                        &s.any_of
+                    } else {
+                        &s.one_of
+                    };
+                    for b in source.iter().filter(|b| !is_null_branch(b)) {
+                        match b {
+                            RefOr::Ref(r) => list.extend(tm.resolve_ref(&r.reference)),
+                            RefOr::Item(p) if is_inline_object(b) => {
+                                list.extend(property_types(p, tm));
+                            }
+                            RefOr::Item(_) => {}
+                        }
+                    }
+                }
+                RefOr::Item(s) => list.extend(property_types(s, tm)),
+            }
+        }
+        Cycles { edges }
+    }
+
+    /// True when `owner` is `target`, or `owner` can be reached from `target`.
+    fn must_box(&self, owner: &str, target: &str) -> bool {
+        if target == owner {
+            return true;
+        }
+        let mut seen: BTreeSet<&str> = BTreeSet::new();
+        let mut stack: Vec<&str> = vec![target];
+        while let Some(node) = stack.pop() {
+            if node == owner {
+                return true;
+            }
+            if !seen.insert(node) {
+                continue;
+            }
+            if let Some(next) = self.edges.get(node) {
+                stack.extend(next.iter().map(String::as_str));
+            }
+        }
+        false
+    }
 }
 
 fn esc(s: &str) -> String {
