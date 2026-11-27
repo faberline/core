@@ -1,331 +1,146 @@
-//! Golden pins for the `schemars` JSON schema of every backup CRD wire type,
-//! taken before the DDD P2 changes. Downstream CRDs (lumen, tape, relay, defer,
-//! keep) embed these schemas, so the text must not change.
+//! Golden pins for the `schemars` JSON schema of every backup CRD wire type.
+//! Downstream CRDs (lumen, tape, relay, defer, keep) embed these schemas.
+//!
+//! schemars 1 writes JSON Schema 2020-12 (`$defs`, no `definitions`), so the
+//! schema text is no longer byte-equal to the draft-07 text. These tests pin the
+//! shape that the CRDs depend on instead: the `required` list, the property
+//! names and the property types of every object.
 
+use serde_json::{json, Value};
 use service_backup::{BackupDestination, BackupPolicy, RetentionPolicy, ScheduledBackupPolicy};
 
-fn schema_text<T: schemars::JsonSchema>() -> String {
-    serde_json::to_string_pretty(&schemars::schema_for!(T)).unwrap()
+/// Shape of one object schema: sorted `required` plus, per property, its type.
+/// A `$ref` (or an `allOf` with one `$ref`) is reported as `ref:<Name>`.
+fn object_shape(node: &Value) -> Value {
+    let mut required: Vec<String> = node["required"]
+        .as_array()
+        .map(|a| a.iter().map(|v| v.as_str().unwrap().to_string()).collect())
+        .unwrap_or_default();
+    required.sort();
+
+    let mut properties = serde_json::Map::new();
+    if let Some(props) = node["properties"].as_object() {
+        for (name, prop) in props {
+            properties.insert(name.clone(), property_type(prop));
+        }
+    }
+    json!({ "required": required, "properties": properties })
 }
 
-const BACKUP_DESTINATION_SCHEMA: &str = r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BackupDestination",
-  "description": "Backup destination declared by a service CR or runner config.",
-  "oneOf": [
-    {
-      "description": "Local filesystem path, primarily for dev/tests and PVC-backed local runs.",
-      "type": "object",
-      "required": [
-        "path",
-        "type"
-      ],
-      "properties": {
-        "path": {
-          "type": "string"
-        },
-        "prefix": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "local"
-          ]
-        }
-      }
-    },
-    {
-      "description": "Amazon S3-compatible object store. Upload implementation is a crate feature; the schema is stable regardless of whether that feature is linked into the runner.",
-      "type": "object",
-      "required": [
-        "bucket",
-        "type"
-      ],
-      "properties": {
-        "bucket": {
-          "type": "string"
-        },
-        "credentials_secret": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "endpoint": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "prefix": {
-          "default": "",
-          "type": "string"
-        },
-        "region": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "s3"
-          ]
-        }
-      }
-    },
-    {
-      "description": "Google Cloud Storage. The adapter uses workload identity by default and Vat's `STORAGE_EMULATOR_HOST` for integration tests.",
-      "type": "object",
-      "required": [
-        "bucket",
-        "type"
-      ],
-      "properties": {
-        "bucket": {
-          "type": "string"
-        },
-        "credentials_secret": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "prefix": {
-          "default": "",
-          "type": "string"
-        },
-        "type": {
-          "type": "string",
-          "enum": [
-            "gcs"
-          ]
-        }
-      }
+fn property_type(prop: &Value) -> Value {
+    if let Some(r) = prop["$ref"].as_str() {
+        return json!(format!("ref:{}", r.rsplit('/').next().unwrap()));
     }
-  ]
-}"##;
+    if let Some(r) = prop["allOf"][0]["$ref"].as_str() {
+        return json!(format!("ref:{}", r.rsplit('/').next().unwrap()));
+    }
+    match &prop["type"] {
+        Value::Array(types) => {
+            let mut names: Vec<String> = types
+                .iter()
+                .map(|t| t.as_str().unwrap().to_string())
+                .collect();
+            names.sort();
+            json!(names)
+        }
+        other => other.clone(),
+    }
+}
 
-const SCHEDULED_BACKUP_POLICY_SCHEMA: &str = r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ScheduledBackupPolicy",
-  "description": "Kubernetes structural-schema-safe scheduled backup projection.\n\nThe runtime [`BackupPolicy`] uses a tagged [`BackupDestination`] enum whose variant schemas cannot be embedded directly in a CRD. This flat shape keeps the public `schedule`, `destination`, and `retentionSecs` fields shared by every service operator and validates them through one conversion path.",
-  "type": "object",
-  "required": [
-    "destination",
-    "schedule"
-  ],
-  "properties": {
-    "destination": {
-      "description": "Destination URI accepted by [`BackupDestination::from_uri`].",
-      "type": "string"
-    },
-    "retentionSecs": {
-      "description": "Drop objects older than this many seconds after a successful put. `None` keeps every object.",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "schedule": {
-      "description": "Cron expression rendered into `CronJob.spec.schedule`.",
-      "type": "string"
+fn shape<T: schemars::JsonSchema>() -> Value {
+    let schema = serde_json::to_value(schemars::schema_for!(T)).unwrap();
+    match schema.get("oneOf") {
+        Some(variants) => Value::Array(
+            variants
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(object_shape)
+                .collect(),
+        ),
+        None => object_shape(&schema),
     }
-  }
-}"##;
-
-const BACKUP_POLICY_SCHEMA: &str = r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BackupPolicy",
-  "description": "Operator/runner-facing backup policy.",
-  "type": "object",
-  "required": [
-    "destination",
-    "schedule"
-  ],
-  "properties": {
-    "destination": {
-      "$ref": "#/definitions/BackupDestination"
-    },
-    "retention": {
-      "default": {},
-      "allOf": [
-        {
-          "$ref": "#/definitions/RetentionPolicy"
-        }
-      ]
-    },
-    "schedule": {
-      "description": "Cron expression for the runner. The operator owns translating this into a Kubernetes CronJob schedule.",
-      "type": "string"
-    }
-  },
-  "definitions": {
-    "BackupDestination": {
-      "description": "Backup destination declared by a service CR or runner config.",
-      "oneOf": [
-        {
-          "description": "Local filesystem path, primarily for dev/tests and PVC-backed local runs.",
-          "type": "object",
-          "required": [
-            "path",
-            "type"
-          ],
-          "properties": {
-            "path": {
-              "type": "string"
-            },
-            "prefix": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "local"
-              ]
-            }
-          }
-        },
-        {
-          "description": "Amazon S3-compatible object store. Upload implementation is a crate feature; the schema is stable regardless of whether that feature is linked into the runner.",
-          "type": "object",
-          "required": [
-            "bucket",
-            "type"
-          ],
-          "properties": {
-            "bucket": {
-              "type": "string"
-            },
-            "credentials_secret": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "endpoint": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "prefix": {
-              "default": "",
-              "type": "string"
-            },
-            "region": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "s3"
-              ]
-            }
-          }
-        },
-        {
-          "description": "Google Cloud Storage. The adapter uses workload identity by default and Vat's `STORAGE_EMULATOR_HOST` for integration tests.",
-          "type": "object",
-          "required": [
-            "bucket",
-            "type"
-          ],
-          "properties": {
-            "bucket": {
-              "type": "string"
-            },
-            "credentials_secret": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "prefix": {
-              "default": "",
-              "type": "string"
-            },
-            "type": {
-              "type": "string",
-              "enum": [
-                "gcs"
-              ]
-            }
-          }
-        }
-      ]
-    },
-    "RetentionPolicy": {
-      "description": "Retention applied after a successful put.",
-      "type": "object",
-      "properties": {
-        "maxAgeSeconds": {
-          "description": "Drop objects older than this many seconds. `None` disables age pruning.",
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint64",
-          "minimum": 0.0
-        }
-      }
-    }
-  }
-}"##;
-
-const RETENTION_POLICY_SCHEMA: &str = r##"{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RetentionPolicy",
-  "description": "Retention applied after a successful put.",
-  "type": "object",
-  "properties": {
-    "maxAgeSeconds": {
-      "description": "Drop objects older than this many seconds. `None` disables age pruning.",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "uint64",
-      "minimum": 0.0
-    }
-  }
-}"##;
+}
 
 #[test]
 fn backup_destination_schema_is_pinned() {
     assert_eq!(
-        schema_text::<BackupDestination>(),
-        BACKUP_DESTINATION_SCHEMA
+        shape::<BackupDestination>(),
+        json!([
+            {
+                "required": ["path", "type"],
+                "properties": { "path": "string", "prefix": ["null", "string"], "type": "string" }
+            },
+            {
+                "required": ["bucket", "type"],
+                "properties": {
+                    "bucket": "string",
+                    "credentials_secret": ["null", "string"],
+                    "endpoint": ["null", "string"],
+                    "prefix": "string",
+                    "region": ["null", "string"],
+                    "type": "string"
+                }
+            },
+            {
+                "required": ["bucket", "type"],
+                "properties": {
+                    "bucket": "string",
+                    "credentials_secret": ["null", "string"],
+                    "prefix": "string",
+                    "type": "string"
+                }
+            }
+        ])
     );
 }
 
 #[test]
 fn scheduled_backup_policy_schema_is_pinned() {
     assert_eq!(
-        schema_text::<ScheduledBackupPolicy>(),
-        SCHEDULED_BACKUP_POLICY_SCHEMA
+        shape::<ScheduledBackupPolicy>(),
+        json!({
+            "required": ["destination", "schedule"],
+            "properties": {
+                "destination": "string",
+                "retentionSecs": ["integer", "null"],
+                "schedule": "string"
+            }
+        })
     );
 }
 
 #[test]
 fn backup_policy_schema_is_pinned() {
-    assert_eq!(schema_text::<BackupPolicy>(), BACKUP_POLICY_SCHEMA);
+    assert_eq!(
+        shape::<BackupPolicy>(),
+        json!({
+            "required": ["destination", "schedule"],
+            "properties": {
+                "destination": "ref:BackupDestination",
+                "retention": "ref:RetentionPolicy",
+                "schedule": "string"
+            }
+        })
+    );
 }
 
 #[test]
 fn retention_policy_schema_is_pinned() {
-    assert_eq!(schema_text::<RetentionPolicy>(), RETENTION_POLICY_SCHEMA);
+    assert_eq!(
+        shape::<RetentionPolicy>(),
+        json!({
+            "required": [],
+            "properties": { "maxAgeSeconds": ["integer", "null"] }
+        })
+    );
+}
+
+#[test]
+fn scheduled_backup_policy_is_a_schemars_1_schema() {
+    let schema = serde_json::to_value(schemars::schema_for!(ScheduledBackupPolicy)).unwrap();
+    assert_eq!(
+        schema["$schema"],
+        "https://json-schema.org/draft/2020-12/schema"
+    );
 }
