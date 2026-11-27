@@ -208,8 +208,6 @@ pub(super) fn cluster_children_finalizer<S: ManagedService>() -> String {
     format!("service-k8s.axiom.dev/{}-cluster-children", S::MANAGER)
 }
 
-// Used by the reconcile loop in #665; remove this attribute there.
-#[cfg_attr(not(test), allow(dead_code))]
 pub(super) fn other_namespace_finalizer<S: ManagedService>() -> String {
     format!(
         "service-k8s.axiom.dev/{}-other-namespace-children",
@@ -413,8 +411,6 @@ pub(super) async fn prune_cluster_scoped_object(
 /// refused. The owner references are removed, because a namespaced owner
 /// cannot own an object in another namespace. The owner UID label and the
 /// entry's expected labels are stamped on the child.
-// Used by the reconcile loop in #665; remove this attribute there.
-#[cfg_attr(not(test), allow(dead_code))]
 pub(super) fn place_child(
     mut child: Value,
     owner_ns: &str,
@@ -463,8 +459,6 @@ pub(super) fn place_child(
 /// the live object proves full ownership. Every refusal is an
 /// [`Error::NamespacedOwnership`]. Its checks are the expected labels, the
 /// owner UID label, the field manager, and a UID for the delete precondition.
-// Used by the reconcile loop in #665; remove this attribute there.
-#[cfg_attr(not(test), allow(dead_code))]
 pub(super) async fn prune_other_namespace_object(
     client: &Client,
     manager: &str,
