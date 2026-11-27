@@ -12,12 +12,12 @@ use crate::gke_drill::{
     on_gke_drill_cluster, DRILL_NAME, DRILL_NAMESPACE, DRILL_POD_LABEL, POOL_KEY,
 };
 
-const ISOLATED_POD: &str = "drill-0";
-const CONTROL_POD: &str = "drill-1";
-const POLICY_NAME: &str = "drill-isolate-0";
-const PROBE_IMAGE: &str = "busybox:1.36.1";
+pub const ISOLATED_POD: &str = "drill-0";
+pub const CONTROL_POD: &str = "drill-1";
+pub const POLICY_NAME: &str = "drill-isolate-0";
+pub const PROBE_IMAGE: &str = "busybox:1.36.1";
 const CLIENT_POOL: &str = "core-client";
-const POD_NAME_LABEL: &str = "statefulset.kubernetes.io/pod-name";
+pub const POD_NAME_LABEL: &str = "statefulset.kubernetes.io/pod-name";
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Probe {
@@ -213,7 +213,7 @@ impl Drop for PolicyGuard<'_> {
 /// How long the dataplane may take to enforce a new NetworkPolicy. Each probe
 /// takes about 10 s (pod start + wget -T 3), so 90 s allows several probes.
 /// Run 45864219273 probed once, a few seconds after `kubectl apply`, and saw `Reachable`.
-const ENFORCE_TIMEOUT: Duration = Duration::from_secs(90);
+pub const ENFORCE_TIMEOUT: Duration = Duration::from_secs(90);
 
 /// Calls `probe` until it returns `Blocked`, for at most `timeout`.
 /// Returns the number of probes that it made. At least one probe always runs.
