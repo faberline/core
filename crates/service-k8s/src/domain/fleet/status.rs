@@ -1,11 +1,12 @@
 //! Per-entry status of a Fleet rollout and its aggregate condition.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::FleetTarget;
 
 /// Phase of one Fleet entry.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 pub enum FleetEntryPhase {
     /// The entry waits to be applied.
     Pending,
@@ -33,15 +34,18 @@ impl std::fmt::Display for FleetEntryPhase {
 }
 
 /// Status of one Fleet entry.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct FleetEntryStatus {
     /// Target of the entry.
     pub target: FleetTarget,
     /// Current phase.
     pub phase: FleetEntryPhase,
     /// Hash of the spec that was observed, when known.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub observed_hash: Option<String>,
     /// Detail message, when any.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
 }
 

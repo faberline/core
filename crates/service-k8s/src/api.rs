@@ -7,6 +7,8 @@ pub mod certificate;
 pub mod controller;
 pub mod crd;
 #[cfg(feature = "controller")]
+pub mod fleet;
+#[cfg(feature = "controller")]
 pub mod lease;
 pub mod lifecycle;
 #[cfg(feature = "controller")]
