@@ -8,7 +8,7 @@ use crate::gke_drill_partition::{probe_container, probe_outcome, probe_script, p
 const PROBE_IMAGE: &str = "busybox:1.36.1";
 
 /// Whether the current kubectl context is a kind cluster.
-fn on_kind_cluster() -> bool {
+pub(crate) fn on_kind_cluster() -> bool {
     std::process::Command::new("kubectl")
         .args(["config", "current-context"])
         .output()
