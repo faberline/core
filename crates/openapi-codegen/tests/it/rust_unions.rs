@@ -317,3 +317,154 @@ fn inline_union_names_match_across_targets() {
         "{ts_types}"
     );
 }
+
+const RECURSIVE_SPEC: &str = r##"{
+  "openapi": "3.1.0",
+  "info": { "title": "Recursive", "version": "1.0.0" },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "TrackTotalMode": { "type": "string", "enum": ["exact", "bounded"] },
+      "TrackTotal": { "oneOf": [
+        { "type": "object", "required": ["mode"], "properties": { "mode": { "$ref": "#/components/schemas/TrackTotalMode" } } },
+        { "type": "object", "required": ["limit"], "properties": { "limit": { "type": "integer" } } }
+      ] },
+      "QueryNode": { "oneOf": [
+        { "type": "object", "required": ["not"], "properties": { "not": { "$ref": "#/components/schemas/QueryNode" } } },
+        { "type": "object", "required": ["term"], "properties": { "term": { "type": "string" } } }
+      ] }
+    }
+  }
+}"##;
+
+const LUMEN_SPEC: &str = include_str!("../fixtures/lumen-c595089.json");
+
+#[test]
+fn generated_rust_shadowed_and_recursive_models_compile() {
+    let root = temp_dir("recursive");
+    let source = root.join("src");
+    let target = TargetProfile::Rust(RustTarget::Rust2021);
+    let generated = generate_for_target(RECURSIVE_SPEC, &opts(target), target)
+        .expect("generate recursive Rust models");
+    assert_eq!(generated.warnings().len(), 0);
+    materialize(&generated, &source);
+    fs::rename(source.join("mod.rs"), source.join("lib.rs")).expect("install Rust lib root");
+    fs::write(
+        root.join("Cargo.toml"),
+        r#"[package]
+name = "generated_recursive"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+"#,
+    )
+    .expect("write generated Rust manifest");
+    fs::write(
+        source.join("main.rs"),
+        r##"use generated_recursive::models::{QueryNode, TrackTotal, TrackTotalMode};
+
+fn main() {
+    let node: QueryNode = serde_json::from_str(r#"{"not":{"term":"x"}}"#).expect("not node");
+    match &node {
+        QueryNode::QueryNodeNot(n) => match &*n.not {
+            QueryNode::QueryNodeTerm(t) => println!("node:not:{}", t.term),
+            other => panic!("expected term inside not, got {}", serde_json::to_string(other).unwrap()),
+        },
+        other => panic!("expected not node, got {}", serde_json::to_string(other).unwrap()),
+    }
+
+    let total: TrackTotal = serde_json::from_str(r#"{"mode":"exact"}"#).expect("total mode");
+    match &total {
+        TrackTotal::TrackTotalModeInline(m) => match m.mode {
+            TrackTotalMode::Exact => println!("total:mode:exact"),
+            _ => panic!("expected exact mode"),
+        },
+        other => panic!("expected mode total, got {}", serde_json::to_string(other).unwrap()),
+    }
+}
+"##,
+    )
+    .expect("write generated Rust consumer");
+    let build = Command::new("cargo")
+        .arg("build")
+        .arg("--quiet")
+        .arg("--offline")
+        .current_dir(&root)
+        .env("CARGO_TARGET_DIR", root.join("target"))
+        .output()
+        .expect("spawn cargo build for recursive Rust models");
+    assert_success(build, "compile generated recursive Rust models");
+
+    let run = Command::new(root.join("target/debug/generated_recursive"))
+        .output()
+        .expect("spawn generated recursive consumer");
+    assert!(
+        run.status.success(),
+        "run generated recursive consumer: {:?}\nstderr:\n{}",
+        run.status.code(),
+        String::from_utf8_lossy(&run.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&run.stdout);
+    let lines: Vec<&str> = stdout.lines().collect();
+    assert_eq!(lines, vec!["node:not:x", "total:mode:exact"]);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn generated_rust_lumen_document_models_compile() {
+    let root = temp_dir("lumen");
+    let source = root.join("src");
+    let target = TargetProfile::Rust(RustTarget::Rust2021);
+    let generated =
+        generate_for_target(LUMEN_SPEC, &opts(target), target).expect("generate lumen Rust models");
+    materialize(&generated, &source);
+    fs::rename(source.join("mod.rs"), source.join("lib.rs")).expect("install Rust lib root");
+    fs::write(
+        root.join("Cargo.toml"),
+        r#"[package]
+name = "generated_lumen"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+"#,
+    )
+    .expect("write generated Rust manifest");
+    fs::write(
+        source.join("main.rs"),
+        r##"use generated_lumen::models::{QueryNode, TrackTotal, TrackTotalMode};
+
+fn main() {
+    let _: Option<(QueryNode, TrackTotal, TrackTotalMode)> = None;
+    println!("ok");
+}
+"##,
+    )
+    .expect("write generated Rust consumer");
+    let build = Command::new("cargo")
+        .arg("build")
+        .arg("--quiet")
+        .arg("--offline")
+        .current_dir(&root)
+        .env("CARGO_TARGET_DIR", root.join("target"))
+        .output()
+        .expect("spawn cargo build for lumen Rust models");
+    assert_success(build, "compile generated lumen Rust models");
+
+    let run = Command::new(root.join("target/debug/generated_lumen"))
+        .output()
+        .expect("spawn generated lumen consumer");
+    assert!(
+        run.status.success(),
+        "run generated lumen consumer: {:?}\nstderr:\n{}",
+        run.status.code(),
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&run.stdout).trim(), "ok");
+    let _ = fs::remove_dir_all(&root);
+}
