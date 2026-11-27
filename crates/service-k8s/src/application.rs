@@ -6,6 +6,8 @@ pub(crate) mod access_reconcile;
 pub(crate) mod certificate;
 pub(crate) mod condition;
 #[cfg(feature = "controller")]
+pub(crate) mod fleet;
+#[cfg(feature = "controller")]
 pub(crate) mod membership;
 #[cfg(feature = "controller")]
 pub(crate) mod operator;
