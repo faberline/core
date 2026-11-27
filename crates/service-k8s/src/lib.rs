@@ -54,7 +54,7 @@ pub use application::fleet::{
 };
 #[cfg(feature = "controller")]
 pub use application::operator::managed_service::{
-    ClusterScopedChild, ManagedService, ReadinessTarget, ReadyFacts,
+    ClusterScopedChild, ManagedService, OtherNamespaceChild, ReadinessTarget, ReadyFacts,
 };
 pub use application::reshard::{
     run_reshard, ReshardCluster, ReshardConfig, ReshardError, ReshardOutcome,

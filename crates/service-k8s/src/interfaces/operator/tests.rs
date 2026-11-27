@@ -9,6 +9,7 @@ use crate::domain::leadership::Election;
 use crate::service::{self, ReadyFacts};
 
 mod api_resource;
+mod other_namespace;
 mod prune;
 mod reconcile_metrics;
 mod retention;

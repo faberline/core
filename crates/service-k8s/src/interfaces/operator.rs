@@ -40,6 +40,13 @@ pub enum Error {
         name: String,
         reason: String,
     },
+    #[error("refusing to delete {kind} {namespace}/{name}: {reason}")]
+    NamespacedOwnership {
+        kind: String,
+        namespace: String,
+        name: String,
+        reason: String,
+    },
 }
 
 impl From<StatusPatchError> for Error {

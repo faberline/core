@@ -216,6 +216,19 @@ pub trait ManagedService:
         Vec::new()
     }
 
+    /// Namespaced children that this CR may create in another namespace.
+    ///
+    /// A child whose `metadata.namespace` differs from the owner namespace must
+    /// be declared here. The controller stamps the expected labels and the
+    /// owner UID label on it, drops its owner references, and installs a
+    /// finalizer before the object is applied. It deletes the object only when
+    /// the live object proves full ownership. A child that the spec stops
+    /// rendering must stay listed with `desired == false`, so the controller
+    /// can remove it. The operator needs RBAC in that namespace.
+    fn other_namespace_children(&self) -> Vec<OtherNamespaceChild> {
+        Vec::new()
+    }
+
     /// The data retention plan of this instance (#517).
     ///
     /// `None` (the default) keeps today's behavior exactly. With `Some`, the
@@ -314,6 +327,79 @@ impl ClusterScopedChild {
     /// The object's kind.
     pub fn kind(&self) -> &'static str {
         self.kind
+    }
+
+    /// The object's name.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    /// The labels the live object must carry before it is deleted.
+    pub fn expected_labels(&self) -> &BTreeMap<String, String> {
+        &self.expected_labels
+    }
+
+    /// Whether the current spec renders the child.
+    pub fn desired(&self) -> bool {
+        self.desired
+    }
+}
+
+/// One namespaced child that a CR may create in a namespace other than its own.
+#[derive(Clone, Debug, PartialEq, Eq)]
+#[cfg(feature = "controller")]
+pub struct OtherNamespaceChild {
+    api_version: &'static str,
+    kind: &'static str,
+    namespace: String,
+    name: String,
+    expected_labels: BTreeMap<String, String>,
+    desired: bool,
+}
+
+#[cfg(feature = "controller")]
+impl OtherNamespaceChild {
+    /// The object of `api_version` and `kind` named `name` in `namespace`.
+    /// `desired` is `true` when the current spec renders the child, and
+    /// `false` when a prior version may have rendered it and the controller
+    /// must remove it. It starts with no expected labels.
+    pub fn new(
+        api_version: &'static str,
+        kind: &'static str,
+        namespace: impl Into<String>,
+        name: impl Into<String>,
+        desired: bool,
+    ) -> Self {
+        Self {
+            api_version,
+            kind,
+            namespace: namespace.into(),
+            name: name.into(),
+            expected_labels: BTreeMap::new(),
+            desired,
+        }
+    }
+
+    /// Adds labels the live object must carry before the controller deletes
+    /// it.
+    pub fn with_expected_labels(mut self, labels: BTreeMap<String, String>) -> Self {
+        self.expected_labels.extend(labels);
+        self
+    }
+
+    /// The object's `apiVersion`.
+    pub fn api_version(&self) -> &'static str {
+        self.api_version
+    }
+
+    /// The object's kind.
+    pub fn kind(&self) -> &'static str {
+        self.kind
+    }
+
+    /// The namespace of the object.
+    pub fn namespace(&self) -> &str {
+        &self.namespace
     }
 
     /// The object's name.

@@ -91,6 +91,26 @@ fn constructors_keep_what_they_were_given() {
         ["a", "b"]
     );
 
+    let other = OtherNamespaceChild::new("v1", "ConfigMap", "other-a", "shared", true);
+    assert_eq!(
+        (
+            other.api_version(),
+            other.kind(),
+            other.namespace(),
+            other.name(),
+            other.desired()
+        ),
+        ("v1", "ConfigMap", "other-a", "shared", true)
+    );
+    assert!(other.expected_labels().is_empty());
+    let other = other
+        .with_expected_labels(BTreeMap::from([("a".to_string(), "1".to_string())]))
+        .with_expected_labels(BTreeMap::from([("b".to_string(), "2".to_string())]));
+    assert_eq!(
+        other.expected_labels().keys().collect::<Vec<_>>(),
+        ["a", "b"]
+    );
+
     let plan = ReconcilePlan::new(vec![json!({"kind": "Service"})], json!({"k": 1}));
     let (children, context) = plan.into_parts();
     assert_eq!(children, vec![json!({"kind": "Service"})]);
