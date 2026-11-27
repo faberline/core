@@ -1,11 +1,14 @@
 //! Fleet target: the cluster and namespace that one Fleet entry applies to.
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Names the cluster and namespace of one Fleet entry.
 ///
 /// `cluster: None` means the control-plane cluster.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, JsonSchema,
+)]
 pub struct FleetTarget {
     /// Cluster name. `None` means the control-plane cluster.
     #[serde(default, skip_serializing_if = "Option::is_none")]

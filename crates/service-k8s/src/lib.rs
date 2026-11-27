@@ -26,6 +26,8 @@ pub use api::certificate;
 pub use api::controller;
 pub use api::crd;
 #[cfg(feature = "controller")]
+pub use api::fleet::{fleet_crd_schema_hint, FleetInstance, FleetRollout, FleetSpec, FleetStatus};
+#[cfg(feature = "controller")]
 pub use api::lease;
 pub use api::lifecycle;
 #[cfg(feature = "controller")]

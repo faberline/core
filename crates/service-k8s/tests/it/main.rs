@@ -15,6 +15,7 @@ mod crd_scale;
 mod default_alert_rules;
 mod fleet_entry;
 mod fleet_plan;
+mod fleet_spec;
 mod gke_drill;
 mod gke_drill_leader_loss;
 mod gke_drill_partition;
