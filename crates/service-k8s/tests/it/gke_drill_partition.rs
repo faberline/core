@@ -49,6 +49,50 @@ pub fn isolation_policy() -> Value {
     policy
 }
 
+/// Extra `kubectl` dumps (after `-n <ns>`) that show how drill-0 is enforced.
+pub fn enforcement_dump_commands() -> Vec<Vec<String>> {
+    [
+        vec!["get", "pod", ISOLATED_POD, "-o", "yaml"],
+        vec![
+            "get",
+            "ciliumendpoints.cilium.io",
+            ISOLATED_POD,
+            "-o",
+            "yaml",
+        ],
+        vec!["get", "ciliumidentities.cilium.io", "-o", "wide"],
+        vec!["get", "ciliumnetworkpolicies.cilium.io", "-o", "yaml"],
+    ]
+    .into_iter()
+    .map(|command| command.into_iter().map(String::from).collect())
+    .collect()
+}
+
+fn field(pod: &Value, path: &[&str]) -> String {
+    let mut value = pod;
+    for key in path {
+        value = &value[*key];
+    }
+    value.as_str().unwrap_or("unknown").to_string()
+}
+
+/// One line that says whether the pod IP and the policy selector match the pod.
+pub fn isolation_state_line(captured_ip: &str, pod: &Value) -> String {
+    let name = field(pod, &["metadata", "name"]);
+    let uid = field(pod, &["metadata", "uid"]);
+    let ip = field(pod, &["status", "podIP"]);
+    let same_ip = ip == captured_ip;
+    let labels = &pod["metadata"]["labels"];
+    let selector_matches = isolation_policy()["spec"]["podSelector"]["matchLabels"]
+        .as_object()
+        .expect("the selector is a map")
+        .iter()
+        .all(|(key, value)| &labels[key.as_str()] == value);
+    format!(
+        "isolation state: pod={name} uid={uid} ip={ip} captured_ip={captured_ip} same_ip={same_ip} selector_matches={selector_matches}"
+    )
+}
+
 /// Classifies the probe's output: a timeout is blocked, a refusal is reachable.
 pub fn probe_outcome(text: &str) -> Result<Probe, String> {
     if text.contains("timed out") {
@@ -250,6 +294,7 @@ fn probe(kube: &e2e_support::Kube, label: &str, ip: &str) -> Probe {
         }
     };
     kube.run(&["delete", "pod", &name, "--wait=true"]);
+    e2e_support::say(format!("probe-{label} output: {}", text.trim()));
     probe_outcome(&text).unwrap_or_else(|e| panic!("{}", probe_failure(label, "Succeeded", &e)))
 }
 
@@ -565,6 +610,53 @@ fn isolation_policy_selects_labels_that_the_drill_pods_carry() {
     }
 }
 
+fn pod_with_selector_labels(ip: &str) -> Value {
+    let labels = isolation_policy()["spec"]["podSelector"]["matchLabels"].clone();
+    json!({
+        "metadata": {"name": "drill-0", "uid": "u1", "labels": labels},
+        "status": {"podIP": ip}
+    })
+}
+
+#[test]
+fn enforcement_dump_commands_start_with_get_and_name_the_cilium_objects() {
+    let commands = enforcement_dump_commands();
+    assert!(commands.iter().all(|c| c[0] == "get"));
+    assert_eq!(commands.len(), 4);
+    assert_eq!(
+        commands[1],
+        vec!["get", "ciliumendpoints.cilium.io", "drill-0", "-o", "yaml"]
+    );
+}
+
+#[test]
+fn isolation_state_line_reports_the_same_ip() {
+    let pod = pod_with_selector_labels("10.0.0.5");
+    assert_eq!(
+        isolation_state_line("10.0.0.5", &pod),
+        "isolation state: pod=drill-0 uid=u1 ip=10.0.0.5 captured_ip=10.0.0.5 same_ip=true selector_matches=true"
+    );
+}
+
+#[test]
+fn isolation_state_line_reports_a_changed_ip() {
+    let pod = pod_with_selector_labels("10.0.0.5");
+    let line = isolation_state_line("10.0.0.4", &pod);
+    assert!(
+        line.contains(" captured_ip=10.0.0.4 same_ip=false "),
+        "{line}"
+    );
+}
+
+#[test]
+fn isolation_state_line_reports_a_selector_that_misses_the_pod() {
+    let pod =
+        json!({"metadata": {"name": "drill-0", "labels": {}}, "status": {"podIP": "10.0.0.5"}});
+    let line = isolation_state_line("10.0.0.5", &pod);
+    assert!(line.contains(" uid=unknown "), "{line}");
+    assert!(line.ends_with(" selector_matches=false"), "{line}");
+}
+
 #[test]
 #[ignore = "needs the shared GKE cluster: run by .github/workflows/gke-drill.yml (core#381), which sets GKE_DRILL=1, KUBECONFIG and NAMESPACE"]
 fn partition_isolates_one_pod_and_heals_when_the_policy_is_removed() {
@@ -574,19 +666,21 @@ fn partition_isolates_one_pod_and_heals_when_the_policy_is_removed() {
     let kube = e2e_support::Kube::from_env();
     // Declared before _dump: locals drop in reverse order, so the dump runs before the policy is deleted.
     let _guard = PolicyGuard { kube: &kube };
+    let mut dump_commands = vec![
+        vec!["get".into(), "pods".into(), "-o".into(), "wide".into()],
+        vec!["get".into(), "pods".into(), "--show-labels".into()],
+        vec![
+            "get".into(),
+            "networkpolicy".into(),
+            "-o".into(),
+            "yaml".into(),
+        ],
+    ];
+    dump_commands.extend(enforcement_dump_commands());
     let _dump = e2e_support::DumpOnFailure {
         suite: "gke-drill",
         kube: &kube,
-        dump_commands: vec![
-            vec!["get".into(), "pods".into(), "-o".into(), "wide".into()],
-            vec!["get".into(), "pods".into(), "--show-labels".into()],
-            vec![
-                "get".into(),
-                "networkpolicy".into(),
-                "-o".into(),
-                "yaml".into(),
-            ],
-        ],
+        dump_commands,
     };
     let step = e2e_support::Step::begin("gke-drill", "partition");
 
@@ -613,7 +707,12 @@ fn partition_isolates_one_pod_and_heals_when_the_policy_is_removed() {
         policy_path.to_str().expect("temp path is UTF-8"),
     ]);
     let probes = wait_until_blocked(ENFORCE_TIMEOUT, Duration::from_secs(2), || {
-        probe(&kube, "isolated", &isolated_ip)
+        let result = probe(&kube, "isolated", &isolated_ip);
+        if result == Probe::Reachable {
+            let pod = kube.get("pod/drill-0");
+            e2e_support::say(isolation_state_line(&isolated_ip, &pod));
+        }
+        result
     })
     .unwrap_or_else(|e| panic!("drill-0 is still reachable under the policy: {e}"));
     e2e_support::say(format!("drill-0 blocked after {probes} probe(s)"));
