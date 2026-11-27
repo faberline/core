@@ -1,6 +1,6 @@
 [package]
 name = "service-k8s"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license.workspace = true
 description = "Shared Kubernetes integration for Axiom services: managed-service reconciliation, leader election, CRD and workload rendering, stateful capacity planning, and resize primitives."

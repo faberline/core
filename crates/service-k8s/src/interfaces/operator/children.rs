@@ -72,12 +72,18 @@ pub(super) async fn apply_object(
         .ok_or(Error::Missing("metadata.name"))?
         .to_string();
 
+    // A child that names its own namespace (#663) is applied there. Otherwise
+    // the owner namespace is used, as before.
+    let child_ns = value["metadata"]["namespace"]
+        .as_str()
+        .unwrap_or(ns)
+        .to_string();
     let ar = api_resource(&api_version, &kind);
     let obj: DynamicObject = serde_json::from_value(value)?;
     let api: Api<DynamicObject> = if kind == "ClusterRoleBinding" {
         Api::all_with(client.clone(), &ar)
     } else {
-        Api::namespaced_with(client.clone(), ns, &ar)
+        Api::namespaced_with(client.clone(), &child_ns, &ar)
     };
     api.patch(
         &name,
@@ -200,6 +206,15 @@ pub(super) async fn prune_object(
 
 pub(super) fn cluster_children_finalizer<S: ManagedService>() -> String {
     format!("service-k8s.axiom.dev/{}-cluster-children", S::MANAGER)
+}
+
+// Used by the reconcile loop in #665; remove this attribute there.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(super) fn other_namespace_finalizer<S: ManagedService>() -> String {
+    format!(
+        "service-k8s.axiom.dev/{}-other-namespace-children",
+        S::MANAGER
+    )
 }
 
 pub(super) fn retention_finalizer<S: ManagedService>() -> String {
@@ -376,6 +391,130 @@ pub(super) async fn prune_cluster_scoped_object(
             name: target.name().to_string(),
             reason: "live object has no UID for a safe delete precondition".to_string(),
         });
+    };
+    let delete_params = DeleteParams {
+        preconditions: Some(Preconditions {
+            uid: Some(uid),
+            resource_version: live.metadata.resource_version.clone(),
+        }),
+        ..DeleteParams::default()
+    };
+
+    match api.delete(target.name(), &delete_params).await {
+        Ok(_) => Ok(ClusterPruneOutcome::DeleteRequested),
+        Err(kube::Error::Api(error)) if error.code == 404 => Ok(ClusterPruneOutcome::Absent),
+        Err(error) => Err(error.into()),
+    }
+}
+
+/// Place one rendered child that names a namespace other than the owner's
+/// (#663). A child in the owner namespace is returned unchanged. Any other
+/// namespace must match a `desired` entry of `declared`, or the plan is
+/// refused. The owner references are removed, because a namespaced owner
+/// cannot own an object in another namespace. The owner UID label and the
+/// entry's expected labels are stamped on the child.
+// Used by the reconcile loop in #665; remove this attribute there.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(super) fn place_child(
+    mut child: Value,
+    owner_ns: &str,
+    owner_uid: &str,
+    declared: &[service::OtherNamespaceChild],
+) -> Result<Value, Error> {
+    let child_ns = child["metadata"]["namespace"].as_str().map(str::to_string);
+    let Some(child_ns) = child_ns.filter(|ns| ns != owner_ns) else {
+        return Ok(child);
+    };
+    let api_version = child["apiVersion"].as_str().unwrap_or_default().to_string();
+    let kind = child["kind"].as_str().unwrap_or_default().to_string();
+    let name = child["metadata"]["name"]
+        .as_str()
+        .unwrap_or_default()
+        .to_string();
+    let Some(entry) = declared.iter().find(|entry| {
+        entry.desired()
+            && entry.api_version() == api_version
+            && entry.kind() == kind
+            && entry.namespace() == child_ns
+            && entry.name() == name
+    }) else {
+        return Err(Error::Plan(format!(
+            "child {kind}/{name} names namespace {child_ns} but the service does not declare it as desired in other_namespace_children"
+        )));
+    };
+
+    let metadata = child["metadata"]
+        .as_object_mut()
+        .ok_or(Error::Missing("metadata"))?;
+    metadata.remove("ownerReferences");
+    let labels = metadata
+        .entry("labels")
+        .or_insert_with(|| json!({}))
+        .as_object_mut()
+        .ok_or(Error::Missing("metadata.labels"))?;
+    labels.insert(INSTANCE_UID_LABEL.to_string(), json!(owner_uid));
+    for (key, value) in entry.expected_labels() {
+        labels.insert(key.clone(), json!(value));
+    }
+    Ok(child)
+}
+
+/// Delete one child that lives in another namespace (#663), but only when
+/// the live object proves full ownership. Every refusal is an
+/// [`Error::NamespacedOwnership`]. Its checks are the expected labels, the
+/// owner UID label, the field manager, and a UID for the delete precondition.
+// Used by the reconcile loop in #665; remove this attribute there.
+#[cfg_attr(not(test), allow(dead_code))]
+pub(super) async fn prune_other_namespace_object(
+    client: &Client,
+    manager: &str,
+    owner_uid: &str,
+    target: &service::OtherNamespaceChild,
+) -> Result<ClusterPruneOutcome, Error> {
+    let ar = api_resource(target.api_version(), target.kind());
+    let api: Api<DynamicObject> = Api::namespaced_with(client.clone(), target.namespace(), &ar);
+    let Some(live) = api.get_opt(target.name()).await? else {
+        return Ok(ClusterPruneOutcome::Absent);
+    };
+    let refuse = |reason: &str| Error::NamespacedOwnership {
+        kind: target.kind().to_string(),
+        namespace: target.namespace().to_string(),
+        name: target.name().to_string(),
+        reason: reason.to_string(),
+    };
+
+    let labels = live.metadata.labels.as_ref();
+    let labels_match = target
+        .expected_labels()
+        .iter()
+        .all(|(key, value)| labels.and_then(|labels| labels.get(key)) == Some(value));
+    if !labels_match {
+        return Err(refuse("expected owner labels do not match the live object"));
+    }
+    let uid_matches = labels
+        .and_then(|labels| labels.get(INSTANCE_UID_LABEL))
+        .map(String::as_str)
+        == Some(owner_uid);
+    if !uid_matches {
+        return Err(refuse("owner uid label does not match"));
+    }
+    let managed = live
+        .metadata
+        .managed_fields
+        .as_deref()
+        .unwrap_or_default()
+        .iter()
+        .any(|entry| entry.manager.as_deref() == Some(manager));
+    if !managed {
+        return Err(refuse(&format!(
+            "managedFields does not contain field manager {manager}"
+        )));
+    }
+
+    let Some(uid) = live.metadata.uid.clone() else {
+        return Err(refuse(
+            "live object has no UID for a safe delete precondition",
+        ));
     };
     let delete_params = DeleteParams {
         preconditions: Some(Preconditions {
