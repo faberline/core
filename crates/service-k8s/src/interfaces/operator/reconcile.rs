@@ -10,9 +10,10 @@ use kube::runtime::events::EventType;
 use kube::ResourceExt;
 
 use super::children::{
-    apply_object, cluster_children_finalizer, delete_owned_pvcs, patch_finalizers,
-    prune_cluster_scoped_object, prune_object, ready_replicas, retention_finalizer,
-    scale_workload_to_zero, ClusterPruneOutcome, PruneOutcome, PvcCleanup,
+    apply_object, cluster_children_finalizer, delete_owned_pvcs, other_namespace_finalizer,
+    patch_finalizers, place_child, prune_cluster_scoped_object, prune_object,
+    prune_other_namespace_object, ready_replicas, retention_finalizer, scale_workload_to_zero,
+    ClusterPruneOutcome, PruneOutcome, PvcCleanup,
 };
 use super::{publish, Ctx, Error};
 use crate::application::condition::status_patch::status_patch;
@@ -106,12 +107,16 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
         }
     }
 
-    // Cluster-scoped children cannot use an owner reference to a namespaced
-    // CR. Install a finalizer before the first apply, and remove only children
-    // whose labels and field manager prove ownership.
+    // Cluster-scoped and other-namespace children cannot use an owner
+    // reference to a namespaced CR. Install a finalizer before the first apply,
+    // and remove only children whose labels and field manager prove ownership.
+    // Both finalizers go in one patch: a second patch from the same stale `obj`
+    // would put the first one back.
     let cluster_children = obj.cluster_scoped_children();
-    if !cluster_children.is_empty() {
-        let finalizer = cluster_children_finalizer::<S>();
+    let other_children = obj.other_namespace_children();
+    if !cluster_children.is_empty() || !other_children.is_empty() {
+        let cluster_fin = cluster_children_finalizer::<S>();
+        let other_fin = other_namespace_finalizer::<S>();
         let mut finalizers = obj.meta().finalizers.clone().unwrap_or_default();
         let api: Api<S> = Api::namespaced(client.clone(), &ns);
         if obj.meta().deletion_timestamp.is_some() {
@@ -120,17 +125,38 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
                 pending |= prune_cluster_scoped_object(client, S::MANAGER, target).await?
                     == ClusterPruneOutcome::DeleteRequested;
             }
+            if !other_children.is_empty() {
+                let uid = obj
+                    .meta()
+                    .uid
+                    .as_deref()
+                    .ok_or(Error::Missing("metadata.uid"))?;
+                for target in &other_children {
+                    pending |= prune_other_namespace_object(client, S::MANAGER, uid, target)
+                        .await?
+                        == ClusterPruneOutcome::DeleteRequested;
+                }
+            }
             if pending {
                 return Ok(Action::requeue(Duration::from_secs(1)));
             }
-            if finalizers.iter().any(|item| item == &finalizer) {
-                finalizers.retain(|item| item != &finalizer);
+            let before = finalizers.len();
+            finalizers.retain(|item| item != &cluster_fin && item != &other_fin);
+            if finalizers.len() != before {
                 patch_finalizers(&api, obj.as_ref(), finalizers).await?;
             }
             return Ok(Action::await_change());
         }
-        if !finalizers.iter().any(|item| item == &finalizer) {
-            finalizers.push(finalizer);
+        let mut missing = false;
+        if !cluster_children.is_empty() && !finalizers.contains(&cluster_fin) {
+            finalizers.push(cluster_fin);
+            missing = true;
+        }
+        if !other_children.is_empty() && !finalizers.contains(&other_fin) {
+            finalizers.push(other_fin);
+            missing = true;
+        }
+        if missing {
             patch_finalizers(&api, obj.as_ref(), finalizers).await?;
             return Ok(Action::await_change());
         }
@@ -145,6 +171,29 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
         return Ok(Action::requeue(Duration::from_secs(1)));
     }
 
+    // Other-namespace children the spec no longer renders are removed here,
+    // under the same ownership checks as deletion (#665).
+    let retired: Vec<_> = other_children
+        .iter()
+        .filter(|target| !target.desired())
+        .collect();
+    if !retired.is_empty() {
+        let uid = obj
+            .meta()
+            .uid
+            .as_deref()
+            .ok_or(Error::Missing("metadata.uid"))?;
+        let mut other_delete_pending = false;
+        for target in retired {
+            other_delete_pending |= prune_other_namespace_object(client, S::MANAGER, uid, target)
+                .await?
+                == ClusterPruneOutcome::DeleteRequested;
+        }
+        if other_delete_pending {
+            return Ok(Action::requeue(Duration::from_secs(1)));
+        }
+    }
+
     // 1. Let the service perform async admission/observation, then apply the
     // planned children through the shared SSA path.
     let plan = obj
@@ -152,7 +201,14 @@ async fn reconcile<S: ManagedService>(obj: Arc<S>, ctx: Arc<Ctx>) -> Result<Acti
         .await
         .map_err(|error| Error::Plan(error.to_string()))?;
     let (children, context) = plan.into_parts();
+    // Place every child before the first apply, so one undeclared namespace
+    // refuses the whole plan and writes nothing (#665).
+    let owner_uid = obj.meta().uid.clone().unwrap_or_default();
+    let mut placed = Vec::with_capacity(children.len());
     for child in children {
+        placed.push(place_child(child, &ns, &owner_uid, &other_children)?);
+    }
+    for child in placed {
         apply_object(client, &ns, S::MANAGER, child).await?;
     }
 
