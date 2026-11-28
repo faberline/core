@@ -141,16 +141,22 @@ impl ManagedService for GroupedService {
         if !self.spec.declare {
             return Vec::new();
         }
+        // Only children in another namespace are declared. A child in the
+        // owner's own namespace is an ordinary owned child: garbage collection
+        // removes it, and the finalizer cleanup must not prune it.
+        let owner_ns = self.metadata.namespace.clone().unwrap_or_default();
         let mut out: Vec<OtherNamespaceChild> = self
             .spec
             .children
             .iter()
+            .filter(|p| p.namespace != owner_ns)
             .map(|p| OtherNamespaceChild::new("v1", "ConfigMap", &p.namespace, &p.name, true))
             .collect();
         out.extend(
             self.spec
                 .retired
                 .iter()
+                .filter(|p| p.namespace != owner_ns)
                 .map(|p| OtherNamespaceChild::new("v1", "ConfigMap", &p.namespace, &p.name, false)),
         );
         out
