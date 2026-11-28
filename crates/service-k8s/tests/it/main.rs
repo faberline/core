@@ -17,6 +17,7 @@ mod fleet_entry;
 mod fleet_leader_gate;
 mod fleet_plan;
 mod fleet_reconcile;
+mod fleet_role_example;
 mod fleet_spec;
 mod gke_drill;
 mod gke_drill_leader_loss;

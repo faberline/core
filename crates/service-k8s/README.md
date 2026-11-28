@@ -151,10 +151,27 @@ The public modules are independent mechanisms:
 | `stateful` | Plan shard splitting and whole replica layers without changing membership. |
 | `resize` | Compare Kubernetes storage quantities and grow eligible PVCs. It never shrinks. |
 | `certificate` | Reconcile certificate requests, rotation, projection, and status through an injected issuer and Kubernetes store. |
+| `fleet`, `controller::run_fleet` | Plan, apply, adopt, prune, and roll out Fleet children, and run the leader-gated Fleet watch loop. |
 
-There is no `service_k8s::fleet` module today. Fleet ownership, adoption,
-rollout, and multi-namespace status remain app code until the
-[shared Fleet outcome](ROADMAP.md#shared-fleet-controller) lands.
+The Fleet module ships today: `service_k8s::fleet` holds the plan, ownership,
+adoption, prune, and rollout types. `service_k8s::controller::run_fleet` runs
+the leader-gated watch loop for a Fleet custom resource, and
+`service_k8s::KubeFleetCluster` is its Kubernetes adapter. `run_fleet` takes a
+`WatchScope`. With `WatchScope::Namespaces` it watches the Fleet resource in
+each listed namespace only, with no cluster-wide list or watch of it. It
+watches the Fleet resource, not its children. Child drift is found by the
+requeue: every 15 seconds (`FLEET_PROGRESS_REQUEUE`) while a rollout runs, and
+every 300 seconds (`FLEET_REPAIR_REQUEUE`) when all entries are ready. A remote
+target cluster is reported `Unreachable` today (see #640).
+
+The example [examples/fleet-role.yaml](examples/fleet-role.yaml) holds only
+`Role` and `RoleBinding` objects for one target namespace. It grants no
+cluster-wide write on workloads.
+
+The Fleet outcome is not complete. Its second consumer in another repository
+is still open, so `STATUS.md` still lists `shared-fleet-controller` as
+`Not supported`. See the
+[shared Fleet outcome](ROADMAP.md#shared-fleet-controller).
 
 The certificate module is a current reusable mechanism. It does not make any
 app operator own certificates until that app composes an issuer, identities,

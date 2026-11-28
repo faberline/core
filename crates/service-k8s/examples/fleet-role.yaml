@@ -1,0 +1,59 @@
+# Fleet RBAC for ONE target namespace (example).
+# Replace fleet-targets (the target namespace), fleet-operator (the operator
+# ServiceAccount) and operators (its namespace). Replace fleet.example.dev and
+# fleets with the group and plural of your own Fleet custom resource.
+# This file grants no cluster-wide right: it holds only Role and RoleBinding.
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fleet-children
+  namespace: fleet-targets
+rules:
+  - apiGroups: ["apps"]
+    resources: ["statefulsets"]
+    verbs: ["get", "list", "create", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fleet-children
+  namespace: fleet-targets
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: fleet-children
+subjects:
+  - kind: ServiceAccount
+    name: fleet-operator
+    namespace: operators
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: fleet-self
+  namespace: operators
+rules:
+  - apiGroups: ["fleet.example.dev"]
+    resources: ["fleets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["fleet.example.dev"]
+    resources: ["fleets/status"]
+    verbs: ["get", "patch", "update"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "create", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: fleet-self
+  namespace: operators
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: fleet-self
+subjects:
+  - kind: ServiceAccount
+    name: fleet-operator
+    namespace: operators
