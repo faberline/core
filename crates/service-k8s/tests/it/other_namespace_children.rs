@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 
 use kube::client::Body;
 use kube::runtime::controller::Action;
-use kube::{Client, CustomResource};
+use kube::{Client, CustomResource, Resource};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -82,7 +82,8 @@ struct Placed {
     group = "service-k8s.e2e",
     version = "v1",
     kind = "GroupedService",
-    namespaced
+    namespaced,
+    status = "GroupedStatus"
 )]
 struct GroupedServiceSpec {
     children: Vec<Placed>,
@@ -91,19 +92,35 @@ struct GroupedServiceSpec {
     cluster: bool,
 }
 
+/// The status subresource. The live pass patches it at the end of each pass.
+#[derive(Clone, Debug, Default, Deserialize, Serialize, JsonSchema)]
+struct GroupedStatus {
+    ready: i64,
+}
+
 impl ManagedService for GroupedService {
     const MANAGER: &'static str = MANAGER;
 
-    /// One ConfigMap per `children` entry, in the namespace the entry names.
+    /// One ConfigMap per `children` entry, in the namespace the entry names. A
+    /// child in the owner's own namespace carries the owner reference; a child
+    /// in another namespace cannot, so it carries none.
     fn render(&self) -> Vec<Value> {
+        let owner = self
+            .controller_owner_ref(&())
+            .map(|o| serde_json::to_value(o).expect("owner reference"));
+        let owner_ns = self.metadata.namespace.clone().unwrap_or_default();
         self.spec
             .children
             .iter()
             .map(|p| {
+                let mut meta = json!({ "name": p.name, "namespace": p.namespace });
+                if let (Some(owner), true) = (&owner, p.namespace == owner_ns) {
+                    meta["ownerReferences"] = json!([owner]);
+                }
                 json!({
                     "apiVersion": "v1",
                     "kind": "ConfigMap",
-                    "metadata": { "name": p.name, "namespace": p.namespace },
+                    "metadata": meta,
                     "data": { "k": "v" },
                 })
             })
@@ -115,7 +132,7 @@ impl ManagedService for GroupedService {
     }
 
     fn status_patch(&self, _ready: &ReadyFacts) -> Value {
-        json!({ "status": {} })
+        json!({ "status": { "ready": 0 } })
     }
 
     /// Declared children (desired) and retired ones (not desired), when
@@ -428,4 +445,333 @@ async fn a_service_without_other_children_installs_no_new_finalizer() {
         finalizer_writes.is_empty(),
         "no other-namespace finalizer is installed: {finalizer_writes:?}"
     );
+}
+
+/// The live case of #666: apply, prune and cleanup across two namespaces on a
+/// kind cluster. CI's kind job runs it with `--include-ignored`. A local run
+/// needs a kind cluster and `SERVICE_K8S_LIVE_KUBE=1`.
+mod live {
+    use std::future::Future;
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    use k8s_openapi::api::core::v1::{ConfigMap, Namespace};
+    use k8s_openapi::apiextensions_apiserver::pkg::apis::apiextensions::v1::CustomResourceDefinition;
+    use k8s_openapi::apimachinery::pkg::apis::meta::v1::ObjectMeta;
+    use kube::api::{Api, DeleteParams, Patch, PatchParams, PostParams};
+    use kube::runtime::controller::Action;
+    use kube::{Client, CustomResourceExt};
+    use serde_json::{json, Value};
+
+    use super::{
+        leader, reconcile_once, Error, GroupedService, GroupedServiceSpec, Placed,
+        INSTANCE_UID_LABEL, OTHER_FINALIZER,
+    };
+
+    const CRD_NAME: &str = "groupedservices.service-k8s.e2e";
+    const FIELD_MANAGER: &str = "c663";
+
+    /// Refuse to run against a cluster nobody said to run against.
+    ///
+    /// `SERVICE_K8S_LIVE_KUBE=1` is consent to a live run, not a destination:
+    /// `Config::infer()` reads the ambient kubeconfig, so the flag alone points
+    /// these cases at whichever context happens to be selected. They create
+    /// namespaces and delete namespaces. So the destination is checked too — a
+    /// `kind-` context by default, or exactly what `SERVICE_K8S_LIVE_KUBE_CONTEXT`
+    /// names, for a throwaway cluster whose context is called something else.
+    fn live_or_skip() {
+        let live = std::env::var("SERVICE_K8S_LIVE_KUBE").unwrap_or_default();
+        assert_eq!(
+            live, "1",
+            "SERVICE_K8S_LIVE_KUBE=1 must be set to run a live cluster test"
+        );
+        let context = kube::config::Kubeconfig::read()
+            .expect("read the kubeconfig these cases would otherwise run against")
+            .current_context
+            .expect(
+                "the kubeconfig names no current-context, so there is no way to tell what \
+                 cluster this would create and delete namespaces in",
+            );
+        match std::env::var("SERVICE_K8S_LIVE_KUBE_CONTEXT") {
+            Ok(want) => assert_eq!(
+                context, want,
+                "kubeconfig current-context is `{context}`, but SERVICE_K8S_LIVE_KUBE_CONTEXT \
+                 names `{want}`"
+            ),
+            Err(_) => assert!(
+                context.starts_with("kind-"),
+                "these cases create and delete namespaces, and kubeconfig current-context is \
+                 `{context}` — not a `kind-` cluster. Point kubectl at a throwaway cluster, or \
+                 set SERVICE_K8S_LIVE_KUBE_CONTEXT={context} to say that is deliberate"
+            ),
+        }
+    }
+
+    /// Run `body`, then delete every namespace in `names`, even when it panicked.
+    async fn with_teardown<F>(admin: &Client, names: &[String], body: F)
+    where
+        F: Future<Output = ()>,
+    {
+        use futures::FutureExt as _;
+        let outcome = std::panic::AssertUnwindSafe(body).catch_unwind().await;
+        for ns in names {
+            let _ = Api::<Namespace>::all(admin.clone())
+                .delete(ns, &DeleteParams::default())
+                .await;
+        }
+        if let Err(panic) = outcome {
+            // Re-raise the original panic, so the test fails with its own message.
+            std::panic::resume_unwind(panic);
+        }
+    }
+
+    /// Poll the CRD until its `Established` condition is `True`, at most 30 s.
+    async fn wait_established(crds: &Api<CustomResourceDefinition>) {
+        for _ in 0..60 {
+            let crd = crds.get(CRD_NAME).await.expect("read the CRD");
+            let established = crd
+                .status
+                .and_then(|s| s.conditions)
+                .unwrap_or_default()
+                .iter()
+                .any(|c| c.type_ == "Established" && c.status == "True");
+            if established {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
+        panic!("the CRD {CRD_NAME} is not Established after 30 s");
+    }
+
+    /// One pass on the CR as the apiserver has it now.
+    async fn pass(client: &Client, gs: &Api<GroupedService>) -> Result<Action, Error> {
+        let cr = gs.get("grouped").await.expect("read the CR");
+        reconcile_once(client.clone(), Arc::new(cr), leader()).await
+    }
+
+    async fn configmap(client: &Client, ns: &str, name: &str) -> Option<ConfigMap> {
+        Api::<ConfigMap>::namespaced(client.clone(), ns)
+            .get_opt(name)
+            .await
+            .expect("read the ConfigMap")
+    }
+
+    async fn patch_spec(gs: &Api<GroupedService>, spec: Value) {
+        gs.patch(
+            "grouped",
+            &PatchParams::default(),
+            &Patch::Merge(json!({ "spec": spec })),
+        )
+        .await
+        .expect("patch the CR spec");
+    }
+
+    async fn exercise(client: Client, owner: String, a: String, b: String) {
+        for ns in [&owner, &a, &b] {
+            Api::<Namespace>::all(client.clone())
+                .create(
+                    &PostParams::default(),
+                    &Namespace {
+                        metadata: ObjectMeta {
+                            name: Some(ns.clone()),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                )
+                .await
+                .expect("create namespace");
+        }
+
+        // a. Apply the CRD by server-side apply, and wait until it is served.
+        let crds: Api<CustomResourceDefinition> = Api::all(client.clone());
+        crds.patch(
+            CRD_NAME,
+            &PatchParams::apply(FIELD_MANAGER).force(),
+            &Patch::Apply(&GroupedService::crd()),
+        )
+        .await
+        .expect("apply the CRD");
+        wait_established(&crds).await;
+
+        // b. The CR in the owner namespace, with one child in each namespace.
+        let gs: Api<GroupedService> = Api::namespaced(client.clone(), &owner);
+        let spec = GroupedServiceSpec {
+            children: vec![
+                Placed {
+                    namespace: a.clone(),
+                    name: "one".into(),
+                },
+                Placed {
+                    namespace: b.clone(),
+                    name: "two".into(),
+                },
+                Placed {
+                    namespace: owner.clone(),
+                    name: "home".into(),
+                },
+            ],
+            retired: Vec::new(),
+            declare: true,
+            cluster: false,
+        };
+        gs.create(
+            &PostParams::default(),
+            &GroupedService::new("grouped", spec),
+        )
+        .await
+        .expect("create the CR");
+
+        // c. Up to 5 passes. The first installs the finalizer; later passes apply.
+        let mut last = None;
+        for _ in 0..5 {
+            last = Some(pass(&client, &gs).await);
+            if configmap(&client, &a, "one").await.is_some()
+                && configmap(&client, &b, "two").await.is_some()
+                && configmap(&client, &owner, "home").await.is_some()
+            {
+                break;
+            }
+        }
+        last.expect("a pass ran")
+            .expect("the pass that applies the children succeeds");
+
+        let cr = gs.get("grouped").await.expect("read the CR");
+        let uid = cr.metadata.uid.clone().expect("the CR has a UID");
+        assert!(
+            cr.metadata
+                .finalizers
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .any(|f| f == OTHER_FINALIZER),
+            "the CR carries the other-namespace finalizer: {:?}",
+            cr.metadata.finalizers
+        );
+        let one = configmap(&client, &a, "one")
+            .await
+            .expect("one exists in a");
+        assert_eq!(
+            one.metadata
+                .labels
+                .as_ref()
+                .and_then(|l| l.get(INSTANCE_UID_LABEL))
+                .map(String::as_str),
+            Some(uid.as_str()),
+            "the child in a carries the owner UID label"
+        );
+        assert!(
+            one.metadata
+                .owner_references
+                .as_deref()
+                .unwrap_or_default()
+                .is_empty(),
+            "the child in a has no owner reference"
+        );
+        let home = configmap(&client, &owner, "home")
+            .await
+            .expect("home exists in the owner namespace");
+        let refs = home.metadata.owner_references.clone().unwrap_or_default();
+        assert_eq!(refs.len(), 1, "home keeps one owner reference: {refs:?}");
+        assert_eq!(refs[0].uid, uid, "the owner reference names the CR");
+
+        // d. Prune: `one` is retired and goes; `two` stays.
+        patch_spec(
+            &gs,
+            json!({
+                "children": [
+                    { "namespace": b, "name": "two" },
+                    { "namespace": owner, "name": "home" },
+                ],
+                "retired": [{ "namespace": a, "name": "one" }],
+            }),
+        )
+        .await;
+        let mut last = None;
+        for _ in 0..5 {
+            last = Some(pass(&client, &gs).await);
+            if configmap(&client, &a, "one").await.is_none() {
+                break;
+            }
+        }
+        assert!(
+            configmap(&client, &a, "one").await.is_none(),
+            "the retired child is pruned; last pass: {last:?}"
+        );
+        assert!(
+            configmap(&client, &b, "two").await.is_some(),
+            "the declared child in b stays"
+        );
+
+        // e. Guard: a ConfigMap without our labels is refused and kept.
+        Api::<ConfigMap>::namespaced(client.clone(), &b)
+            .create(
+                &PostParams::default(),
+                &ConfigMap {
+                    metadata: ObjectMeta {
+                        name: Some("foreign".into()),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            )
+            .await
+            .expect("create the foreign ConfigMap");
+        patch_spec(
+            &gs,
+            json!({ "retired": [{ "namespace": b, "name": "foreign" }] }),
+        )
+        .await;
+        let refused = pass(&client, &gs).await;
+        assert!(
+            matches!(refused, Err(Error::NamespacedOwnership { .. })),
+            "the guard refuses a foreign ConfigMap: {refused:?}"
+        );
+        assert!(
+            configmap(&client, &b, "foreign").await.is_some(),
+            "the foreign ConfigMap is kept"
+        );
+        patch_spec(&gs, json!({ "retired": [] })).await;
+
+        // f. Cleanup: deleting the owner removes its child in b, then the CR.
+        gs.delete("grouped", &DeleteParams::default())
+            .await
+            .expect("delete the CR");
+        let deleting = gs
+            .get("grouped")
+            .await
+            .expect("the CR waits on its finalizers");
+        assert!(
+            deleting.metadata.deletion_timestamp.is_some(),
+            "the CR is being deleted"
+        );
+        let mut last = None;
+        for _ in 0..3 {
+            let Some(cr) = gs.get_opt("grouped").await.expect("read the CR") else {
+                break;
+            };
+            last = Some(reconcile_once(client.clone(), Arc::new(cr), leader()).await);
+        }
+        assert!(
+            configmap(&client, &b, "two").await.is_none(),
+            "the child in b is deleted with its owner; last pass: {last:?}"
+        );
+        assert!(
+            gs.get_opt("grouped").await.expect("read the CR").is_none(),
+            "the CR is gone after the cleanup; last pass: {last:?}"
+        );
+    }
+
+    #[tokio::test]
+    #[ignore = "live kind cluster: needs SERVICE_K8S_LIVE_KUBE=1; runs in CI job `e2e: service-k8s kind`"]
+    async fn kind_applies_prunes_and_cleans_up_children_in_two_namespaces() {
+        live_or_skip();
+        let client = Client::try_default().await.expect("admin client");
+        let pid = std::process::id();
+        let owner = format!("c663-owner-{pid}");
+        let a = format!("c663-a-{pid}");
+        let b = format!("c663-b-{pid}");
+        let names = [owner.clone(), a.clone(), b.clone()];
+        with_teardown(&client, &names, exercise(client.clone(), owner, a, b)).await;
+    }
 }
