@@ -49,8 +49,8 @@ pub use app::operator::{run, run_in_namespaces};
 pub use application::certificate::reconcile::Reconciler;
 #[cfg(feature = "controller")]
 pub use application::fleet::{
-    reconcile_fleet_once, FleetChildKind, FleetCluster, FleetClusterError, FleetEntryResult,
-    FleetPassError, FleetPassReport,
+    reconcile_fleet_once, reconcile_fleet_under, FleetChildKind, FleetCluster, FleetClusterError,
+    FleetEntryResult, FleetPassError, FleetPassOutcome, FleetPassReport,
 };
 #[cfg(feature = "controller")]
 pub use application::operator::managed_service::{
