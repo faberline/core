@@ -14,7 +14,7 @@ mod cluster;
 use cluster::TestSm;
 
 const WARM_UP_REQUESTS: usize = 50;
-const TIMED_REQUESTS: usize = 500;
+const TIMED_REQUESTS: usize = 5000;
 const PAYLOAD_BYTES: usize = 128;
 
 #[tokio::test]
