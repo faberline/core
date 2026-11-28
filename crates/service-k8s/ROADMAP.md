@@ -130,7 +130,8 @@ phase table orders the outcomes.
   child watches, low-frequency repair, per-entry API failure isolation, status
   projection, ordered concurrency, and leader failover. Lumen adapter tests
   prove parity for current child objects and protected reshard fields.
-- Tracking: Not assigned.
+- Tracking: [#639](https://github.com/faberline/core/issues/639).
+- Status note: `STATUS.md` keeps this outcome at `Not supported`. Its completion evidence needs a second consumer in another repository, and core cannot prove that alone.
 
 ### Declarative access RBAC convergence
 
