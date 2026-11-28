@@ -1,14 +1,19 @@
 //! The Fleet reconcile pass: plan with `plan_fleet`, then apply each action
 //! through a port. The port is synchronous; a fake implements it in tests.
 
+use std::sync::Arc;
+use std::time::Duration;
+
 use serde::Serialize;
 
 use crate::api::fleet::{FleetSpec, FleetStatus};
+use crate::application::operator::leadership::Leadership;
 use crate::domain::condition::Condition;
 use crate::domain::fleet::{
     desired_hash, plan_fleet, plan_rollout_order, reject_duplicate_targets, ChildKey, DesiredChild,
     FleetAction, FleetEntryPhase, FleetEntryStatus, FleetPlanError, ObservedChild, RolloutState,
 };
+use crate::domain::leadership::Election;
 
 /// The child kind that a Fleet manages, for example `apps/v1` and `StatefulSet`.
 /// `default_name` is the name of an entry that has no `name`.
@@ -314,4 +319,49 @@ pub fn reconcile_fleet_once<S: Serialize>(
     let status = FleetStatus::project(prior, statuses, observed_generation, now);
 
     Ok(FleetPassReport { results, status })
+}
+
+/// The outcome of a leader-gated Fleet pass.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FleetPassOutcome {
+    /// This replica leads: the pass ran and this is its report.
+    Ran(FleetPassReport),
+    /// This replica follows: nothing ran. Ask again after this delay.
+    Requeue(Duration),
+}
+
+/// Run one Fleet pass only while `election` says this replica leads.
+///
+/// Like `reconcile_once` in `app/operator.rs`, it takes the election as a
+/// parameter and never sets leadership itself: `Leadership::held` does not
+/// write `is_leader`. The gate is the first statement, so a follower makes no
+/// call on `cluster`, not even `observed`.
+// The status inputs belong to reconcile_fleet_once.
+#[allow(clippy::too_many_arguments)]
+pub fn reconcile_fleet_under<S: Serialize>(
+    election: Arc<Election>,
+    cluster: &mut dyn FleetCluster,
+    spec: &FleetSpec<S>,
+    kind: &FleetChildKind,
+    owner: &str,
+    manager: &str,
+    prior: &[Condition],
+    observed_generation: i64,
+    now: &str,
+) -> Result<FleetPassOutcome, FleetPassError> {
+    let leadership = Leadership::held(election);
+    if let Some(requeue) = leadership.follower_requeue() {
+        return Ok(FleetPassOutcome::Requeue(requeue));
+    }
+    reconcile_fleet_once(
+        cluster,
+        spec,
+        kind,
+        owner,
+        manager,
+        prior,
+        observed_generation,
+        now,
+    )
+    .map(FleetPassOutcome::Ran)
 }

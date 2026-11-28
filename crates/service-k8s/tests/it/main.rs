@@ -14,6 +14,7 @@ mod certificate_status;
 mod crd_scale;
 mod default_alert_rules;
 mod fleet_entry;
+mod fleet_leader_gate;
 mod fleet_plan;
 mod fleet_reconcile;
 mod fleet_spec;
