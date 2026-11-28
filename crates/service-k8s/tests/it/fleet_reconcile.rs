@@ -2,10 +2,12 @@
 
 #![cfg(feature = "controller")]
 
+use std::collections::BTreeSet;
+
 use serde_json::json;
 use service_k8s::fleet::{
-    desired_hash, AdoptionPolicy, ChildKey, FleetAction, FleetPlanError, FleetTarget,
-    ObservedChild, PrunePolicy,
+    desired_hash, AdoptionPolicy, ChildKey, FleetAction, FleetEntryPhase, FleetPlanError,
+    FleetTarget, ObservedChild, PrunePolicy,
 };
 use service_k8s::{
     reconcile_fleet_once, FleetChildKind, FleetCluster, FleetClusterError, FleetInstance,
@@ -17,6 +19,8 @@ struct FakeCluster {
     observed: Vec<ObservedChild>,
     fail_apply_for: Option<ChildKey>,
     calls: Vec<String>,
+    /// Children that have rolled out and are ready.
+    ready: BTreeSet<ChildKey>,
 }
 
 impl FleetCluster for FakeCluster {
@@ -58,6 +62,10 @@ impl FleetCluster for FakeCluster {
         self.calls.push(format!("delete {key}"));
         Ok(())
     }
+
+    fn is_ready(&mut self, key: &ChildKey) -> Result<bool, FleetClusterError> {
+        Ok(self.ready.contains(key))
+    }
 }
 
 fn kind() -> FleetChildKind {
@@ -96,11 +104,31 @@ fn hash_of_a() -> String {
     desired_hash(&json!({"replicas": 1}))
 }
 
+/// The same spec as `fleet`, with `Retain` pruning and a chosen rollout width.
+fn fleet_with(names: &[&str], max_concurrent: u32) -> FleetSpec<serde_json::Value> {
+    let mut spec = fleet(names, AdoptionPolicy::Refuse, PrunePolicy::Retain);
+    spec.rollout = FleetRollout { max_concurrent };
+    spec
+}
+
 fn run(
     cluster: &mut FakeCluster,
     spec: &FleetSpec<serde_json::Value>,
 ) -> Result<service_k8s::FleetPassReport, FleetPassError> {
-    reconcile_fleet_once(cluster, spec, &kind(), "fleet-a", "faberline-fleet")
+    reconcile_fleet_once(
+        cluster,
+        spec,
+        &kind(),
+        "fleet-a",
+        "faberline-fleet",
+        &[],
+        1,
+        "2026-01-01T00:00:00Z",
+    )
+}
+
+fn phases(report: &service_k8s::FleetPassReport) -> Vec<FleetEntryPhase> {
+    report.status.entries.iter().map(|e| e.phase).collect()
 }
 
 #[test]
@@ -261,4 +289,167 @@ fn an_up_to_date_child_is_left_unchanged() {
         report.results[0].action,
         FleetAction::Unchanged { .. }
     ));
+}
+
+// Ordered concurrency (#658): entries roll out in the order that
+// `plan_rollout_order` gives, within `max_concurrent`.
+
+#[test]
+fn rollout_applies_one_entry_per_pass_in_order() {
+    let mut cluster = FakeCluster::default();
+    let spec = fleet_with(&["a", "b", "c"], 1);
+
+    let report = run(&mut cluster, &spec).unwrap();
+
+    assert_eq!(
+        cluster.calls,
+        ["observed".to_string(), format!("apply {}", key("a"))]
+    );
+    assert_eq!(
+        phases(&report),
+        [
+            FleetEntryPhase::Applying,
+            FleetEntryPhase::Pending,
+            FleetEntryPhase::Pending,
+        ]
+    );
+
+    // Pass 2: `a` is now ready, so the next entry in order starts.
+    cluster.calls.clear();
+    cluster.observed = vec![ObservedChild::owned(key("a"), hash_of_a())];
+    cluster.ready.insert(key("a"));
+
+    let report = run(&mut cluster, &spec).unwrap();
+
+    assert_eq!(
+        cluster.calls,
+        ["observed".to_string(), format!("apply {}", key("b"))]
+    );
+    assert_eq!(
+        phases(&report),
+        [
+            FleetEntryPhase::Ready,
+            FleetEntryPhase::Applying,
+            FleetEntryPhase::Pending,
+        ]
+    );
+}
+
+#[test]
+fn rollout_waits_while_the_previous_child_is_not_ready() {
+    let mut cluster = FakeCluster {
+        observed: vec![ObservedChild::owned(key("a"), hash_of_a())],
+        ..Default::default()
+    };
+    let spec = fleet_with(&["a", "b"], 1);
+
+    let report = run(&mut cluster, &spec).unwrap();
+
+    assert_eq!(cluster.calls, ["observed"]);
+    assert_eq!(
+        phases(&report),
+        [FleetEntryPhase::Applying, FleetEntryPhase::Pending]
+    );
+}
+
+#[test]
+fn rollout_max_concurrent_two_starts_two_entries() {
+    let mut cluster = FakeCluster::default();
+    let spec = fleet_with(&["a", "b", "c"], 2);
+
+    let report = run(&mut cluster, &spec).unwrap();
+
+    assert_eq!(
+        cluster.calls,
+        [
+            "observed".to_string(),
+            format!("apply {}", key("a")),
+            format!("apply {}", key("b")),
+        ]
+    );
+    assert_eq!(
+        phases(&report),
+        [
+            FleetEntryPhase::Applying,
+            FleetEntryPhase::Applying,
+            FleetEntryPhase::Pending,
+        ]
+    );
+}
+
+#[test]
+fn a_failed_apply_frees_its_slot_with_max_concurrent_one() {
+    let mut cluster = FakeCluster {
+        fail_apply_for: Some(key("a")),
+        ..Default::default()
+    };
+    let spec = fleet_with(&["a", "b"], 1);
+
+    let report = run(&mut cluster, &spec).unwrap();
+
+    assert_eq!(
+        cluster.calls,
+        [
+            "observed".to_string(),
+            format!("apply {}", key("a")),
+            format!("apply {}", key("b")),
+        ]
+    );
+    assert_eq!(
+        phases(&report),
+        [FleetEntryPhase::Failed, FleetEntryPhase::Applying]
+    );
+}
+
+// Status projection (#658): one entry status per entry and one Ready condition.
+
+#[test]
+fn status_all_entries_ready() {
+    let mut cluster = FakeCluster {
+        observed: vec![
+            ObservedChild::owned(key("a"), hash_of_a()),
+            ObservedChild::owned(key("b"), hash_of_a()),
+        ],
+        ..Default::default()
+    };
+    cluster.ready.insert(key("a"));
+    cluster.ready.insert(key("b"));
+    let spec = fleet_with(&["a", "b"], 1);
+
+    let report = run(&mut cluster, &spec).unwrap();
+
+    assert_eq!(report.status.conditions.len(), 1);
+    let ready = &report.status.conditions[0];
+    assert_eq!(ready.type_, "Ready");
+    assert_eq!(ready.status, "True");
+    assert_eq!(ready.reason, "AllEntriesReady");
+    assert_eq!(
+        phases(&report),
+        [FleetEntryPhase::Ready, FleetEntryPhase::Ready]
+    );
+}
+
+#[test]
+fn status_failed_entry_makes_ready_false() {
+    let mut cluster = FakeCluster {
+        observed: vec![ObservedChild::owned(key("b"), hash_of_a())],
+        fail_apply_for: Some(key("a")),
+        ..Default::default()
+    };
+    cluster.ready.insert(key("b"));
+    let spec = fleet_with(&["a", "b"], 2);
+
+    let report = run(&mut cluster, &spec).unwrap();
+
+    let ready = &report.status.conditions[0];
+    assert_eq!(ready.status, "False");
+    assert_eq!(ready.reason, "EntriesNotReady");
+    assert_eq!(report.status.entries[0].phase, FleetEntryPhase::Failed);
+    assert!(report.status.entries[0]
+        .message
+        .as_deref()
+        .unwrap_or_default()
+        .contains("apply refused by fake"));
+    assert_eq!(report.status.entries[1].phase, FleetEntryPhase::Ready);
+    assert!(ready.message.contains("Failed entry local/tenant-a"));
 }
