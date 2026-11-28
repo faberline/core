@@ -15,14 +15,14 @@ use crate::interfaces::metrics::{self, ControllerMetrics};
 use crate::interfaces::operator::{reconcile_one, watch, Error, WatchScope};
 
 /// This replica's leader-election identity (pod name in k8s, else the manager).
-fn identity(manager: &str) -> String {
+pub(crate) fn identity(manager: &str) -> String {
     std::env::var("POD_NAME")
         .or_else(|_| std::env::var("HOSTNAME"))
         .unwrap_or_else(|_| manager.to_string())
 }
 
 /// The namespace the leader-election Lease lives in (the operator's own).
-fn lease_namespace(manager: &str) -> String {
+pub(crate) fn lease_namespace(manager: &str) -> String {
     std::env::var("POD_NAMESPACE").unwrap_or_else(|_| format!("{manager}-system"))
 }
 
