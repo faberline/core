@@ -5,6 +5,11 @@
 //! (leader-election gate), so `replicas > 1` is safe. Child objects are applied
 //! generically as [`DynamicObject`]s keyed by GVK — no compile-time type per
 //! kind. Lifted from lumen's `service_k8s::reconcile`, generic over `S`.
+//! [`run_fleet`] runs the same leader-gated loop for a Fleet CR and applies its
+//! entries through the Fleet engine.
 
+pub use crate::app::fleet::{
+    reconcile_fleet_object, run_fleet, FleetError, FLEET_PROGRESS_REQUEUE, FLEET_REPAIR_REQUEUE,
+};
 pub use crate::app::operator::{reconcile_once, run, run_in_namespaces};
 pub use crate::interfaces::operator::{Error, WatchScope};

@@ -321,6 +321,31 @@ pub fn reconcile_fleet_once<S: Serialize>(
     Ok(FleetPassReport { results, status })
 }
 
+/// One Fleet custom resource that `run_fleet` reconciles.
+#[cfg(feature = "controller")]
+pub trait FleetService:
+    kube::Resource<DynamicType = (), Scope = k8s_openapi::NamespaceResourceScope>
+    + Clone
+    + std::fmt::Debug
+    + serde::de::DeserializeOwned
+    + Send
+    + Sync
+    + 'static
+{
+    /// The child spec type of the instances.
+    type Child: Serialize + Clone + Send + Sync + 'static;
+    /// Field manager of the server-side apply and name of the leader-election Lease.
+    const MANAGER: &'static str;
+    /// `apiVersion` of the child objects, for example `apps/v1`.
+    const CHILD_API_VERSION: &'static str;
+    /// `kind` of the child objects, for example `StatefulSet`.
+    const CHILD_KIND: &'static str;
+    /// The desired state of this object.
+    fn fleet_spec(&self) -> &FleetSpec<Self::Child>;
+    /// The conditions of the last status; empty when there is none.
+    fn fleet_conditions(&self) -> &[Condition];
+}
+
 /// The outcome of a leader-gated Fleet pass.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum FleetPassOutcome {
