@@ -3,10 +3,11 @@
 
 use serde::Serialize;
 
-use crate::api::fleet::FleetSpec;
+use crate::api::fleet::{FleetSpec, FleetStatus};
+use crate::domain::condition::Condition;
 use crate::domain::fleet::{
-    desired_hash, plan_fleet, reject_duplicate_targets, ChildKey, DesiredChild, FleetAction,
-    FleetPlanError, ObservedChild,
+    desired_hash, plan_fleet, plan_rollout_order, reject_duplicate_targets, ChildKey, DesiredChild,
+    FleetAction, FleetEntryPhase, FleetEntryStatus, FleetPlanError, ObservedChild, RolloutState,
 };
 
 /// The child kind that a Fleet manages, for example `apps/v1` and `StatefulSet`.
@@ -56,6 +57,9 @@ pub trait FleetCluster {
 
     /// Delete the child at `key`.
     fn delete(&mut self, key: &ChildKey) -> Result<(), FleetClusterError>;
+
+    /// True when the child at `key` has rolled out and is ready.
+    fn is_ready(&mut self, key: &ChildKey) -> Result<bool, FleetClusterError>;
 }
 
 /// The outcome of one planned action.
@@ -70,6 +74,8 @@ pub struct FleetEntryResult {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FleetPassReport {
     pub results: Vec<FleetEntryResult>,
+    /// Per-entry status and the aggregate Ready condition.
+    pub status: FleetStatus,
 }
 
 /// An error that stops the whole pass before or during the planning step.
@@ -83,16 +89,67 @@ pub enum FleetPassError {
     Cluster(FleetClusterError),
 }
 
+/// What the status shows for one entry. The pass fills it in while it runs.
+#[derive(Clone, Debug)]
+struct EntryOutcome {
+    phase: FleetEntryPhase,
+    observed_hash: Option<String>,
+    message: Option<String>,
+}
+
+impl EntryOutcome {
+    fn pending() -> Self {
+        Self {
+            phase: FleetEntryPhase::Pending,
+            observed_hash: None,
+            message: None,
+        }
+    }
+
+    fn failed(error: &FleetClusterError) -> Self {
+        Self {
+            phase: FleetEntryPhase::Failed,
+            observed_hash: None,
+            message: Some(error.0.clone()),
+        }
+    }
+}
+
+/// The index of the entry (in declared order) whose child key is `key`.
+fn entry_index(
+    rendered: &[(ChildKey, serde_json::Value, String)],
+    key: &ChildKey,
+) -> Option<usize> {
+    rendered.iter().position(|(k, _, _)| k == key)
+}
+
+/// Whether the action writes a child spec and so takes a rollout slot.
+fn is_write(action: &FleetAction) -> bool {
+    matches!(
+        action,
+        FleetAction::Create { .. } | FleetAction::Update { .. }
+    )
+}
+
 /// Run one Fleet reconcile pass.
 ///
 /// Duplicate targets stop the pass before any cluster call. A cluster error on
 /// one action is stored in that action's result, and the pass goes on.
+///
+/// `Create` and `Update` run in the order of `plan_rollout_order`, within
+/// `rollout.max_concurrent`. An entry whose predecessors are not ready waits for
+/// the next pass. The report holds the projected `FleetStatus`.
+// The three status inputs belong to FleetStatus::project.
+#[allow(clippy::too_many_arguments)]
 pub fn reconcile_fleet_once<S: Serialize>(
     cluster: &mut dyn FleetCluster,
     spec: &FleetSpec<S>,
     kind: &FleetChildKind,
     owner: &str,
     manager: &str,
+    prior: &[Condition],
+    observed_generation: i64,
+    now: &str,
 ) -> Result<FleetPassReport, FleetPassError> {
     let entries = spec
         .entries()
@@ -117,29 +174,144 @@ pub fn reconcile_fleet_once<S: Serialize>(
 
     let plan = plan_fleet(desired, observed, spec.adoption, spec.prune)?;
 
-    let mut results = Vec::with_capacity(plan.actions.len());
-    for action in plan.actions {
-        let outcome = match &action {
-            FleetAction::Create { key, desired_hash }
-            | FleetAction::Update { key, desired_hash } => {
-                match rendered.iter().find(|(k, _, _)| k == key) {
-                    Some((_, child_spec, _)) => {
-                        cluster.apply(key, child_spec, desired_hash, owner, manager)
+    // One slot per planned action, in plan order.
+    let mut outcomes: Vec<Option<Result<(), FleetClusterError>>> =
+        plan.actions.iter().map(|_| None).collect();
+    // Rollout state and status per entry, in declared order.
+    let mut states = vec![RolloutState::Ready; rendered.len()];
+    let mut entry_outcomes = vec![EntryOutcome::pending(); rendered.len()];
+
+    // First pass: everything except the writes. A write only marks its entry
+    // as waiting; the rollout loop below applies it.
+    for (a, action) in plan.actions.iter().enumerate() {
+        match action {
+            FleetAction::Create { key, .. } | FleetAction::Update { key, .. } => {
+                match entry_index(&rendered, key) {
+                    Some(idx) => states[idx] = RolloutState::Pending,
+                    None => {
+                        outcomes[a] = Some(Err(FleetClusterError(format!(
+                            "no rendered spec for {key}"
+                        ))));
                     }
-                    None => Err(FleetClusterError(format!("no rendered spec for {key}"))),
                 }
             }
-            FleetAction::Adopt { key, desired_hash } => cluster.adopt(key, desired_hash, owner),
-            FleetAction::Prune { key } => cluster.delete(key),
-            FleetAction::Unchanged { .. }
-            | FleetAction::SkipForeign { .. }
-            | FleetAction::Orphan { .. } => Ok(()),
-        };
-        results.push(FleetEntryResult {
-            error: outcome.err().map(|err| err.0),
-            action,
-        });
+            FleetAction::Adopt { key, desired_hash } => {
+                let result = cluster.adopt(key, desired_hash, owner);
+                if let Some(idx) = entry_index(&rendered, key) {
+                    entry_outcomes[idx] = match &result {
+                        Ok(()) => EntryOutcome::pending(),
+                        Err(error) => EntryOutcome::failed(error),
+                    };
+                }
+                outcomes[a] = Some(result);
+            }
+            FleetAction::Prune { key } => {
+                outcomes[a] = Some(cluster.delete(key));
+            }
+            FleetAction::Unchanged { key } => {
+                let probe = cluster.is_ready(key);
+                if let Some(idx) = entry_index(&rendered, key) {
+                    let hash = Some(rendered[idx].2.clone());
+                    // A child that cannot be read keeps its slot, so the
+                    // rollout does not start another entry past it.
+                    let (state, outcome) = match probe {
+                        Ok(true) => (
+                            RolloutState::Ready,
+                            EntryOutcome {
+                                phase: FleetEntryPhase::Ready,
+                                observed_hash: hash,
+                                message: None,
+                            },
+                        ),
+                        Ok(false) => (
+                            RolloutState::Updating,
+                            EntryOutcome {
+                                phase: FleetEntryPhase::Applying,
+                                observed_hash: hash,
+                                message: None,
+                            },
+                        ),
+                        Err(error) => (
+                            RolloutState::Updating,
+                            EntryOutcome {
+                                phase: FleetEntryPhase::Failed,
+                                observed_hash: hash,
+                                message: Some(error.0),
+                            },
+                        ),
+                    };
+                    states[idx] = state;
+                    entry_outcomes[idx] = outcome;
+                }
+                outcomes[a] = Some(Ok(()));
+            }
+            FleetAction::SkipForeign { key } => {
+                if let Some(idx) = entry_index(&rendered, key) {
+                    entry_outcomes[idx] = EntryOutcome {
+                        phase: FleetEntryPhase::Failed,
+                        observed_hash: None,
+                        message: Some("child is not owned by this fleet".to_string()),
+                    };
+                }
+                outcomes[a] = Some(Ok(()));
+            }
+            FleetAction::Orphan { .. } => {
+                outcomes[a] = Some(Ok(()));
+            }
+        }
     }
 
-    Ok(FleetPassReport { results })
+    // Rollout: start the next pending entries while slots are free. A finished
+    // apply frees its slot at once, so a failed entry does not hold the queue.
+    let max = usize::try_from(spec.rollout.max_concurrent).unwrap_or(usize::MAX);
+    while let Some(&idx) = plan_rollout_order(&states, max).first() {
+        let key = rendered[idx].0.clone();
+        let hash = rendered[idx].2.clone();
+        let result = cluster.apply(&key, &rendered[idx].1, &hash, owner, manager);
+        match &result {
+            Ok(()) => {
+                states[idx] = RolloutState::Updating;
+                entry_outcomes[idx] = EntryOutcome {
+                    phase: FleetEntryPhase::Applying,
+                    observed_hash: Some(hash),
+                    message: None,
+                };
+            }
+            Err(error) => {
+                states[idx] = RolloutState::Ready;
+                entry_outcomes[idx] = EntryOutcome::failed(error);
+            }
+        }
+        if let Some(a) = plan
+            .actions
+            .iter()
+            .position(|action| is_write(action) && action.key() == &key)
+        {
+            outcomes[a] = Some(result);
+        }
+    }
+
+    // One result per action, in plan order.
+    let mut results = Vec::with_capacity(plan.actions.len());
+    for (a, action) in plan.actions.into_iter().enumerate() {
+        let error = outcomes[a]
+            .take()
+            .and_then(|outcome| outcome.err())
+            .map(|err| err.0);
+        results.push(FleetEntryResult { action, error });
+    }
+
+    let statuses: Vec<FleetEntryStatus> = entries
+        .iter()
+        .zip(entry_outcomes)
+        .map(|(entry, outcome)| FleetEntryStatus {
+            target: entry.target.clone(),
+            phase: outcome.phase,
+            observed_hash: outcome.observed_hash,
+            message: outcome.message,
+        })
+        .collect();
+    let status = FleetStatus::project(prior, statuses, observed_generation, now);
+
+    Ok(FleetPassReport { results, status })
 }
