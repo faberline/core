@@ -58,9 +58,56 @@ reconcile. The RBAC that each mode needs:
 | `status_patch_with_context` | Domain status fields | Patches the status subresource. |
 | `conditions` | Clock-free condition facts | Preserves transition times and stamps observed generation. |
 | `prunes` | Owned child objects that are no longer desired | Rechecks owner UID before deletion. |
+| `other_namespace_children` | Children that live in another namespace | Applies them to that namespace, stamps the owner UID label, removes owner references, installs a finalizer, deletes them with the owner or when no longer desired. |
 
 The controller uses server-side apply. The service remains responsible for
 valid child identity, domain admission, and any external data used by its plan.
+
+## Children in another namespace
+
+A service declares a child in another namespace with
+`other_namespace_children`. The library:
+
+- applies the child in that namespace and stamps the owner UID label on it;
+- gives the child no owner reference, because the child is in another namespace;
+- installs a finalizer on the owner, so the owner waits until its children are gone;
+- deletes a child with its owner, or when the child is no longer desired;
+- deletes a child only when the child proves that this owner created it. A
+  child that does not prove it fails the pass with `NamespacedOwnership`.
+
+The consumer grants the RBAC in each other namespace. The Role of
+`run_in_namespaces` covers only its own namespace, not the other namespaces.
+In each other namespace, grant the operator ServiceAccount a Role and a
+RoleBinding with the verbs `get`, `create`, `patch` and `delete` on the child
+kinds. `create` and `patch` apply the child. `get` and `delete` clean it up.
+Without the grant, the pass fails with `Forbidden`, and the finalizer keeps
+the owner until the grant exists.
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: grouped-children
+  namespace: other-a
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "create", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: grouped-children
+  namespace: other-a
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: grouped-children
+subjects:
+  - kind: ServiceAccount
+    name: my-operator
+    namespace: operators
+```
 
 ## Data retention on deletion
 
