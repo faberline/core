@@ -2,6 +2,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -520,6 +521,19 @@ class AbMainTests(unittest.TestCase):
         self.assertEqual(code, 0)
         code, _ = self.run_ab([], head_factor=1.0, baseline_file=None)
         self.assertEqual(code, 0)
+
+
+class WriteWorkloadSourceTests(unittest.TestCase):
+    def test_p99_rests_on_at_least_fifty_requests(self):
+        source = (
+            Path(__file__).resolve().parent.parent
+            / 'crates/raft-runtime/tests/write_path_latency.rs'
+        ).read_text(encoding='utf-8')
+        match = re.search(r'const TIMED_REQUESTS: usize = (\d+);', source)
+        self.assertIsNotNone(match)
+        n = int(match.group(1))
+        # Requests at or above the p99 index: each p99 sample rests on these.
+        self.assertGreaterEqual(n - (n * 99) // 100, 50)
 
 
 if __name__ == '__main__':
