@@ -8,6 +8,8 @@ pub(crate) mod access_store;
 pub(crate) mod certificate;
 pub(crate) mod crd;
 #[cfg(feature = "controller")]
+pub(crate) mod fleet_cluster;
+#[cfg(feature = "controller")]
 pub(crate) mod lease;
 pub(crate) mod manifest;
 #[cfg(feature = "controller")]
